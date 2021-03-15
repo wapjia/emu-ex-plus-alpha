@@ -1,0 +1,103 @@
+name: EX Emulators
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: ubuntu-20.04
+    runs-on: ubuntu-20.04
+    container: cirrusci/android-sdk:30-ndk
+ 
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+
+    - name: Decode debug keystore
+      env:
+        DEBUG_KEYSTORE: ${{ secrets.DEBUG_KEYSTORE }}
+      run: |
+        if [ -z "$DEBUG_KEYSTORE" ]
+        then
+           echo "No debug keystore value"
+        else
+           echo $DEBUG_KEYSTORE > debug.keystore.base64
+           base64 --decode debug.keystore.base64 > debug.keystore
+           sudo cp -f debug.keystore /root/.android/.
+        fi
+        
+    - name: Install
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y autoconf
+        sudo apt-get install -y automake
+        sudo apt-get install -y autopoint
+        sudo apt-get install -y bash
+        sudo apt-get install -y clang
+        sudo apt-get install -y file
+        sudo apt-get install -y gawk
+        sudo apt-get install -y gettext
+        sudo apt-get install -y git
+        sudo apt-get install -y libtool
+        sudo apt-get install -y libtool-bin
+        sudo apt-get install -y llvm 
+        sudo apt-get install -y make
+        sudo apt-get install -y openjdk-8-jdk
+        sudo apt-get install -y pkg-config
+        sudo apt-get install -y unzip
+        sudo apt-get upgrade -y
+        echo y | sdkmanager "cmake;3.10.2.4988404"
+        
+    - name: Download and unzip NDK
+      working-directory: /opt/android-sdk-linux/ndk
+      run: |
+        wget -q https://dl.google.com/android/repository/android-ndk-r22-linux-x86_64.zip
+        unzip -qq ./android-ndk-r22-linux-x86_64.zip
+        
+    - name: Set up environment
+      run: |
+        mkdir imagine-sdk
+        mkdir EX-Emulators
+        echo "ANDROID_NDK_PATH=/opt/android-sdk-linux/ndk/android-ndk-r22" >> $GITHUB_ENV
+        echo "EMUFRAMEWORK_PATH=${{ github.workspace }}/EmuFramework" >> $GITHUB_ENV
+        echo "IMAGINE_PATH=${{ github.workspace }}/imagine" >> $GITHUB_ENV
+        echo "IMAGINE_SDK_PATH=${{ github.workspace }}/imagine-sdk" >> $GITHUB_ENV
+    - name: Patch build.gradle
+      run: |
+        cp -f .github/workflows/01-change-signing-to-debug.patch imagine/make/gradle/app/
+        cd imagine/make/gradle/app/
+        patch -p 1 -i 01-change-signing-to-debug.patch
+        rm 01-change-signing-to-debug.patch
+  
+    - name: Patch android.mk
+      run: |
+        cp -f .github/workflows/02-change-bundle-to-apk.patch imagine/make/shortcut/meta-builds/
+        cd imagine/make/shortcut/meta-builds
+        patch -p 1 -i 02-change-bundle-to-apk.patch
+        rm 02-change-bundle-to-apk.patch
+        
+    - name: Run script
+      run: |
+        cd imagine/bundle/all
+        chmod +x ./makeAll-android.sh
+        ./makeAll-android.sh install
+      shell: bash
+    - name: Build Snes9x
+      run: |        
+        cd Snes9x
+        make -f android-release.mk V=1 -j2
+    - name: Copy Artifacts
+      run: |
+        cp Snes9x/target/android-release/build/outputs/apk/release/Snes9xEXPlus-release.apk EX-Emulators/Snes9xEXPlus-release.apk
+        
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v2
+      with: 
+        name: EX-Emulators
+        path: EX-Emulators/
+		
+    - name: Upload Snes9x Artifact
+      uses: actions/upload-artifact@v2
+      with: 
+        name: Snes9x
+        path: ${{ github.workspace }}/Snes9x/target/android-release/build/outputs/apk/release/Snes9xEXPlus-release.apk
