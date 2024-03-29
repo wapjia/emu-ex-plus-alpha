@@ -21,6 +21,7 @@
 #include "genplus-config.h"
 #include "system.h"
 #include "state.h"
+#include <list>
 
 extern t_config config;
 
@@ -103,7 +104,9 @@ public:
 		Input::DragTrackerState prevDragState, IG::WindowRect gameRect);
 	bool onPointerInputEnd(const Input::MotionEvent &, Input::DragTrackerState, IG::WindowRect gameRect);
 	VideoSystem videoSystem() const;
-
+    //region 爱吾修改
+    void setCheatListAiWu(std::list<std::string> cheats);
+    //endregion
 private:
 	void setupSmsInput(EmuApp &);
 	void setupMdInput(EmuApp &);

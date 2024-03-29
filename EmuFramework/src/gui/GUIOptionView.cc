@@ -31,7 +31,7 @@ static const char *portraitName = USE_MOBILE_ORIENTATION_NAMES ? "Portrait" : "S
 static const char *portrait2Name = USE_MOBILE_ORIENTATION_NAMES ? "Portrait 2" : "Upside Down";
 
 GUIOptionView::GUIOptionView(ViewAttachParams attach, bool customMenu):
-	TableView{"GUI Options", attach, item},
+	TableView{"界面设置", attach, item},
 	pauseUnfocused
 	{
 		"Pause if unfocused", attach,
@@ -52,10 +52,10 @@ GUIOptionView::GUIOptionView(ViewAttachParams attach, bool customMenu):
 		{"8",  attach, {.id = 8000}},
 		{"9",  attach, {.id = 9000}},
 		{"10", attach, {.id = 10000}},
-		{"Custom Value", attach,
+		{"自定义", attach,
 			[this](const Input::Event &e)
 			{
-				app().pushAndShowNewCollectValueInputView<float>(attachParams(), e, "Input 2.0 to 10.0", "",
+				app().pushAndShowNewCollectValueInputView<float>(attachParams(), e, "输入2.0到10.0", "",
 					[this](EmuApp &app, auto val)
 					{
 						int scaledIntVal = val * 1000.0;
@@ -67,7 +67,7 @@ GUIOptionView::GUIOptionView(ViewAttachParams attach, bool customMenu):
 						}
 						else
 						{
-							app.postErrorMessage("Value not in range");
+							app.postErrorMessage("值错误");
 							return false;
 						}
 					});
@@ -77,7 +77,7 @@ GUIOptionView::GUIOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	fontSize
 	{
-		"Font Size", attach,
+		"字体大小", attach,
 		MenuId{app().fontSize},
 		fontSizeItem,
 		{
@@ -91,7 +91,7 @@ GUIOptionView::GUIOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	notificationIcon
 	{
-		"Suspended App Icon", attach,
+		"通知栏图标", attach,
 		app().showsNotificationIcon,
 		[this](BoolMenuItem &item)
 		{
@@ -116,9 +116,9 @@ GUIOptionView::GUIOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	lowProfileOSNavItem
 	{
-		{"Off",    attach, MenuItem::Config{.id = InEmuTristate::Off}},
-		{"In Emu", attach, MenuItem::Config{.id = InEmuTristate::InEmu}},
-		{"On",     attach, MenuItem::Config{.id = InEmuTristate::On}}
+		{"关",    attach, MenuItem::Config{.id = InEmuTristate::Off}},
+		{"游戏中", attach, MenuItem::Config{.id = InEmuTristate::InEmu}},
+		{"开",     attach, MenuItem::Config{.id = InEmuTristate::On}}
 	},
 	lowProfileOSNav
 	{
@@ -148,7 +148,7 @@ GUIOptionView::GUIOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	idleDisplayPowerSave
 	{
-		"Allow Screen Timeout In Emulation", attach,
+		"自动休眠", attach,
 		app().idleDisplayPowerSave,
 		[this](BoolMenuItem &item)
 		{
@@ -157,7 +157,7 @@ GUIOptionView::GUIOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	navView
 	{
-		"Title Bar", attach,
+		"标题栏", attach,
 		app().showsTitleBar,
 		[this](BoolMenuItem &item)
 		{
@@ -166,7 +166,7 @@ GUIOptionView::GUIOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	backNav
 	{
-		"Title Back Navigation", attach,
+		"标题栏返回按钮", attach,
 		attach.viewManager.needsBackControl,
 		[this](BoolMenuItem &item)
 		{
@@ -177,9 +177,9 @@ GUIOptionView::GUIOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	systemActionsIsDefaultMenu
 	{
-		"Default Menu", attach,
+		"默认菜单", attach,
 		app().systemActionsIsDefaultMenu,
-		"Last Used", "System Actions",
+		"上次使用", "游戏菜单",
 		[this](BoolMenuItem &item)
 		{
 			app().systemActionsIsDefaultMenu = item.flipBoolValue(*this);
@@ -267,7 +267,7 @@ GUIOptionView::GUIOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	layoutBehindSystemUI
 	{
-		"Display Behind OS UI", attach,
+		"显示到状态栏区域", attach,
 		app().doesLayoutBehindSystemUI(),
 		[this](BoolMenuItem &item)
 		{
@@ -302,10 +302,11 @@ GUIOptionView::GUIOptionView(ViewAttachParams attach, bool customMenu):
 
 void GUIOptionView::loadStockItems()
 {
-	if(used(pauseUnfocused))
-	{
-		item.emplace_back(&pauseUnfocused);
-	}
+    //爱吾修改
+//	if(used(pauseUnfocused))
+//	{
+//		item.emplace_back(&pauseUnfocused);
+//	}
 	if(app().canShowNotificationIcon(appContext()))
 	{
 		item.emplace_back(&notificationIcon);
@@ -318,7 +319,7 @@ void GUIOptionView::loadStockItems()
 	{
 		item.emplace_back(&backNav);
 	}
-	item.emplace_back(&systemActionsIsDefaultMenu);
+//	item.emplace_back(&systemActionsIsDefaultMenu);
 	item.emplace_back(&fontSize);
 	if(used(setWindowSize))
 	{
@@ -329,7 +330,9 @@ void GUIOptionView::loadStockItems()
 		item.emplace_back(&toggleFullScreen);
 	}
 	item.emplace_back(&idleDisplayPowerSave);
-	if(used(lowProfileOSNav))
+/*
+ * //爱吾修改
+ * if(used(lowProfileOSNav))
 	{
 		item.emplace_back(&lowProfileOSNav);
 	}
@@ -355,7 +358,7 @@ void GUIOptionView::loadStockItems()
 	item.emplace_back(&maxRecentContent);
 	item.emplace_back(&orientationHeading);
 	item.emplace_back(&emuOrientation);
-	item.emplace_back(&menuOrientation);
+	item.emplace_back(&menuOrientation);*/
 }
 
 }

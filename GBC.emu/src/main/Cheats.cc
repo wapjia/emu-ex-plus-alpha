@@ -332,5 +332,26 @@ void EmuCheatsView::loadCheatItems()
 		++it;
 	}
 }
-
+//region 爱吾修改
+void GbcSystem::setCheatListAiWu(std::list<std::string> cheats)
+{
+    if(!hasContent())
+        return;
+    std::string ggCodeStr, gsCodeStr;
+    for (std::list<std::string>::iterator it = cheats.begin(); it != cheats.end(); it++)
+    {
+        std::string& cheat = *it;
+        std::string &codeStr = std::string_view{cheat.c_str()}.contains('-') ? ggCodeStr : gsCodeStr;
+        if(codeStr.size())
+            codeStr += ";";
+        codeStr += cheat.c_str();
+    }
+    gbEmu.setGameGenie(ggCodeStr);
+    gbEmu.setGameShark(gsCodeStr);
+    if(ggCodeStr.size())
+        logMsg("set GG codes: %s", ggCodeStr.c_str());
+    if(gsCodeStr.size())
+        logMsg("set GS codes: %s", gsCodeStr.c_str());
+}
+//endregion
 }

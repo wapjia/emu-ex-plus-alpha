@@ -34,15 +34,15 @@ namespace EmuEx
 template <class T>
 using MainAppHelper = EmuAppHelper<T, MainApp>;
 
-constexpr std::string_view pceFastText{"pce_fast (Default for general use)"};
-constexpr std::string_view pceText{"pce (Better accuracy, higher power usage)"};
-constexpr std::string_view changeEmuCoreText{"Really change emulation core? Note that save states from different cores aren't compatible."};
+constexpr std::string_view pceFastText{"pce_fast(一般默认使用)"};
+constexpr std::string_view pceText{"pce(更好的准确性，更高的功率使用)"};
+constexpr std::string_view changeEmuCoreText{"确定更改模拟核心吗？注意：不同核心的即时存档不兼容！"};
 
 class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionView>
 {
 	BoolMenuItem sixButtonPad
 	{
-		"6-button Gamepad", attachParams(),
+		"6-按键模式", attachParams(),
 		(bool)system().option6BtnPad,
 		[this](BoolMenuItem &item, const Input::Event &e)
 		{
@@ -54,7 +54,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	BoolMenuItem arcadeCard
 	{
-		"Arcade Card", attachParams(),
+		"街机卡", attachParams(),
 		(bool)system().optionArcadeCard,
 		[this](BoolMenuItem &item, const Input::Event &e)
 		{
@@ -64,7 +64,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 		}
 	};
 
-	TextHeadingMenuItem videoHeading{"Video", attachParams()};
+	TextHeadingMenuItem videoHeading{"视频", attachParams()};
 
 	TextMenuItem visibleVideoLinesItem[5]
 	{
@@ -77,7 +77,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	MultiChoiceMenuItem visibleVideoLines
 	{
-		"Visible Lines", attachParams(),
+		"可见视频线", attachParams(),
 		[this]()
 		{
 			switch(system().visibleLines.first)
@@ -99,14 +99,14 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	TextMenuItem emuCoreItems[3]
 	{
-		{"Auto",      attachParams(), setEmuCoreDel(), {.id = EmuCore::Auto}},
+		{"自动",      attachParams(), setEmuCoreDel(), {.id = EmuCore::Auto}},
 		{pceFastText, attachParams(), setEmuCoreDel(), {.id = EmuCore::Fast}},
 		{pceText,     attachParams(), setEmuCoreDel(), {.id = EmuCore::Accurate}},
 	};
 
 	MultiChoiceMenuItem emuCore
 	{
-		"Emulation Core", attachParams(),
+		"模拟核心", attachParams(),
 		MenuId{system().core},
 		emuCoreItems,
 		{
@@ -154,7 +154,7 @@ public:
 	ConsoleOptionView(ViewAttachParams attach):
 		TableView
 		{
-			"Console Options",
+			"控制台设置",
 			attach,
 			menuItem
 		}
@@ -166,7 +166,7 @@ class CustomSystemActionsView : public SystemActionsView
 private:
 	TextMenuItem options
 	{
-		"Console Options", attachParams(),
+		"控制台设置", attachParams(),
 		[this](Input::Event e) { pushAndShow(makeView<ConsoleOptionView>(), e); }
 	};
 
@@ -188,7 +188,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		biosMenuEntryStr(system().sysCardPath), attachParams(),
 		[this](Input::Event e)
 		{
-			pushAndShow(makeViewWithName<DataFileSelectView<>>("System Card",
+			pushAndShow(makeViewWithName<DataFileSelectView<>>("系统卡",
 				app().validSearchPath(FS::dirnameUri(system().sysCardPath)),
 				[this](CStringView path, FS::file_type type)
 				{
@@ -202,7 +202,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 
 	std::string biosMenuEntryStr(std::string_view path) const
 	{
-		return std::format("System Card: {}", appContext().fileUriDisplayName(path));
+		return std::format("系统卡: {}", appContext().fileUriDisplayName(path));
 	}
 
 public:
@@ -220,7 +220,7 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<Custo
 
 	BoolMenuItem spriteLimit
 	{
-		"Sprite Limit", attachParams(),
+		"限制精灵", attachParams(),
 		!system().noSpriteLimit,
 		[this](BoolMenuItem &item) { system().setNoSpriteLimit(!item.flipBoolValue(*this)); }
 	};
@@ -236,7 +236,7 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<Custo
 
 	MultiChoiceMenuItem visibleVideoLines
 	{
-		"Default Visible Lines", attachParams(),
+		"默认可见视频线", attachParams(),
 		[this]()
 		{
 			switch(system().defaultVisibleLines.first)
@@ -258,7 +258,7 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<Custo
 
 	BoolMenuItem correctLineAspect
 	{
-		"Correct Line Aspect Ratio", attachParams(),
+		"正确的线条比例", attachParams(),
 		system().correctLineAspect,
 		[this](BoolMenuItem &item)
 		{
@@ -292,7 +292,7 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 
 	MultiChoiceMenuItem cdSpeed
 	{
-		"CD Access Speed", attachParams(),
+		"CD访问速度", attachParams(),
 		MenuId{system().cdSpeed},
 		cdSpeedItem
 	};
@@ -304,14 +304,14 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 
 	TextMenuItem emuCoreItems[3]
 	{
-		{"Auto",      attachParams(), setEmuCoreDel(), {.id = EmuCore::Auto}},
+		{"自动",      attachParams(), setEmuCoreDel(), {.id = EmuCore::Auto}},
 		{pceFastText, attachParams(), setEmuCoreDel(), {.id = EmuCore::Fast}},
 		{pceText,     attachParams(), setEmuCoreDel(), {.id = EmuCore::Accurate}},
 	};
 
 	MultiChoiceMenuItem emuCore
 	{
-		"Emulation Core", attachParams(),
+		"模拟核心", attachParams(),
 		MenuId{system().defaultCore},
 		emuCoreItems,
 		{
@@ -361,7 +361,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper<Custo
 	using MainAppHelper<CustomAudioOptionView>::system;
 	using MainAppHelper<CustomAudioOptionView>::app;
 
-	TextHeadingMenuItem mixer{"Mixer", attachParams()};
+	TextHeadingMenuItem mixer{"混音器", attachParams()};
 
 	struct VolumeTypeDesc
 	{
@@ -373,8 +373,8 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper<Custo
 	{
 		switch(type)
 		{
-			case VolumeType::CDDA: return {"CD-DA Volume", 0};
-			case VolumeType::ADPCM: return {"ADPCM Volume", 1};
+			case VolumeType::CDDA: return {"CD-DA音量", 0};
+			case VolumeType::ADPCM: return {"ADPCM音量", 1};
 		}
 		bug_unreachable("invalid VolumeType");
 	}
@@ -387,19 +387,19 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper<Custo
 		{
 			TextMenuItem
 			{
-				"Default", attachParams(),
+				"默认", attachParams(),
 				[=, this]() { system().setVolume(type, 100); },
 				{.id = 100}
 			},
 			TextMenuItem
 			{
-				"Off", attachParams(),
+				"关", attachParams(),
 				[=, this]() { system().setVolume(type, 0); },
 				{.id = 0}
 			},
 			TextMenuItem
 			{
-				"Custom Value", attachParams(),
+				"自定义值", attachParams(),
 				[=, this](Input::Event e)
 				{
 					app().pushAndShowNewCollectValueRangeInputView<int, 0, 200>(attachParams(), e, "Input 0 to 200", "",
@@ -447,7 +447,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper<Custo
 
 	BoolMenuItem adpcmFilter
 	{
-		"ADPCM Low-pass Filter", attachParams(),
+		"ADPCM低通滤波器", attachParams(),
 		system().adpcmFilter,
 		[this](BoolMenuItem &item) { system().setAdpcmFilter(item.flipBoolValue(*this)); }
 	};

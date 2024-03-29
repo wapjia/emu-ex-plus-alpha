@@ -279,5 +279,11 @@ void EmuSystem::addThreadGroupIds(std::vector<ThreadId> &ids) const
 	if(&MainSystem::addThreadGroupIds != &EmuSystem::addThreadGroupIds)
 		static_cast<const MainSystem*>(this)->addThreadGroupIds(ids);
 }
-
+//region 爱吾修改
+void EmuSystem::setCheatListAiWu(std::list<std::string> cheats)
+{
+    if(&MainSystem::setCheatListAiWu != &EmuSystem::setCheatListAiWu)
+        static_cast<MainSystem*>(this)->setCheatListAiWu(cheats);
+}
+//endregion
 }

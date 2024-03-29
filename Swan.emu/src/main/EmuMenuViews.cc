@@ -32,13 +32,13 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 	using MainAppHelper<CustomSystemOptionView>::system;
 	using MainAppHelper<CustomSystemOptionView>::app;
 
-	TextHeadingMenuItem userProfile{"WonderSwan User Profile", attachParams()};
+	TextHeadingMenuItem userProfile{"WS用户配置", attachParams()};
 
 	BoolMenuItem language
 	{
-		"Language", attachParams(),
+		"语言", attachParams(),
 		(bool)system().userProfile.languageIsEnglish,
-		"Japanese", "English",
+		"日文", "英文",
 		[this](BoolMenuItem &item)
 		{
 			system().userProfile.languageIsEnglish = item.flipBoolValue(*this);
@@ -47,17 +47,17 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 
 	DualTextMenuItem name
 	{
-		"Name", system().userName, attachParams(),
+		"姓名", system().userName, attachParams(),
 		[this](const Input::Event &e)
 		{
 			app().pushAndShowNewCollectValueInputView<const char*, ScanValueMode::ALLOW_BLANK>(attachParams(), e,
-				"Input name", system().userName,
+				"输入姓名", system().userName,
 				[this](EmuApp &app, auto str_)
 				{
 					std::string_view str{str_};
 					if(str.size() > system().userName.max_size())
 					{
-						app.postErrorMessage("Name is too long");
+						app.postErrorMessage("输入的名称太长");
 						return false;
 					}
 					system().userName = str;
@@ -69,11 +69,11 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 
 	DualTextMenuItem birthYear
 	{
-		"Birth Year", std::to_string(system().userProfile.birthYear), attachParams(),
+		"出生(年)", std::to_string(system().userProfile.birthYear), attachParams(),
 		[this](const Input::Event &e)
 		{
 			app().pushAndShowNewCollectValueRangeInputView<int, 1, 9999>(attachParams(), e,
-				"Input 1 to 9999", std::to_string(system().userProfile.birthYear),
+				"输入1到9999", std::to_string(system().userProfile.birthYear),
 				[this](EmuApp &app, auto val)
 				{
 					system().userProfile.birthYear = val;
@@ -85,11 +85,11 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 
 	DualTextMenuItem birthMonth
 	{
-		"Birth Month", std::to_string(system().userProfile.birthMonth), attachParams(),
+		"出生(月)", std::to_string(system().userProfile.birthMonth), attachParams(),
 		[this](const Input::Event &e)
 		{
 			app().pushAndShowNewCollectValueRangeInputView<int, 1, 12>(attachParams(), e,
-				"Input 1 to 12", std::to_string(system().userProfile.birthMonth),
+				"输入1到12", std::to_string(system().userProfile.birthMonth),
 				[this](EmuApp &app, auto val)
 				{
 					system().userProfile.birthMonth = val;
@@ -101,11 +101,11 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 
 	DualTextMenuItem birthDay
 	{
-		"Birth Day", std::to_string(system().userProfile.birthDay), attachParams(),
+		"出生(日)", std::to_string(system().userProfile.birthDay), attachParams(),
 		[this](const Input::Event &e)
 		{
 			app().pushAndShowNewCollectValueRangeInputView<int, 1, 31>(attachParams(), e,
-				"Input 1 to 31", std::to_string(system().userProfile.birthDay),
+				"输入1到31", std::to_string(system().userProfile.birthDay),
 				[this](EmuApp &app, auto val)
 				{
 					system().userProfile.birthDay = val;
@@ -122,14 +122,14 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 
 	TextMenuItem sexItem[3]
 	{
-		{"M", attachParams(), setSexDel(), {.id = WSWAN_SEX_MALE}},
-		{"F", attachParams(), setSexDel(), {.id = WSWAN_SEX_FEMALE}},
-		{"?", attachParams(), setSexDel(), {.id = 3}},
+		{"男", attachParams(), setSexDel(), {.id = WSWAN_SEX_MALE}},
+		{"女", attachParams(), setSexDel(), {.id = WSWAN_SEX_FEMALE}},
+		{"未知", attachParams(), setSexDel(), {.id = 3}},
 	};
 
 	MultiChoiceMenuItem sex
 	{
-		"Sex", attachParams(),
+		"性别", attachParams(),
 		MenuId{(unsigned)system().userProfile.sex},
 		sexItem
 	};
@@ -141,16 +141,16 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 
 	TextMenuItem bloodTypeItem[5]
 	{
-		{"A",  attachParams(), setBloodTypeDel(), {.id = WSWAN_BLOOD_A}},
-		{"B",  attachParams(), setBloodTypeDel(), {.id = WSWAN_BLOOD_B}},
-		{"O",  attachParams(), setBloodTypeDel(), {.id = WSWAN_BLOOD_O}},
-		{"AB", attachParams(), setBloodTypeDel(), {.id = WSWAN_BLOOD_AB}},
-		{"?",  attachParams(), setBloodTypeDel(), {.id = 5}},
+		{"A型",  attachParams(), setBloodTypeDel(), {.id = WSWAN_BLOOD_A}},
+		{"B型",  attachParams(), setBloodTypeDel(), {.id = WSWAN_BLOOD_B}},
+		{"O型",  attachParams(), setBloodTypeDel(), {.id = WSWAN_BLOOD_O}},
+		{"AB型", attachParams(), setBloodTypeDel(), {.id = WSWAN_BLOOD_AB}},
+		{"未知",  attachParams(), setBloodTypeDel(), {.id = 5}},
 	};
 
 	MultiChoiceMenuItem bloodType
 	{
-		"Blood Type", attachParams(),
+		"血型", attachParams(),
 		MenuId{(unsigned)system().userProfile.bloodType},
 		bloodTypeItem
 	};
@@ -189,16 +189,16 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	MultiChoiceMenuItem rotation
 	{
-		"Handheld Rotation", attachParams(),
+		"旋转手持方向", attachParams(),
 		MenuId{system().rotation},
 		rotationItem
 	};
 
-	TextHeadingMenuItem vGamepad{"Virtual Gamepad", attachParams()};
+	TextHeadingMenuItem vGamepad{"虚拟控制器", attachParams()};
 
 	BoolMenuItem showVGamepadButtons
 	{
-		system().isRotated() ? "Show A/B" : "Show Y1-4", attachParams(),
+		system().isRotated() ? "显示A/B" : "显示Y1-4", attachParams(),
 		system().isRotated() ? system().showVGamepadABWhenVertical : system().showVGamepadYWhenHorizonal,
 		[this](BoolMenuItem &item)
 		{
@@ -220,7 +220,7 @@ public:
 	ConsoleOptionView(ViewAttachParams attach):
 		TableView
 		{
-			"Console Options",
+			"控制台设置",
 			attach,
 			menuItem
 		} {}
@@ -231,7 +231,7 @@ class CustomSystemActionsView : public SystemActionsView
 private:
 	TextMenuItem options
 	{
-		"Console Options", attachParams(),
+		"控制台设置", attachParams(),
 		[this](Input::Event e) { pushAndShow(makeView<ConsoleOptionView>(), e); }
 	};
 

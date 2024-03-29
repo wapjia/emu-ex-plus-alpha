@@ -26,14 +26,14 @@ namespace EmuEx
 {
 
 SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
-	TableView{"System Options", attach, item},
+	TableView{"系统设置", attach, item},
 	autosaveTimerItem
 	{
-		{"Off",    attach, {.id = 0}},
-		{"5min",  attach, {.id = 5}},
-		{"10min", attach, {.id = 10}},
-		{"15min", attach, {.id = 15}},
-		{"Custom Value", attach, [this](const Input::Event &e)
+		{"关",    attach, {.id = 0}},
+		{"5分钟",  attach, {.id = 5}},
+		{"10分钟", attach, {.id = 10}},
+		{"15分钟", attach, {.id = 15}},
+		{"自定义", attach, [this](const Input::Event &e)
 			{
 				app().pushAndShowNewCollectValueRangeInputView<int, 0, maxAutosaveSaveFreq.count()>(attachParams(), e, "Input 0 to 720", "",
 					[this](EmuApp &app, auto val)
@@ -49,7 +49,7 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	autosaveTimer
 	{
-		"Autosave Timer", attach,
+		"自动存档定时器", attach,
 		MenuId{app().autosaveManager.saveTimer.frequency.count()},
 		autosaveTimerItem,
 		{
@@ -65,14 +65,14 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	autosaveLaunchItem
 	{
-		{"Main Slot",            attach, {.id = AutosaveLaunchMode::Load}},
-		{"Main Slot (No State)", attach, {.id = AutosaveLaunchMode::LoadNoState}},
-		{"No Save Slot",         attach, {.id = AutosaveLaunchMode::NoSave}},
-		{"Select Slot",          attach, {.id = AutosaveLaunchMode::Ask}},
+		{"加载即时存档",            attach, {.id = AutosaveLaunchMode::Load}},
+		{"不加载即时存档", attach, {.id = AutosaveLaunchMode::LoadNoState}},
+//		{"No Save Slot",         attach, {.id = AutosaveLaunchMode::NoSave}},
+//		{"Select Slot",          attach, {.id = AutosaveLaunchMode::Ask}},
 	},
 	autosaveLaunch
 	{
-		"Autosave Launch Mode", attach,
+		"自动存档启动模式", attach,
 		MenuId{app().autosaveManager.autosaveLaunchMode},
 		autosaveLaunchItem,
 		{
@@ -81,9 +81,9 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	autosaveContent
 	{
-		"Autosave Content", attach,
+		"自动存档内容", attach,
 		app().autosaveManager.saveOnlyBackupMemory,
-		"State & Backup RAM", "Only Backup RAM",
+		"即时存档和本体(RAM)存档", "仅本体(RAM)存档",
 		[this](BoolMenuItem &item)
 		{
 			app().autosaveManager.saveOnlyBackupMemory = item.flipBoolValue(*this);
@@ -105,10 +105,10 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 		{"4x",    attach, {.id = 400}},
 		{"8x",    attach, {.id = 800}},
 		{"16x",   attach, {.id = 1600}},
-		{"Custom Value", attach,
+		{"自定义", attach,
 			[this](const Input::Event &e)
 			{
-				app().pushAndShowNewCollectValueInputView<float>(attachParams(), e, "Input above 1.0 to 20.0", "",
+				app().pushAndShowNewCollectValueInputView<float>(attachParams(), e, "输入1.0到20.0", "",
 					[this](EmuApp &app, auto val)
 					{
 						auto valAsInt = std::round(val * 100.f);
@@ -120,7 +120,7 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 						}
 						else
 						{
-							app.postErrorMessage("Value not in range");
+							app.postErrorMessage("输入错误");
 							return false;
 						}
 					});
@@ -130,7 +130,7 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	fastModeSpeed
 	{
-		"Fast-forward Speed", attach,
+		"加速速度", attach,
 		MenuId{app().altSpeed(AltSpeedMode::fast)},
 		fastModeSpeedItem,
 		{
@@ -146,10 +146,10 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	{
 		{"0.25x", attach, {.id = 25}},
 		{"0.50x", attach, {.id = 50}},
-		{"Custom Value", attach,
+		{"自定义", attach,
 			[this](const Input::Event &e)
 			{
-				app().pushAndShowNewCollectValueInputView<float>(attachParams(), e, "Input 0.05 up to 1.0", "",
+				app().pushAndShowNewCollectValueInputView<float>(attachParams(), e, "输入0.05到1.0", "",
 					[this](EmuApp &app, auto val)
 					{
 						auto valAsInt = std::round(val * 100.f);
@@ -161,7 +161,7 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 						}
 						else
 						{
-							app.postErrorMessage("Value not in range");
+							app.postErrorMessage("输入错误");
 							return false;
 						}
 					});
@@ -171,7 +171,7 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	slowModeSpeed
 	{
-		"Slow-motion Speed", attach,
+		"减速速度", attach,
 		MenuId{app().altSpeed(AltSpeedMode::slow)},
 		slowModeSpeedItem,
 		{
@@ -188,10 +188,10 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 		{"0",  attach, {.id = 0}},
 		{"30", attach, {.id = 30}},
 		{"60", attach, {.id = 60}},
-		{"Custom Value", attach, [this](const Input::Event &e)
+		{"自定义", attach, [this](const Input::Event &e)
 			{
 				app().pushAndShowNewCollectValueRangeInputView<int, 0, 50000>(attachParams(), e,
-					"Input 0 to 50000", std::to_string(app().rewindManager.maxStates),
+					"输入0到50000", std::to_string(app().rewindManager.maxStates),
 					[this](EmuApp &app, auto val)
 					{
 						app.rewindManager.updateMaxStates(val);
@@ -205,7 +205,7 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	rewindStates
 	{
-		"Rewind States", attach,
+		"倒带存档", attach,
 		MenuId{app().rewindManager.maxStates},
 		rewindStatesItem,
 		{
@@ -219,11 +219,11 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	rewindTimeInterval
 	{
-		"Rewind State Interval (Seconds)", std::to_string(app().rewindManager.saveTimer.frequency.count()), attach,
+		"倒带存档时间间隔(秒)", std::to_string(app().rewindManager.saveTimer.frequency.count()), attach,
 		[this](const Input::Event &e)
 		{
 			app().pushAndShowNewCollectValueRangeInputView<int, 1, 60>(attachParams(), e,
-				"Input 1 to 60", std::to_string(app().rewindManager.saveTimer.frequency.count()),
+				"输入1到60", std::to_string(app().rewindManager.saveTimer.frequency.count()),
 				[this](EmuApp &app, auto val)
 				{
 					app.rewindManager.saveTimer.frequency = Seconds{val};
@@ -234,9 +234,9 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	performanceMode
 	{
-		"Performance Mode", attach,
+		"性能模式", attach,
 		app().useSustainedPerformanceMode,
-		"Normal", "Sustained",
+		"正常", "省电",
 		[this](BoolMenuItem &item)
 		{
 			app().useSustainedPerformanceMode = item.flipBoolValue(*this);
@@ -244,7 +244,7 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	noopThread
 	{
-		"No-op Thread (Experimental)", attach,
+		"无操作线程(实验性)", attach,
 		(bool)app().useNoopThread,
 		[this](BoolMenuItem &item)
 		{
@@ -253,7 +253,7 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	cpuAffinity
 	{
-		"Configure CPU Affinity", attach,
+		"配置CPU相关性", attach,
 		[this](const Input::Event &e)
 		{
 			pushAndShow(makeView<CPUAffinityView>(appContext().cpuCount()), e);
@@ -271,9 +271,10 @@ void SystemOptionView::loadStockItems()
 	item.emplace_back(&autosaveLaunch);
 	item.emplace_back(&autosaveTimer);
 	item.emplace_back(&autosaveContent);
-	item.emplace_back(&confirmOverwriteState);
-	item.emplace_back(&fastModeSpeed);
-	item.emplace_back(&slowModeSpeed);
+    //爱吾修改
+//	item.emplace_back(&confirmOverwriteState);
+//	item.emplace_back(&fastModeSpeed);
+//	item.emplace_back(&slowModeSpeed);
 	item.emplace_back(&rewindStates);
 	item.emplace_back(&rewindTimeInterval);
 	if(used(performanceMode) && appContext().hasSustainedPerformanceMode())

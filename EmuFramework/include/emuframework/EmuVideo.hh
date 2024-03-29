@@ -68,6 +68,9 @@ public:
 	void dispatchFrameFinished();
 	void clear();
 	void takeGameScreenshot();
+    //region 爱吾：增加指定路径的截图
+    void takeGameScreenshotAiWu();
+    //endregion
 	bool isExternalTexture() const;
 	Gfx::PixmapBufferTexture &image();
 	Gfx::Renderer &renderer() const;
@@ -95,7 +98,9 @@ protected:
 	bool screenshotNextFrame{};
 	Gfx::ColorSpace colSpace{Gfx::ColorSpace::LINEAR};
 	bool useLinearFilter{true};
-
+    //region 爱吾：增加截图路径
+    bool screenshotNextFrameAiWu{};
+    //endregion
 	void doScreenshot(EmuSystemTaskContext, IG::PixmapView pix);
 	void postFrameFinished(EmuSystemTaskContext);
 	Gfx::TextureSamplerConfig samplerConfig() const { return samplerConfigForLinearFilter(useLinearFilter); }

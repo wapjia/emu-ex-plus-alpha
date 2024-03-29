@@ -43,7 +43,7 @@ public:
 	OptionCategoryView(ViewAttachParams attach, EmuAudio &audio, EmuVideoLayer &videoLayer);
 
 protected:
-	TextMenuItem subConfig[7];
+	TextMenuItem subConfig[5];
 };
 
 static void onScanStatus(EmuApp &app, unsigned status, int arg);
@@ -76,7 +76,7 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 	},
 	systemActions
 	{
-		"System Actions", attach,
+		"系统操作", attach,
 		[this](const Input::Event &e)
 		{
 			if(!system().hasContent())
@@ -105,7 +105,7 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 	},
 	options
 	{
-		"Options", attach,
+		"设置", attach,
 		[this](const Input::Event &e)
 		{
 			pushAndShow(makeView<OptionCategoryView>(*audio, *videoLayer), e);
@@ -113,7 +113,7 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 	},
 	onScreenInputManager
 	{
-		"On-screen Input Setup", attach,
+		"屏幕按键设置", attach,
 		[this](const Input::Event &e)
 		{
 			pushAndShow(makeView<TouchConfigView>(app().defaultVController()), e);
@@ -129,7 +129,7 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 	},
 	benchmark
 	{
-		"Benchmark Content", attach,
+		"游戏测试", attach,
 		[this](const Input::Event &e)
 		{
 			pushAndShow(FilePicker::forBenchmarking(attachParams(), e), e, false);
@@ -220,7 +220,7 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 	#endif
 	about
 	{
-		"About", attach,
+		"关于", attach,
 		[this](const Input::Event &e)
 		{
 			pushAndShow(makeView<CreditsView>(EmuSystem::creditsViewStr), e);
@@ -228,7 +228,7 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 	},
 	exitApp
 	{
-		"Exit", attach,
+		"退出", attach,
 		[this]()
 		{
 			appContext().exit();
@@ -305,19 +305,21 @@ void MainMenuView::onShow()
 
 void MainMenuView::loadFileBrowserItems()
 {
-	item.emplace_back(&loadGame);
-	item.emplace_back(&recentGames);
-	if(EmuSystem::hasBundledGames && app().showsBundledGames)
-	{
-		item.emplace_back(&bundledGames);
-	}
+    //爱吾修改去掉功能
+//	item.emplace_back(&loadGame);
+//	item.emplace_back(&recentGames);
+//	if(EmuSystem::hasBundledGames && app().showsBundledGames)
+//	{
+//		item.emplace_back(&bundledGames);
+//	}
 }
 
 void MainMenuView::loadStandardItems()
 {
+    //爱吾修改去掉功能
 	item.emplace_back(&systemActions);
-	item.emplace_back(&onScreenInputManager);
-	item.emplace_back(&inputManager);
+//	item.emplace_back(&onScreenInputManager);
+//	item.emplace_back(&inputManager);
 	item.emplace_back(&options);
 	if(used(scanWiimotes) && app().showsBluetoothScan)
 	{
@@ -327,9 +329,9 @@ void MainMenuView::loadStandardItems()
 		#endif
 		item.emplace_back(&bluetoothDisconnect);
 	}
-	item.emplace_back(&benchmark);
+	//item.emplace_back(&benchmark);游戏测试
 	item.emplace_back(&about);
-	item.emplace_back(&exitApp);
+	//item.emplace_back(&exitApp);退出APP
 }
 
 void MainMenuView::setAudioVideo(EmuAudio &audio_, EmuVideoLayer &videoLayer_)
@@ -348,7 +350,7 @@ void MainMenuView::reloadItems()
 OptionCategoryView::OptionCategoryView(ViewAttachParams attach, EmuAudio &audio, EmuVideoLayer &videoLayer):
 	TableView
 	{
-		"Options",
+		"设置",
 		attach,
 		[this](const TableView &) { return EmuApp::hasGooglePlayStoreFeatures() ? std::size(subConfig) : std::size(subConfig)-1; },
 		[this](const TableView &, size_t idx) -> MenuItem& { return subConfig[idx]; }
@@ -356,7 +358,7 @@ OptionCategoryView::OptionCategoryView(ViewAttachParams attach, EmuAudio &audio,
 	subConfig
 	{
 		{
-			"Video", attach,
+			"视频", attach,
 			[this, &videoLayer](const Input::Event &e)
 			{
 				auto view = EmuApp::makeView(attachParams(), EmuApp::ViewID::VIDEO_OPTIONS);
@@ -365,42 +367,43 @@ OptionCategoryView::OptionCategoryView(ViewAttachParams attach, EmuAudio &audio,
 			}
 		},
 		{
-			"Audio", attach,
+			"音频", attach,
 			[this, &audio](const Input::Event &e)
 			{
 				pushAndShow(EmuApp::makeView(attachParams(), EmuApp::ViewID::AUDIO_OPTIONS), e);
 			}
 		},
 		{
-			"System", attach,
+			"系统", attach,
 			[this](const Input::Event &e)
 			{
 				pushAndShow(EmuApp::makeView(attachParams(), EmuApp::ViewID::SYSTEM_OPTIONS), e);
 			}
 		},
 		{
-			"File Paths", attach,
+			"文件路径", attach,
 			[this](const Input::Event &e)
 			{
 				pushAndShow(EmuApp::makeView(attachParams(), EmuApp::ViewID::FILE_PATH_OPTIONS), e);
 			}
 		},
 		{
-			"GUI", attach,
+			"界面", attach,
 			[this](const Input::Event &e)
 			{
 				pushAndShow(EmuApp::makeView(attachParams(), EmuApp::ViewID::GUI_OPTIONS), e);
 			}
-		},
+		}
+/*        ,
 		{
 			"Online Documentation", attach,
 			[this]
 			{
 				appContext().openURL("https://www.explusalpha.com/contents/emuex/documentation");
 			}
-		}
+		}*/
 	}
-{
+/*{
 	if(EmuApp::hasGooglePlayStoreFeatures())
 	{
 		subConfig[lastIndex(subConfig)] =
@@ -412,6 +415,6 @@ OptionCategoryView::OptionCategoryView(ViewAttachParams attach, EmuAudio &audio,
 			}
 		};
 	}
-}
+}*/
 
 }

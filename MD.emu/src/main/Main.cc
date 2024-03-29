@@ -128,11 +128,30 @@ void MdSystem::reset(EmuApp &, ResetMode mode)
 	#endif
 		gen_reset(0);
 }
-
+//region 爱吾修改
+const char *saveSlotCharAiWu(int slot)
+{
+    switch(slot)
+    {
+        case -1: return "10";
+        case 0: return "0";
+        case 1: return "1";
+        case 2: return "2";
+        case 3: return "3";
+        case 4: return "4";
+        case 5: return "5";
+        case 6: return "6";
+        case 7: return "7";
+        case 8: return "8";
+        case 9: return "9";
+        default: return "10";
+    }
+}
 FS::FileString MdSystem::stateFilename(int slot, std::string_view name) const
 {
-	return IG::format<FS::FileString>("{}.0{}.gp", name, saveSlotChar(slot));
+    return IG::format<FS::FileString>("{}.{}.gp", name, saveSlotCharAiWu(slot));
 }
+//endregion
 
 static FS::PathString saveFilename(EmuApp &app)
 {

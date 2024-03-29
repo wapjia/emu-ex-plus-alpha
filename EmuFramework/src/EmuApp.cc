@@ -133,15 +133,15 @@ public:
 		AlertView
 		{
 			attach,
-			"Really Exit? (Push Back/Escape again to confirm)",
+			"确定退出游戏吗?(再次按下返回键确认)",
 			hasEmuContent ? 3u : 2u
 		}
 	{
-		item.emplace_back("Yes", attach, [this](){ appContext().exit(); });
-		item.emplace_back("No", attach, [](){});
+		item.emplace_back("确定", attach, [this](){ appContext().exit(); });
+		item.emplace_back("取消", attach, [](){});
 		if(hasEmuContent)
 		{
-			item.emplace_back("Close Menu", attach, [this](){ app().showEmulation(); });
+			item.emplace_back("返回游戏", attach, [this](){ app().showEmulation(); });
 		}
 	}
 
@@ -260,8 +260,10 @@ void EmuApp::showLastViewFromSystem(ViewAttachParams attach, const Input::Event 
 
 void EmuApp::showExitAlert(ViewAttachParams attach, const Input::Event &e)
 {
-	viewController().pushAndShowModal(std::make_unique<ExitConfirmAlertView>(
-		attach, system().hasContent()), e, false);
+//	viewController().pushAndShowModal(std::make_unique<ExitConfirmAlertView>(
+//		attach, system().hasContent()), e, false);
+//爱吾修改:改为返回游戏
+    showEmulation();
 }
 
 static const char *parseCommandArgs(IG::CommandArgs arg)
@@ -407,7 +409,24 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 	auto appConfig = loadConfigFile(ctx);
 	system().onOptionsLoaded();
 	loadSystemOptions();
-	updateLegacySavePathOnStoragePath(ctx, system());
+
+    //region 爱吾：改一些配置
+    auto &vController = inputManager.vController;
+    //虚拟键盘关闭
+    vController.setGamepadControlsVisibility(VControllerVisibility::OFF);
+    //触屏显示按键 关闭
+    vController.setShowOnTouchInput(false);
+    //失去焦点暂停 关闭
+    pauseUnfocused = false;
+    //手柄等输入设备更改通知 关闭
+    notifyOnInputDeviceChange= false;
+    //隐藏导航栏和状态栏
+    optionHideOSNav = 2 ;
+    optionHideStatusBar = 2 ;
+    //endregion
+
+
+    updateLegacySavePathOnStoragePath(ctx, system());
 	if(auto launchGame = parseCommandArgs(initParams.commandArgs());
 		launchGame)
 		system().setInitialLoadPath(launchGame);
@@ -783,7 +802,7 @@ void EmuApp::launchSystem(const Input::Event &e)
 			!autosaveManager.saveOnlyBackupMemory && stateIsOlderThanBackupMemory())
 		{
 			viewController().pushAndShowModal(std::make_unique<YesNoAlertView>(attachParams(),
-				"Autosave state timestamp is older than the contents of backup memory, really load it even though progress may be lost?",
+				"自动存档时间戳比备份内存的内容旧，进度可能会丢失，确定要加载吗？",
 				YesNoAlertView::Delegates
 				{
 					.onYes = [this]{ finishLaunch(*this, LoadAutosaveMode::Normal); },
@@ -976,7 +995,7 @@ void EmuApp::promptSystemReloadDueToSetOption(ViewAttachParams attach, const Inp
 	if(!system().hasContent())
 		return;
 	viewController().pushAndShowModal(std::make_unique<YesNoAlertView>(attach,
-		"This option takes effect next time the system starts. Restart it now?",
+		"该选项在系统下次启动时生效。是否立即重启？",
 		YesNoAlertView::Delegates
 		{ .onYes = [this, params]
 			{
@@ -1125,7 +1144,7 @@ bool EmuApp::saveStateWithSlot(int slot)
 	return saveState(system().statePath(slot));
 }
 
-bool EmuApp::loadState(CStringView path)
+bool EmuApp::loadState(IG::CStringView path)
 {
 	if(!system().hasContent()) [[unlikely]]
 	{
@@ -1994,5 +2013,151 @@ EmuApp &EmuApp::get(IG::ApplicationContext ctx)
 EmuApp &gApp() { return *gAppPtr; }
 
 IG::ApplicationContext gAppContext() { return gApp().appContext(); }
+//region 爱吾修改
+IG::WindowRect EmuApp::getGameScreenRectAiWu()
+{
+    return emuVideoLayer.contentRect();
+}
 
+FS::PathString EmuApp::getScreenshotPathAiWu()
+{
+    return screenshotPathAiWu;
+}
+void EmuApp::setScreenshotPathAiWu(FS::PathString path)
+{
+    screenshotPathAiWu = std::move(path);
+}
+//endregion
+
+}
+namespace IG
+{
+    std::function<void(const char *screenshotPath)> g_android_screenshot_complete_callback;
+//region 爱吾的方法
+    /**
+    * onKeyPressAiWu
+    * @param emuKey 键值
+    * @param player 多玩家id
+    */
+    void ApplicationContext::onKeyPressAiWu(uint emuKey,uint8_t player)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        //定义是属于哪个玩家
+        //                                                       KeyFlags 结构体
+        sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), {0,0,0,0,player}, Input::Action::PUSHED});
+    }
+    void ApplicationContext::onKeyReleaseAiWu(uint emuKey,uint8_t player)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        //定义是属于哪个玩家
+/*        struct KeyFlags flags;
+        flags.deviceId = player;    // 假设设备ID是10*/
+        sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), {0,0,0,0,player}, Input::Action::RELEASED});
+    }
+    /**
+     * 显示设置
+     */
+    void ApplicationContext::showSettingAiWu()
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        app.showUI();
+    }
+    /**
+     * 改变模拟器状态(暂停/启动)
+     * @param pause
+     */
+    void ApplicationContext::changeEmulatorStateAiWu(bool pause)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        if(pause){
+            app.pauseEmulation();
+        } else {
+            app.startEmulation();
+        }
+    }
+    void ApplicationContext::resetAiWu()
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        sys.reset(app, EmuEx::EmuSystem::ResetMode::SOFT);
+    }
+    bool ApplicationContext::isSoundEnabledAiWu()
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        return app.audio().isEnabled();
+    }
+    void ApplicationContext::setSoundEnabledAiWu(bool enabled)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        app.audio().setEnabled(enabled);
+    }
+    void ApplicationContext::screenshotAiWu(FS::PathString filepath)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &video = app.video();
+        app.setScreenshotPathAiWu(filepath);
+        video.takeGameScreenshotAiWu();
+    }
+    void ApplicationContext::fastForwardAiWu(double speed)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        if(speed <= 0. || speed > 8.){
+            //关闭加速
+            app.setRunSpeed(1.);
+        } else {
+            //开启加速
+            app.setRunSpeed(speed);
+        }
+    }
+    bool ApplicationContext::saveStateAiWu(const char *filepath)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return false;
+        return app.saveState(FS::PathString{filepath});
+    }
+    bool ApplicationContext::loadStateAiWu(const char *filepath)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return false;
+        return app.loadState(FS::PathString{filepath});
+    }
+    void ApplicationContext::setCheatListAiWu(std::list<std::string> cheats)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return ;
+        sys.setCheatListAiWu(cheats);
+    }
+    void ApplicationContext::setDebugEnabledAiWu(bool enabled)
+    {
+        logger_setEnabled(enabled);
+    }
+    IG::WindowRect ApplicationContext::getGameScreenRectAiWu()
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        return app.getGameScreenRectAiWu();
+    }
+//endregion
 }

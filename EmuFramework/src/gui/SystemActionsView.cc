@@ -49,7 +49,7 @@ static std::string saveAutosaveName(EmuApp &app)
 }
 
 SystemActionsView::SystemActionsView(ViewAttachParams attach, bool customMenu):
-	TableView{"System Actions", attach, item},
+	TableView{"系统操作", attach, item},
 	cheats
 	{
 		"Cheats", attach,
@@ -173,13 +173,13 @@ SystemActionsView::SystemActionsView(ViewAttachParams attach, bool customMenu):
 	},
 	resetSessionOptions
 	{
-		"Reset Saved Options", attach,
+		"重置已保存的设置", attach,
 		[this](const Input::Event &e)
 		{
 			if(!app().hasSavedSessionOptions())
 				return;
 			pushAndShowModal(makeView<YesNoAlertView>(
-				"Reset saved options for the currently running system to defaults? Some options only take effect next time the system loads.",
+				"将当前运行的系统的已保存选项重置为默认值？某些选项仅在系统下次加载时生效。",
 				YesNoAlertView::Delegates
 				{
 					.onYes = [this]
@@ -221,20 +221,20 @@ void SystemActionsView::onShow()
 
 void SystemActionsView::loadStandardItems()
 {
-	if(EmuSystem::hasCheats)
-	{
-		item.emplace_back(&cheats);
-	}
-	item.emplace_back(&reset);
-	item.emplace_back(&autosaveSlot);
-	item.emplace_back(&revertAutosave);
-	item.emplace_back(&autosaveNow);
-	item.emplace_back(&stateSlot);
-	if(used(addLauncherIcon))
-		item.emplace_back(&addLauncherIcon);
-	item.emplace_back(&screenshot);
+//	if(EmuSystem::hasCheats)
+//	{
+//		item.emplace_back(&cheats);
+//	}
+//	item.emplace_back(&reset);
+//	item.emplace_back(&autosaveSlot);
+//	item.emplace_back(&revertAutosave);
+//	item.emplace_back(&autosaveNow);
+//	item.emplace_back(&stateSlot);
+//	if(used(addLauncherIcon))
+//		item.emplace_back(&addLauncherIcon);
+//	item.emplace_back(&screenshot);
 	item.emplace_back(&resetSessionOptions);
-	item.emplace_back(&close);
+//	item.emplace_back(&close);
 }
 
 }

@@ -12,6 +12,7 @@
 #else
 #include <apu.h>
 #endif
+#include <list>
 
 namespace EmuEx
 {
@@ -150,7 +151,9 @@ public:
 	bool onPointerInputUpdate(const Input::MotionEvent &, Input::DragTrackerState,
 		Input::DragTrackerState prevDragState, IG::WindowRect gameRect);
 	bool onPointerInputEnd(const Input::MotionEvent &, Input::DragTrackerState, IG::WindowRect gameRect);
-
+    //region 爱吾
+    void setCheatListAiWu(std::list<std::string> cheats);
+    //endregion
 protected:
 	void applyInputPortOption(int portVal, VController &vCtrl);
 	WPt updateAbsolutePointerPosition(WRect gameRect, WPt pos);
@@ -162,7 +165,9 @@ using MainSystem = Snes9xSystem;
 inline Snes9xSystem &gSnes9xSystem() { return static_cast<Snes9xSystem&>(gSystem()); }
 
 void setSuperFXSpeedMultiplier(unsigned val);
-
+//region 爱吾
+void setCheatListForAiWu(std::list<std::string> cheats);
+//endregion
 }
 
 #ifndef SNES9X_VERSION_1_4

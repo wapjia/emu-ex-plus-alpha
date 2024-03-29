@@ -29,7 +29,7 @@ std::span<const AspectRatioInfo> WsSystem::aspectRatioInfos()
 {
 	static constexpr AspectRatioInfo aspectRatioInfo[]
 	{
-		{"14:9 (Original)", {14, 9}},
+		{"14:9 (原画)", {14, 9}},
 		EMU_SYSTEM_DEFAULT_ASPECT_RATIO_INFO_INIT
 	};
 	return aspectRatioInfo;

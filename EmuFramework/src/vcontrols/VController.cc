@@ -370,24 +370,24 @@ void VController::draw(Gfx::RendererCommands &__restrict__ cmds, bool showHidden
 		cmds.setColor(Gfx::Color{alphaF});
 		kb.draw(cmds);
 	}
-	else if(gamepadIsVisible || showHidden)
-	{
-		auto elementIsEnabled = [&](const VControllerElement &e)
-		{
-			return !((e.buttonGroup() && gamepadDisabledFlags.buttons) ||
-				(e.dPad() && gamepadDisabledFlags.dpad));
-		};
-		auto activeElements = gpElements | std::views::filter(elementIsEnabled);
-		if(!activeElements.empty())
-		{
-			for(const auto &e : activeElements) { e.drawBounds(cmds, showHidden); }
-			cmds.basicEffect().enableTexture(cmds, gamepadTex);
-			for(const auto &e : activeElements)
-			{
-				e.drawButtons(cmds, showHidden);
-			}
-		}
-	}
+//	else if(gamepadIsVisible || showHidden)//爱吾修改:去掉原版的虚拟按键
+//	{
+//		auto elementIsEnabled = [&](const VControllerElement &e)
+//		{
+//			return !((e.buttonGroup() && gamepadDisabledFlags.buttons) ||
+//				(e.dPad() && gamepadDisabledFlags.dpad));
+//		};
+//		auto activeElements = gpElements | std::views::filter(elementIsEnabled);
+//		if(!activeElements.empty())
+//		{
+//			for(const auto &e : activeElements) { e.drawBounds(cmds, showHidden); }
+//			cmds.basicEffect().enableTexture(cmds, gamepadTex);
+//			for(const auto &e : activeElements)
+//			{
+//				e.drawButtons(cmds, showHidden);
+//			}
+//		}
+//	}
 	if(uiElements.size())
 	{
 		cmds.basicEffect().enableTexture(cmds, uiTex);
@@ -684,14 +684,15 @@ bool VController::readConfig(EmuApp &app, MapIO &io, unsigned key)
 		case CFGKEY_VCONTROLLER_UI_BUTTONS_V2:
 		{
 			uiElements.clear();
-			auto configId = io.get<uint8_t>(); // reserved for future use
-			auto elements = io.get<uint8_t>();
-			log.info("read UI button data ({} bytes) with {} element(s)", io.size(), elements);
-			for(auto i : iotaCount(elements))
-			{
-				if(!readVControllerElement(app.inputManager, io, uiElements, true))
-					return false;
-			}
+            //爱吾修改:删除所有UI按键
+//			auto configId = io.get<uint8_t>(); // reserved for future use
+//			auto elements = io.get<uint8_t>();
+//			log.info("read UI button data ({} bytes) with {} element(s)", io.size(), elements);
+//			for(auto i : iotaCount(elements))
+//			{
+//				if(!readVControllerElement(app.inputManager, io, uiElements, true))
+//					return false;
+//			}
 			return true;
 		}
 	}
@@ -939,11 +940,12 @@ void VController::resetUIGroups()
 std::vector<VControllerElement> VController::defaultUIGroups() const
 {
 	std::vector<VControllerElement> uiElements;
-	add(uiElements, rightUIComponents);
-	if(Config::Input::TOUCH_DEVICES)
-		add(uiElements, leftUIComponents);
-	if(hasWindow())
-		resetUIPositions(uiElements);
+    //爱吾修改:删除所有UI按键
+//	add(uiElements, rightUIComponents);
+//	if(Config::Input::TOUCH_DEVICES)
+//		add(uiElements, leftUIComponents);
+//	if(hasWindow())
+//		resetUIPositions(uiElements);
 	return uiElements;
 }
 

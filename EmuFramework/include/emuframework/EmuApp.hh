@@ -335,7 +335,11 @@ public:
 	void setShowsBluetoothScanItems(bool on);
 	void setLayoutBehindSystemUI(bool);
 	bool doesLayoutBehindSystemUI() const { return layoutBehindSystemUI; };
-
+    //region 爱吾修改
+    FS::PathString getScreenshotPathAiWu();
+    void setScreenshotPathAiWu(FS::PathString path);
+    IG::WindowRect getGameScreenRectAiWu();
+    //endregion
 	void postMessage(UTF16Convertible auto &&msg)
 	{
 		postMessage(false, IG_forward(msg));
@@ -512,6 +516,9 @@ protected:
 	IG::PixelFormat renderPixelFmt;
 	ConditionalMember<Config::TRANSLUCENT_SYSTEM_UI, bool> layoutBehindSystemUI{};
 	bool enableBlankFrameInsertion{};
+    //region 爱吾修改
+    FS::PathString screenshotPathAiWu{};
+    //endregion
 public:
 	RecentContent recentContent;
 	std::string userScreenshotPath;

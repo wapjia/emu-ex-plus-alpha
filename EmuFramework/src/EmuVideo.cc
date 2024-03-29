@@ -189,10 +189,29 @@ void EmuVideo::takeGameScreenshot()
 {
 	screenshotNextFrame = true;
 }
-
+//region 爱吾修改
+void EmuVideo::takeGameScreenshotAiWu()
+{
+    screenshotNextFrame = true;
+    screenshotNextFrameAiWu = true;
+}
+//endregion
 void EmuVideo::doScreenshot(EmuSystemTaskContext taskCtx, IG::PixmapView pix)
 {
 	screenshotNextFrame = false;
+    //region 爱吾修改
+    if(screenshotNextFrameAiWu) [[unlikely]]
+    {
+        screenshotNextFrameAiWu = false;
+        auto screenshotPathAiWu = app().getScreenshotPathAiWu();
+        auto success = app().writeScreenshot(pix, screenshotPathAiWu);
+        if (IG::g_android_screenshot_complete_callback) {
+            IG::g_android_screenshot_complete_callback(screenshotPathAiWu.data());
+            IG::g_android_screenshot_complete_callback = nullptr;
+        }
+        return;
+    }
+    //endregion
 	auto success = app().writeScreenshot(pix, app().makeNextScreenshotFilename());
 	if(taskCtx)
 	{

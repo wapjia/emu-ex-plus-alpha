@@ -54,7 +54,7 @@ public:
 	{
 		defaultFace().precacheAlphaNum(attach.renderer());
 		defaultFace().precache(attach.renderer(), ".");
-		fpsText.resetString("Preparing to detect frame rate...");
+		fpsText.resetString("准备检测刷新率...");
 		useRenderTaskTime = !screen()->supportsTimestamps();
 		frameTimeSample.reserve(std::round(screen()->frameRate() * 2.));
 	}
@@ -178,9 +178,9 @@ static std::string makeFrameRateStr(VideoSystem vidSys, const OutputTimingManage
 {
 	auto frameTimeOpt = mgr.frameTimeOption(vidSys);
 	if(frameTimeOpt == OutputTimingManager::autoOption)
-		return "Auto";
+		return "自动";
 	else if(frameTimeOpt == OutputTimingManager::originalOption)
-		return "Original";
+		return "原始";
 	else
 		return std::format("{:g}Hz", toHz(frameTimeOpt));
 }
@@ -201,13 +201,13 @@ constexpr Gfx::DrawableConfig unpackDrawableConfig(uint16_t c)
 }
 
 VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
-	TableView{"Video Options", attach, item},
+	TableView{"视频设置", attach, item},
 	textureBufferModeItem
 	{
 		[&]
 		{
 			decltype(textureBufferModeItem) items;
-			items.emplace_back("Auto (Set optimal mode)", attach, [this](View &view)
+			items.emplace_back("自动(设置最佳模式)", attach, [this](View &view)
 			{
 				app().textureBufferMode = Gfx::TextureBufferMode::DEFAULT;
 				auto defaultMode = renderer().makeValidTextureBufferMode();
@@ -229,13 +229,13 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	textureBufferMode
 	{
-		"GPU Copy Mode", attach,
+		"GPU复制模式", attach,
 		MenuId{renderer().makeValidTextureBufferMode(app().textureBufferMode)},
 		textureBufferModeItem
 	},
 	frameIntervalItem
 	{
-		{"Full (No Skip)", attach, {.id = 0}},
+		{"满速(不跳帧)", attach, {.id = 0}},
 		{"Full",           attach, {.id = 1}},
 		{"1/2",            attach, {.id = 2}},
 		{"1/3",            attach, {.id = 3}},
@@ -243,7 +243,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	frameInterval
 	{
-		"Frame Rate Target", attach,
+		"目标帧率", attach,
 		MenuId{app().frameInterval},
 		frameIntervalItem,
 		MultiChoiceMenuItem::Config
@@ -253,24 +253,24 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	frameRateItems
 	{
-		{"Auto (Match screen when rates are similar)", attach,
+		{"自动(帧数相近时使用屏幕刷新率)", attach,
 			[this]
 			{
 				if(!app().viewController().emuWindowScreen()->frameRateIsReliable())
 				{
-					app().postErrorMessage("Reported rate potentially unreliable, "
-						"using the detected rate may give better results");
+					app().postErrorMessage("报告的刷新率可能不可靠,"
+						"使用检测到的刷新率可能会更好");
 				}
 				onFrameTimeChange(activeVideoSystem, OutputTimingManager::autoOption);
 			}, {.id = OutputTimingManager::autoOption.count()}
 		},
-		{"Original (Use emulated system's rate)", attach,
+		{"原始(使用模拟系统的速率)", attach,
 			[this]
 			{
 				onFrameTimeChange(activeVideoSystem, OutputTimingManager::originalOption);
 			}, {.id = OutputTimingManager::originalOption.count()}
 		},
-		{"Detect Custom Rate", attach,
+		{"检测屏幕刷新率并设置", attach,
 			[this](const Input::Event &e)
 			{
 				window().setIntendedFrameRate(system().frameRate());
@@ -285,18 +285,18 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 						}
 						else
 						{
-							app().postErrorMessage("Detected rate too unstable to use");
+							app().postErrorMessage("检测到的刷新率太不稳定而无法使用");
 						}
 					};
 				pushAndShowModal(std::move(frView), e);
 				return false;
 			}
 		},
-		{"Custom Rate", attach,
+		{"自定义刷新率", attach,
 			[this](const Input::Event &e)
 			{
 				app().pushAndShowNewCollectValueInputView<std::pair<double, double>>(attachParams(), e,
-					"Input decimal or fraction", "",
+					"输入整数或小数", "",
 					[this](EmuApp &, auto val)
 					{
 						if(onFrameTimeChange(activeVideoSystem, fromSeconds<SteadyClockTime>(val.second / val.first)))
@@ -317,7 +317,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	frameRate
 	{
-		"Frame Rate", attach,
+		"刷新率", attach,
 		app().outputTimingManager.frameTimeOptionAsMenuId(VideoSystem::NATIVE_NTSC),
 		frameRateItems,
 		{
@@ -335,7 +335,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	frameRatePAL
 	{
-		"Frame Rate (PAL)", attach,
+		"刷新率 (PAL)", attach,
 		app().outputTimingManager.frameTimeOptionAsMenuId(VideoSystem::PAL),
 		frameRateItems,
 		{
@@ -353,7 +353,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	frameTimeStats
 	{
-		"Show Frame Time Stats", attach,
+		"显示帧时间统计信息", attach,
 		app().showFrameTimeStats,
 		[this](BoolMenuItem &item) { app().showFrameTimeStats = item.flipBoolValue(*this); }
 	},
@@ -371,19 +371,19 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 			}
 			if(EmuSystem::hasRectangularPixels)
 			{
-				aspectRatioItem.emplace_back("Square Pixels", attach, [this]()
+				aspectRatioItem.emplace_back("正方形像素", attach, [this]()
 				{
 					app().setVideoAspectRatio(-1);
 				}, MenuItem::Config{.id = std::bit_cast<MenuId>(-1.f)});
 			}
-			aspectRatioItem.emplace_back("Fill Display", attach, [this]()
+			aspectRatioItem.emplace_back("填充屏幕", attach, [this]()
 			{
 				app().setVideoAspectRatio(0);
 			}, MenuItem::Config{.id = 0});
-			aspectRatioItem.emplace_back("Custom Value", attach, [this](const Input::Event &e)
+			aspectRatioItem.emplace_back("自定义数值", attach, [this](const Input::Event &e)
 			{
 				app().pushAndShowNewCollectValueInputView<std::pair<float, float>>(attachParams(), e,
-					"Input decimal or fraction", "",
+					"输入整数或小数", "",
 					[this](EmuApp &app, auto val)
 					{
 						float ratio = val.first / val.second;
@@ -395,7 +395,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 						}
 						else
 						{
-							app.postErrorMessage("Value not in range");
+							app.postErrorMessage("输入错误");
 							return false;
 						}
 					});
@@ -406,7 +406,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	aspectRatio
 	{
-		"Aspect Ratio", attach,
+		"显示比例", attach,
 		std::bit_cast<MenuId>(app().videoAspectRatio()),
 		aspectRatioItem,
 		{
@@ -426,12 +426,12 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 		{"100%",                  attach, {.id = 100}},
 		{"90%",                   attach, {.id = 90}},
 		{"80%",                   attach, {.id = 80}},
-		{"Integer-only",          attach, {.id = optionImageZoomIntegerOnly}},
-		{"Integer-only (Height)", attach, {.id = optionImageZoomIntegerOnlyY}},
-		{"Custom Value", attach,
+		{"仅整数倍",          attach, {.id = optionImageZoomIntegerOnly}},
+		{"仅整数倍(高度)", attach, {.id = optionImageZoomIntegerOnlyY}},
+		{"自定义数值", attach,
 			[this](const Input::Event &e)
 			{
-				app().pushAndShowNewCollectValueRangeInputView<int, 10, 200>(attachParams(), e, "Input 10 to 200", "",
+				app().pushAndShowNewCollectValueRangeInputView<int, 10, 200>(attachParams(), e, "输入10到200", "",
 					[this](EmuApp &app, auto val)
 					{
 						app.setVideoZoom(val);
@@ -445,7 +445,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	zoom
 	{
-		"Content Zoom", attach,
+		"画面缩放", attach,
 		MenuId{app().imageZoom},
 		zoomItem,
 		{
@@ -466,10 +466,10 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 		{"100%", attach, {.id = 100}},
 		{"95%", attach,  {.id = 95}},
 		{"90%", attach,  {.id = 90}},
-		{"Custom Value", attach,
+		{"自定义", attach,
 			[this](const Input::Event &e)
 			{
-				app().pushAndShowNewCollectValueRangeInputView<int, 50, 100>(attachParams(), e, "Input 50 to 100", "",
+				app().pushAndShowNewCollectValueRangeInputView<int, 50, 100>(attachParams(), e, "输入50到100", "",
 					[this](EmuApp &app, auto val)
 					{
 						app.setViewportZoom(val);
@@ -483,7 +483,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	viewportZoom
 	{
-		"App Zoom", attach,
+		"应用缩放", attach,
 		MenuId{app().viewportZoom},
 		viewportZoomItem,
 		{
@@ -497,15 +497,15 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	contentRotationItem
 	{
-		{"Auto",        attach, {.id = Rotation::ANY}},
-		{"Standard",    attach, {.id = Rotation::UP}},
-		{"90° Right",   attach, {.id = Rotation::RIGHT}},
-		{"Upside Down", attach, {.id = Rotation::DOWN}},
-		{"90° Left",    attach, {.id = Rotation::LEFT}},
+		{"自动",        attach, {.id = Rotation::ANY}},
+		{"标准",    attach, {.id = Rotation::UP}},
+		{"右旋转90°",   attach, {.id = Rotation::RIGHT}},
+		{"上下翻转", attach, {.id = Rotation::DOWN}},
+		{"左旋转90°",    attach, {.id = Rotation::LEFT}},
 	},
 	contentRotation
 	{
-		"Content Rotation", attach,
+		"画面旋转", attach,
 		MenuId{app().contentRotation.value()},
 		contentRotationItem,
 		{
@@ -514,7 +514,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	placeVideo
 	{
-		"Set Video Position", attach,
+		"设置画面位置", attach,
 		[this](const Input::Event &e)
 		{
 			if(!system().hasContent())
@@ -524,9 +524,9 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	imgFilter
 	{
-		"Image Interpolation", attach,
+		"图像插值", attach,
 		app().videoLayer.usingLinearFilter(),
-		"None", "Linear",
+		"无", "线性",
 		[this](BoolMenuItem &item)
 		{
 			videoLayer->setLinearFilter(item.flipBoolValue(*this));
@@ -535,16 +535,16 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	imgEffectItem
 	{
-		{"Off",         attach, {.id = ImageEffectId::DIRECT}},
+		{"关",         attach, {.id = ImageEffectId::DIRECT}},
 		{"hq2x",        attach, {.id = ImageEffectId::HQ2X}},
-		{"Scale2x",     attach, {.id = ImageEffectId::SCALE2X}},
-		{"Prescale 2x", attach, {.id = ImageEffectId::PRESCALE2X}},
-		{"Prescale 3x", attach, {.id = ImageEffectId::PRESCALE3X}},
-		{"Prescale 4x", attach, {.id = ImageEffectId::PRESCALE4X}},
+		{"缩放2x",     attach, {.id = ImageEffectId::SCALE2X}},
+		{"预缩放2x", attach, {.id = ImageEffectId::PRESCALE2X}},
+		{"预缩放3x", attach, {.id = ImageEffectId::PRESCALE3X}},
+		{"预缩放4x", attach, {.id = ImageEffectId::PRESCALE4X}},
 	},
 	imgEffect
 	{
-		"Image Effect", attach,
+		"图像效果", attach,
 		MenuId{app().videoLayer.effectId()},
 		imgEffectItem,
 		{
@@ -557,9 +557,9 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	overlayEffectItem
 	{
-		{"Off",            attach, {.id = 0}},
-		{"Scanlines",      attach, {.id = ImageOverlayId::SCANLINES}},
-		{"Scanlines 2x",   attach, {.id = ImageOverlayId::SCANLINES_2}},
+		{"关",            attach, {.id = 0}},
+		{"扫描线",      attach, {.id = ImageOverlayId::SCANLINES}},
+		{"扫描线2x",   attach, {.id = ImageOverlayId::SCANLINES_2}},
 		{"LCD Grid",       attach, {.id = ImageOverlayId::LCD}},
 		{"CRT Mask",       attach, {.id = ImageOverlayId::CRT_MASK}},
 		{"CRT Mask .5x",   attach, {.id = ImageOverlayId::CRT_MASK_2}},
@@ -568,7 +568,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	overlayEffect
 	{
-		"Overlay Effect", attach,
+		"叠加效果", attach,
 		MenuId{app().videoLayer.overlayEffectId()},
 		overlayEffectItem,
 		{
@@ -585,10 +585,10 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 		{"75%",  attach, {.id = 75}},
 		{"50%",  attach, {.id = 50}},
 		{"25%",  attach, {.id = 25}},
-		{"Custom Value", attach,
+		{"自定义", attach,
 			[this](const Input::Event &e)
 			{
-				app().pushAndShowNewCollectValueRangeInputView<int, 0, 100>(attachParams(), e, "Input 0 to 100", "",
+				app().pushAndShowNewCollectValueRangeInputView<int, 0, 100>(attachParams(), e, "输入0到100", "",
 					[this](EmuApp &app, auto val)
 					{
 						videoLayer->setOverlayIntensity(val / 100.f);
@@ -603,7 +603,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	overlayEffectLevel
 	{
-		"Overlay Effect Level", attach,
+		"叠加效果级别", attach,
 		MenuId{app().videoLayer.overlayIntensity() * 100.f},
 		overlayEffectLevelItem,
 		{
@@ -621,13 +621,13 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	imgEffectPixelFormatItem
 	{
-		{"Auto (Match display format)", attach, {.id = PIXEL_NONE}},
+		{"自动(匹配显示格式)", attach, {.id = PIXEL_NONE}},
 		{"RGBA8888",                    attach, {.id = PIXEL_RGBA8888}},
 		{"RGB565",                      attach, {.id = PIXEL_RGB565}},
 	},
 	imgEffectPixelFormat
 	{
-		"Effect Color Format", attach,
+		"效果颜色格式", attach,
 		MenuId{app().imageEffectPixelFormat},
 		imgEffectPixelFormatItem,
 		{
@@ -659,13 +659,13 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 				auto conf = unpackDrawableConfig(item.id);
 				if(!app().setWindowDrawableConfig(conf))
 				{
-					app().postMessage("Restart app for option to take effect");
+					app().postMessage("重启APP后设置生效");
 					return;
 				}
 				renderPixelFormat.updateDisplayString();
 				imgEffectPixelFormat.updateDisplayString();
 			};
-			items.emplace_back("Auto", attach, setWindowDrawableConfigDel, MenuItem::Config{.id = 0});
+			items.emplace_back("自动", attach, setWindowDrawableConfigDel, MenuItem::Config{.id = 0});
 			for(auto desc: renderer().supportedDrawableConfigs())
 			{
 				items.emplace_back(desc.name, attach, setWindowDrawableConfigDel, MenuItem::Config{.id = pack(desc.config)});
@@ -675,7 +675,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	windowPixelFormat
 	{
-		"Display Color Format", attach,
+		"显示颜色格式", attach,
 		MenuId{pack(app().windowDrawableConfig())},
 		windowPixelFormatItem,
 		{
@@ -702,9 +702,9 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	showOnSecondScreen
 	{
-		"External Screen", attach,
+		"外接屏幕", attach,
 		app().showOnSecondScreen,
-		"OS Managed", "Emu Content",
+		"系统管理", "游戏画面",
 		[this](BoolMenuItem &item)
 		{
 			app().showOnSecondScreen = item.flipBoolValue(*this);
@@ -714,13 +714,13 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	frameClockItems
 	{
-		{"Auto",                                  attach, MenuItem::Config{.id = FrameTimeSource::Unset}},
-		{"Screen (Less latency & power use)",     attach, MenuItem::Config{.id = FrameTimeSource::Screen}},
-		{"Renderer (May buffer multiple frames)", attach, MenuItem::Config{.id = FrameTimeSource::Renderer}},
+		{"自动",                                  attach, MenuItem::Config{.id = FrameTimeSource::Unset}},
+		{"屏幕(延迟更低，功耗更小)",     attach, MenuItem::Config{.id = FrameTimeSource::Screen}},
+		{"渲染器(可能缓存多个帧)", attach, MenuItem::Config{.id = FrameTimeSource::Renderer}},
 	},
 	frameClock
 	{
-		"Frame Clock", attach,
+		"图像缓冲区", attach,
 		MenuId{FrameTimeSource(app().frameTimeSource)},
 		frameClockItems,
 		MultiChoiceMenuItem::Config
@@ -739,13 +739,13 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	presentModeItems
 	{
-		{"Auto",                                                 attach, MenuItem::Config{.id = Gfx::PresentMode::Auto}},
-		{"Immediate (Less compositor latency, may drop frames)", attach, MenuItem::Config{.id = Gfx::PresentMode::Immediate}},
-		{"Queued (Better frame rate stability)",                 attach, MenuItem::Config{.id = Gfx::PresentMode::FIFO}},
+		{"自动",                                                 attach, MenuItem::Config{.id = Gfx::PresentMode::Auto}},
+		{"立即(延迟较低，但可能会丢帧)", attach, MenuItem::Config{.id = Gfx::PresentMode::Immediate}},
+		{"队列(帧率更稳)",                 attach, MenuItem::Config{.id = Gfx::PresentMode::FIFO}},
 	},
 	presentMode
 	{
-		"Present Mode", attach,
+		"呈现模式", attach,
 		MenuId{Gfx::PresentMode(app().presentMode)},
 		presentModeItems,
 		MultiChoiceMenuItem::Config
@@ -763,13 +763,13 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	renderPixelFormatItem
 	{
-		{"Auto (Match display format)", attach, {.id = PIXEL_NONE}},
+		{"自动(根据需要匹配渲染格式)", attach, {.id = PIXEL_NONE}},
 		{"RGBA8888",                    attach, {.id = PIXEL_RGBA8888}},
 		{"RGB565",                      attach, {.id = PIXEL_RGB565}},
 	},
 	renderPixelFormat
 	{
-		"Render Color Format", attach,
+		"渲染颜色格式", attach,
 		MenuId{app().renderPixelFormat().id()},
 		renderPixelFormatItem,
 		{
@@ -791,7 +791,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 		{
 			std::vector<TextMenuItem> items;
 			auto setRateDel = [this](TextMenuItem &item) { app().overrideScreenFrameRate = std::bit_cast<FrameRate>(item.id); };
-			items.emplace_back("Off", attach, setRateDel, MenuItem::Config{.id = 0});
+			items.emplace_back("关", attach, setRateDel, MenuItem::Config{.id = 0});
 			for(auto rate : app().emuScreen().supportedFrameRates())
 				items.emplace_back(std::format("{:g}Hz", rate), attach, setRateDel, MenuItem::Config{.id = std::bit_cast<MenuId>(rate)});
 			return items;
@@ -799,19 +799,19 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	screenFrameRate
 	{
-		"Override Screen Frame Rate", attach,
+		"覆盖屏幕帧率", attach,
 		std::bit_cast<MenuId>(FrameRate(app().overrideScreenFrameRate)),
 		screenFrameRateItems
 	},
 	presentationTimeItems
 	{
-		{"Full (Apply to all frame rate targets)",         attach, MenuItem::Config{.id = PresentationTimeMode::full}},
-		{"Basic (Only apply to lower frame rate targets)", attach, MenuItem::Config{.id = PresentationTimeMode::basic}},
+		{"全面模式(适用于所有帧率目标)",         attach, MenuItem::Config{.id = PresentationTimeMode::full}},
+		{"基础模式(仅适用于较低的帧率目标)", attach, MenuItem::Config{.id = PresentationTimeMode::basic}},
 		{"Off",                                            attach, MenuItem::Config{.id = PresentationTimeMode::off}},
 	},
 	presentationTime
 	{
-		"Precise Frame Pacing", attach,
+		"精确帧同步", attach,
 		MenuId{PresentationTimeMode(app().presentationTimeMode)},
 		presentationTimeItems,
 		MultiChoiceMenuItem::Config
@@ -831,48 +831,48 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	blankFrameInsertion
 	{
-		"Allow Blank Frame Insertion", attach,
+		"允许插入空白帧", attach,
 		app().allowBlankFrameInsertion,
 		[this](BoolMenuItem &item) { app().allowBlankFrameInsertion = item.flipBoolValue(*this); }
 	},
 	brightnessItem
 	{
 		{
-			"Default", attach, [this](View &v)
+			"默认", attach, [this](View &v)
 			{
 				app().setVideoBrightness(1.f, ImageChannel::All);
 				setAllColorLevelsSelected(MenuId{100});
 				v.dismiss();
 			}
 		},
-		{"Custom Value", attach, setVideoBrightnessCustomDel(ImageChannel::All)},
+		{"自定义", attach, setVideoBrightnessCustomDel(ImageChannel::All)},
 	},
 	redItem
 	{
-		{"Default", attach, [this](){ app().setVideoBrightness(1.f, ImageChannel::Red); }, {.id = 100}},
-		{"Custom Value", attach, setVideoBrightnessCustomDel(ImageChannel::Red), {.id = defaultMenuId}},
+		{"默认", attach, [this](){ app().setVideoBrightness(1.f, ImageChannel::Red); }, {.id = 100}},
+		{"自定义数值", attach, setVideoBrightnessCustomDel(ImageChannel::Red), {.id = defaultMenuId}},
 	},
 	greenItem
 	{
-		{"Default", attach, [this](){ app().setVideoBrightness(1.f, ImageChannel::Green); }, {.id = 100}},
-		{"Custom Value", attach, setVideoBrightnessCustomDel(ImageChannel::Green), {.id = defaultMenuId}},
+		{"默认", attach, [this](){ app().setVideoBrightness(1.f, ImageChannel::Green); }, {.id = 100}},
+		{"自定义数值", attach, setVideoBrightnessCustomDel(ImageChannel::Green), {.id = defaultMenuId}},
 	},
 	blueItem
 	{
-		{"Default", attach, [this](){ app().setVideoBrightness(1.f, ImageChannel::Blue); }, {.id = 100}},
-		{"Custom Value", attach, setVideoBrightnessCustomDel(ImageChannel::Blue), {.id = defaultMenuId}},
+		{"默认", attach, [this](){ app().setVideoBrightness(1.f, ImageChannel::Blue); }, {.id = 100}},
+		{"自定义数值", attach, setVideoBrightnessCustomDel(ImageChannel::Blue), {.id = defaultMenuId}},
 	},
 	brightness
 	{
-		"Set All Levels", attach,
+		"设置所有级别", attach,
 		[this](const Input::Event &e)
 		{
-			pushAndShow(makeViewWithName<TableView>("All Levels", brightnessItem), e);
+			pushAndShow(makeViewWithName<TableView>("所有级别", brightnessItem), e);
 		}
 	},
 	red
 	{
-		"Red", attach,
+		"红", attach,
 		MenuId{app().videoBrightnessAsInt(ImageChannel::Red)},
 		redItem,
 		{
@@ -885,7 +885,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	green
 	{
-		"Green", attach,
+		"绿", attach,
 		MenuId{app().videoBrightnessAsInt(ImageChannel::Green)},
 		greenItem,
 		{
@@ -898,7 +898,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	blue
 	{
-		"Blue", attach,
+		"蓝", attach,
 		MenuId{app().videoBrightnessAsInt(ImageChannel::Blue)},
 		blueItem,
 		{
@@ -909,11 +909,11 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 			}
 		},
 	},
-	visualsHeading{"Visuals", attach},
-	screenShapeHeading{"Screen Shape", attach},
-	colorLevelsHeading{"Color Levels", attach},
-	advancedHeading{"Advanced", attach},
-	systemSpecificHeading{"System-specific", attach}
+	visualsHeading{"视觉效果", attach},
+	screenShapeHeading{"屏幕形状", attach},
+	colorLevelsHeading{"颜色级别", attach},
+	advancedHeading{"高级", attach},
+	systemSpecificHeading{"系统特定", attach}
 {
 	if(!customMenu)
 	{
@@ -987,7 +987,7 @@ bool VideoOptionView::onFrameTimeChange(VideoSystem vidSys, SteadyClockTime time
 {
 	if(!app().outputTimingManager.setFrameTimeOption(vidSys, time))
 	{
-		app().postMessage(4, true, std::format("{:g}Hz not in valid range", toHz(time)));
+		app().postMessage(4, true, std::format("{:g}Hz 不在有效范围内", toHz(time)));
 		return false;
 	}
 	return true;
@@ -997,7 +997,7 @@ TextMenuItem::SelectDelegate VideoOptionView::setVideoBrightnessCustomDel(ImageC
 {
 	return [=, this](const Input::Event &e)
 	{
-		app().pushAndShowNewCollectValueRangeInputView<int, 0, 200>(attachParams(), e, "Input 0 to 200", "",
+		app().pushAndShowNewCollectValueRangeInputView<int, 0, 200>(attachParams(), e, "输入0到200", "",
 			[=, this](EmuApp &app, auto val)
 			{
 				app.setVideoBrightness(val / 100.f, ch);

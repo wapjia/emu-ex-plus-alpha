@@ -21,6 +21,7 @@
 #include <imagine/io/FileIO.hh>
 #include <imagine/util/enum.hh>
 #include <vbam/gba/GBA.h>
+#include <list>
 
 namespace IG
 {
@@ -51,6 +52,10 @@ const char *saveTypeStr(int type, int size);
 bool saveMemoryHasContent();
 int soundVolumeAsInt(GBASys &, bool gbVol);
 int soundFilteringAsInt(GBASys &);
+
+//region爱吾
+void setCheatListForAiWu(std::list<std::string> cheats);
+//endregion
 
 constexpr uint32_t packSaveTypeOverride(int type, int size = 0) { return (type << 24) | (size & 0xFFFFFF); }
 constexpr std::pair<int, int> unpackSaveTypeOverride(uint32_t val) { return {val >> 24, val & 0xFFFFFF}; }
@@ -132,7 +137,9 @@ public:
 	void closeSystem();
 	bool onVideoRenderFormatChange(EmuVideo &, IG::PixelFormat);
 	void renderFramebuffer(EmuVideo &);
-
+    //region 爱吾修改
+    void setCheatListAiWu(std::list<std::string> cheats);
+    //endregion
 private:
 	void applyGamePatches(uint8_t *rom, int &romSize);
 	bool shouldUseBios() const

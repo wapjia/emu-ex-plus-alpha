@@ -43,14 +43,14 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 {
 	TextMenuItem biosItems[3]
 	{
-		{"Auto", attachParams(), {.id = AutoTristate::Auto}},
-		{"Off",  attachParams(), {.id = AutoTristate::Off}},
-		{"On",   attachParams(), {.id = AutoTristate::On}},
+		{"自动", attachParams(), {.id = AutoTristate::Auto}},
+		{"关",  attachParams(), {.id = AutoTristate::Off}},
+		{"开",   attachParams(), {.id = AutoTristate::On}},
 	};
 
 	MultiChoiceMenuItem bios
 	{
-		"Use BIOS", attachParams(),
+		"使用BIOS", attachParams(),
 		MenuId{system().useBios.value()},
 		biosItems,
 		{
@@ -65,14 +65,14 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	TextMenuItem rtcItem[3]
 	{
-		{"Auto", attachParams(), {.id = RtcMode::AUTO}},
-		{"Off",  attachParams(), {.id = RtcMode::OFF}},
-		{"On",   attachParams(), {.id = RtcMode::ON}},
+		{"自动", attachParams(), {.id = RtcMode::AUTO}},
+		{"关",  attachParams(), {.id = RtcMode::OFF}},
+		{"开",   attachParams(), {.id = RtcMode::ON}},
 	};
 
 	MultiChoiceMenuItem rtc
 	{
-		"RTC Emulation", attachParams(),
+		"RTC模拟", attachParams(),
 		MenuId{system().optionRtcEmulation.value()},
 		rtcItem,
 		{
@@ -95,18 +95,18 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	TextMenuItem saveTypeItem[7]
 	{
-		{"Auto",            attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_AUTO)}},
+		{"自动",            attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_AUTO)}},
 		{"EEPROM",          attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_EEPROM)}},
 		{"SRAM",            attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_SRAM)}},
 		{"Flash (64K)",     attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_FLASH, SIZE_FLASH512)}},
 		{"Flash (128K)",    attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_FLASH, SIZE_FLASH1M)}},
 		{"EEPROM + Sensor", attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_EEPROM_SENSOR)}},
-		{"None",            attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_NONE)}},
+		{"无",            attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_NONE)}},
 	};
 
 	MultiChoiceMenuItem saveType
 	{
-		"Save Type", attachParams(),
+		"存档类型", attachParams(),
 		MenuId{system().optionSaveTypeOverride},
 		saveTypeItem,
 		{
@@ -131,7 +131,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 				};
 				if(saveMemoryHasContent())
 				{
-					pushAndShowModal(makeView<YesNoAlertView>("Really change save type? Existing data in .sav file may be lost so please make a backup before proceeding.",
+					pushAndShowModal(makeView<YesNoAlertView>("确定改变存档类型？.sav文件中的现有数据可能会丢失，因此请在继续之前进行备份",
 						YesNoAlertView::Delegates
 						{
 							.onYes = [this, optVal = item.id](const Input::Event &e)
@@ -153,16 +153,16 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 	#ifdef IG_CONFIG_SENSORS
 	TextMenuItem hardwareSensorItem[5]
 	{
-		{"Auto",          attachParams(), {.id = GbaSensorType::Auto}},
-		{"None",          attachParams(), {.id = GbaSensorType::None}},
-		{"Accelerometer", attachParams(), {.id = GbaSensorType::Accelerometer}},
-		{"Gyroscope",     attachParams(), {.id = GbaSensorType::Gyroscope}},
-		{"Light",         attachParams(), {.id = GbaSensorType::Light}},
+		{"自动",          attachParams(), {.id = GbaSensorType::Auto}},
+		{"无",          attachParams(), {.id = GbaSensorType::None}},
+		{"加速度传感器", attachParams(), {.id = GbaSensorType::Accelerometer}},
+		{"陀螺仪",     attachParams(), {.id = GbaSensorType::Gyroscope}},
+		{"光线传感器",         attachParams(), {.id = GbaSensorType::Light}},
 	};
 
 	MultiChoiceMenuItem hardwareSensor
 	{
-		"Hardware Sensor", attachParams(),
+		"硬件传感器", attachParams(),
 		MenuId{system().sensorType},
 		hardwareSensorItem,
 		{
@@ -197,7 +197,7 @@ public:
 	ConsoleOptionView(ViewAttachParams attach):
 		TableView
 		{
-			"Console Options",
+			"控制台设置",
 			attach,
 			menuItem
 		} {}
@@ -207,7 +207,7 @@ class CustomSystemActionsView : public SystemActionsView
 {
 	TextMenuItem options
 	{
-		"Console Options", attachParams(),
+		"控制台设置", attachParams(),
 		[this](TextMenuItem &, View &, Input::Event e)
 		{
 			if(system().hasContent())
@@ -230,7 +230,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper<Custo
 	using MainAppHelper<CustomAudioOptionView>::system;
 	using MainAppHelper<CustomAudioOptionView>::app;
 
-	TextHeadingMenuItem mixer{"Mixer", attachParams()};
+	TextHeadingMenuItem mixer{"混合器", attachParams()};
 
 	using VolumeChoiceItemArr = std::array<TextMenuItem, 3>;
 
@@ -240,19 +240,19 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper<Custo
 		{
 			TextMenuItem
 			{
-				"Default", attachParams(),
+				"默认", attachParams(),
 				[this, gbVol]() { soundSetVolume(gGba, 1.f, gbVol); },
 				{.id = 100}
 			},
 			TextMenuItem
 			{
-				"Off", attachParams(),
+				"关", attachParams(),
 				[this, gbVol]() { soundSetVolume(gGba, 0, gbVol); },
 				{.id = 0}
 			},
 			TextMenuItem
 			{
-				"Custom Value", attachParams(),
+				"自定义数值", attachParams(),
 				[this, gbVol](Input::Event e)
 				{
 					app().pushAndShowNewCollectValueRangeInputView<int, 0, 100>(attachParams(), e, "Input 0 to 100", "",
@@ -280,7 +280,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper<Custo
 	{
 		return
 		{
-			gbVol ? "GB APU Volume" : "PCM Volume", attachParams(),
+			gbVol ? "GB APU音量" : "PCM音量", attachParams(),
 			MenuId{soundVolumeAsInt(gGba, gbVol)},
 			volumeLevelItem[gbVol ? 1 : 0],
 			{
@@ -326,13 +326,13 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper<Custo
 	{
 		TextMenuItem
 		{
-			"Default", attachParams(),
+			"默认", attachParams(),
 			[this]() { soundSetFiltering(gGba, .5f); },
 			{.id = 50}
 		},
 		TextMenuItem
 		{
-			"Custom Value", attachParams(),
+			"自定义数值", attachParams(),
 			[this](Input::Event e)
 			{
 				app().pushAndShowNewCollectValueRangeInputView<int, 0, 100>(attachParams(), e, "Input 0 to 100", "",
@@ -350,7 +350,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper<Custo
 
 	MultiChoiceMenuItem filteringLevel
 	{
-		"Filtering Level", attachParams(),
+		"过滤级别", attachParams(),
 		MenuId{soundFilteringAsInt(gGba)},
 		filteringLevelItem,
 		{
@@ -364,7 +364,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper<Custo
 
 	BoolMenuItem filtering
 	{
-		"Filtering", attachParams(),
+		"过滤", attachParams(),
 		soundGetInterpolation(gGba),
 		[this](BoolMenuItem &item)
 		{
@@ -397,7 +397,7 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 
 	BoolMenuItem bios
 	{
-		"Default Use BIOS", attachParams(),
+		"默认使用BIOS", attachParams(),
 		system().defaultUseBios,
 		[this](BoolMenuItem &item)
 		{
@@ -408,11 +408,11 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 	#ifdef IG_CONFIG_SENSORS
 	TextMenuItem lightSensorScaleItem[5]
 	{
-		{"Darkness",      attachParams(), {.id = 0}},
-		{"Indoor Light",  attachParams(), {.id = 100}},
-		{"Overcast Day",  attachParams(), {.id = 1000}},
-		{"Sunny Day",     attachParams(), {.id = 10000}},
-		{"Custom Value",  attachParams(),
+		{"黑暗",      attachParams(), {.id = 0}},
+		{"室内灯",  attachParams(), {.id = 100}},
+		{"阴天",  attachParams(), {.id = 1000}},
+		{"晴天",     attachParams(), {.id = 10000}},
+		{"自定义值",  attachParams(),
 			[this](Input::Event e)
 			{
 				app().pushAndShowNewCollectValueRangeInputView<int, 0, 50000>(attachParams(), e, "Input 0 to 50000", "",
@@ -430,7 +430,7 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 
 	MultiChoiceMenuItem lightSensorScale
 	{
-		"Light Sensor Scale", attachParams(),
+		"光线传感器级别", attachParams(),
 		MenuId{system().lightSensorScaleLux},
 		lightSensorScaleItem,
 		{

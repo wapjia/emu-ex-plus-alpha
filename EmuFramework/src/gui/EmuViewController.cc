@@ -237,6 +237,8 @@ void EmuViewController::showEmulationView(FrameTimeConfig frameTimeConfig)
 	inputView.resetInput();
 	placeEmuViews();
 	inputView.setSystemGestureExclusion(true);
+    //爱吾修改:回调一下JAVA层
+    appContext().showEmulationCallbackAiWu(true);
 }
 
 void EmuViewController::showMenuView(bool updateTopView)
@@ -253,6 +255,8 @@ void EmuViewController::showMenuView(bool updateTopView)
 		viewStack.show();
 		viewStack.top().postDraw();
 	}
+    //爱吾修改:回调一下JAVA层
+    appContext().showEmulationCallbackAiWu(false);
 }
 
 void EmuViewController::placeEmuViews()

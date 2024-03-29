@@ -162,7 +162,9 @@ public:
 	double videoAspectRatioScale() const;
 	bool onVideoRenderFormatChange(EmuVideo &, IG::PixelFormat);
 	bool shouldFastForward() const;
-
+    //region爱吾
+    void setCheatListAiWu(std::list<std::string> cheats);
+    //endregion
 private:
 	void cacheUsingZapper();
 	void setDefaultPalette(IO &io);

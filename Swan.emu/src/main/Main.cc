@@ -62,10 +62,31 @@ void WsSystem::reset(EmuApp &, ResetMode mode)
 	MDFN_DoSimpleCommand(MDFN_MSC_RESET);
 }
 
-FS::FileString WsSystem::stateFilename(int slot, std::string_view name) const
-{
-	return stateFilenameMDFN(*MDFNGameInfo, slot, name, 'a', noMD5InFilenames);
-}
+//region 爱吾修改
+    const char *saveSlotCharAiWu(int slot)
+    {
+        switch(slot)
+        {
+            case -1: return "10";
+            case 0: return "0";
+            case 1: return "1";
+            case 2: return "2";
+            case 3: return "3";
+            case 4: return "4";
+            case 5: return "5";
+            case 6: return "6";
+            case 7: return "7";
+            case 8: return "8";
+            case 9: return "9";
+            default: return "10";
+        }
+    }
+    FS::FileString WsSystem::stateFilename(int slot, std::string_view name) const
+    {
+        return IG::format<FS::FileString>("{}.0{}.nca", name, saveSlotCharAiWu(slot));
+        //return stateFilenameMDFN(*MDFNGameInfo, slot, name, 'a', noMD5InFilenames);
+    }
+//endregion
 
 size_t WsSystem::stateSize() { return stateSizeMDFN(); }
 void WsSystem::readState(EmuApp &app, std::span<uint8_t> buff) { readStateMDFN(app, buff); }

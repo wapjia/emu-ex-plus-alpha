@@ -29,6 +29,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <list>
 
 namespace IG
 {
@@ -371,7 +372,9 @@ public:
 	static void throwFileReadError();
 	static void throwFileWriteError();
 	static void throwMissingContentDirError();
-
+    //region 爱吾修改
+    void setCheatListAiWu(std::list<std::string> cheats);
+    //endregion
 protected:
 	IG::ApplicationContext appCtx{};
 public:
