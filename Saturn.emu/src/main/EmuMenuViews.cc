@@ -54,7 +54,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		[this](Input::Event e)
 		{
 			pushAndShow(makeViewWithName<DataFileSelectView<ArchivePathSelectMode::exclude>>(
-				"NA/EU BIOS",
+				"欧美BIOS",
 				app().validSearchPath(FS::dirnameUri(system().naBiosPath)),
 				[this](CStringView path, FS::file_type type)
 				{
@@ -68,7 +68,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 
 	std::string naBiosMenuEntryStr(std::string_view path) const
 	{
-		return std::format("NA/EU BIOS: {}", appContext().fileUriDisplayName(path));
+		return std::format("欧美BIOS: {}", appContext().fileUriDisplayName(path));
 	}
 
 	TextMenuItem jpBiosPath
@@ -77,7 +77,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		[this](Input::Event e)
 		{
 			pushAndShow(makeViewWithName<DataFileSelectView<ArchivePathSelectMode::exclude>>(
-				"JP BIOS",
+				"日版BIOS",
 				app().validSearchPath(FS::dirnameUri(system().jpBiosPath)),
 				[this](CStringView path, FS::file_type type)
 				{
@@ -91,7 +91,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 
 	std::string jpBiosMenuEntryStr(std::string_view path) const
 	{
-		return std::format("JP BIOS: {}", appContext().fileUriDisplayName(path));
+		return std::format("日版BIOS: {}", appContext().fileUriDisplayName(path));
 	}
 
 	TextMenuItem kof95ROMPath
@@ -100,7 +100,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		[this](Input::Event e)
 		{
 			pushAndShow(makeViewWithName<DataFileSelectView<ArchivePathSelectMode::exclude>>(
-				"KoF '95 ROM",
+				"拳皇95 ROM",
 				app().validSearchPath(FS::dirnameUri(system().kof95ROMPath)),
 				[this](CStringView path, FS::file_type type)
 				{
@@ -114,7 +114,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 
 	std::string kof95MenuEntryStr(std::string_view path) const
 	{
-		return std::format("KoF '95 ROM: {}", appContext().fileUriDisplayName(path));
+		return std::format("拳皇95 ROM: {}", appContext().fileUriDisplayName(path));
 	}
 
 	TextMenuItem ultramanROMPath
@@ -123,7 +123,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		[this](Input::Event e)
 		{
 			pushAndShow(makeViewWithName<DataFileSelectView<ArchivePathSelectMode::exclude>>(
-				"Ultraman ROM",
+				"奥特曼ROM",
 				app().validSearchPath(FS::dirnameUri(system().ultramanROMPath)),
 				[this](CStringView path, FS::file_type type)
 				{
@@ -137,7 +137,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 
 	std::string ultramanMenuEntryStr(std::string_view path) const
 	{
-		return std::format("Ultraman ROM: {}", appContext().fileUriDisplayName(path));
+		return std::format("奥特曼ROM: {}", appContext().fileUriDisplayName(path));
 	}
 
 public:
@@ -170,14 +170,14 @@ constexpr auto regionToString(int t)
 {
 	switch(t)
 	{
-		case SMPC_AREA_JP: return "Japan";
-		case SMPC_AREA_NA: return "North America";
-		case SMPC_AREA_EU_PAL: return "Europe";
-		case SMPC_AREA_KR: return "South Korea";
-		case SMPC_AREA_ASIA_NTSC: return "Asia (NTSC)";
-		case SMPC_AREA_ASIA_PAL: return "Asia (PAL)";
-		case SMPC_AREA_CSA_NTSC: return "Brazil";
-		case SMPC_AREA_CSA_PAL: return "Latin America";
+        case SMPC_AREA_JP: return "日本";
+        case SMPC_AREA_NA: return "北美";
+        case SMPC_AREA_EU_PAL: return "欧洲";
+        case SMPC_AREA_KR: return "韩国";
+        case SMPC_AREA_ASIA_NTSC: return "亚洲(NTSC)";
+        case SMPC_AREA_ASIA_PAL: return "亚洲(PAL)";
+        case SMPC_AREA_CSA_NTSC: return "巴西";
+        case SMPC_AREA_CSA_PAL: return "拉丁美洲";
 	}
 	return "";
 }
@@ -198,7 +198,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	MultiChoiceMenuItem cartType
 	{
-		"Cart Type", attachParams(),
+		"加速卡类型", attachParams(),
 		MenuId{system().cartType},
 		cartTypeItems,
 		{
@@ -235,7 +235,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	MultiChoiceMenuItem region
 	{
-		"Region", attachParams(),
+		"区域", attachParams(),
 		MenuId{system().region},
 		regionItems,
 		{
@@ -261,7 +261,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	MultiChoiceMenuItem disc
 	{
-		"Disc", attachParams(),
+		"光碟", attachParams(),
 		MenuId{system().currentDiscId()},
 		discItems
 	};
@@ -274,11 +274,11 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 		};
 	}
 
-	TextHeadingMenuItem videoHeading{"Video", attachParams()};
+	TextHeadingMenuItem videoHeading{"视频", attachParams()};
 
 	BoolMenuItem showHOverscan
 	{
-		"Show Horizontal Overscan", attachParams(),
+		"显示水平超扫", attachParams(),
 		system().showHOverscan,
 		[this](BoolMenuItem &item)
 		{
@@ -302,7 +302,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	MultiChoiceMenuItem visibleVideoLines
 	{
-		"Visible Lines", attachParams(),
+		"可见线条", attachParams(),
 		std::bit_cast<MenuId>(system().videoLines),
 		[&]() -> std::span<TextMenuItem>
 		{
@@ -342,16 +342,16 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	TextMenuItem contentRotationItems[5]
 	{
-		{"Auto",        attachParams(), {.id = Rotation::ANY}},
-		{"Standard",    attachParams(), {.id = Rotation::UP}},
-		{"90° Right",   attachParams(), {.id = Rotation::RIGHT}},
-		{"Upside Down", attachParams(), {.id = Rotation::DOWN}},
-		{"90° Left",    attachParams(), {.id = Rotation::LEFT}},
+		{"自动",        attachParams(), {.id = Rotation::ANY}},
+		{"标准",    attachParams(), {.id = Rotation::UP}},
+		{"向右90°",   attachParams(), {.id = Rotation::RIGHT}},
+		{"旋转180°", attachParams(), {.id = Rotation::DOWN}},
+		{"向左90°",    attachParams(), {.id = Rotation::LEFT}},
 	};
 
 	MultiChoiceMenuItem contentRotation
 	{
-		"Content Rotation", attachParams(),
+		"内容旋转", attachParams(),
 		MenuId{system().sysContentRotation},
 		contentRotationItems,
 		{
@@ -366,9 +366,9 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	TextMenuItem widescreenModeItems[3]
 	{
-		{"Auto",  attachParams(), {.id = WidescreenMode::Auto}},
-		{"On",    attachParams(), {.id = WidescreenMode::On}},
-		{"Off",   attachParams(), {.id = WidescreenMode::Off}},
+		{"自动",  attachParams(), {.id = WidescreenMode::Auto}},
+		{"开",    attachParams(), {.id = WidescreenMode::On}},
+		{"关",   attachParams(), {.id = WidescreenMode::Off}},
 	};
 
 	MultiChoiceMenuItem widescreenMode
@@ -475,7 +475,7 @@ public:
 	ConsoleOptionView(ViewAttachParams attach):
 		TableView
 		{
-			"Console Options",
+			"控制台设置",
 			attach,
 			menuItems
 		},
@@ -484,7 +484,7 @@ public:
 			[&]()
 			{
 				auto discItems = DynArray<TextMenuItem>{system().CDInterfaces.size() + 1};
-				discItems[0] = {"Eject", attachParams(), setDiscDel(), {.id = -1}};
+				discItems[0] = {"弹出", attachParams(), setDiscDel(), {.id = -1}};
 				const char *numStrings[] {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14" , "15", "16"};
 				for(auto i : iotaCount(system().CDInterfaces.size()))
 				{
@@ -503,14 +503,15 @@ public:
 		menuItems.emplace_back(&deinterlaceMode);
 		menuItems.emplace_back(&contentRotation);
 		menuItems.emplace_back(&widescreenMode);
-		menuItems.emplace_back(&inputHeading);
-		menuItems.emplace_back(&multitaps[0]);
-		menuItems.emplace_back(&multitaps[1]);
-		for(auto &i : inputDevices)
-		{
-			menuItems.emplace_back(&i);
-		}
-		updateActiveDevices();
+        //去除input选项
+//		menuItems.emplace_back(&inputHeading);
+//		menuItems.emplace_back(&multitaps[0]);
+//		menuItems.emplace_back(&multitaps[1]);
+//		for(auto &i : inputDevices)
+//		{
+//			menuItems.emplace_back(&i);
+//		}
+//		updateActiveDevices();
 	}
 };
 
@@ -519,7 +520,7 @@ class CustomSystemActionsView : public SystemActionsView
 private:
 	TextMenuItem options
 	{
-		"Console Options", attachParams(),
+		"控制台设置", attachParams(),
 		[this](Input::Event e) { pushAndShow(makeView<ConsoleOptionView>(), e); }
 	};
 
