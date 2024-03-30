@@ -537,7 +537,7 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 
 	BoolMenuItem autoSetRTC
 	{
-		"Auto-Set RTC On Start", attachParams(),
+		"启动时自动设置实时时钟", attachParams(),
 		system().autoRTCTime,
 		[this](BoolMenuItem &item)
 		{
@@ -547,17 +547,17 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 
 	TextMenuItem biosLanguageItems[6]
 	{
-		{"English",  attachParams(), {.id = SMPC_RTC_LANG_ENGLISH}},
-		{"German",   attachParams(), {.id = SMPC_RTC_LANG_GERMAN}},
-		{"French",   attachParams(), {.id = SMPC_RTC_LANG_FRENCH}},
-		{"Spanish",  attachParams(), {.id = SMPC_RTC_LANG_SPANISH}},
-		{"Italian",  attachParams(), {.id = SMPC_RTC_LANG_ITALIAN}},
-		{"Japanese", attachParams(), {.id = SMPC_RTC_LANG_JAPANESE}},
+		{"英语",  attachParams(), {.id = SMPC_RTC_LANG_ENGLISH}},
+		{"德语",   attachParams(), {.id = SMPC_RTC_LANG_GERMAN}},
+		{"法语",   attachParams(), {.id = SMPC_RTC_LANG_FRENCH}},
+		{"西班牙语",  attachParams(), {.id = SMPC_RTC_LANG_SPANISH}},
+		{"意大利语",  attachParams(), {.id = SMPC_RTC_LANG_ITALIAN}},
+		{"日语", attachParams(), {.id = SMPC_RTC_LANG_JAPANESE}},
 	};
 
 	MultiChoiceMenuItem biosLanguage
 	{
-		"BIOS Language", attachParams(),
+		"BIOS语言", attachParams(),
 		MenuId{system().biosLanguage},
 		biosLanguageItems,
 		{
@@ -587,7 +587,7 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<Custo
 
 	BoolMenuItem showHOverscan
 	{
-		"Default Show Horizontal Overscan", attachParams(),
+		"默认显示水平过扫描区域", attachParams(),
 		system().defaultShowHOverscan,
 		[this](BoolMenuItem &item)
 		{
@@ -603,7 +603,7 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<Custo
 
 	MultiChoiceMenuItem visibleVideoLines
 	{
-		"Default NTSC Visible Lines", attachParams(),
+		"默认NTSC可见行数", attachParams(),
 		std::bit_cast<MenuId>(system().defaultNtscLines),
 		visibleVideoLinesItem,
 		{
@@ -616,7 +616,7 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<Custo
 
 	BoolMenuItem correctLineAspect
 	{
-		"Correct Line Aspect Ratio", attachParams(),
+		"校正行宽高比", attachParams(),
 		system().correctLineAspect,
 		[this](BoolMenuItem &item)
 		{

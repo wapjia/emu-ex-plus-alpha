@@ -233,7 +233,15 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 		{
 			appContext().exit();
 		}
-	}
+	},
+    openURL
+    {
+            "ICP备案号:浙ICP备12026372号-15A", attach,
+            [this]()
+            {
+                appContext().openURL("https://beian.miit.gov.cn/");
+            }
+    }
 {
 	if(!customMenu)
 	{
@@ -321,17 +329,19 @@ void MainMenuView::loadStandardItems()
 //	item.emplace_back(&onScreenInputManager);
 //	item.emplace_back(&inputManager);
 	item.emplace_back(&options);
-	if(used(scanWiimotes) && app().showsBluetoothScan)
-	{
-		item.emplace_back(&scanWiimotes);
-		#ifdef CONFIG_BLUETOOTH_SERVER
-		item.emplace_back(&acceptPS3ControllerConnection);
-		#endif
-		item.emplace_back(&bluetoothDisconnect);
-	}
+    //去除手柄相关的设置
+//	if(used(scanWiimotes) && app().showsBluetoothScan)
+//	{
+//		item.emplace_back(&scanWiimotes);
+//		#ifdef CONFIG_BLUETOOTH_SERVER
+//		item.emplace_back(&acceptPS3ControllerConnection);
+//		#endif
+//		item.emplace_back(&bluetoothDisconnect);
+//	}
 	//item.emplace_back(&benchmark);游戏测试
 	item.emplace_back(&about);
 	//item.emplace_back(&exitApp);退出APP
+    item.emplace_back(&openURL);//打开备案网站
 }
 
 void MainMenuView::setAudioVideo(EmuAudio &audio_, EmuVideoLayer &videoLayer_)

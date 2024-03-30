@@ -236,7 +236,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, bool customMenu):
 	frameIntervalItem
 	{
 		{"满速(不跳帧)", attach, {.id = 0}},
-		{"Full",           attach, {.id = 1}},
+		{"满速",           attach, {.id = 1}},
 		{"1/2",            attach, {.id = 2}},
 		{"1/3",            attach, {.id = 3}},
 		{"1/4",            attach, {.id = 4}},
