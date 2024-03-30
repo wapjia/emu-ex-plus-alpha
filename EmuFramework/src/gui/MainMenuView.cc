@@ -228,20 +228,12 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 	},
 	exitApp
 	{
-		"退出", attach,
+		"ICP备案号:浙ICP备12026372号-15A", attach,
 		[this]()
 		{
-			appContext().exit();
+            appContext().openURL("https://beian.miit.gov.cn/");
 		}
-	},
-    openURL
-    {
-            "ICP备案号:浙ICP备12026372号-15A", attach,
-            [this]()
-            {
-                appContext().openURL("https://beian.miit.gov.cn/");
-            }
-    }
+	}
 {
 	if(!customMenu)
 	{
@@ -340,8 +332,8 @@ void MainMenuView::loadStandardItems()
 //	}
 	//item.emplace_back(&benchmark);游戏测试
 	item.emplace_back(&about);
-	//item.emplace_back(&exitApp);退出APP
-    item.emplace_back(&openURL);//打开备案网站
+	item.emplace_back(&exitApp);
+    //item.emplace_back(&openURL);//打开备案网站
 }
 
 void MainMenuView::setAudioVideo(EmuAudio &audio_, EmuVideoLayer &videoLayer_)
