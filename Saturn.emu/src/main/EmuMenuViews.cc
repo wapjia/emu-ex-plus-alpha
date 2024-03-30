@@ -155,7 +155,7 @@ constexpr auto cartTypeToString(int t)
 {
 	switch(t)
 	{
-		case CART_NONE: return "None";
+		case CART_NONE: return "不使用";
 		case CART_BACKUP_MEM: return "512K Backup RAM";
 		case CART_EXTRAM_1M: return "1M RAM";
 		case CART_EXTRAM_4M: return "4M RAM";
@@ -186,7 +186,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 {
 	TextMenuItem cartTypeItems[8]
 	{
-		{"Auto",                            attachParams(), {.id = CART__RESERVED}},
+		{"自动",                            attachParams(), {.id = CART__RESERVED}},
 		{cartTypeToString(CART_NONE),       attachParams(), {.id = CART_NONE}},
 		{cartTypeToString(CART_BACKUP_MEM), attachParams(), {.id = CART_BACKUP_MEM}},
 		{cartTypeToString(CART_EXTRAM_1M),  attachParams(), {.id = CART_EXTRAM_1M}},
@@ -222,7 +222,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	TextMenuItem regionItems[9]
 	{
-		{"Auto",                              attachParams(), {.id = 0}},
+		{"自动",                              attachParams(), {.id = 0}},
 		{regionToString(SMPC_AREA_JP),        attachParams(), {.id = SMPC_AREA_JP}},
 		{regionToString(SMPC_AREA_NA),        attachParams(), {.id = SMPC_AREA_NA}},
 		{regionToString(SMPC_AREA_EU_PAL),    attachParams(), {.id = SMPC_AREA_EU_PAL}},
@@ -328,7 +328,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	MultiChoiceMenuItem deinterlaceMode
 	{
-		"Deinterlace Mode", attachParams(),
+		"去隔行扫描模式", attachParams(),
 		MenuId{system().deinterlaceMode},
 		deinterlaceModeItems,
 		{
@@ -373,7 +373,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	MultiChoiceMenuItem widescreenMode
 	{
-		"Anamorphic Widescreen Content", attachParams(),
+		"宽屏模式", attachParams(),
 		MenuId{system().widescreenMode},
 		widescreenModeItems,
 		{
