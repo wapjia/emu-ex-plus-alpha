@@ -37,6 +37,8 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <list>
+#include <imagine/util/rectangle2.h>
 
 namespace IG::Input
 {
@@ -52,7 +54,9 @@ class directory_entry;
 
 namespace IG
 {
-
+//region 爱吾修改
+extern std::function<void(const char *screenshotPath)> g_android_screenshot_complete_callback;
+//endregion
 class PixelFormat;
 class PerformanceHintManager;
 
@@ -239,6 +243,23 @@ public:
 
 	// Platform-specific
 	int32_t androidSDK() const;
+    //region 爱吾调用
+    void onKeyPressAiWu(uint emuKey,uint8_t player);
+    void onKeyReleaseAiWu(uint emuKey,uint8_t player);
+    void showSettingAiWu();
+    void changeEmulatorStateAiWu(bool pause);
+    void resetAiWu();
+    bool isSoundEnabledAiWu();
+    void setSoundEnabledAiWu(bool enabled);
+    void showEmulationCallbackAiWu(bool showEmulation);
+    void screenshotAiWu(FS::PathString filepath);
+    void fastForwardAiWu(double speed);
+    bool saveStateAiWu(const char *filepath);
+    bool loadStateAiWu(const char *filepath);
+    void setCheatListAiWu(std::list<std::string> cheats);
+    void setDebugEnabledAiWu(bool enabled);
+    IG::WindowRect getGameScreenRectAiWu();
+    //endregion
 };
 
 class OnExit

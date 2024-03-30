@@ -99,24 +99,26 @@ Point2D<float> Window::pixelSizeAsScaledMM(Point2D<int> size)
 
 bool Window::setValidOrientations(Orientations o)
 {
-	log.info("requested orientation change to {}", asString(o));
-	auto asNativeOrientations = [](Orientations o)
-		{
-			switch(o)
-			{
-				default: return -1; // SCREEN_ORIENTATION_UNSPECIFIED
-				case Orientations{.portrait = 1}: return 1; // SCREEN_ORIENTATION_PORTRAIT
-				case Orientations{.landscapeRight = 1}: return 0; // SCREEN_ORIENTATION_LANDSCAPE
-				case Orientations{.portraitUpsideDown = 1}: return 9; // SCREEN_ORIENTATION_REVERSE_PORTRAIT
-				case Orientations{.landscapeLeft = 1}: return 8; // SCREEN_ORIENTATION_REVERSE_LANDSCAPE
-				case Orientations::allLandscape(): return 6; // SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-				case Orientations::allPortrait(): return 7; // SCREEN_ORIENTATION_SENSOR_PORTRAIT
-				case Orientations::all(): return 10; // SCREEN_ORIENTATION_FULL_SENSOR
-			}
-		};
-	int toSet = asNativeOrientations(o);
-	application().setRequestedOrientation(appContext().mainThreadJniEnv(), appContext().baseActivityObject(), toSet);
-	return true;
+    //去掉设置屏幕方向，方向由JAVA层控制
+    return false;
+//	log.info("requested orientation change to {}", asString(o));
+//	auto asNativeOrientations = [](Orientations o)
+//		{
+//			switch(o)
+//			{
+//				default: return -1; // SCREEN_ORIENTATION_UNSPECIFIED
+//				case Orientations{.portrait = 1}: return 1; // SCREEN_ORIENTATION_PORTRAIT
+//				case Orientations{.landscapeRight = 1}: return 0; // SCREEN_ORIENTATION_LANDSCAPE
+//				case Orientations{.portraitUpsideDown = 1}: return 9; // SCREEN_ORIENTATION_REVERSE_PORTRAIT
+//				case Orientations{.landscapeLeft = 1}: return 8; // SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+//				case Orientations::allLandscape(): return 6; // SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+//				case Orientations::allPortrait(): return 7; // SCREEN_ORIENTATION_SENSOR_PORTRAIT
+//				case Orientations::all(): return 10; // SCREEN_ORIENTATION_FULL_SENSOR
+//			}
+//		};
+//	int toSet = asNativeOrientations(o);
+//	application().setRequestedOrientation(appContext().mainThreadJniEnv(), appContext().baseActivityObject(), toSet);
+//	return true;
 }
 
 bool Window::requestOrientationChange(Rotation o)
