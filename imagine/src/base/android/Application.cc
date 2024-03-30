@@ -453,7 +453,8 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                             (void*)
                                     +[](JNIEnv* env, jobject thiz,jstring jPath)
                                     {
-                                        const char *path = GetJString(env,jPath).c_str();
+                                        std::string tempString = GetJString(env, jPath);
+                                        const char *path = tempString.c_str();
                                         IG::gAiWuAppContext().saveStateAiWu(path);
                                     }
                     },
@@ -462,7 +463,8 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                             (void*)
                                     +[](JNIEnv* env, jobject thiz,jstring jPath)
                                     {
-                                        const char *path = GetJString(env,jPath).c_str();
+                                        std::string tempString = GetJString(env, jPath);
+                                        const char *path = tempString.c_str();
                                         IG::gAiWuAppContext().loadStateAiWu(path);
                                     }
                     },

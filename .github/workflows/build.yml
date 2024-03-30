@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        image: ["2600.emu", "C64.emu", "GBA.emu", "GBC.emu", "Lynx.emu", "MD.emu", "MSX.emu", "NEO.emu", "NES.emu", "NGP.emu", "PCE.emu", "Snes9x", "Snes9x-1.43-9", "Snes9x-1.43-15", "Swan.emu", "Saturn.emu"]
+        image: ["GBA.emu", "GBC.emu", "MD.emu", "NES.emu", "NGP.emu", "PCE.emu", "Snes9x", "Swan.emu", "Saturn.emu"]
 
     steps:
     - name: Checkout emu-ex-plus-alpha repo
@@ -65,19 +65,6 @@ jobs:
         make -f $EMUFRAMEWORK_PATH/android-release.mk config -j`nproc`
         make -f $EMUFRAMEWORK_PATH/android-release.mk install V=1 -j`nproc`
 
-    - name: Build 2600.emu
-      if: ${{ matrix.image == '2600.emu' }}
-      run: |
-        cd 2600.emu
-        make -f android-release.mk android-apk V=1 -j`nproc`
-        cp target/android-release/build/outputs/apk/release/2600Emu-release.apk "../EX-Emulators/2600Emu-${COMMIT_PREFIX}.apk"
-
-    - name: Build C64.emu
-      if: ${{ matrix.image == 'C64.emu' }}
-      run: |
-        cd C64.emu
-        make -f android-release.mk android-apk V=1 -j`nproc`
-        cp target/android-release/build/outputs/apk/release/C64Emu-release.apk "../EX-Emulators/C64Emu-${COMMIT_PREFIX}.apk"
 
     - name: Build GBA.emu
       if: ${{ matrix.image == 'GBA.emu' }}
@@ -93,12 +80,6 @@ jobs:
         make -f android-release.mk android-apk V=1 -j`nproc`
         cp target/android-release/build/outputs/apk/release/GbcEmu-release.apk "../EX-Emulators/GbcEmu-${COMMIT_PREFIX}.apk"
 
-    - name: Build Lynx.emu
-      if: ${{ matrix.image == 'Lynx.emu' }}
-      run: |
-        cd Lynx.emu
-        make -f android-release.mk android-apk V=1 -j`nproc`
-        cp target/android-release/build/outputs/apk/release/LynxEmu-release.apk "../EX-Emulators/LynxEmu-${COMMIT_PREFIX}.apk"
 
     - name: Build MD.emu
       if: ${{ matrix.image == 'MD.emu' }}
@@ -106,20 +87,6 @@ jobs:
         cd MD.emu
         make -f android-release.mk android-apk V=1 -j`nproc`
         cp target/android-release/build/outputs/apk/release/MdEmu-release.apk "../EX-Emulators/MdEmu-${COMMIT_PREFIX}.apk"
-
-    - name: Build MSX.emu
-      if: ${{ matrix.image == 'MSX.emu' }}
-      run: |
-        cd MSX.emu
-        make -f android-release.mk android-apk V=1 -j`nproc`
-        cp target/android-release/build/outputs/apk/release/MsxEmu-release.apk "../EX-Emulators/MsxEmu-${COMMIT_PREFIX}.apk"
-
-    - name: Build NEO.emu
-      if: ${{ matrix.image == 'NEO.emu' }}
-      run: |
-        cd NEO.emu
-        make -f android-release.mk android-apk V=1 -j`nproc`
-        cp target/android-release/build/outputs/apk/release/NeoEmu-release.apk "../EX-Emulators/NeoEmu-${COMMIT_PREFIX}.apk"
 
     - name: Build NES.emu
       if: ${{ matrix.image == 'NES.emu' }}
@@ -148,20 +115,6 @@ jobs:
         cd Snes9x
         make -f android-release.mk android-apk V=1 -j`nproc`
         cp target/android-release/build/outputs/apk/release/Snes9xEXPlus-release.apk "../EX-Emulators/Snes9xEXPlus-${COMMIT_PREFIX}.apk"
-
-    - name: Build Snes9x-1.43-9
-      if: ${{ matrix.image == 'Snes9x-1.43-9' }}
-      run: |
-        cd Snes9x/1.43
-        make -f android-release-9.mk android-apk V=1 -j`nproc`
-        cp target/android-release-9/build/outputs/apk/release/Snes9xEX-release.apk "../../EX-Emulators/Snes9xEX-9-${COMMIT_PREFIX}.apk"
-
-    - name: Build Snes9x-1.43-15
-      if: ${{ matrix.image == 'Snes9x-1.43-15' }}
-      run: |
-        cd Snes9x/1.43
-        make -f android-release-15.mk android-apk V=1 -j`nproc`
-        cp target/android-release-15/build/outputs/apk/release/Snes9xEX-release.apk "../../EX-Emulators/Snes9xEX-15-${COMMIT_PREFIX}.apk"
 
     - name: Build Swan.emu
       if: ${{ matrix.image == 'Swan.emu' }}
