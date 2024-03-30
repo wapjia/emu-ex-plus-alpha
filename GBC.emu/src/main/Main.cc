@@ -80,6 +80,12 @@ void GbcSystem::applyGBPalette()
 	for(auto i : iotaCount(4))
 		gbEmu.setDmgPaletteColor(2, i, makeOutputColor(pal.sp2[i]));
 }
+void GbcSystem::reset(EmuApp &app, ResetMode mode)
+{
+	flushBackupMemory(app);
+	gbEmu.reset();
+	loadBackupMemory(app);
+}
 
 //region 爱吾修改
 const char *saveSlotCharAiWu(int slot)

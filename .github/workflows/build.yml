@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        image: ["GBA.emu", "MD.emu", "NES.emu", "NGP.emu", "PCE.emu", "Snes9x", "Swan.emu", "Saturn.emu"]
+        image: ["GBA.emu", "GBC.emu", "MD.emu", "NES.emu", "NGP.emu", "PCE.emu", "Snes9x", "Swan.emu", "Saturn.emu"]
 
     steps:
     - name: Checkout emu-ex-plus-alpha repo
@@ -73,12 +73,12 @@ jobs:
         make -f android-release.mk android-apk V=1 -j`nproc`
         cp target/android-release/build/outputs/apk/release/GbaEmu-release.apk "../EX-Emulators/GbaEmu-${COMMIT_PREFIX}.apk"
 
-#    - name: Build GBC.emu
-#      if: ${{ matrix.image == 'GBC.emu' }}
-#      run: |
-#        cd GBC.emu
-#        make -f android-release.mk android-apk V=1 -j`nproc`
-#        cp target/android-release/build/outputs/apk/release/GbcEmu-release.apk "../EX-Emulators/GbcEmu-${COMMIT_PREFIX}.apk"
+    - name: Build GBC.emu
+      if: ${{ matrix.image == 'GBC.emu' }}
+      run: |
+        cd GBC.emu
+        make -f android-release.mk android-apk V=1 -j`nproc`
+        cp target/android-release/build/outputs/apk/release/GbcEmu-release.apk "../EX-Emulators/GbcEmu-${COMMIT_PREFIX}.apk"
 
 
     - name: Build MD.emu
