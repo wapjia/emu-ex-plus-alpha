@@ -403,18 +403,18 @@ OptionCategoryView::OptionCategoryView(ViewAttachParams attach, EmuAudio &audio,
 			}
 		}*/
 	}
-/*{
-	if(EmuApp::hasGooglePlayStoreFeatures())
-	{
-		subConfig[lastIndex(subConfig)] =
-		{
-			"Beta Testing Opt-in/out", attach,
-			[this]()
-			{
-				appContext().openURL(std::format("https://play.google.com/apps/testing/{}", appContext().applicationId));
-			}
-		};
-	}
-}*/
+    {
+        /*if(EmuApp::hasGooglePlayStoreFeatures())
+        {
+            subConfig[lastIndex(subConfig)] =
+            {
+                "Beta Testing Opt-in/out", attach,
+                [this]()
+                {
+                    appContext().openURL(std::format("https://play.google.com/apps/testing/{}", appContext().applicationId));
+                }
+            };
+        }*/
+    }
 
 }
