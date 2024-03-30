@@ -2034,130 +2034,140 @@ namespace IG
 {
     std::function<void(const char *screenshotPath)> g_android_screenshot_complete_callback;
 //region 爱吾的方法
-    /**
-    * onKeyPressAiWu
-    * @param emuKey 键值
-    * @param player 多玩家id
-    */
-    void ApplicationContext::onKeyPressAiWu(uint emuKey,uint8_t player)
-    {
-        auto &app = EmuEx::EmuApp::get(*this);
-        auto &sys = app.system();
-        if(!sys.hasContent())
-            return;
-        //定义是属于哪个玩家
-        //                                                       KeyFlags 结构体
-        sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), {0,0,0,0,player}, Input::Action::PUSHED});
-    }
-    void ApplicationContext::onKeyReleaseAiWu(uint emuKey,uint8_t player)
-    {
-        auto &app = EmuEx::EmuApp::get(*this);
-        auto &sys = app.system();
-        if(!sys.hasContent())
-            return;
-        //定义是属于哪个玩家
+/**
+* onKeyPressAiWu
+* @param emuKey 键值
+* @param player 多玩家id
+*/
+void ApplicationContext::onKeyPressAiWu(uint emuKey,uint8_t player)
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    auto &sys = app.system();
+    if(!sys.hasContent())
+        return;
+    //定义是属于哪个玩家
+    //                                                       KeyFlags 结构体
+    sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), {0,0,0,0,player}, Input::Action::PUSHED});
+}
+void ApplicationContext::onKeyReleaseAiWu(uint emuKey,uint8_t player)
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    auto &sys = app.system();
+    if(!sys.hasContent())
+        return;
+    //定义是属于哪个玩家
 /*        struct KeyFlags flags;
-        flags.deviceId = player;    // 假设设备ID是10*/
-        sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), {0,0,0,0,player}, Input::Action::RELEASED});
+    flags.deviceId = player;    // 假设设备ID是10*/
+    sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), {0,0,0,0,player}, Input::Action::RELEASED});
+}
+/**
+ * 显示设置
+ */
+void ApplicationContext::showSettingAiWu()
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    auto &sys = app.system();
+    if(!sys.hasContent())
+        return;
+    app.showUI();
+}
+/**
+ * 改变模拟器状态(暂停/启动)
+ * @param pause
+ */
+void ApplicationContext::changeEmulatorStateAiWu(bool pause)
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    auto &sys = app.system();
+    if(!sys.hasContent())
+        return;
+    if(pause){
+        app.pauseEmulation();
+    } else {
+        app.startEmulation();
     }
-    /**
-     * 显示设置
-     */
-    void ApplicationContext::showSettingAiWu()
-    {
-        auto &app = EmuEx::EmuApp::get(*this);
-        auto &sys = app.system();
-        if(!sys.hasContent())
-            return;
-        app.showUI();
+}
+void ApplicationContext::resetAiWu()
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    auto &sys = app.system();
+    if(!sys.hasContent())
+        return;
+    sys.reset(app, EmuEx::EmuSystem::ResetMode::SOFT);
+}
+bool ApplicationContext::isSoundEnabledAiWu()
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    return app.audio.isEnabled();
+}
+void ApplicationContext::setSoundEnabledAiWu(bool enabled)
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    app.audio.setEnabled(enabled);
+}
+void ApplicationContext::screenshotAiWu(FS::PathString filepath)
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    //auto &video = app.video();
+    app.setScreenshotPathAiWu(filepath);
+    app.video.takeGameScreenshotAiWu();
+}
+void ApplicationContext::fastForwardAiWu(double speed)
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    auto &sys = app.system();
+    if(!sys.hasContent())
+        return;
+    if(speed <= 0. || speed > 8.){
+        //关闭加速
+        app.setRunSpeed(1.);
+    } else {
+        //开启加速
+        app.setRunSpeed(speed);
     }
-    /**
-     * 改变模拟器状态(暂停/启动)
-     * @param pause
-     */
-    void ApplicationContext::changeEmulatorStateAiWu(bool pause)
-    {
-        auto &app = EmuEx::EmuApp::get(*this);
-        auto &sys = app.system();
-        if(!sys.hasContent())
-            return;
-        if(pause){
-            app.pauseEmulation();
-        } else {
-            app.startEmulation();
-        }
-    }
-    void ApplicationContext::resetAiWu()
-    {
-        auto &app = EmuEx::EmuApp::get(*this);
-        auto &sys = app.system();
-        if(!sys.hasContent())
-            return;
-        sys.reset(app, EmuEx::EmuSystem::ResetMode::SOFT);
-    }
-    bool ApplicationContext::isSoundEnabledAiWu()
-    {
-        auto &app = EmuEx::EmuApp::get(*this);
-        return app.audio().isEnabled();
-    }
-    void ApplicationContext::setSoundEnabledAiWu(bool enabled)
-    {
-        auto &app = EmuEx::EmuApp::get(*this);
-        app.audio().setEnabled(enabled);
-    }
-    void ApplicationContext::screenshotAiWu(FS::PathString filepath)
-    {
-        auto &app = EmuEx::EmuApp::get(*this);
-        auto &video = app.video();
-        app.setScreenshotPathAiWu(filepath);
-        video.takeGameScreenshotAiWu();
-    }
-    void ApplicationContext::fastForwardAiWu(double speed)
-    {
-        auto &app = EmuEx::EmuApp::get(*this);
-        auto &sys = app.system();
-        if(!sys.hasContent())
-            return;
-        if(speed <= 0. || speed > 8.){
-            //关闭加速
-            app.setRunSpeed(1.);
-        } else {
-            //开启加速
-            app.setRunSpeed(speed);
-        }
-    }
-    bool ApplicationContext::saveStateAiWu(const char *filepath)
-    {
-        auto &app = EmuEx::EmuApp::get(*this);
-        auto &sys = app.system();
-        if(!sys.hasContent())
-            return false;
-        return app.saveState(FS::PathString{filepath});
-    }
-    bool ApplicationContext::loadStateAiWu(const char *filepath)
-    {
-        auto &app = EmuEx::EmuApp::get(*this);
-        auto &sys = app.system();
-        if(!sys.hasContent())
-            return false;
-        return app.loadState(FS::PathString{filepath});
-    }
-    void ApplicationContext::setCheatListAiWu(std::list<std::string> cheats)
-    {
-        auto &app = EmuEx::EmuApp::get(*this);
-        auto &sys = app.system();
-        if(!sys.hasContent())
-            return ;
-        sys.setCheatListAiWu(cheats);
-    }
-    void ApplicationContext::setDebugEnabledAiWu(bool enabled)
-    {
-        logger_setEnabled(enabled);
-    }
-    IG::WindowRect ApplicationContext::getGameScreenRectAiWu()
-    {
-        auto &app = EmuEx::EmuApp::get(*this);
-        return app.getGameScreenRectAiWu();
-    }
+}
+bool ApplicationContext::saveStateAiWu(const char *filepath)
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    auto &sys = app.system();
+    if(!sys.hasContent())//是否在游戏中
+        return false;
+    return app.saveState(FS::PathString{filepath});
+}
+bool ApplicationContext::loadStateAiWu(const char *filepath)
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    auto &sys = app.system();
+    if(!sys.hasContent())//是否在游戏中
+        return false;
+    return app.loadState(FS::PathString{filepath});
+}
+void ApplicationContext::setCheatListAiWu(std::list<std::string> cheats)
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    auto &sys = app.system();
+    if(!sys.hasContent())//是否在游戏中
+        return ;
+    sys.setCheatListAiWu(cheats);
+}
+void ApplicationContext::setDebugEnabledAiWu(bool enabled)
+{
+    logger_setEnabled(enabled);
+}
+IG::WindowRect ApplicationContext::getGameScreenRectAiWu()
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    return app.getGameScreenRectAiWu();
+}
+/**
+* 对模拟器进行默认配置
+* @param configList
+*/
+void ApplicationContext::setDefaultConfigAiWu(std::list<std::string> configList)
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    auto &sys = app.system();
+    sys.setDefaultConfigAiWu(configList);
+}
 //endregion
 }

@@ -184,6 +184,7 @@ WallClockTimePoint SaturnSystem::backupMemoryLastWriteTime(const EmuApp &app) co
 }
 
 
+//region 爱吾修改
 const char *saveSlotCharAiWu(int slot)
 {
     switch(slot)
@@ -202,11 +203,55 @@ const char *saveSlotCharAiWu(int slot)
         default: return "10";
     }
 }
-
 FS::FileString SaturnSystem::stateFilename(int slot, std::string_view name) const
 {
-    return IG::format<FS::FileString>("{}.0{}.yss", name, saveSlotCharAiWu(slot));
+    //return stateFilenameMDFN(*MDFNGameInfo, slot, name, 'q', noMD5InFilenames);
+    return IG::format<FS::FileString>("{}.nc{}", name, saveSlotCharAiWu(slot));
 }
+/**
+ * 设置默认配置
+ * @param configList
+ */
+void SaturnSystem::setDefaultConfigAiWu(std::list<std::string> configList)
+{
+    //todo 此处写设置配置的代码
+    log.error("爱吾配置:开始");
+    for (std::list<std::string>::iterator it = configList.begin(); it != configList.end(); it++)
+    {
+        std::string& configString = *it;
+        std::vector<std::string> vConfig = mSplit(configString, '=');
+        if (vConfig.at(0) == "naBiosPath") {
+            naBiosPath = vConfig.at(1);
+            log.error("爱吾配置:naBiosPath={}",vConfig.at(1));
+        }else if (vConfig.at(0) == "jpBiosPath") {
+            jpBiosPath = vConfig.at(1);
+            log.error("爱吾配置:jpBiosPath={}",vConfig.at(1));
+        }else if (vConfig.at(0) == "kof95ROMPath") {
+            kof95ROMPath = vConfig.at(1);
+            log.error("爱吾配置:kof95ROMPath={}",vConfig.at(1));
+        }else if (vConfig.at(0) == "ultramanROMPath") {
+            ultramanROMPath = vConfig.at(1);
+            log.error("爱吾配置:ultramanROMPath={}",vConfig.at(1));
+        }else{
+            log.error("爱吾配置:没匹配到");
+        }
+    }
+    log.error("爱吾配置:结束");
+}
+/**
+ * 拆分字符串
+ */
+std::vector<std::string> SaturnSystem::mSplit(const std::string &s, char delimiter) {
+    std::vector<std::string> tokens;
+    std::istringstream tokenStream(s);
+    std::string token;
+    while (std::getline(tokenStream, token, delimiter)) {
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
+//endregion
 
 void SaturnSystem::closeSystem()
 {

@@ -285,5 +285,10 @@ void EmuSystem::setCheatListAiWu(std::list<std::string> cheats)
     if(&MainSystem::setCheatListAiWu != &EmuSystem::setCheatListAiWu)
         static_cast<MainSystem*>(this)->setCheatListAiWu(cheats);
 }
+void EmuSystem::setDefaultConfigAiWu(std::list<std::string> configList)
+{
+    if(&MainSystem::setDefaultConfigAiWu != &EmuSystem::setDefaultConfigAiWu)
+        static_cast<MainSystem*>(this)->setDefaultConfigAiWu(configList);
+}
 //endregion
 }

@@ -512,6 +512,26 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                         // 返回数组
                                         return jarr;
                                     }
+                    },
+                    {
+                            "setDefaultConfig", "([Ljava/lang/String;)V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz,jobjectArray jConfigList)
+                                    {
+                                        std::list<std::string> configList;
+                                        //不进行配置的时候默认为空
+                                        if(jConfigList == NULL || env->GetArrayLength(jConfigList) == 0){
+                                            IG::gAiWuAppContext().setDefaultConfigAiWu(configList);
+                                            return;
+                                        }
+                                        jsize configCount = env->GetArrayLength(jConfigList);//获取配置文件的数量
+                                        for (int i = 0; i < configCount; ++i) {//遍历 jConfigList 转换成字符串类型
+                                            jstring config = (jstring) (env->GetObjectArrayElement(jConfigList, i));
+                                            const std::string configString = GetJString(env,config);
+                                            configList.push_back(configString);
+                                        }
+                                        IG::gAiWuAppContext().setDefaultConfigAiWu(configList);
+                                    }
                     }
             };
     env->RegisterNatives(baseActivityClass, method, std::size(method));

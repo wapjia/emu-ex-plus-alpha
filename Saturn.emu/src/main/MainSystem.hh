@@ -195,6 +195,10 @@ public:
 	bool onPointerInputEnd(const Input::MotionEvent &, Input::DragTrackerState, WRect);
 	Rotation contentRotation() const;
 	void addThreadGroupIds(std::vector<ThreadId> &ids) const { ids.emplace_back(MDFN_IEN_SS::RThreadId); }
+    //region 爱吾修改
+    void setDefaultConfigAiWu(std::list<std::string> configList);
+    std::vector<std::string> mSplit(const std::string &s, char delimiter);
+    //endregion
 };
 
 using MainSystem = SaturnSystem;
