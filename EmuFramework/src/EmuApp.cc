@@ -2016,7 +2016,7 @@ IG::ApplicationContext gAppContext() { return gApp().appContext(); }
 //region 爱吾修改
 IG::WindowRect EmuApp::getGameScreenRectAiWu()
 {
-    return emuVideoLayer.contentRect();
+    return videoLayer.contentRect();
 }
 
 FS::PathString EmuApp::getScreenshotPathAiWu()
