@@ -419,10 +419,10 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
     //失去焦点暂停 关闭
     pauseUnfocused = false;
     //手柄等输入设备更改通知 关闭
-    notifyOnInputDeviceChange= false;
+    notifyOnInputDeviceChange = false;
     //隐藏导航栏和状态栏
-    optionHideOSNav = 2 ;
-    optionHideStatusBar = 2 ;
+    setHideOSNavMode(InEmuTristate::On);
+    setHideStatusBarMode(InEmuTristate::On);
     //endregion
 
 
