@@ -2176,7 +2176,7 @@ void ApplicationContext::setDefaultConfigAiWu(std::list<std::string> configList)
 double ApplicationContext::getFrameRate()
 {
     auto &app = EmuEx::EmuApp::get(*this);
-    return app.emuScreen().frameRate()
+    return app.emuScreen().frameRate();
 }
 //endregion
 }
