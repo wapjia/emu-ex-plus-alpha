@@ -2051,6 +2051,10 @@ void ApplicationContext::onKeyPressAiWu(uint emuKey,uint8_t player)
 }
 void ApplicationContext::onKeyReleaseAiWu(uint emuKey,uint8_t player)
 {
+
+
+
+    emuScreen().frameRate() / frameTimeConfig.rate
     auto &app = EmuEx::EmuApp::get(*this);
     auto &sys = app.system();
     if(!sys.hasContent())
@@ -2168,6 +2172,11 @@ void ApplicationContext::setDefaultConfigAiWu(std::list<std::string> configList)
     auto &app = EmuEx::EmuApp::get(*this);
     auto &sys = app.system();
     sys.setDefaultConfigAiWu(configList);
+}
+double ApplicationContext::getFrameRate()
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    return app.emuScreen().frameRate()
 }
 //endregion
 }
