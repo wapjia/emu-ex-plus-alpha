@@ -2051,10 +2051,6 @@ void ApplicationContext::onKeyPressAiWu(uint emuKey,uint8_t player)
 }
 void ApplicationContext::onKeyReleaseAiWu(uint emuKey,uint8_t player)
 {
-
-
-
-    emuScreen().frameRate() / frameTimeConfig.rate
     auto &app = EmuEx::EmuApp::get(*this);
     auto &sys = app.system();
     if(!sys.hasContent())
