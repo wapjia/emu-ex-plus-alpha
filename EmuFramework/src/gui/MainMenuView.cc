@@ -332,7 +332,7 @@ void MainMenuView::loadStandardItems()
 //	}
 	//item.emplace_back(&benchmark);游戏测试
 	item.emplace_back(&about);
-	item.emplace_back(&exitApp);
+	//item.emplace_back(&exitApp);
     //item.emplace_back(&openURL);//打开备案网站
 }
 
