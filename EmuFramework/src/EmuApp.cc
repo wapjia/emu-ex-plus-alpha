@@ -2172,9 +2172,20 @@ void ApplicationContext::setDefaultConfigAiWu(std::list<std::string> configList)
 double ApplicationContext::getFrameRate()
 {
     auto &app = EmuEx::EmuApp::get(*this);
-    //return app.emuScreen().frameRate();
-    return app.viewController().emuWindowScreen()->frameRate();
+    auto &sys = app.system();
+    if(!sys.hasContent())//是否在游戏中
+        return 0.0;
 
+    return app.emuScreen().frameRate();
+}
+double ApplicationContext::getFrameRate1()
+{
+    auto &app = EmuEx::EmuApp::get(*this);
+    auto &sys = app.system();
+    if(!sys.hasContent())//不在游戏中显示帧数0
+        return 0.0;
+
+    return app.viewController().emuWindowScreen()->frameRate();
 }
 //endregion
 }

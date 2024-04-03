@@ -260,6 +260,7 @@ public:
     void setDefaultConfigAiWu(std::list<std::string> configList);
     void setDebugEnabledAiWu(bool enabled);
     double getFrameRate();
+    double getFrameRate1();
     IG::WindowRect getGameScreenRectAiWu();
     //endregion
 };

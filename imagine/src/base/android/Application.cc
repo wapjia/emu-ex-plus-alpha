@@ -540,6 +540,14 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                     {
                                         return IG::gAiWuAppContext().getFrameRate();
                                     }
+                    },
+                    {
+                            "getFrameRate1", "()D",
+                            (void *)
+                                    +[](JNIEnv* env, jobject thiz)
+                                    {
+                                        return IG::gAiWuAppContext().getFrameRate1();
+                                    }
                     }
             };
     env->RegisterNatives(baseActivityClass, method, std::size(method));
