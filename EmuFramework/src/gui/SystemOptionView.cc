@@ -66,7 +66,7 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	autosaveLaunchItem
 	{
 		{"加载即时存档",            attach, {.id = AutosaveLaunchMode::Load}},
-		{"不加载即时存档", attach, {.id = AutosaveLaunchMode::LoadNoState}},
+		{"不加载即时存档",          attach, {.id = AutosaveLaunchMode::LoadNoState}},
 //		{"No Save Slot",         attach, {.id = AutosaveLaunchMode::NoSave}},
 //		{"Select Slot",          attach, {.id = AutosaveLaunchMode::Ask}},
 	},
