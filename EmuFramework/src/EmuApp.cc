@@ -2156,5 +2156,33 @@ namespace IG
         auto &app = EmuEx::EmuApp::get(*this);
         return app.getGameScreenRectAiWu();
     }
+    /**
+    * 对模拟器进行默认配置
+    * @param configList
+    */
+    void ApplicationContext::setDefaultConfigAiWu(std::list<std::string> configList)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        sys.setDefaultConfigAiWu(configList);
+    }
+    double ApplicationContext::getFrameRate()
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())//是否在游戏中
+            return 0.0;
+
+        return app.emuScreen().frameRate();
+    }
+    double ApplicationContext::getFrameRate1()
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())//不在游戏中显示帧数0
+            return 0.0;
+
+        return app.viewController().emuWindowScreen()->frameRate();
+    }
 //endregion
 }
