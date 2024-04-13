@@ -2032,10 +2032,10 @@ namespace IG
     std::function<void(const char *screenshotPath)> g_android_screenshot_complete_callback;
 //region 爱吾的方法
 /**
- * onKeyPressAiWu
- * @param emuKey 键值
- * @param player 多玩家id
- */
+* onKeyPressAiWu
+* @param emuKey 键值
+* @param player 多玩家id
+*/
     void ApplicationContext::onKeyPressAiWu(uint emuKey,uint8_t player)
     {
         auto &app = EmuEx::EmuApp::get(*this);
@@ -2054,12 +2054,12 @@ namespace IG
             return;
         //定义是属于哪个玩家
 /*        struct KeyFlags flags;
-        flags.deviceId = player;    // 假设设备ID是10*/
+    flags.deviceId = player;    // 假设设备ID是10*/
         sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), {0,0,0,0,player}, Input::Action::RELEASED});
     }
-    /**
-     * 显示设置
-     */
+/**
+ * 显示设置
+ */
     void ApplicationContext::showSettingAiWu()
     {
         auto &app = EmuEx::EmuApp::get(*this);
@@ -2068,10 +2068,10 @@ namespace IG
             return;
         app.showUI();
     }
-    /**
-     * 改变模拟器状态(暂停/启动)
-     * @param pause
-     */
+/**
+ * 改变模拟器状态(暂停/启动)
+ * @param pause
+ */
     void ApplicationContext::changeEmulatorStateAiWu(bool pause)
     {
         auto &app = EmuEx::EmuApp::get(*this);
@@ -2095,19 +2095,19 @@ namespace IG
     bool ApplicationContext::isSoundEnabledAiWu()
     {
         auto &app = EmuEx::EmuApp::get(*this);
-        return app.audio().isEnabled();
+        return app.audio.isEnabled();
     }
     void ApplicationContext::setSoundEnabledAiWu(bool enabled)
     {
         auto &app = EmuEx::EmuApp::get(*this);
-        app.audio().setEnabled(enabled);
+        app.audio.setEnabled(enabled);
     }
     void ApplicationContext::screenshotAiWu(FS::PathString filepath)
     {
         auto &app = EmuEx::EmuApp::get(*this);
-        auto &video = app.video();
+        //auto &video = app.video();
         app.setScreenshotPathAiWu(filepath);
-        video.takeGameScreenshotAiWu();
+        app.video.takeGameScreenshotAiWu();
     }
     void ApplicationContext::fastForwardAiWu(double speed)
     {
@@ -2127,7 +2127,7 @@ namespace IG
     {
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();
-        if(!sys.hasContent())
+        if(!sys.hasContent())//是否在游戏中
             return false;
         return app.saveState(FS::PathString{filepath});
     }
@@ -2135,7 +2135,7 @@ namespace IG
     {
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();
-        if(!sys.hasContent())
+        if(!sys.hasContent())//是否在游戏中
             return false;
         return app.loadState(FS::PathString{filepath});
     }
@@ -2143,7 +2143,7 @@ namespace IG
     {
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();
-        if(!sys.hasContent())
+        if(!sys.hasContent())//是否在游戏中
             return ;
         sys.setCheatListAiWu(cheats);
     }
@@ -2156,10 +2156,10 @@ namespace IG
         auto &app = EmuEx::EmuApp::get(*this);
         return app.getGameScreenRectAiWu();
     }
-    /**
-    * 对模拟器进行默认配置
-    * @param configList
-    */
+/**
+* 对模拟器进行默认配置
+* @param configList
+*/
     void ApplicationContext::setDefaultConfigAiWu(std::list<std::string> configList)
     {
         auto &app = EmuEx::EmuApp::get(*this);
