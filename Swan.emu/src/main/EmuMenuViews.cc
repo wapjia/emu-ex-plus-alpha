@@ -15,6 +15,7 @@
 
 #include <emuframework/SystemOptionView.hh>
 #include <emuframework/SystemActionsView.hh>
+#include <emuframework/viewUtils.hh>
 #include <mednafen-emuex/MDFNUtils.hh>
 #include "MainApp.hh"
 #include <wswan/wswan.h>
@@ -50,14 +51,14 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 		"姓名", system().userName, attachParams(),
 		[this](const Input::Event &e)
 		{
-			app().pushAndShowNewCollectValueInputView<const char*, ScanValueMode::ALLOW_BLANK>(attachParams(), e,
+			pushAndShowNewCollectValueInputView<const char*, ScanValueMode::AllowBlank>(attachParams(), e,
 				"输入姓名", system().userName,
-				[this](EmuApp &app, auto str_)
+				[this](CollectTextInputView&, auto str_)
 				{
 					std::string_view str{str_};
 					if(str.size() > system().userName.max_size())
 					{
-						app.postErrorMessage("输入的名称太长");
+						app().postErrorMessage("输入的名称太长");
 						return false;
 					}
 					system().userName = str;
@@ -72,9 +73,9 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 		"出生(年)", std::to_string(system().userProfile.birthYear), attachParams(),
 		[this](const Input::Event &e)
 		{
-			app().pushAndShowNewCollectValueRangeInputView<int, 1, 9999>(attachParams(), e,
+			pushAndShowNewCollectValueRangeInputView<int, 1, 9999>(attachParams(), e,
 				"输入1到9999", std::to_string(system().userProfile.birthYear),
-				[this](EmuApp &app, auto val)
+				[this](CollectTextInputView&, auto val)
 				{
 					system().userProfile.birthYear = val;
 					birthYear.set2ndName(std::to_string(val));
@@ -88,9 +89,9 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 		"出生(月)", std::to_string(system().userProfile.birthMonth), attachParams(),
 		[this](const Input::Event &e)
 		{
-			app().pushAndShowNewCollectValueRangeInputView<int, 1, 12>(attachParams(), e,
+			pushAndShowNewCollectValueRangeInputView<int, 1, 12>(attachParams(), e,
 				"输入1到12", std::to_string(system().userProfile.birthMonth),
-				[this](EmuApp &app, auto val)
+				[this](CollectTextInputView&, auto val)
 				{
 					system().userProfile.birthMonth = val;
 					birthMonth.set2ndName(std::to_string(val));
@@ -104,9 +105,9 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 		"出生(日)", std::to_string(system().userProfile.birthDay), attachParams(),
 		[this](const Input::Event &e)
 		{
-			app().pushAndShowNewCollectValueRangeInputView<int, 1, 31>(attachParams(), e,
+			pushAndShowNewCollectValueRangeInputView<int, 1, 31>(attachParams(), e,
 				"输入1到31", std::to_string(system().userProfile.birthDay),
-				[this](EmuApp &app, auto val)
+				[this](CollectTextInputView&, auto val)
 				{
 					system().userProfile.birthDay = val;
 					birthDay.set2ndName(std::to_string(val));

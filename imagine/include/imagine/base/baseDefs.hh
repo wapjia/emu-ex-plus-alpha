@@ -248,6 +248,7 @@ struct WindowConfig;
 class ApplicationContext;
 class Application;
 struct ApplicationInitParams;
+class FrameTimer;
 
 using WindowContainer = std::vector<std::unique_ptr<Window>>;
 using ScreenContainer = std::vector<std::unique_ptr<Screen>>;
@@ -255,8 +256,8 @@ using InputDeviceContainer = std::vector<std::unique_ptr<Input::Device>>;
 
 // App events & delegates
 
-// Sent when another process sends the app a message
-struct InterProcessMessageEvent{CStringView filename;};
+// Sent when another process or the system file picker requests opening a document
+struct DocumentPickerEvent{CStringView uri, displayName;};
 
 // Sent when OS needs app to free any cached data
 struct FreeCachesEvent{bool running;};
@@ -264,7 +265,7 @@ struct FreeCachesEvent{bool running;};
 // Sent when a Screen is connected/disconnected or its properties change
 struct ScreenChangeEvent{Screen &screen; ScreenChange change;};
 
-using ApplicationEvent = std::variant<InterProcessMessageEvent, FreeCachesEvent,
+using ApplicationEvent = std::variant<DocumentPickerEvent, FreeCachesEvent,
 	ScreenChangeEvent, Input::DeviceChangeEvent, Input::DevicesEnumeratedEvent>;
 
 using OnApplicationEvent = DelegateFunc<void(ApplicationContext, ApplicationEvent)>;
@@ -273,7 +274,6 @@ using ResumeDelegate = DelegateFunc<bool (ApplicationContext, bool focused)>;
 using ExitDelegate = DelegateFunc<bool (ApplicationContext, bool backgrounded)>;
 using DeviceOrientationChangedDelegate = DelegateFunc<void (ApplicationContext, Rotation newRotation)>;
 using SystemOrientationChangedDelegate = DelegateFunc<void (ApplicationContext, Rotation oldRotation, Rotation newRotation)>;
-using SystemDocumentPickerDelegate = DelegateFunc<void(CStringView uri, CStringView displayName)>;
 using TextFieldDelegate = DelegateFunc<void (const char *str)>;
 using SensorChangedDelegate = DelegateFunc<void (SensorValues)>;
 

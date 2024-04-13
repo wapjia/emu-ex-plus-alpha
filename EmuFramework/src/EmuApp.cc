@@ -93,8 +93,7 @@ EmuApp::EmuApp(ApplicationInitParams initParams, ApplicationContext &ctx):
 	Application{initParams},
 	fontManager{ctx},
 	renderer{ctx},
-	audioManager{ctx},
-	audio{audioManager},
+	audio{ctx},
 	videoLayer{video, defaultVideoAspectRatio()},
 	inputManager{ctx},
 	vibrationManager{ctx},
@@ -115,10 +114,10 @@ EmuApp::EmuApp(ApplicationInitParams initParams, ApplicationContext &ctx):
 	{
 		visit(overloaded
 		{
-			[&](InterProcessMessageEvent &e)
+			[&](DocumentPickerEvent& e)
 			{
-				log.info("got IPC path:{}", e.filename);
-				system().setInitialLoadPath(e.filename);
+				log.info("document picked with URI:{}", e.uri);
+				system().setInitialLoadPath(e.uri);
 			},
 			[](auto &) {}
 		}, appEvent);
@@ -262,7 +261,7 @@ void EmuApp::showExitAlert(ViewAttachParams attach, const Input::Event &e)
 {
 //	viewController().pushAndShowModal(std::make_unique<ExitConfirmAlertView>(
 //		attach, system().hasContent()), e, false);
-//爱吾修改:改为返回游戏
+    //爱吾修改:改为返回游戏
     showEmulation();
 }
 
@@ -409,7 +408,6 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 	auto appConfig = loadConfigFile(ctx);
 	system().onOptionsLoaded();
 	loadSystemOptions();
-
     //region 爱吾：改一些配置
     auto &vController = inputManager.vController;
     //虚拟键盘关闭
@@ -425,12 +423,9 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
     setHideStatusBarMode(InEmuTristate::On);
     //endregion
 
-
-    updateLegacySavePathOnStoragePath(ctx, system());
-	if(auto launchGame = parseCommandArgs(initParams.commandArgs());
-		launchGame)
-		system().setInitialLoadPath(launchGame);
-	audioManager.setMusicVolumeControlHint();
+	updateLegacySavePathOnStoragePath(ctx, system());
+	system().setInitialLoadPath(parseCommandArgs(initParams.commandArgs()));
+	audio.manager.setMusicVolumeControlHint();
 	if(!renderer.supportsColorSpace())
 		windowDrawableConf.colorSpace = {};
 	applyOSNavStyle(ctx, false);
@@ -438,7 +433,7 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 	ctx.addOnResume(
 		[this](IG::ApplicationContext ctx, bool focused)
 		{
-			audioManager.startSession();
+			audio.manager.startSession();
 			audio.open();
 			return true;
 		});
@@ -456,7 +451,7 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 				}
 			}
 			audio.close();
-			audioManager.endSession();
+			audio.manager.endSession();
 			saveConfigFile(ctx);
 			saveSystemOptions();
 			#ifdef CONFIG_INPUT_BLUETOOTH
@@ -498,7 +493,7 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 			}
 			auto &screen = *win.screen();
 			winData.viewController.placeElements();
-			winData.viewController.pushAndShowMainMenu(viewAttach, videoLayer, audio);
+			winData.viewController.pushAndShow(makeView(viewAttach, ViewID::MAIN_MENU));
 			configureSecondaryScreens();
 			video.setOnFormatChanged(
 				[this, &viewController = winData.viewController](EmuVideo &)
@@ -511,7 +506,7 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 			videoLayer.setRendererTask(renderer.task());
 			applyRenderPixelFormat();
 			videoLayer.updateEffect(system(), videoEffectPixelFormat());
-			videoLayer.setZoom(imageZoom);
+			videoLayer.scale = contentScale;
 			system().onFrameUpdate = [this](FrameParams params)
 			{
 				emuSystemTask.updateFrameParams(params);
@@ -560,10 +555,12 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 			{
 				visit(overloaded
 				{
-					[&](InterProcessMessageEvent &e)
+					[&](DocumentPickerEvent& e)
 					{
-						log.info("got IPC path:{}", e.filename);
-						handleOpenFileCommand(e.filename);
+						log.info("document picked with URI:{}", e.uri);
+						if(viewController().top().onDocumentPicked(e))
+							return;
+						handleOpenFileCommand(e.uri);
 					},
 					[&](ScreenChangeEvent &e)
 					{
@@ -751,15 +748,7 @@ bool EmuApp::advanceFrames(FrameParams frameParams, EmuSystemTask *taskPtr)
 
 IG::Viewport EmuApp::makeViewport(const IG::Window &win) const
 {
-	IG::WindowRect viewRect = layoutBehindSystemUI ? win.bounds() : win.contentBounds();
-	if(viewportZoom != 100)
-	{
-		WPt viewCenter{viewRect.xSize() / 2, viewRect.ySize() / 2};
-		viewRect -= viewCenter;
-		viewRect *= viewportZoom / 100.f;
-		viewRect += viewCenter;
-	}
-	return win.viewport(viewRect);
+	return win.viewport(layoutBehindSystemUI ? win.bounds() : win.contentBounds());
 }
 
 void WindowData::updateWindowViewport(const IG::Window &win, IG::Viewport viewport, const IG::Gfx::Renderer &r)
@@ -802,7 +791,7 @@ void EmuApp::launchSystem(const Input::Event &e)
 			!autosaveManager.saveOnlyBackupMemory && stateIsOlderThanBackupMemory())
 		{
 			viewController().pushAndShowModal(std::make_unique<YesNoAlertView>(attachParams(),
-				"自动存档时间戳比备份内存的内容旧，进度可能会丢失，确定要加载吗？",
+				"Autosave state timestamp is older than the contents of backup memory, really load it even though progress may be lost?",
 				YesNoAlertView::Delegates
 				{
 					.onYes = [this]{ finishLaunch(*this, LoadAutosaveMode::Normal); },
@@ -835,7 +824,7 @@ void EmuApp::handleOpenFileCommand(CStringView path)
 		postErrorMessage(std::format("Can't access path name for:\n{}", path));
 		return;
 	}
-	if(!IG::isUri(path) && FS::status(path).type() == FS::file_type::directory)
+	if(appContext().fileUriType(path) == FS::file_type::directory)
 	{
 		log.info("changing to dir {} from external command", path);
 		showUI(false);
@@ -845,12 +834,14 @@ void EmuApp::handleOpenFileCommand(CStringView path)
 			FilePicker::forLoading(attachParams(), appContext().defaultInputEvent()),
 			appContext().defaultInputEvent(),
 			false);
-		return;
 	}
-	log.info("opening file {} from external command", path);
-	showUI();
-	viewController().popToRoot();
-	onSelectFileFromPicker({}, path, name, Input::KeyEvent{}, {}, attachParams());
+	else
+	{
+		log.info("opening file {} from external command", path);
+		showUI();
+		viewController().popToRoot();
+		onSelectFileFromPicker({}, path, name, Input::KeyEvent{}, {}, attachParams());
+	}
 }
 
 void EmuApp::runBenchmarkOneShot(EmuVideo &video)
@@ -892,7 +883,6 @@ void EmuApp::startEmulation()
 	emuSystemTask.start();
 	setCPUNeedsLowLatency(appContext(), true);
 	system().start(*this);
-	log.info("timestamp source:{}", wise_enum::to_string(effectiveFrameTimeSource()));
 	addOnFrameDelayed();
 }
 
@@ -914,26 +904,13 @@ void EmuApp::pauseEmulation()
 	system().pause(*this);
 	setRunSpeed(1.);
 	videoLayer.setBrightness(videoBrightnessRGB * pausedVideoBrightnessScale);
-	viewController().emuWindow().setDrawEventPriority();
+	emuWindow().setDrawEventPriority();
 	removeOnFrame();
 }
 
 bool EmuApp::hasArchiveExtension(std::string_view name)
 {
 	return FS::hasArchiveExtension(name);
-}
-
-void EmuApp::pushAndShowNewCollectTextInputView(ViewAttachParams attach, const Input::Event &e, const char *msgText,
-	const char *initialContent, CollectTextInputView::OnTextDelegate onText)
-{
-	pushAndShowModalView(std::make_unique<CollectTextInputView>(attach, msgText, initialContent,
-		collectTextCloseAsset(), onText), e);
-}
-
-void EmuApp::pushAndShowNewYesNoAlertView(ViewAttachParams attach, const Input::Event &e, const char *label,
-	const char *choice1, const char *choice2, TextMenuItem::SelectDelegate onYes, TextMenuItem::SelectDelegate onNo)
-{
-	pushAndShowModalView(std::make_unique<YesNoAlertView>(attach, label, choice1, choice2, YesNoAlertView::Delegates{onYes, onNo}), e);
 }
 
 void EmuApp::pushAndShowModalView(std::unique_ptr<View> v, const Input::Event &e)
@@ -995,7 +972,7 @@ void EmuApp::promptSystemReloadDueToSetOption(ViewAttachParams attach, const Inp
 	if(!system().hasContent())
 		return;
 	viewController().pushAndShowModal(std::make_unique<YesNoAlertView>(attach,
-		"该选项在系统下次启动时生效。是否立即重启？",
+		"This option takes effect next time the system starts. Restart it now?",
 		YesNoAlertView::Delegates
 		{ .onYes = [this, params]
 			{
@@ -1144,7 +1121,7 @@ bool EmuApp::saveStateWithSlot(int slot)
 	return saveState(system().statePath(slot));
 }
 
-bool EmuApp::loadState(IG::CStringView path)
+bool EmuApp::loadState(CStringView path)
 {
 	if(!system().hasContent()) [[unlikely]]
 	{
@@ -1968,8 +1945,8 @@ std::unique_ptr<View> EmuApp::makeView(ViewAttachParams attach, ViewID id)
 	{
 		case ViewID::MAIN_MENU: return std::make_unique<MainMenuView>(attach);
 		case ViewID::SYSTEM_ACTIONS: return std::make_unique<SystemActionsView>(attach);
-		case ViewID::VIDEO_OPTIONS: return std::make_unique<VideoOptionView>(attach);
-		case ViewID::AUDIO_OPTIONS: return std::make_unique<AudioOptionView>(attach);
+		case ViewID::VIDEO_OPTIONS: return std::make_unique<VideoOptionView>(attach, videoLayer);
+		case ViewID::AUDIO_OPTIONS: return std::make_unique<AudioOptionView>(attach, audio);
 		case ViewID::SYSTEM_OPTIONS: return std::make_unique<SystemOptionView>(attach);
 		case ViewID::FILE_PATH_OPTIONS: return std::make_unique<FilePathOptionView>(attach);
 		case ViewID::GUI_OPTIONS: return std::make_unique<GUIOptionView>(attach);
@@ -2013,26 +1990,27 @@ EmuApp &EmuApp::get(IG::ApplicationContext ctx)
 EmuApp &gApp() { return *gAppPtr; }
 
 IG::ApplicationContext gAppContext() { return gApp().appContext(); }
-//region 爱吾修改
-IG::WindowRect EmuApp::getGameScreenRectAiWu()
+
+void pushAndShowModalView(std::unique_ptr<View> v, const Input::Event &e)
 {
-    return videoLayer.contentRect();
+	v->appContext().applicationAs<EmuApp>().viewController().pushAndShowModal(std::move(v), e, false);
 }
 
-FS::PathString EmuApp::getScreenshotPathAiWu()
+void pushAndShowNewYesNoAlertView(ViewAttachParams attach, const Input::Event &e, const char *label,
+	const char *choice1, const char *choice2, TextMenuItem::SelectDelegate onYes, TextMenuItem::SelectDelegate onNo)
 {
-    return screenshotPathAiWu;
+	attach.appContext().applicationAs<EmuApp>().pushAndShowModalView(std::make_unique<YesNoAlertView>(attach, label, choice1, choice2, YesNoAlertView::Delegates{onYes, onNo}), e);
 }
-void EmuApp::setScreenshotPathAiWu(FS::PathString path)
-{
-    screenshotPathAiWu = std::move(path);
-}
-//endregion
 
-}
-namespace IG
+Gfx::TextureSpan collectTextCloseAsset(ApplicationContext ctx)
 {
-    std::function<void(const char *screenshotPath)> g_android_screenshot_complete_callback;
+	return ctx.applicationAs<const EmuApp>().collectTextCloseAsset();
+}
+
+void postErrorMessage(ApplicationContext ctx, std::string_view s)
+{
+	ctx.applicationAs<EmuApp>().postErrorMessage(s);
+}
 //region 爱吾的方法
 /**
 * onKeyPressAiWu

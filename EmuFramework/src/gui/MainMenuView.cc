@@ -23,6 +23,7 @@
 #include <emuframework/TouchConfigView.hh>
 #include <emuframework/BundledGamesView.hh>
 #include "RecentContentView.hh"
+#include "FrameTimingView.hh"
 #include <emuframework/EmuOptions.hh>
 #include <imagine/gui/AlertView.hh>
 #include <imagine/base/ApplicationContext.hh>
@@ -40,10 +41,10 @@ constexpr SystemLogger log{"AppMenus"};
 class OptionCategoryView : public TableView, public EmuAppHelper<OptionCategoryView>
 {
 public:
-	OptionCategoryView(ViewAttachParams attach, EmuAudio &audio, EmuVideoLayer &videoLayer);
+	OptionCategoryView(ViewAttachParams attach);
 
 protected:
-	TextMenuItem subConfig[5];
+	TextMenuItem subConfig[6];
 };
 
 static void onScanStatus(EmuApp &app, unsigned status, int arg);
@@ -81,7 +82,7 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 		{
 			if(!system().hasContent())
 				return;
-			pushAndShow(EmuApp::makeView(attachParams(), EmuApp::ViewID::SYSTEM_ACTIONS), e);
+			pushAndShow(app().makeView(attachParams(), EmuApp::ViewID::SYSTEM_ACTIONS), e);
 		}
 	},
 	recentGames
@@ -108,7 +109,7 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 		"设置", attach,
 		[this](const Input::Event &e)
 		{
-			pushAndShow(makeView<OptionCategoryView>(*audio, *videoLayer), e);
+			pushAndShow(makeView<OptionCategoryView>(), e);
 		}
 	},
 	onScreenInputManager
@@ -228,10 +229,10 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 	},
 	exitApp
 	{
-		"ICP备案号:浙ICP备12026372号-15A", attach,
+		"Exit", attach,
 		[this]()
 		{
-            appContext().openURL("https://beian.miit.gov.cn/");
+			appContext().exit();
 		}
 	}
 {
@@ -336,12 +337,6 @@ void MainMenuView::loadStandardItems()
     //item.emplace_back(&openURL);//打开备案网站
 }
 
-void MainMenuView::setAudioVideo(EmuAudio &audio_, EmuVideoLayer &videoLayer_)
-{
-	audio = &audio_;
-	videoLayer = &videoLayer_;
-}
-
 void MainMenuView::reloadItems()
 {
 	item.clear();
@@ -349,7 +344,7 @@ void MainMenuView::reloadItems()
 	loadStandardItems();
 }
 
-OptionCategoryView::OptionCategoryView(ViewAttachParams attach, EmuAudio &audio, EmuVideoLayer &videoLayer):
+OptionCategoryView::OptionCategoryView(ViewAttachParams attach):
 	TableView
 	{
 		"设置",
@@ -360,40 +355,45 @@ OptionCategoryView::OptionCategoryView(ViewAttachParams attach, EmuAudio &audio,
 	subConfig
 	{
 		{
-			"视频", attach,
-			[this, &videoLayer](const Input::Event &e)
+			"帧显示时间", attach,
+			[this](const Input::Event &e)
 			{
-				auto view = EmuApp::makeView(attachParams(), EmuApp::ViewID::VIDEO_OPTIONS);
-				static_cast<VideoOptionView*>(view.get())->setEmuVideoLayer(videoLayer);
-				pushAndShow(std::move(view), e);
+				pushAndShow(makeView<FrameTimingView>(), e);
+			}
+		},
+		{
+			"视频", attach,
+			[this](const Input::Event &e)
+			{
+				pushAndShow(app().makeView(attachParams(), EmuApp::ViewID::VIDEO_OPTIONS), e);
 			}
 		},
 		{
 			"音频", attach,
-			[this, &audio](const Input::Event &e)
+			[this](const Input::Event &e)
 			{
-				pushAndShow(EmuApp::makeView(attachParams(), EmuApp::ViewID::AUDIO_OPTIONS), e);
+				pushAndShow(app().makeView(attachParams(), EmuApp::ViewID::AUDIO_OPTIONS), e);
 			}
 		},
 		{
 			"系统", attach,
 			[this](const Input::Event &e)
 			{
-				pushAndShow(EmuApp::makeView(attachParams(), EmuApp::ViewID::SYSTEM_OPTIONS), e);
+				pushAndShow(app().makeView(attachParams(), EmuApp::ViewID::SYSTEM_OPTIONS), e);
 			}
 		},
 		{
 			"文件路径", attach,
 			[this](const Input::Event &e)
 			{
-				pushAndShow(EmuApp::makeView(attachParams(), EmuApp::ViewID::FILE_PATH_OPTIONS), e);
+				pushAndShow(app().makeView(attachParams(), EmuApp::ViewID::FILE_PATH_OPTIONS), e);
 			}
 		},
 		{
 			"界面", attach,
 			[this](const Input::Event &e)
 			{
-				pushAndShow(EmuApp::makeView(attachParams(), EmuApp::ViewID::GUI_OPTIONS), e);
+				pushAndShow(app().makeView(attachParams(), EmuApp::ViewID::GUI_OPTIONS), e);
 			}
 		}
 /*        ,

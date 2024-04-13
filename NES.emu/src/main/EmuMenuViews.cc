@@ -23,6 +23,7 @@
 #include <emuframework/SystemOptionView.hh>
 #include <emuframework/SystemActionsView.hh>
 #include <emuframework/FilePicker.hh>
+#include <emuframework/viewUtils.hh>
 #include "EmuCheatViews.hh"
 #include "MainApp.hh"
 #include <imagine/gui/AlertView.hh>
@@ -236,9 +237,9 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 		"每帧额外行数", std::to_string(postrenderscanlines), attachParams(),
 		[this](const Input::Event &e)
 		{
-			app().pushAndShowNewCollectValueRangeInputView<int, 0, maxExtraLinesPerFrame>(attachParams(), e,
+			pushAndShowNewCollectValueRangeInputView<int, 0, maxExtraLinesPerFrame>(attachParams(), e,
 				"输入0到30000", std::to_string(postrenderscanlines),
-				[this](EmuApp &app, auto val)
+				[this](CollectTextInputView&, auto val)
 				{
 					system().sessionOptionSet();
 					postrenderscanlines = val;
@@ -253,9 +254,9 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 		"垂直空白行倍数", std::to_string(vblankscanlines), attachParams(),
 		[this](const Input::Event &e)
 		{
-			app().pushAndShowNewCollectValueRangeInputView<int, 0, maxVBlankMultiplier>(attachParams(), e,
+			pushAndShowNewCollectValueRangeInputView<int, 0, maxVBlankMultiplier>(attachParams(), e,
 				"输入0到16", std::to_string(vblankscanlines),
-				[this](EmuApp &app, auto val)
+				[this](CollectTextInputView&, auto val)
 				{
 					system().sessionOptionSet();
 					vblankscanlines = val;
@@ -322,9 +323,12 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<Custo
 		videoSystemItem
 	};
 
-	static constexpr const char *firebrandXPalPath = "Smooth (FBX).pal";
-	static constexpr const char *wavebeamPalPath = "Wavebeam.pal";
-	static constexpr const char *classicPalPath = "Classic (FBX).pal";
+	static constexpr auto digitalPrimePalPath = "Digital Prime (FBX).pal";
+	static constexpr auto smoothPalPath = "Smooth V2 (FBX)";
+	static constexpr auto magnumPalPath = "Magnum (FBX)";
+	static constexpr auto classicPalPath = "Classic (FBX).pal";
+	static constexpr auto wavebeamPalPath = "Wavebeam.pal";
+	static constexpr auto lightfulPalPath = "Lightful.pal";
 
 	void setPalette(IG::ApplicationContext ctx, IG::CStringView palPath)
 	{
@@ -337,17 +341,20 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<Custo
 		app.renderSystemFramebuffer();
 	}
 
-	constexpr uint32_t defaultPaletteCustomFileIdx()
+	constexpr size_t defaultPaletteCustomFileIdx()
 	{
 		return lastIndex(defaultPalItem);
 	}
 
-	TextMenuItem defaultPalItem[5]
+	TextMenuItem defaultPalItem[8]
 	{
 		{"FCEUX", attachParams(), [this](){ setPalette(appContext(), ""); }},
-		{"FirebrandX", attachParams(), [this]() { setPalette(appContext(), firebrandXPalPath); }},
+		{"Digital Prime (FBX)", attachParams(), [this]() { setPalette(appContext(), digitalPrimePalPath); }},
+		{"Smooth V2 (FBX)", attachParams(), [this]() { setPalette(appContext(), smoothPalPath); }},
+		{"Magnum (FBX)", attachParams(), [this]() { setPalette(appContext(), magnumPalPath); }},
+		{"Classic (FBX)", attachParams(), [this]() { setPalette(appContext(), classicPalPath); }},
 		{"Wavebeam", attachParams(), [this]() { setPalette(appContext(), wavebeamPalPath); }},
-		{"Classic", attachParams(), [this]() { setPalette(appContext(), classicPalPath); }},
+		{"Lightful", attachParams(), [this]() { setPalette(appContext(), lightfulPalPath); }},
 		{"自定义文件", attachParams(), [this](TextMenuItem &, View &, Input::Event e)
 			{
 				auto fsFilter = [](std::string_view name)
@@ -374,16 +381,14 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<Custo
 		"默认调色板", attachParams(),
 		[this]()
 		{
-			if(system().defaultPalettePath.empty())
-				return 0;
-			if(system().defaultPalettePath == firebrandXPalPath)
-				return 1;
-			else if(system().defaultPalettePath == wavebeamPalPath)
-				return 2;
-			else if(system().defaultPalettePath == classicPalPath)
-				return 3;
-			else
-				return (int)defaultPaletteCustomFileIdx();
+			if(system().defaultPalettePath.empty()) return 0;
+			if(system().defaultPalettePath == digitalPrimePalPath) return 1;
+			if(system().defaultPalettePath == smoothPalPath) return 2;
+			if(system().defaultPalettePath == magnumPalPath) return 3;
+			if(system().defaultPalettePath == classicPalPath) return 4;
+			if(system().defaultPalettePath == wavebeamPalPath) return 5;
+			if(system().defaultPalettePath == lightfulPalPath) return 6;
+			return (int)defaultPaletteCustomFileIdx();
 		}(),
 		defaultPalItem,
 		{
@@ -443,7 +448,7 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<Custo
 	};
 
 public:
-	CustomVideoOptionView(ViewAttachParams attach): VideoOptionView{attach, true}
+	CustomVideoOptionView(ViewAttachParams attach, EmuVideoLayer &layer): VideoOptionView{attach, layer, true}
 	{
 		loadStockItems();
 		item.emplace_back(&systemSpecificHeading);
@@ -552,7 +557,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper<Custo
 	};
 
 public:
-	CustomAudioOptionView(ViewAttachParams attach): AudioOptionView{attach, true}
+	CustomAudioOptionView(ViewAttachParams attach, EmuAudio& audio): AudioOptionView{attach, audio, true}
 	{
 		loadStockItems();
 		item.emplace_back(&quality);
@@ -580,7 +585,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 			pushAndShow(makeViewWithName<UserPathSelectView>("金手指", system().userPath(system().cheatsDir),
 				[this](CStringView path)
 				{
-					log.info("设置金手指路径:{}", path);
+					log.info("set cheats path:{}", path);
 					system().cheatsDir = path;
 					cheatsPath.compile(cheatsMenuName(appContext(), path));
 				}), e);
@@ -802,8 +807,8 @@ std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
 	switch(id)
 	{
 		case ViewID::SYSTEM_ACTIONS: return std::make_unique<CustomSystemActionsView>(attach);
-		case ViewID::VIDEO_OPTIONS: return std::make_unique<CustomVideoOptionView>(attach);
-		case ViewID::AUDIO_OPTIONS: return std::make_unique<CustomAudioOptionView>(attach);
+		case ViewID::VIDEO_OPTIONS: return std::make_unique<CustomVideoOptionView>(attach, videoLayer);
+		case ViewID::AUDIO_OPTIONS: return std::make_unique<CustomAudioOptionView>(attach, audio);
 		case ViewID::SYSTEM_OPTIONS: return std::make_unique<CustomSystemOptionView>(attach);
 		case ViewID::FILE_PATH_OPTIONS: return std::make_unique<CustomFilePathOptionView>(attach);
 		case ViewID::EDIT_CHEATS: return std::make_unique<EmuEditCheatListView>(attach);

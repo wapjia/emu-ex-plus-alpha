@@ -16,6 +16,7 @@
 #include <emuframework/SystemOptionView.hh>
 #include <emuframework/EmuApp.hh>
 #include <emuframework/EmuOptions.hh>
+#include <emuframework/viewUtils.hh>
 #include "CPUAffinityView.hh"
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/gui/TextTableView.hh>
@@ -35,10 +36,10 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 		{"15分钟", attach, {.id = 15}},
 		{"自定义", attach, [this](const Input::Event &e)
 			{
-				app().pushAndShowNewCollectValueRangeInputView<int, 0, maxAutosaveSaveFreq.count()>(attachParams(), e, "Input 0 to 720", "",
-					[this](EmuApp &app, auto val)
+				pushAndShowNewCollectValueRangeInputView<int, 0, maxAutosaveSaveFreq.count()>(attachParams(), e, "Input 0 to 720", "",
+					[this](CollectTextInputView &, auto val)
 					{
-						app.autosaveManager.saveTimer.frequency = Minutes{val};
+						app().autosaveManager.saveTimer.frequency = Minutes{val};
 						autosaveTimer.setSelected(MenuId{val}, *this);
 						dismissPrevious();
 						return true;
@@ -108,21 +109,14 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 		{"自定义", attach,
 			[this](const Input::Event &e)
 			{
-				app().pushAndShowNewCollectValueInputView<float>(attachParams(), e, "输入1.0到20.0", "",
-					[this](EmuApp &app, auto val)
+				pushAndShowNewCollectValueRangeInputView<float, 1, 20>(attachParams(), e, "输入1.0到20.0", "",
+					[this](CollectTextInputView &, auto val)
 					{
 						auto valAsInt = std::round(val * 100.f);
-						if(app.setAltSpeed(AltSpeedMode::fast, valAsInt))
-						{
-							fastModeSpeed.setSelected(MenuId{valAsInt}, *this);
-							dismissPrevious();
-							return true;
-						}
-						else
-						{
-							app.postErrorMessage("输入错误");
-							return false;
-						}
+						app().setAltSpeed(AltSpeedMode::fast, valAsInt);
+						fastModeSpeed.setSelected(MenuId{valAsInt}, *this);
+						dismissPrevious();
+						return true;
 					});
 				return false;
 			}, {.id = defaultMenuId}
@@ -149,11 +143,11 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 		{"自定义", attach,
 			[this](const Input::Event &e)
 			{
-				app().pushAndShowNewCollectValueInputView<float>(attachParams(), e, "输入0.05到1.0", "",
-					[this](EmuApp &app, auto val)
+				pushAndShowNewCollectValueInputView<float>(attachParams(), e, "Input 0.05 up to 1.0", "",
+					[this](CollectTextInputView &, auto val)
 					{
 						auto valAsInt = std::round(val * 100.f);
-						if(app.setAltSpeed(AltSpeedMode::slow, valAsInt))
+						if(app().setAltSpeed(AltSpeedMode::slow, valAsInt))
 						{
 							slowModeSpeed.setSelected(MenuId{valAsInt}, *this);
 							dismissPrevious();
@@ -161,7 +155,7 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 						}
 						else
 						{
-							app.postErrorMessage("输入错误");
+							app().postErrorMessage("输入错误");
 							return false;
 						}
 					});
@@ -190,11 +184,11 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 		{"60", attach, {.id = 60}},
 		{"自定义", attach, [this](const Input::Event &e)
 			{
-				app().pushAndShowNewCollectValueRangeInputView<int, 0, 50000>(attachParams(), e,
+				pushAndShowNewCollectValueRangeInputView<int, 0, 50000>(attachParams(), e,
 					"输入0到50000", std::to_string(app().rewindManager.maxStates),
-					[this](EmuApp &app, auto val)
+					[this](CollectTextInputView &, auto val)
 					{
-						app.rewindManager.updateMaxStates(val);
+						app().rewindManager.updateMaxStates(val);
 						rewindStates.setSelected(val, *this);
 						dismissPrevious();
 						return true;
@@ -222,11 +216,11 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 		"倒带存档时间间隔(秒)", std::to_string(app().rewindManager.saveTimer.frequency.count()), attach,
 		[this](const Input::Event &e)
 		{
-			app().pushAndShowNewCollectValueRangeInputView<int, 1, 60>(attachParams(), e,
+			pushAndShowNewCollectValueRangeInputView<int, 1, 60>(attachParams(), e,
 				"输入1到60", std::to_string(app().rewindManager.saveTimer.frequency.count()),
-				[this](EmuApp &app, auto val)
+				[this](CollectTextInputView &, auto val)
 				{
-					app.rewindManager.saveTimer.frequency = Seconds{val};
+					app().rewindManager.saveTimer.frequency = Seconds{val};
 					rewindTimeInterval.set2ndName(std::to_string(val));
 					return true;
 				});

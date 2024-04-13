@@ -62,7 +62,6 @@ class EmuViewController final: public ViewController, public EmuAppHelper<EmuVie
 {
 public:
 	EmuViewController(ViewAttachParams, VController &, EmuVideoLayer &, EmuSystem &);
-	void pushAndShowMainMenu(ViewAttachParams, EmuVideoLayer &, EmuAudio &);
 	void pushAndShow(std::unique_ptr<View>, const Input::Event &, bool needsNavView, bool isModal = false) final;
 	using ViewController::pushAndShow;
 	void pushAndShowModal(std::unique_ptr<View>, const Input::Event &, bool needsNavView);
@@ -103,6 +102,7 @@ public:
 	void onHide();
 	void movePopupToWindow(IG::Window &win);
 	void moveEmuViewToWindow(IG::Window &win);
+	View &top() const { return viewStack.top(); }
 
 public:
 	EmuView emuView;

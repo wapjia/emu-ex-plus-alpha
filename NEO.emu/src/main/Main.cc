@@ -33,9 +33,8 @@ extern "C"
 	#include <gngeo/timer.h>
 	#include <gngeo/memory.h>
 	#include <gngeo/video.h>
-	#include <gngeo/screen.h>
-	#include <gngeo/menu.h>
 	#include <gngeo/resfile.h>
+	#include <gngeo/menu.h>
 
 	CONFIG conf{};
 	GN_Rect visible_area;
@@ -113,7 +112,6 @@ NeoSystem::NeoSystem(ApplicationContext ctx):
 	sdlSurf.w = FBResX;
 	sdlSurf.pixels = screenBuff;
 	buffer = &sdlSurf;
-	conf.sound = 1;
 	conf.sample_rate = 4096; // must be initialized to any valid value for YM2610Init()
 	strcpy(rompathConfItem.data.dt_str.str, ".");
 	if(!Config::envIsAndroid)
@@ -416,7 +414,10 @@ CLINK ROM_DEF *res_load_drv(void *contextPtr, const char *name)
 	io.read(drv->longname, 128);
 	drv->year = io.get<uint32_t>(); // TODO: LE byte-swap on uint32_t reads
 	for(auto i : iotaCount(10))
+	{
 		drv->romsize[i] = io.get<uint32_t>();
+		//EmuEx::log.debug("ROM region:{} size:{:X}", i, drv->romsize[i]);
+	}
 	drv->nb_romfile = io.get<uint32_t>();
 	for(auto i : iotaCount(drv->nb_romfile))
 	{
@@ -426,6 +427,8 @@ CLINK ROM_DEF *res_load_drv(void *contextPtr, const char *name)
 		drv->rom[i].dest = io.get<uint32_t>();
 		drv->rom[i].size = io.get<uint32_t>();
 		drv->rom[i].crc = io.get<uint32_t>();
+		//EmuEx::log.debug("ROM file:{} region:{}, src:{:X} dest:{:X} size:{:X} crc:{:X}", drv->rom[i].filename,
+		//	drv->rom[i].region, drv->rom[i].src, drv->rom[i].dest, drv->rom[i].size, drv->rom[i].crc);
 	}
 	return drv;
 }
@@ -457,6 +460,11 @@ CLINK void screen_update(void *emuTaskCtxPtr, void *neoSystemPtr, void *emuVideo
 	{
 		//logMsg("skipping render");
 	}
+}
+
+CLINK int currentZ80Timeslice()
+{
+	return IG::remap(memory.vid.current_line, 0, 264, 0, 256);
 }
 
 void sramWritten()
