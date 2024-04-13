@@ -2173,7 +2173,7 @@ namespace IG
         if(!sys.hasContent())//是否在游戏中
             return 0.0;
 
-        return app.emuScreen().frameRate();
+        return sys.frameRate();
     }
     double ApplicationContext::getFrameRate1()
     {
