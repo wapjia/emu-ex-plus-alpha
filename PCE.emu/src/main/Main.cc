@@ -145,7 +145,7 @@ void PceSystem::setDefaultConfigAiWu(std::list<std::string> configList)
 /**
  * 拆分字符串
  */
-std::vector<std::string> SaturnSystem::mSplit(const std::string &s, char delimiter) {
+std::vector<std::string> PceSystem::mSplit(const std::string &s, char delimiter) {
     std::vector<std::string> tokens;
     std::istringstream tokenStream(s);
     std::string token;
