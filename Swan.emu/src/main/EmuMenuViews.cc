@@ -183,9 +183,9 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	TextMenuItem rotationItem[3]
 	{
-		{"Auto",       attachParams(), setRotationDel(), {.id = WsRotation::Auto}},
-		{"Horizontal", attachParams(), setRotationDel(), {.id = WsRotation::Horizontal}},
-		{"Vertical",   attachParams(), setRotationDel(), {.id = WsRotation::Vertical}},
+		{"自动",       attachParams(), setRotationDel(), {.id = WsRotation::Auto}},
+		{"水平", attachParams(), setRotationDel(), {.id = WsRotation::Horizontal}},
+		{"垂直",   attachParams(), setRotationDel(), {.id = WsRotation::Vertical}},
 	};
 
 	MultiChoiceMenuItem rotation
