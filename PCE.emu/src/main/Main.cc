@@ -128,7 +128,7 @@ FS::FileString PceSystem::stateFilename(int slot, std::string_view name) const
 void PceSystem::setDefaultConfigAiWu(std::list<std::string> configList)
 {
     //todo 此处写设置配置的代码
-    log.error("爱吾配置:开始");
+    logMsg("爱吾配置:开始");
     for (std::list<std::string>::iterator it = configList.begin(); it != configList.end(); it++)
     {
         std::string& configString = *it;
