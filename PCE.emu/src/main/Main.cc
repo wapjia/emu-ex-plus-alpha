@@ -121,7 +121,39 @@ FS::FileString PceSystem::stateFilename(int slot, std::string_view name) const
     return IG::format<FS::FileString>("{}.nc{}", name, saveSlotCharAiWu(slot));
 //	return stateFilenameMDFN(*MDFNGameInfo, slot, name, 'q', noMD5InFilenames);
 }
-
+/**
+ * 设置默认配置
+ * @param configList
+ */
+    void SaturnSystem::setDefaultConfigAiWu(std::list<std::string> configList)
+    {
+        //todo 此处写设置配置的代码
+        log.error("爱吾配置:开始");
+        for (std::list<std::string>::iterator it = configList.begin(); it != configList.end(); it++)
+        {
+            std::string& configString = *it;
+            std::vector<std::string> vConfig = mSplit(configString, '=');
+            if (vConfig.at(0) == "sysCardPath") {
+                sysCardPath = vConfig.at(1);
+                log.error("爱吾配置:sysCardPath={}",vConfig.at(1));
+            }else{
+                log.error("爱吾配置:没匹配到");
+            }
+        }
+        log.error("爱吾配置:结束");
+    }
+/**
+ * 拆分字符串
+ */
+std::vector<std::string> SaturnSystem::mSplit(const std::string &s, char delimiter) {
+    std::vector<std::string> tokens;
+    std::istringstream tokenStream(s);
+    std::string token;
+    while (std::getline(tokenStream, token, delimiter)) {
+        tokens.push_back(token);
+    }
+    return tokens;
+}
 void PceSystem::closeSystem()
 {
 	mdfnGameInfo.CloseGame();
