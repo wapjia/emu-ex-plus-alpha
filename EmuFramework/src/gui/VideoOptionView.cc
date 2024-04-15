@@ -149,12 +149,12 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 		{"100%",                  attach, {.id = 100}},
 		{"90%",                   attach, {.id = 90}},
 		{"80%",                   attach, {.id = 80}},
-		{"Integer-only",          attach, {.id = optionContentScaleIntegerOnly}},
-		{"Integer-only (Height)", attach, {.id = optionContentScaleIntegerOnlyY}},
-		{"Custom Value", attach,
+		{"仅整数",          attach, {.id = optionContentScaleIntegerOnly}},
+		{"仅整数(高度)", attach, {.id = optionContentScaleIntegerOnlyY}},
+		{"自定义值", attach,
 			[this](const Input::Event &e)
 			{
-				pushAndShowNewCollectValueRangeInputView<int, 10, 200>(attachParams(), e, "Input 10 to 200", "",
+				pushAndShowNewCollectValueRangeInputView<int, 10, 200>(attachParams(), e, "输入10到200", "",
 					[this](CollectTextInputView &, auto val)
 					{
 						app().setContentScale(val);
@@ -168,7 +168,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 	},
 	contentScale
 	{
-		"Content Scale", attach,
+		"游戏缩放比例", attach,
 		MenuId{app().contentScale},
 		contentScaleItems,
 		{
@@ -192,7 +192,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 		{"自定义", attach,
 			[this](const Input::Event &e)
 			{
-				pushAndShowNewCollectValueRangeInputView<int, 50, 100>(attachParams(), e, "Input 50 to 100", "",
+				pushAndShowNewCollectValueRangeInputView<int, 50, 100>(attachParams(), e, "输入50到100", "",
 					[this](CollectTextInputView &, auto val)
 					{
 						app().setMenuScale(val);
@@ -206,7 +206,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 	},
 	menuScale
 	{
-		"Menu Scale", attach,
+		"菜单缩放比例", attach,
 		MenuId{app().menuScale},
 		menuScaleItems,
 		{
