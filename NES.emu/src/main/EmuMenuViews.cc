@@ -96,7 +96,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 
 	BoolMenuItem fcMic
 	{
-		"P2 Start As Microphone", attachParams(),
+		"P2作为麦克风启动", attachParams(),
 		replaceP2StartWithMicrophone,
 		[this](BoolMenuItem &item, View &, Input::Event e)
 		{

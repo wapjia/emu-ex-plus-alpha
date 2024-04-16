@@ -106,6 +106,8 @@ public:
 	VideoSystem videoSystem() const;
     //region 爱吾修改
     void setCheatListAiWu(std::list<std::string> cheats);
+    void setDefaultConfigAiWu(std::list<std::string> configList);
+    std::vector<std::string> mSplit(const std::string &s, char delimiter);
     //endregion
 private:
 	void setupSmsInput(EmuApp &);
