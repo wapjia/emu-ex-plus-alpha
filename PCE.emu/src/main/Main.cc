@@ -135,7 +135,7 @@ void PceSystem::setDefaultConfigAiWu(std::list<std::string> configList)
         std::vector<std::string> vConfig = mSplit(configString, '=');
         if (vConfig.at(0) == "sysCardPath") {
             sysCardPath = vConfig.at(1);
-            logMsg("爱吾配置:sysCardPath=%s",vConfig.at(1));
+            logMsg("爱吾配置:sysCardPath=%s",vConfig.at(1).c_str());
         }else{
             logMsg("爱吾配置:没匹配到");
         }
