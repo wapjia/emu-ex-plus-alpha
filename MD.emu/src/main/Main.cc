@@ -164,13 +164,13 @@ void MdSystem::setDefaultConfigAiWu(std::list<std::string> configList)
         std::string& configString = *it;
         std::vector<std::string> vConfig = mSplit(configString, '=');
         if (vConfig.at(0) == "cdBiosUSAPath") {
-            naBiosPath = vConfig.at(1);
+            cdBiosUSAPath = vConfig.at(1);
             log.error("爱吾配置:cdBiosUSAPath={}",vConfig.at(1));
         }else if (vConfig.at(0) == "cdBiosJpnPath") {
-            jpBiosPath = vConfig.at(1);
+            cdBiosJpnPath = vConfig.at(1);
             log.error("爱吾配置:cdBiosJpnPath={}",vConfig.at(1));
         }else if (vConfig.at(0) == "cdBiosEurPath") {
-            kof95ROMPath = vConfig.at(1);
+            cdBiosEurPath = vConfig.at(1);
             log.error("爱吾配置:cdBiosEurPath={}",vConfig.at(1));
         }else{
             log.error("爱吾配置:没匹配到");
