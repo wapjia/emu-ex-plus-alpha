@@ -153,6 +153,8 @@ public:
 	bool onPointerInputEnd(const Input::MotionEvent &, Input::DragTrackerState, IG::WindowRect gameRect);
     //region 爱吾
     void setCheatListAiWu(std::list<std::string> cheats);
+    void setDefaultConfigAiWu(std::list<std::string> configList);
+    std::vector<std::string> mSplit(const std::string &s, char delimiter);
     //endregion
 protected:
 	void applyInputPortOption(int portVal, VController &vCtrl);

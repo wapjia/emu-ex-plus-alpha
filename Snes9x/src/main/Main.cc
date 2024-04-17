@@ -112,6 +112,47 @@ void Snes9xSystem::reset(EmuApp &, ResetMode mode)
 #endif
 
 //region 爱吾修改
+/**
+ * 设置默认配置
+ * @param configList
+ */
+void Snes9xSystem::setDefaultConfigAiWu(std::list<std::string> configList)
+{
+    //todo 此处写设置配置的代码
+    logMsg("爱吾配置:开始");
+    for (std::list<std::string>::iterator it = configList.begin(); it != configList.end(); it++)
+    {
+        std::string& configString = *it;
+        std::vector<std::string> vConfig = mSplit(configString, '=');
+        if (vConfig.at(0) == "sufamiBiosPath") {
+            sufamiBiosPath = vConfig.at(1);
+            logMsg("爱吾配置:sufamiBiosPath=%s", vConfig.at(1));
+        }else if (vConfig.at(0) == "bsxBiosPath") {
+            bsxBiosPath = vConfig.at(1);
+            logMsg("爱吾配置:bsxBiosPath=%s", vConfig.at(1));
+        }else{
+            logMsg("爱吾配置:没匹配到");
+        }
+    }
+    logMsg("爱吾配置:结束");
+}
+/**
+ * 拆分字符串
+ */
+std::vector<std::string> Snes9xSystem::mSplit(const std::string &s, char delimiter) {
+    std::vector<std::string> tokens;
+    std::istringstream tokenStream(s);
+    std::string token;
+    while (std::getline(tokenStream, token, delimiter)) {
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
+void Snes9xSystem::setCheatListAiWu(std::list<std::string> cheats)
+{
+    setCheatListForAiWu(cheats);
+}
 const char *saveSlotCharAiWu(int slot)
 {
     switch(slot)
@@ -420,12 +461,7 @@ void EmuApp::onCustomizeNavView(EmuApp::NavView &view)
 	};
 	view.setBackgroundGradient(navViewGrad);
 }
-//region 爱吾
-void Snes9xSystem::setCheatListAiWu(std::list<std::string> cheats)
-{
-    setCheatListForAiWu(cheats);
-}
-//endregion
+
 }
 
 bool8 S9xDeinitUpdate (int width, int height)
