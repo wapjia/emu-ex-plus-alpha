@@ -126,10 +126,10 @@ void Snes9xSystem::setDefaultConfigAiWu(std::list<std::string> configList)
         std::vector<std::string> vConfig = mSplit(configString, '=');
         if (vConfig.at(0) == "sufamiBiosPath") {
             sufamiBiosPath = vConfig.at(1);
-            logMsg("爱吾配置:sufamiBiosPath=%s", vConfig.at(1));
+            logMsg("爱吾配置:sufamiBiosPath=%s", vConfig.at(1).c_str());
         }else if (vConfig.at(0) == "bsxBiosPath") {
             bsxBiosPath = vConfig.at(1);
-            logMsg("爱吾配置:bsxBiosPath=%s", vConfig.at(1));
+            logMsg("爱吾配置:bsxBiosPath=%s", vConfig.at(1).c_str());
         }else{
             logMsg("爱吾配置:没匹配到");
         }
