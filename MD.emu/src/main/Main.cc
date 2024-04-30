@@ -159,6 +159,9 @@ void MdSystem::setDefaultConfigAiWu(std::list<std::string> configList)
 {
     //todo 此处写设置配置的代码
     log.error("爱吾配置:开始");
+    option6BtnPad = true;//默认开启6按键模式
+    optionMultiTap = true;//默认开启4玩家模式
+
     for (std::list<std::string>::iterator it = configList.begin(); it != configList.end(); it++)
     {
         std::string& configString = *it;
@@ -172,7 +175,11 @@ void MdSystem::setDefaultConfigAiWu(std::list<std::string> configList)
         }else if (vConfig.at(0) == "cdBiosEurPath") {
             cdBiosEurPath = vConfig.at(1);
             log.error("爱吾配置:cdBiosEurPath={}",vConfig.at(1));
-        }else{
+        }else if (vConfig.at(0) == "cdBiosEurPath") {
+            cdBiosEurPath = vConfig.at(1);
+            log.error("爱吾配置:cdBiosEurPath={}",vConfig.at(1));
+        }
+        else{
             log.error("爱吾配置:没匹配到");
         }
     }
