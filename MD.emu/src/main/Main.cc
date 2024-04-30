@@ -155,12 +155,15 @@ FS::FileString MdSystem::stateFilename(int slot, std::string_view name) const
  * 设置默认配置
  * @param configList
  */
-void MdSystem::setDefaultConfigAiWu(std::list<std::string> configList)
+void MdSystem::setDefaultConfigAiWu(EmuApp &app, std::list<std::string> configList)
 {
     //todo 此处写设置配置的代码
     log.error("爱吾配置:开始");
-    option6BtnPad = true;
-    optionMultiTap = true;
+
+    app.system().sessionOptionSet();
+    app.system().option6BtnPad = true;
+    app.system().optionMultiTap = true;
+    app.system().setupInput(app);
     for (std::list<std::string>::iterator it = configList.begin(); it != configList.end(); it++)
     {
         std::string& configString = *it;

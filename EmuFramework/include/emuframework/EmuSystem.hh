@@ -374,7 +374,7 @@ public:
 	static void throwMissingContentDirError();
     //region 爱吾修改
     void setCheatListAiWu(std::list<std::string> cheats);
-    void setDefaultConfigAiWu(std::list<std::string> configList);
+    void setDefaultConfigAiWu(EmuApp &, std::list<std::string> configList);
     //endregion
 protected:
 	IG::ApplicationContext appCtx{};
