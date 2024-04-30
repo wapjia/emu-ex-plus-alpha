@@ -2164,7 +2164,7 @@ namespace IG
     {
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();
-        sys.setDefaultConfigAiWu(configList);
+        sys.setDefaultConfigAiWu(app,configList);
     }
     double ApplicationContext::getFrameRate()
     {

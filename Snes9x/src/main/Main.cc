@@ -116,7 +116,7 @@ void Snes9xSystem::reset(EmuApp &, ResetMode mode)
  * 设置默认配置
  * @param configList
  */
-void Snes9xSystem::setDefaultConfigAiWu(std::list<std::string> configList)
+void Snes9xSystem::setDefaultConfigAiWu(EmuApp &app, std::list<std::string> configList)
 {
     //todo 此处写设置配置的代码
     logMsg("爱吾配置:开始");

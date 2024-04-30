@@ -212,7 +212,7 @@ FS::FileString SaturnSystem::stateFilename(int slot, std::string_view name) cons
  * 设置默认配置
  * @param configList
  */
-void SaturnSystem::setDefaultConfigAiWu(std::list<std::string> configList)
+void SaturnSystem::setDefaultConfigAiWu(EmuApp &app, std::list<std::string> configList)
 {
     //todo 此处写设置配置的代码
     log.error("爱吾配置:开始");

@@ -161,7 +161,7 @@ public:
 	bool resetSessionOptions(EmuApp &);
 	double videoAspectRatioScale() const;
     //region 爱吾修改
-    void setDefaultConfigAiWu(std::list<std::string> configList);
+    void setDefaultConfigAiWu(EmuApp &app, std::list<std::string> configList);
     std::vector<std::string> mSplit(const std::string &s, char delimiter);
     //endregion
 private:
