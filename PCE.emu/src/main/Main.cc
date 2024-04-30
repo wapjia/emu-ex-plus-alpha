@@ -125,7 +125,7 @@ FS::FileString PceSystem::stateFilename(int slot, std::string_view name) const
  * 设置默认配置
  * @param configList
  */
-void PceSystem::setDefaultConfigAiWu(EmuApp &, std::list<std::string> configList)
+void PceSystem::setDefaultConfigAiWu(std::list<std::string> configList)
 {
     //todo 此处写设置配置的代码
     logMsg("爱吾配置:开始");
