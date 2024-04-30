@@ -791,7 +791,7 @@ void EmuApp::launchSystem(const Input::Event &e)
 			!autosaveManager.saveOnlyBackupMemory && stateIsOlderThanBackupMemory())
 		{
 			viewController().pushAndShowModal(std::make_unique<YesNoAlertView>(attachParams(),
-				"Autosave state timestamp is older than the contents of backup memory, really load it even though progress may be lost?",
+				"自动存档时间戳比备份内存的内容旧，进度可能会丢失，确定要加载吗？",
 				YesNoAlertView::Delegates
 				{
 					.onYes = [this]{ finishLaunch(*this, LoadAutosaveMode::Normal); },
@@ -972,7 +972,7 @@ void EmuApp::promptSystemReloadDueToSetOption(ViewAttachParams attach, const Inp
 	if(!system().hasContent())
 		return;
 	viewController().pushAndShowModal(std::make_unique<YesNoAlertView>(attach,
-		"This option takes effect next time the system starts. Restart it now?",
+		"该选项在系统下次启动时生效。是否立即重启？",
 		YesNoAlertView::Delegates
 		{ .onYes = [this, params]
 			{
@@ -1121,7 +1121,7 @@ bool EmuApp::saveStateWithSlot(int slot)
 	return saveState(system().statePath(slot));
 }
 
-bool EmuApp::loadState(CStringView path)
+bool EmuApp::loadState(IG::CStringView path)
 {
 	if(!system().hasContent()) [[unlikely]]
 	{

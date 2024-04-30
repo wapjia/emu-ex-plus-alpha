@@ -159,6 +159,8 @@ void MdSystem::setDefaultConfigAiWu(std::list<std::string> configList)
 {
     //todo 此处写设置配置的代码
     log.error("爱吾配置:开始");
+    option6BtnPad = true;
+    optionMultiTap = true;
     for (std::list<std::string>::iterator it = configList.begin(); it != configList.end(); it++)
     {
         std::string& configString = *it;

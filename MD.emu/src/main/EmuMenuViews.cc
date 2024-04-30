@@ -157,9 +157,9 @@ class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionVi
 					{
 						switch(region)
 						{
-							case REGION_USA: return "美国";
-							case REGION_EUROPE: return "欧洲";
-							default: return "日本";
+							case REGION_USA: return "USA";
+							case REGION_EUROPE: return "Europe";
+							default: return "Japan";
 						}
 					};
 					t.resetString(regionStr(region_code));
