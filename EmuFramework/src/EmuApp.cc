@@ -1775,15 +1775,20 @@ namespace IG
         sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), {0,0,0,0,player}, Input::Action::RELEASED});
     }
     /**
-     * 显示/隐藏 模拟器设置
+     * true:显示模拟器设置
+     * false:显示游戏画面
      */
-    void ApplicationContext::showSettingAiWu()
+    void ApplicationContext::showSettingAiWu(bool isShow)
     {
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();
         if(!sys.hasContent())
             return;
-        app.showUI();
+        if(isShow){
+            app.showUI();
+        }else{
+            app.showEmulation()
+        }
     }
     /**
      * 改变模拟器状态(暂停/启动)

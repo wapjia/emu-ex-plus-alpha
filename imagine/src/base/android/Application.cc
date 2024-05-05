@@ -377,11 +377,11 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     },
 //endregion
                     {
-                            "showSetting", "()V",
+                            "showSetting", "(Z)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz)
+                                    +[](JNIEnv* env, jobject thiz,jboolean isShow)
                                     {
-                                        IG::gAiWuAppContext().showSettingAiWu();
+                                        IG::gAiWuAppContext().showSettingAiWu(isShow);
                                     }
                     },
                     {
