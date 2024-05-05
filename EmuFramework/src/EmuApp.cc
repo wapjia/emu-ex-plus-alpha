@@ -1787,7 +1787,7 @@ namespace IG
         if(isShow){
             app.showUI();
         }else{
-            app.showEmulation()
+            app.showEmulation();
         }
     }
     /**
