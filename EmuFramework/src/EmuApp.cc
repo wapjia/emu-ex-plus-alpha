@@ -1798,7 +1798,7 @@ namespace IG
         if(pause){
             app.pauseEmulation();
         } else {
-            app.startEmulation();
+            app.showEmulation();
         }
     }
     void ApplicationContext::resetAiWu()
