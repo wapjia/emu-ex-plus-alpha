@@ -23,7 +23,6 @@
 #include <imagine/base/MessagePort.hh>
 #include <imagine/input/Device.hh>
 #include <imagine/util/DelegateFuncSet.hh>
-#include <vector>
 #include <memory>
 #include <optional>
 #include <cstdint>
@@ -32,6 +31,8 @@
 
 namespace IG
 {
+
+enum class BluetoothSocketState: uint8_t;
 
 enum class ActivityState : uint8_t
 {
@@ -114,7 +115,7 @@ public:
 	void setSwappedConfirmKeys(std::optional<bool>);
 	uint8_t keyEventFlags() const;
 	bool processICadeKey(const Input::KeyEvent &, Window &);
-	void bluetoothInputDeviceStatus(ApplicationContext, Input::Device &, int status);
+	void bluetoothInputDeviceStatus(ApplicationContext, Input::Device&, BluetoothSocketState);
 
 protected:
 	struct CommandMessage

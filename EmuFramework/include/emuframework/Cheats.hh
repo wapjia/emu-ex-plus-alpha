@@ -27,7 +27,7 @@ namespace EmuEx
 using namespace IG;
 using RefreshCheatsDelegate = DelegateFunc<void ()>;
 
-class BaseCheatsView : public TableView, public EmuAppHelper<BaseCheatsView>
+class BaseCheatsView : public TableView, public EmuAppHelper
 {
 public:
 	BaseCheatsView(ViewAttachParams attach);
@@ -39,10 +39,10 @@ protected:
 	virtual void loadCheatItems() = 0;
 };
 
-class BaseEditCheatListView : public TableView, public EmuAppHelper<BaseEditCheatListView>
+class BaseEditCheatListView : public TableView, public EmuAppHelper
 {
 public:
-	BaseEditCheatListView(ViewAttachParams attach, TableView::ItemsDelegate items, TableView::ItemDelegate item);
+	BaseEditCheatListView(ViewAttachParams attach, TableView::ItemSourceDelegate);
 	void setOnCheatListChanged(RefreshCheatsDelegate del);
 
 protected:
@@ -54,20 +54,17 @@ protected:
 };
 
 template <class CheatViewImpl>
-class BaseEditCheatView : public TableView, public EmuAppHelper<BaseEditCheatView<CheatViewImpl>>
+class BaseEditCheatView : public TableView, public EmuAppHelper
 {
 public:
-	using EmuAppHelper<BaseEditCheatView<CheatViewImpl>>::app;
-
 	BaseEditCheatView(UTF16Convertible auto &&viewName, ViewAttachParams attach, UTF16Convertible auto &&cheatName,
-		TableView::ItemsDelegate items, TableView::ItemDelegate item, TextMenuItem::SelectDelegate removed,
+		TableView::ItemSourceDelegate itemSrc, TextMenuItem::SelectDelegate removed,
 		RefreshCheatsDelegate onCheatListChanged_):
 		TableView
 		{
 			IG_forward(viewName),
 			attach,
-			items,
-			item
+			itemSrc
 		},
 		name
 		{

@@ -30,13 +30,13 @@ PlaceVideoView::PlaceVideoView(ViewAttachParams attach, EmuVideoLayer &layer, VC
 	quads{attach.rendererTask, {.size = 4}}
 {
 	app().applyOSNavStyle(appContext(), true);
-	layer.setBrightness(app().videoBrightnessAsRGB());
+	layer.setBrightnessScale(1.f);
 }
 
 PlaceVideoView::~PlaceVideoView()
 {
 	app().applyOSNavStyle(appContext(), false);
-	layer.setBrightness(app().videoBrightnessAsRGB() * menuVideoBrightnessScale);
+	layer.setBrightnessScale(menuVideoBrightnessScale);
 }
 
 void PlaceVideoView::place()
@@ -65,7 +65,7 @@ void PlaceVideoView::place()
 
 bool PlaceVideoView::inputEvent(const Input::Event &e)
 {
-	return visit(overloaded
+	return e.visit(overloaded
 	{
 		[&](const Input::KeyEvent &e)
 		{
@@ -150,7 +150,7 @@ bool PlaceVideoView::inputEvent(const Input::Event &e)
 			}
 			return true;
 		}
-	}, e);
+	});
 }
 
 void PlaceVideoView::draw(Gfx::RendererCommands &__restrict__ cmds)

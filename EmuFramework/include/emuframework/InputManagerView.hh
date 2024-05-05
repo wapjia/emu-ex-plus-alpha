@@ -51,7 +51,7 @@ private:
 	Gfx::IQuads quads;
 };
 
-class InputManagerView final: public TableView, public EmuAppHelper<InputManagerView>
+class InputManagerView final: public TableView, public EmuAppHelper
 {
 public:
 	InputManagerView(ViewAttachParams attach, InputManager &);
@@ -73,7 +73,7 @@ private:
 	void loadItems();
 };
 
-class InputManagerOptionsView : public TableView, public EmuAppHelper<InputManagerOptionsView>
+class InputManagerOptionsView : public TableView, public EmuAppHelper
 {
 public:
 	InputManagerOptionsView(ViewAttachParams attach, EmuInputView *emuInputView);
@@ -83,19 +83,15 @@ private:
 	ConditionalMember<Config::Input::DEVICE_HOTSWAP, BoolMenuItem> notifyDeviceChange;
 	ConditionalMember<Config::Input::BLUETOOTH, TextHeadingMenuItem> bluetoothHeading;
 	ConditionalMember<Config::Input::BLUETOOTH && Config::BASE_CAN_BACKGROUND_APP, BoolMenuItem> keepBtActive;
-	#ifdef CONFIG_BLUETOOTH_SCAN_SECS
-	TextMenuItem btScanSecsItem[5];
-	MultiChoiceMenuItem btScanSecs;
-	#endif
-	#ifdef CONFIG_BLUETOOTH_SCAN_CACHE_USAGE
-	BoolMenuItem btScanCache;
-	#endif
+	ConditionalMember<Config::Bluetooth::scanTime, TextMenuItem> btScanSecsItem[5];
+	ConditionalMember<Config::Bluetooth::scanTime, MultiChoiceMenuItem> btScanSecs;
+	ConditionalMember<Config::Bluetooth::scanCache, BoolMenuItem> btScanCache;
 	BoolMenuItem altGamepadConfirm;
 	StaticArrayList<MenuItem*, 10> item;
 	EmuInputView *emuInputView{};
 };
 
-class InputManagerDeviceView : public TableView, public EmuAppHelper<InputManagerDeviceView>
+class InputManagerDeviceView : public TableView, public EmuAppHelper
 {
 public:
 	InputManagerDeviceView(UTF16String name, ViewAttachParams,

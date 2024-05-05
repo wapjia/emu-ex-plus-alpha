@@ -16,7 +16,7 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/config/defs.hh>
-#include <imagine/bluetooth/config.hh>
+#include <imagine/bluetooth/defs.hh>
 
 #ifdef ENV_NOTE
 #define PLATFORM_INFO_STR ENV_NOTE " (" CONFIG_ARCH_STR ")"
@@ -27,6 +27,9 @@
 
 namespace EmuEx
 {
+
+class EmuApp;
+class EmuSystem;
 
 #if defined __ANDROID__ || \
 	defined CONFIG_OS_IOS || \

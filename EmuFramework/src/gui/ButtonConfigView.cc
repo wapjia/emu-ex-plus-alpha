@@ -48,18 +48,21 @@ ButtonConfigView::ButtonConfigView(ViewAttachParams attach, InputManagerView &ro
 	{
 		cat_.name,
 		attach,
-		[this](const TableView &)
+		[this](ItemMessage msg) -> ItemReply
 		{
-			return resetItemsSize + cat.keys.size();
-		},
-		[this](const TableView &, size_t idx) -> MenuItem&
-		{
-			if(idx == 0)
-				return resetDefaults;
-			else if(idx == 1)
-				return reset;
-			else
-				return btn[idx - resetItemsSize];
+			return visit(overloaded
+			{
+				[&](const ItemsMessage &m) -> ItemReply { return resetItemsSize + cat.keys.size(); },
+				[&](const GetItemMessage &m) -> ItemReply
+				{
+					if(m.idx == 0)
+						return &resetDefaults;
+					else if(m.idx == 1)
+						return &reset;
+					else
+						return &btn[m.idx - resetItemsSize];
+				},
+			}, msg);
 		}
 	},
 	rootIMView{rootIMView_},
@@ -223,7 +226,7 @@ void ButtonConfigSetView::place()
 
 bool ButtonConfigSetView::inputEvent(const Input::Event &e)
 {
-	return visit(overloaded
+	return e.visit(overloaded
 	{
 		[&](const Input::MotionEvent &motionEv)
 		{
@@ -297,7 +300,7 @@ bool ButtonConfigSetView::inputEvent(const Input::Event &e)
 			}
 			return true;
 		}
-	}, e);
+	});
 }
 
 void ButtonConfigSetView::finalize()

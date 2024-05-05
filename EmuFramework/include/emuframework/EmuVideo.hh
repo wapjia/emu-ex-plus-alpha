@@ -20,7 +20,6 @@
 #include <emuframework/EmuSystemTaskContext.hh>
 #include <imagine/gfx/PixmapBufferTexture.hh>
 #include <imagine/gfx/SyncFence.hh>
-#include <optional>
 
 namespace EmuEx
 {
@@ -44,7 +43,7 @@ protected:
 	Gfx::LockedTextureBuffer texBuff;
 };
 
-class EmuVideo : public EmuAppHelper<EmuVideo>
+class EmuVideo : public EmuAppHelper
 {
 public:
 	using FrameFinishedDelegate = DelegateFunc<void (EmuVideo &)>;

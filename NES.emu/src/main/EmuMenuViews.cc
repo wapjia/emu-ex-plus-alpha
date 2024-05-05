@@ -42,10 +42,9 @@ namespace EmuEx
 
 constexpr SystemLogger log{"NES.emu"};
 
-template <class T>
-using MainAppHelper = EmuAppHelper<T, MainApp>;
+using MainAppHelper = EmuAppHelperBase<MainApp>;
 
-class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionView>
+class ConsoleOptionView : public TableView, public MainAppHelper
 {
 	BoolMenuItem fourScore
 	{
@@ -292,10 +291,10 @@ public:
 		} {}
 };
 
-class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<CustomVideoOptionView>
+class CustomVideoOptionView : public VideoOptionView, public MainAppHelper
 {
-	using  MainAppHelper<CustomVideoOptionView>::app;
-	using  MainAppHelper<CustomVideoOptionView>::system;
+	using  MainAppHelper::app;
+	using  MainAppHelper::system;
 
 	BoolMenuItem spriteLimit
 	{
@@ -324,11 +323,12 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<Custo
 	};
 
 	static constexpr auto digitalPrimePalPath = "Digital Prime (FBX).pal";
-	static constexpr auto smoothPalPath = "Smooth V2 (FBX)";
-	static constexpr auto magnumPalPath = "Magnum (FBX)";
+	static constexpr auto smoothPalPath = "Smooth V2 (FBX).pal";
+	static constexpr auto magnumPalPath = "Magnum (FBX).pal";
 	static constexpr auto classicPalPath = "Classic (FBX).pal";
 	static constexpr auto wavebeamPalPath = "Wavebeam.pal";
 	static constexpr auto lightfulPalPath = "Lightful.pal";
+	static constexpr auto palightfulPalPath = "Palightful.pal";
 
 	void setPalette(IG::ApplicationContext ctx, IG::CStringView palPath)
 	{
@@ -346,21 +346,19 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<Custo
 		return lastIndex(defaultPalItem);
 	}
 
-	TextMenuItem defaultPalItem[8]
+	TextMenuItem defaultPalItem[9]
 	{
-		{"FCEUX", attachParams(), [this](){ setPalette(appContext(), ""); }},
+		{"FCEUX",               attachParams(), [this]() { setPalette(appContext(), ""); }},
 		{"Digital Prime (FBX)", attachParams(), [this]() { setPalette(appContext(), digitalPrimePalPath); }},
-		{"Smooth V2 (FBX)", attachParams(), [this]() { setPalette(appContext(), smoothPalPath); }},
-		{"Magnum (FBX)", attachParams(), [this]() { setPalette(appContext(), magnumPalPath); }},
-		{"Classic (FBX)", attachParams(), [this]() { setPalette(appContext(), classicPalPath); }},
-		{"Wavebeam", attachParams(), [this]() { setPalette(appContext(), wavebeamPalPath); }},
-		{"Lightful", attachParams(), [this]() { setPalette(appContext(), lightfulPalPath); }},
-		{"自定义文件", attachParams(), [this](TextMenuItem &, View &, Input::Event e)
+		{"Smooth V2 (FBX)",     attachParams(), [this]() { setPalette(appContext(), smoothPalPath); }},
+		{"Magnum (FBX)",        attachParams(), [this]() { setPalette(appContext(), magnumPalPath); }},
+		{"Classic (FBX)",       attachParams(), [this]() { setPalette(appContext(), classicPalPath); }},
+		{"Wavebeam",            attachParams(), [this]() { setPalette(appContext(), wavebeamPalPath); }},
+		{"Lightful",            attachParams(), [this]() { setPalette(appContext(), lightfulPalPath); }},
+		{"Palightful",          attachParams(), [this]() { setPalette(appContext(), palightfulPalPath); }},
+		{"自定义文件", attachParams(), [this](Input::Event e)
 			{
-				auto fsFilter = [](std::string_view name)
-					{
-						return IG::endsWithAnyCaseless(name, ".pal");
-					};
+				auto fsFilter = [](std::string_view name) { return endsWithAnyCaseless(name, ".pal"); };
 				auto fPicker = makeView<FilePicker>(FSPicker::Mode::FILE, fsFilter, e, false);
 				fPicker->setOnSelectPath(
 					[this](FSPicker &picker, IG::CStringView path, std::string_view name, Input::Event)
@@ -388,6 +386,7 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper<Custo
 			if(system().defaultPalettePath == classicPalPath) return 4;
 			if(system().defaultPalettePath == wavebeamPalPath) return 5;
 			if(system().defaultPalettePath == lightfulPalPath) return 6;
+			if(system().defaultPalettePath == palightfulPalPath) return 7;
 			return (int)defaultPaletteCustomFileIdx();
 		}(),
 		defaultPalItem,
@@ -460,9 +459,9 @@ public:
 	}
 };
 
-class CustomAudioOptionView : public AudioOptionView, public MainAppHelper<CustomAudioOptionView>
+class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 {
-	using MainAppHelper<CustomAudioOptionView>::system;
+	using MainAppHelper::system;
 
 	void setQuality(int quaility)
 	{
@@ -572,10 +571,10 @@ public:
 	}
 };
 
-class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper<CustomFilePathOptionView>
+class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 {
-	using MainAppHelper<CustomFilePathOptionView>::app;
-	using MainAppHelper<CustomFilePathOptionView>::system;
+	using MainAppHelper::app;
+	using MainAppHelper::system;
 
 	TextMenuItem cheatsPath
 	{
@@ -655,7 +654,7 @@ public:
 	}
 };
 
-class FDSControlView : public TableView, public MainAppHelper<FDSControlView>
+class FDSControlView : public TableView, public MainAppHelper
 {
 private:
 	static constexpr unsigned DISK_SIDES = 4;
@@ -708,27 +707,15 @@ private:
 		}
 	};
 
+	std::array<TextMenuItem*, 5> items{&setSide[0], &setSide[1], &setSide[2], &setSide[3], &insertEject};
+
 public:
 	FDSControlView(ViewAttachParams attach):
 		TableView
 		{
 			"FDS控制",
 			attach,
-			[this](const TableView &)
-			{
-				return 5;
-			},
-			[this](const TableView &, unsigned idx) -> MenuItem&
-			{
-				switch(idx)
-				{
-					case 0: return setSide[0];
-					case 1: return setSide[1];
-					case 2: return setSide[2];
-					case 3: return setSide[3];
-					default: return insertEject;
-				}
-			}
+			items
 		}
 	{
 		setSide[0].setActive(0 < FCEU_FDSSides());
@@ -780,9 +767,9 @@ public:
 	}
 };
 
-class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<CustomSystemOptionView>
+class CustomSystemOptionView : public SystemOptionView, public MainAppHelper
 {
-	using MainAppHelper<CustomSystemOptionView>::system;
+	using MainAppHelper::system;
 
 	BoolMenuItem skipFdcAccess
 	{

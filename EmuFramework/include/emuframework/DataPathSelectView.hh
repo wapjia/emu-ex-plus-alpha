@@ -41,11 +41,9 @@ template<class T>
 concept FileChangeCallable = Callable<T, bool, CStringView, FS::file_type>;
 
 template<DataPathSelectMode mode, ArchivePathSelectMode archiveMode = ArchivePathSelectMode::include>
-class DataPathSelectView : public TableView, public EmuAppHelper<DataPathSelectView<mode, archiveMode>>
+class DataPathSelectView : public TableView, public EmuAppHelper
 {
 public:
-	using EmuAppHelper<DataPathSelectView<mode, archiveMode>>::app;
-
 	enum class Mode: uint8_t
 	{
 		File, Folder

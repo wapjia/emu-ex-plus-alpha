@@ -16,13 +16,12 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/config/defs.hh>
-#include <imagine/gui/ViewAttachParams.hh>
 #include <imagine/gui/ViewManager.hh>
 #include <imagine/gfx/GfxText.hh>
 #include <imagine/util/DelegateFunc.hh>
 #include <imagine/util/concepts.hh>
 #include <imagine/util/utility.h>
-#include <vector>
+#include <imagine/util/variant.hh>
 #include <iterator>
 #include <memory>
 #include <type_traits>
@@ -35,8 +34,20 @@ class Event;
 namespace IG
 {
 
-class View;
-class TableView;
+template<class Func, class... Args>
+constexpr bool callAndAutoReturnTrue(Func& f, Args&&... args)
+{
+	if constexpr(VoidInvokeResult<Func, Args...>)
+	{
+		// auto-return true if the supplied function doesn't return a value
+		f(std::forward<Args>(args)...);
+		return true;
+	}
+	else
+	{
+		return f(std::forward<Args>(args)...);
+	}
+}
 
 template <class Item>
 class MenuItemSelectDelegate : public DelegateFunc<bool (Item &, View &, const Input::Event &)>
@@ -51,58 +62,44 @@ public:
 	constexpr MenuItemSelectDelegate(Callable<void, Item &, View &, const Input::Event &> auto &&f):
 		DelegateFuncBase
 		{
-			[=](Item &i, View &v, const Input::Event &e) { return callAndReturnBool(f, i, v, e); }
+			[=](Item &i, View &v, const Input::Event &e) { return callAndAutoReturnTrue(f, i, v, e); }
 		} {}
 
 	constexpr MenuItemSelectDelegate(std::invocable<Item &, const Input::Event &> auto &&f):
 		DelegateFuncBase
 		{
-			[=](Item &i, View &v, const Input::Event &e) { return callAndReturnBool(f, i, e); }
+			[=](Item &i, View &v, const Input::Event &e) { return callAndAutoReturnTrue(f, i, e); }
 		} {}
 
 	constexpr MenuItemSelectDelegate(std::invocable<View &, const Input::Event &> auto &&f):
 		DelegateFuncBase
 		{
-			[=](Item &i, View &v, const Input::Event &e) { return callAndReturnBool(f, v, e); }
+			[=](Item &i, View &v, const Input::Event &e) { return callAndAutoReturnTrue(f, v, e); }
 		} {}
 
 	constexpr MenuItemSelectDelegate(std::invocable<Item &> auto &&f):
 		DelegateFuncBase
 		{
-			[=](Item &i, View &v, const Input::Event &e) { return callAndReturnBool(f, i); }
+			[=](Item &i, View &v, const Input::Event &e) { return callAndAutoReturnTrue(f, i); }
 		} {}
 
 	constexpr MenuItemSelectDelegate(std::invocable<View &> auto &&f):
 		DelegateFuncBase
 		{
-			[=](Item &i, View &v, const Input::Event &e) { return callAndReturnBool(f, v); }
+			[=](Item &i, View &v, const Input::Event &e) { return callAndAutoReturnTrue(f, v); }
 		} {}
 
 	constexpr MenuItemSelectDelegate(std::invocable<const Input::Event &> auto &&f):
 		DelegateFuncBase
 		{
-			[=](Item &i, View &v, const Input::Event &e) { return callAndReturnBool(f, e); }
+			[=](Item &i, View &v, const Input::Event &e) { return callAndAutoReturnTrue(f, e); }
 		} {}
 
 	constexpr MenuItemSelectDelegate(std::invocable auto &&f):
 		DelegateFuncBase
 		{
-			[=](Item &i, View &v, const Input::Event &e) { return callAndReturnBool(f); }
+			[=](Item &i, View &v, const Input::Event &e) { return callAndAutoReturnTrue(f); }
 		} {}
-
-	constexpr static bool callAndReturnBool(auto &f, auto &&...args)
-	{
-		if constexpr(VoidInvokeResult<decltype(f), decltype(args)...>)
-		{
-			// auto-return true if the supplied function doesn't return a value
-			f(IG_forward(args)...);
-			return true;
-		}
-		else
-		{
-			return f(IG_forward(args)...);
-		}
-	}
 };
 
 struct MenuItemFlags
@@ -310,9 +307,12 @@ protected:
 class MultiChoiceMenuItem : public BaseDualTextMenuItem
 {
 public:
+	struct ItemsMessage {const MultiChoiceMenuItem& item;};
+	struct GetItemMessage {const MultiChoiceMenuItem& item; size_t idx;};
+	using ItemMessage = std::variant<GetItemMessage, ItemsMessage>;
+	using ItemReply = std::variant<TextMenuItem*, size_t>;
+	using ItemSourceDelegate = MenuItemSourceDelegate<ItemMessage, ItemReply, ItemsMessage, GetItemMessage>;
 	using SelectDelegate = DelegateFunc<void (MultiChoiceMenuItem &, View &, const Input::Event &)>;
-	using ItemsDelegate = DelegateFunc<size_t (const MultiChoiceMenuItem &item)>;
-	using ItemDelegate = DelegateFunc<TextMenuItem& (const MultiChoiceMenuItem &item, size_t idx)>;
 	using SetDisplayStringDelegate = DelegateFunc<bool(size_t idx, Gfx::Text &text)>;
 
 	struct SelectedInit
@@ -340,7 +340,7 @@ public:
 	MultiChoiceMenuItem() = default;
 
 	MultiChoiceMenuItem(UTF16Convertible auto &&name, ViewAttachParams attach,
-		SelectedInit selected, ItemsDelegate items, ItemDelegate item, Config conf = Config::defaultConfig()):
+		SelectedInit selected, ItemSourceDelegate itemSrc, Config conf = Config::defaultConfig()):
 		BaseDualTextMenuItem{IG_forward(name), UTF16String{}, attach, toBaseConfig(conf)},
 		onSelect
 		{
@@ -350,8 +350,7 @@ public:
 					item.defaultOnSelect(view, e);
 				}
 		},
-		items_{items},
-		item_{item},
+		itemSrc{itemSrc},
 		onSetDisplayString{conf.onSetDisplayString},
 		selected_{selected.isId ? idxOfId(MenuId{selected.val}) : selected.val} {}
 
@@ -360,7 +359,7 @@ public:
 		MultiChoiceMenuItem
 		{
 			IG_forward(name), attach, selected,
-			itemsDelegate(IG_forward(item)), itemDelegate(IG_forward(item)), conf
+			ItemSourceDelegate{IG_forward(item)}, conf
 		}
 	{
 		if(conf.defaultItemOnSelect)
@@ -378,6 +377,7 @@ public:
 	void compile() override;
 	int selected() const;
 	size_t items() const;
+	TextMenuItem& item(size_t idx) { return item(itemSrc, idx); }
 	bool setSelected(int idx, View &view);
 	bool setSelected(int idx);
 	bool setSelected(MenuId, View &view);
@@ -391,28 +391,12 @@ public:
 	int idxOfId(MenuId);
 
 protected:
-	ItemsDelegate items_;
-	ItemDelegate item_;
+	ItemSourceDelegate itemSrc;
 	SetDisplayStringDelegate onSetDisplayString;
 	int selected_{};
 
 	void setDisplayString(size_t idx);
-
-	static constexpr ItemsDelegate itemsDelegate(Container auto &&item)
-	{
-		if constexpr(std::is_rvalue_reference_v<decltype(item)>)
-			return [size = std::size(item)](const MultiChoiceMenuItem &) { return size; };
-		else
-			return [&item](const MultiChoiceMenuItem &) { return std::size(item); };
-	}
-
-	static constexpr ItemDelegate itemDelegate(Container auto &&item)
-	{
-		if constexpr(std::is_rvalue_reference_v<decltype(item)>)
-			return [item](const MultiChoiceMenuItem &, size_t idx) -> TextMenuItem& { return std::data(item)[idx]; };
-		else
-			return [&item](const MultiChoiceMenuItem &, size_t idx) -> TextMenuItem& { return std::data(item)[idx]; };
-	}
+	TextMenuItem& item(ItemSourceDelegate, size_t idx);
 };
 
 }

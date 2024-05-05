@@ -378,32 +378,30 @@ public:
 
 using VControllerElementVariant = std::variant<VControllerButtonGroup, VControllerUIButtonGroup, VControllerDPad>;
 
-class VControllerElement : public VControllerElementVariant
+class VControllerElement : public VControllerElementVariant, public AddVisit
 {
 public:
 	using VControllerElementVariant::VControllerElementVariant;
+	using AddVisit::visit;
 
 	std::array<VControllerLayoutPosition, 2> layoutPos;
 	VControllerState state{VControllerState::SHOWN};
 
-	constexpr auto dPad() { return std::get_if<VControllerDPad>(this); }
-	constexpr auto dPad() const { return std::get_if<VControllerDPad>(this); }
-	constexpr auto buttonGroup() { return std::get_if<VControllerButtonGroup>(this); }
-	constexpr auto buttonGroup() const { return std::get_if<VControllerButtonGroup>(this); }
-	constexpr auto uiButtonGroup() { return std::get_if<VControllerUIButtonGroup>(this); }
-	constexpr auto uiButtonGroup() const { return std::get_if<VControllerUIButtonGroup>(this); }
+	constexpr auto dPad(this auto&& self) { return std::get_if<VControllerDPad>(&self); }
+	constexpr auto buttonGroup(this auto&& self) { return std::get_if<VControllerButtonGroup>(&self); }
+	constexpr auto uiButtonGroup(this auto&& self) { return std::get_if<VControllerUIButtonGroup>(&self); }
 
 	size_t configSize() const
 	{
 		return (sizeof(VControllerLayoutPosition::pos) + sizeof(_2DOrigin::PackedType)) * 2
 			+ sizeof(state)
-			+ visit([](auto &e){ return e.configSize(); }, *this);
+			+ visit([](auto &e){ return e.configSize(); });
 	}
 
-	WRect bounds() const { return visit([](auto &e){ return e.bounds(); }, *this); }
-	WRect realBounds() const { return visit([](auto &e){ return e.realBounds(); }, *this); }
-	void setPos(WPt pos, WRect viewBounds) { visit([&](auto &e){ e.setPos(pos, viewBounds); }, *this); }
-	void setAlpha(float alpha) { visit([&](auto &e){ e.setAlpha(alpha); }, *this); }
+	WRect bounds() const { return visit([](auto &e){ return e.bounds(); }); }
+	WRect realBounds() const { return visit([](auto &e){ return e.realBounds(); }); }
+	void setPos(WPt pos, WRect viewBounds) { visit([&](auto &e){ e.setPos(pos, viewBounds); }); }
+	void setAlpha(float alpha) { visit([&](auto &e){ e.setAlpha(alpha); }); }
 
 	static bool shouldDraw(VControllerState state, bool showHidden)
 	{
@@ -414,7 +412,7 @@ public:
 	{
 		if(!shouldDraw(state, showHidden))
 			return;
-		visit([&](auto &e){ e.drawButtons(cmds); }, *this);
+		visit([&](auto &e){ e.drawButtons(cmds); });
 	}
 
 	void drawBounds(Gfx::RendererCommands &__restrict__ cmds, bool showHidden) const
@@ -427,7 +425,7 @@ public:
 			{
 				e.drawBounds(cmds);
 			}
-		}, *this);
+		});
 	}
 
 	void place(WRect viewBounds, WRect windowBounds, int layoutIdx)
@@ -443,7 +441,7 @@ public:
 			[&](VControllerDPad &e){ e.setShowBounds(r, on); },
 			[&](VControllerButtonGroup &e){ e.setShowBounds(on); },
 			[](auto &e){}
-		}, *this);
+		});
 	}
 
 	_2DOrigin layoutOrigin() const
@@ -452,12 +450,12 @@ public:
 		{
 			[&](const VControllerDPad &e){ return LB2DO; },
 			[](auto &e){ return e.layout.origin; }
-		}, *this);
+		});
 	}
 
 	std::string name(const InputManager &mgr) const
 	{
-		return visit([&](auto &e){ return e.name(mgr); }, *this);
+		return visit([&](auto &e){ return e.name(mgr); });
 	}
 
 	void updateMeasurements(const Window &win)
@@ -468,7 +466,7 @@ public:
 			{
 				e.updateMeasurements(win);
 			}
-		}, *this);
+		});
 	}
 
 	void transposeKeysForPlayer(const InputManager &mgr, int player)
@@ -479,7 +477,7 @@ public:
 			{
 				e.transposeKeysForPlayer(mgr, player);
 			}
-		}, *this);
+		});
 	}
 
 	std::span<VControllerButton> buttons()
@@ -490,7 +488,7 @@ public:
 				return e.buttons;
 			else
 				return {};
-		}, *this);
+		});
 	}
 
 	void add(KeyInfo keyCode)
@@ -501,7 +499,7 @@ public:
 			{
 				e.buttons.emplace_back(keyCode);
 			}
-		}, *this);
+		});
 	}
 
 	void remove(VControllerButton &btnToErase)
@@ -512,7 +510,7 @@ public:
 			{
 				std::erase_if(e.buttons, [&](auto &b) { return &b == &btnToErase; });
 			}
-		}, *this);
+		});
 	}
 
 	void setRowSize(int8_t size)
@@ -521,7 +519,7 @@ public:
 		{
 			if constexpr(requires {e.layout.rowItems;})
 				e.layout.rowItems = size;
-		}, *this);
+		});
 	}
 
 	auto rowSize() const
@@ -532,7 +530,7 @@ public:
 				return e.layout.rowItems;
 			else
 				return 1;
-		}, *this);
+		});
 	}
 
 	void updateSprite(VControllerButton &b)
@@ -541,7 +539,7 @@ public:
 		{
 			if constexpr(requires {e.updateSprite(b);})
 				e.updateSprite(b);
-		}, *this);
+		});
 	}
 };
 
@@ -561,7 +559,7 @@ struct VControllerGamepadFlags
 	static constexpr VControllerGamepadFlags all() { return {.dpad = true, .buttons = true}; }
 };
 
-class VController : public EmuAppHelper<VController>
+class VController : public EmuAppHelper
 {
 public:
 	static constexpr KeyInfo TOGGLE_KEYBOARD = KeyInfo::appKey(254);

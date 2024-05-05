@@ -39,10 +39,9 @@ extern "C"
 namespace EmuEx
 {
 
-template <class T>
-using MainAppHelper = EmuAppHelper<T, MainApp>;
+using MainAppHelper = EmuAppHelperBase<MainApp>;
 
-class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionView>
+class ConsoleOptionView : public TableView, public MainAppHelper
 {
 	TextMenuItem timerItem[3]
 	{
@@ -96,9 +95,9 @@ public:
 	{}
 };
 
-class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<CustomSystemOptionView>
+class CustomSystemOptionView : public SystemOptionView, public MainAppHelper
 {
-	using MainAppHelper<CustomSystemOptionView>::system;
+	using MainAppHelper::system;
 
 	TextMenuItem::SelectDelegate setRegionDel()
 	{
@@ -182,9 +181,9 @@ public:
 	}
 };
 
-class EmuGUIOptionView : public GUIOptionView, public MainAppHelper<EmuGUIOptionView>
+class EmuGUIOptionView : public GUIOptionView, public MainAppHelper
 {
-	using MainAppHelper<EmuGUIOptionView>::system;
+	using MainAppHelper::system;
 
 	BoolMenuItem listAll
 	{
@@ -477,7 +476,7 @@ constexpr static bool gameFileExists(std::string_view name, std::string_view nam
 		FS::FileString{name}.append(".rar"));
 }
 
-class GameListView : public TableView, public MainAppHelper<GameListView>
+class GameListView : public TableView, public MainAppHelper
 {
 private:
 	std::vector<TextMenuItem> item{};
@@ -598,24 +597,15 @@ class UnibiosSwitchesView : public TableView
 		memory.memcard[3] = val;
 	}
 
+	std::array<MenuItem*, 2> items{&region, &system};
+
 public:
 	UnibiosSwitchesView(ViewAttachParams attach):
 		TableView
 		{
 			"Unibios Switches",
 			attach,
-			[this](const TableView &)
-			{
-				return 2;
-			},
-			[this](const TableView &, unsigned idx) -> MenuItem&
-			{
-				switch(idx)
-				{
-					case 0: return region;
-					default: return system;
-				}
-			}
+			items
 		}
 	{}
 

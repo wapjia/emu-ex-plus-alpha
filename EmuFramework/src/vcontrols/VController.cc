@@ -63,7 +63,7 @@ int VController::yMMSizeToPixel(const IG::Window &win, float mm) const
 
 static void updateTexture(const EmuApp &app, VControllerElement &e, Gfx::RendererTask &task, const Gfx::IndexBuffer<uint8_t> &fanQuadIdxs)
 {
-	visit(overloaded
+	e.visit(overloaded
 	{
 		[&](VControllerDPad &dpad){ dpad.setImage(task, app.asset(app.vControllerAssetDesc(0)), fanQuadIdxs); },
 		[&](VControllerButtonGroup &grp)
@@ -109,7 +109,7 @@ static void updateTexture(const EmuApp &app, VControllerElement &e, Gfx::Rendere
 			}
 			grp.setTask(task);
 		}
-	}, e);
+	});
 }
 
 void VController::updateTextures()
@@ -121,12 +121,12 @@ void VController::updateTextures()
 static void setSize(VControllerElement &elem, int sizePx, Gfx::Renderer &r)
 {
 	assert(sizePx);
-	visit(overloaded
+	elem.visit(overloaded
 	{
 		[&](VControllerDPad &dpad){ dpad.setSize(r, makeEvenRoundedUp(int(sizePx * 2.5f))); },
 		[&](VControllerButtonGroup &grp){ grp.setButtonSize(sizePx); },
 		[&](VControllerUIButtonGroup &grp){ grp.setButtonSize(sizePx); },
-	}, elem);
+	});
 }
 
 void VController::setButtonSizes(int gamepadBtnSizeInPixels, int uiBtnSizeInPixels)
@@ -206,7 +206,7 @@ std::array<KeyInfo, 2> VController::findGamepadElements(WPt pos)
 {
 	for(const auto &gpElem : gpElements)
 	{
-		auto indices = visit(overloaded
+		auto indices = gpElem.visit(overloaded
 		{
 			[&](const VControllerDPad &dpad) -> std::array<KeyInfo, 2>
 			{
@@ -221,7 +221,7 @@ std::array<KeyInfo, 2> VController::findGamepadElements(WPt pos)
 				return grp.findButtonIndices(pos);
 			},
 			[](auto &e) -> std::array<KeyInfo, 2> { return {}; }
-		}, gpElem);
+		});
 		if(indices != std::array<KeyInfo, 2>{})
 			return indices;
 	}
@@ -292,6 +292,8 @@ bool VController::pointerInputEvent(const Input::MotionEvent &e, IG::WindowRect 
 		}
 	}
 	bool elementsArePushed = newElems != nullElems;
+	auto &app = this->app();
+	auto &system = this->system();
 	auto applyInputActions =
 		[&](std::array<KeyInfo, 2> prevElements, std::array<KeyInfo, 2> currElements)
 		{
@@ -301,7 +303,7 @@ bool VController::pointerInputEvent(const Input::MotionEvent &e, IG::WindowRect 
 				if(vBtn && !contains(currElements, vBtn))
 				{
 					//log.info("releasing {}", vBtn[0]);
-					app().handleSystemKeyInput(vBtn, Input::Action::RELEASED);
+					app.handleSystemKeyInput(vBtn, Input::Action::RELEASED);
 				}
 			}
 			// push new buttons
@@ -310,10 +312,10 @@ bool VController::pointerInputEvent(const Input::MotionEvent &e, IG::WindowRect 
 				if(vBtn && !contains(prevElements, vBtn))
 				{
 					//log.info("pushing {}", vBtn[0]);
-					app().handleSystemKeyInput(vBtn, Input::Action::PUSHED);
+					app.handleSystemKeyInput(vBtn, Input::Action::PUSHED);
 					if(vibrateOnTouchInput())
 					{
-						app().vibrationManager.vibrate(IG::Milliseconds{32});
+						app.vibrationManager.vibrate(IG::Milliseconds{32});
 					}
 				}
 			}
@@ -325,7 +327,7 @@ bool VController::pointerInputEvent(const Input::MotionEvent &e, IG::WindowRect 
 			applyInputActions(nullElems, newElems);
 			if(!elementsArePushed)
 			{
-				elementsArePushed |= system().onPointerInputStart(e, dragState, gameRect);
+				elementsArePushed |= system.onPointerInputStart(e, dragState, gameRect);
 			}
 		},
 		[&](Input::DragTrackerState dragState, Input::DragTrackerState prevDragState, auto &currElems)
@@ -334,20 +336,20 @@ bool VController::pointerInputEvent(const Input::MotionEvent &e, IG::WindowRect 
 			applyInputActions(prevElems, newElems);
 			if(!elementsArePushed)
 			{
-				elementsArePushed |= system().onPointerInputUpdate(e, dragState, prevDragState, gameRect);
+				elementsArePushed |= system.onPointerInputUpdate(e, dragState, prevDragState, gameRect);
 			}
 		},
 		[&](Input::DragTrackerState dragState, auto &currElems)
 		{
 			applyInputActions(currElems, nullElems);
-			elementsArePushed |= system().onPointerInputEnd(e, dragState, gameRect);
+			elementsArePushed |= system.onPointerInputEnd(e, dragState, gameRect);
 		});
 	 if(!elementsArePushed && !gamepadControlsVisible() && shouldShowOnTouchInput()
 			&& !isInKeyboardMode() && e.isTouch() && e.pushed()) [[unlikely]]
 		{
 			log.info("turning on on-screen controls from touch input");
 			setGamepadControlsVisible(true);
-			app().viewController().placeEmuViews();
+			app.viewController().placeEmuViews();
 		}
 	return elementsArePushed;
 }
@@ -433,11 +435,11 @@ void VController::setDisabledInputKeys(std::span<const KeyCode> disabledKeys_)
 	disabledKeys = disabledKeys_;
 	for(auto &e : gpElements)
 	{
-		visit(overloaded
+		e.visit(overloaded
 		{
 			[&](VControllerButtonGroup &grp) { updateEnabledButtons(grp); },
 			[](auto &e){}
-		}, e);
+		});
 	}
 	place();
 }
@@ -700,7 +702,7 @@ bool VController::readConfig(EmuApp &app, MapIO &io, unsigned key)
 static void writeToConfig(const VControllerElement &e, FileIO &io)
 {
 	io.put(e.dPad() ? int8_t(1) : int8_t(0));
-	visit(overloaded
+	e.visit(overloaded
 	{
 		[&](const VControllerButtonGroup &e)
 		{
@@ -733,7 +735,7 @@ static void writeToConfig(const VControllerElement &e, FileIO &io)
 			io.put(config.deadzoneMM100x);
 			io.put(config.visualizeBounds);
 		},
-	}, e);
+	});
 	io.put(e.layoutPos[0].pos);
 	io.put(e.layoutPos[0].origin.pack());
 	io.put(e.layoutPos[1].pos);
@@ -1070,7 +1072,7 @@ void VController::updateSystemKeys(KeyInfo key, bool isPushed)
 	};
 	for(auto &e : gpElements)
 	{
-		visit(overloaded
+		e.visit(overloaded
 		{
 			[&](VControllerButtonGroup &grp)
 			{
@@ -1098,7 +1100,7 @@ void VController::updateSystemKeys(KeyInfo key, bool isPushed)
 					dpad.setAlpha(alphaF);
 			},
 			[](auto &e){}
-		}, e);
+		});
 	}
 }
 
@@ -1106,7 +1108,7 @@ void VController::resetHighlightedKeys()
 {
 	for(auto &e : gpElements)
 	{
-		visit(overloaded
+		e.visit(overloaded
 		{
 			[&](VControllerButtonGroup &grp)
 			{
@@ -1120,7 +1122,7 @@ void VController::resetHighlightedKeys()
 				}
 			},
 			[](auto &e){}
-		}, e);
+		});
 	}
 }
 

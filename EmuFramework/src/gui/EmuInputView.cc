@@ -75,7 +75,7 @@ void EmuInputView::updateRunSpeed(AltSpeedMode mode)
 
 bool EmuInputView::inputEvent(const Input::Event &e)
 {
-	return visit(overloaded
+	return e.visit(overloaded
 	{
 		[&](const Input::MotionEvent &motionEv)
 		{
@@ -141,7 +141,7 @@ bool EmuInputView::inputEvent(const Input::Event &e)
 				|| keyEv.isGamepad() // consume all gamepad events
 				|| devData.devConf.shouldHandleUnboundKeys;
 		}
-	}, e);
+	});
 }
 
 void EmuInputView::setSystemGestureExclusion(bool on)

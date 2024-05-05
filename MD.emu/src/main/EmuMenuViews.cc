@@ -32,10 +32,9 @@
 namespace EmuEx
 {
 
-template <class T>
-using MainAppHelper = EmuAppHelper<T, MainApp>;
+using MainAppHelper = EmuAppHelperBase<MainApp>;
 
-class ConsoleOptionView : public TableView, public MainAppHelper<ConsoleOptionView>
+class ConsoleOptionView : public TableView, public MainAppHelper
 {
 	BoolMenuItem sixButtonPad
 	{
@@ -222,9 +221,9 @@ public:
 	}
 };
 
-class CustomAudioOptionView : public AudioOptionView, public MainAppHelper<CustomAudioOptionView>
+class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 {
-	using MainAppHelper<CustomAudioOptionView>::system;
+	using MainAppHelper::system;
 
 	BoolMenuItem smsFM
 	{
@@ -245,10 +244,10 @@ public:
 	}
 };
 
-class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<CustomSystemOptionView>
+class CustomSystemOptionView : public SystemOptionView, public MainAppHelper
 {
-	using MainAppHelper<CustomSystemOptionView>::app;
-	using MainAppHelper<CustomSystemOptionView>::system;
+	using MainAppHelper::app;
+	using MainAppHelper::system;
 
 	BoolMenuItem bigEndianSram
 	{
@@ -257,10 +256,10 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper<Cus
 		[this](BoolMenuItem &item, Input::Event e)
 		{
 			app().pushAndShowModalView(makeView<YesNoAlertView>(
-				"警告，这会改变 SRAM 保存文件的格式。"
-				"开启后将与 Gens 等其他模拟器兼容。"
-				"任何加载了错误设置的 SRAM 都将被损坏。",
-				YesNoAlertView::Delegates{.onYes = [&]{ system().optionBigEndianSram = item.flipBoolValue(*this); }}), e);
+                "警告，这会改变 SRAM 保存文件的格式。"
+                "开启后将与 Gens 等其他模拟器兼容。"
+                "任何加载了错误设置的 SRAM 都将被损坏。",
+				YesNoAlertView::Delegates{.onYes = [this]{ system().optionBigEndianSram = bigEndianSram.flipBoolValue(*this); }}), e);
 		}
 	};
 
@@ -272,10 +271,10 @@ public:
 	}
 };
 
-class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper<CustomFilePathOptionView>
+class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 {
-	using MainAppHelper<CustomFilePathOptionView>::app;
-	using MainAppHelper<CustomFilePathOptionView>::system;
+	using MainAppHelper::app;
+	using MainAppHelper::system;
 
 	TextMenuItem cheatsPath
 	{

@@ -15,7 +15,6 @@
 
 #include <emuframework/VideoOptionView.hh>
 #include <emuframework/EmuApp.hh>
-#include <emuframework/EmuAppHelper.hh>
 #include <emuframework/EmuVideoLayer.hh>
 #include <emuframework/EmuVideo.hh>
 #include <emuframework/VideoImageEffect.hh>
@@ -38,7 +37,7 @@ static const char *autoWindowPixelFormatStr(IG::ApplicationContext ctx)
 
 constexpr uint16_t pack(Gfx::DrawableConfig c)
 {
-	return to_underlying(c.pixelFormat.id()) | to_underlying(c.colorSpace) << sizeof(c.colorSpace) * 8;
+	return to_underlying(c.pixelFormat.id) | to_underlying(c.colorSpace) << sizeof(c.colorSpace) * 8;
 }
 
 constexpr Gfx::DrawableConfig unpackDrawableConfig(uint16_t c)
@@ -57,7 +56,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 			items.emplace_back("自动(设置最佳模式)", attach, [this](View &view)
 			{
 				app().textureBufferMode = Gfx::TextureBufferMode::DEFAULT;
-				auto defaultMode = renderer().makeValidTextureBufferMode();
+				auto defaultMode = renderer().evalTextureBufferMode();
 				emuVideo().setTextureBufferMode(system(), defaultMode);
 				textureBufferMode.setSelected(MenuId{defaultMode});
 				view.dismiss();
@@ -77,7 +76,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 	textureBufferMode
 	{
 		"GPU复制模式", attach,
-		MenuId{renderer().makeValidTextureBufferMode(app().textureBufferMode)},
+		MenuId{renderer().evalTextureBufferMode(app().textureBufferMode)},
 		textureBufferModeItem
 	},
 	aspectRatioItem
@@ -169,14 +168,14 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 	contentScale
 	{
 		"游戏缩放比例", attach,
-		MenuId{app().contentScale},
+		MenuId{videoLayer_.scale},
 		contentScaleItems,
 		{
 			.onSetDisplayString = [this](auto idx, Gfx::Text &t)
 			{
-				if(app().contentScale <= 200)
+				if(videoLayer.scale <= 200)
 				{
-					t.resetString(std::format("{}%", app().contentScale.value()));
+					t.resetString(std::format("{}%", videoLayer.scale.value()));
 					return true;
 				}
 				return false;
@@ -444,7 +443,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 	renderPixelFormat
 	{
 		"渲染颜色格式", attach,
-		MenuId{app().renderPixelFormat().id()},
+		MenuId{app().renderPixelFormat.value().id},
 		renderPixelFormatItem,
 		{
 			.onSetDisplayString = [this](auto idx, Gfx::Text &t)
@@ -464,7 +463,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 		{
 			"默认", attach, [this](View &v)
 			{
-				app().setVideoBrightness(1.f, ImageChannel::All);
+				videoLayer.setBrightness(1.f, ImageChannel::All);
 				setAllColorLevelsSelected(MenuId{100});
 				v.dismiss();
 			}
@@ -473,17 +472,17 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 	},
 	redItem
 	{
-		{"默认", attach, [this](){ app().setVideoBrightness(1.f, ImageChannel::Red); }, {.id = 100}},
+		{"默认", attach, [this](){ videoLayer.setBrightness(1.f, ImageChannel::Red); }, {.id = 100}},
 		{"自定义数值", attach, setVideoBrightnessCustomDel(ImageChannel::Red), {.id = defaultMenuId}},
 	},
 	greenItem
 	{
-		{"默认", attach, [this](){ app().setVideoBrightness(1.f, ImageChannel::Green); }, {.id = 100}},
+		{"默认", attach, [this](){ videoLayer.setBrightness(1.f, ImageChannel::Green); }, {.id = 100}},
 		{"自定义数值", attach, setVideoBrightnessCustomDel(ImageChannel::Green), {.id = defaultMenuId}},
 	},
 	blueItem
 	{
-		{"默认", attach, [this](){ app().setVideoBrightness(1.f, ImageChannel::Blue); }, {.id = 100}},
+		{"默认", attach, [this](){ videoLayer.setBrightness(1.f, ImageChannel::Blue); }, {.id = 100}},
 		{"自定义数值", attach, setVideoBrightnessCustomDel(ImageChannel::Blue), {.id = defaultMenuId}},
 	},
 	brightness
@@ -497,12 +496,12 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 	red
 	{
 		"红", attach,
-		MenuId{app().videoBrightnessAsInt(ImageChannel::Red)},
+		MenuId{videoLayer_.channelBrightnessAsInt(ImageChannel::Red)},
 		redItem,
 		{
 			.onSetDisplayString = [this](auto idx, Gfx::Text &t)
 			{
-				t.resetString(std::format("{}%", app().videoBrightnessAsInt(ImageChannel::Red)));
+				t.resetString(std::format("{}%", videoLayer.channelBrightnessAsInt(ImageChannel::Red)));
 				return true;
 			}
 		},
@@ -510,12 +509,12 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 	green
 	{
 		"绿", attach,
-		MenuId{app().videoBrightnessAsInt(ImageChannel::Green)},
+		MenuId{videoLayer_.channelBrightnessAsInt(ImageChannel::Green)},
 		greenItem,
 		{
 			.onSetDisplayString = [this](auto idx, Gfx::Text &t)
 			{
-				t.resetString(std::format("{}%", app().videoBrightnessAsInt(ImageChannel::Green)));
+				t.resetString(std::format("{}%", videoLayer.channelBrightnessAsInt(ImageChannel::Green)));
 				return true;
 			}
 		},
@@ -523,12 +522,12 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 	blue
 	{
 		"蓝", attach,
-		MenuId{app().videoBrightnessAsInt(ImageChannel::Blue)},
+		MenuId{videoLayer_.channelBrightnessAsInt(ImageChannel::Blue)},
 		blueItem,
 		{
 			.onSetDisplayString = [this](auto idx, Gfx::Text &t)
 			{
-				t.resetString(std::format("{}%", app().videoBrightnessAsInt(ImageChannel::Blue)));
+				t.resetString(std::format("{}%", videoLayer.channelBrightnessAsInt(ImageChannel::Blue)));
 				return true;
 			}
 		},
@@ -588,7 +587,7 @@ TextMenuItem::SelectDelegate VideoOptionView::setVideoBrightnessCustomDel(ImageC
 		pushAndShowNewCollectValueRangeInputView<int, 0, 200>(attachParams(), e, "输入0到200", "",
 			[=, this](CollectTextInputView &, auto val)
 			{
-				app().setVideoBrightness(val / 100.f, ch);
+				videoLayer.setBrightness(val / 100.f, ch);
 				if(ch == ImageChannel::All)
 					setAllColorLevelsSelected(MenuId{val});
 				else
