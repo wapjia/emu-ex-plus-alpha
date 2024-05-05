@@ -1777,13 +1777,13 @@ namespace IG
     /**
      * 显示/隐藏 模拟器设置
      */
-    void ApplicationContext::showSettingAiWu(bool isShow)
+    void ApplicationContext::showSettingAiWu()
     {
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();
         if(!sys.hasContent())
             return;
-        app.showUI(isShow);
+        app.showUI();
     }
     /**
      * 改变模拟器状态(暂停/启动)
@@ -1798,7 +1798,7 @@ namespace IG
         if(pause){
             app.pauseEmulation();
         } else {
-            app.showEmulation();
+            app.startEmulation();
         }
     }
     void ApplicationContext::resetAiWu()
