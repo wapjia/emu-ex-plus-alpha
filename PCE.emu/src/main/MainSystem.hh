@@ -103,7 +103,7 @@ public:
 	std::vector<CDInterface *> CDInterfaces;
 	FS::PathString sysCardPath;
 	Property<bool, CFGKEY_ARCADE_CARD, PropertyDesc<bool>{.defaultValue = true}> optionArcadeCard;
-	Property<bool, CFGKEY_6_BTN_PAD, PropertyDesc<bool>{.defaultValue = true}> option6BtnPad;
+	Property<bool, CFGKEY_6_BTN_PAD, PropertyDesc<bool>{.defaultValue = true}> option6BtnPad;//设置默认开启6按键模式
 	VisibleLines defaultVisibleLines{};
 	VisibleLines visibleLines{};
 	uint8_t cdSpeed{2};

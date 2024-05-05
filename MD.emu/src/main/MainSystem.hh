@@ -54,8 +54,8 @@ public:
 
 	Property<bool, CFGKEY_BIG_ENDIAN_SRAM> optionBigEndianSram;
 	Property<bool, CFGKEY_SMS_FM, PropertyDesc<bool>{.defaultValue = true}> optionSmsFM;
-	Property<bool, CFGKEY_6_BTN_PAD, PropertyDesc<bool>{.defaultValue = true}> option6BtnPad;
-	Property<bool, CFGKEY_MULTITAP, PropertyDesc<bool>{.defaultValue = true}> optionMultiTap;
+	Property<bool, CFGKEY_6_BTN_PAD, PropertyDesc<bool>{.defaultValue = true}> option6BtnPad;//设置默认开启6按键模式
+	Property<bool, CFGKEY_MULTITAP, PropertyDesc<bool>{.defaultValue = true}> optionMultiTap;//设置默认开启多控制器
 	Property<int8_t, CFGKEY_INPUT_PORT_1, PropertyDesc<int8_t>{.defaultValue = -1, .isValid = isValidWithMinMax<-1, 4>}> optionInputPort1;
 	Property<int8_t, CFGKEY_INPUT_PORT_2, PropertyDesc<int8_t>{.defaultValue = -1, .isValid = isValidWithMinMax<-1, 4>}> optionInputPort2;
 	Property<uint8_t, CFGKEY_MD_REGION, PropertyDesc<uint8_t>{.isValid = isValidWithMax<4>}> optionRegion;
