@@ -1761,7 +1761,7 @@ namespace IG
             return;
         //定义是属于哪个玩家
         //                                                       KeyFlags 结构体
-        sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), KeyFlags{.deviceId = player}, Input::Action::PUSHED});
+        sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), EmuEx::KeyFlags{.deviceId = player}, Input::Action::PUSHED});
     }
     void ApplicationContext::onKeyReleaseAiWu(uint emuKey,uint8_t player)
     {
@@ -1772,7 +1772,7 @@ namespace IG
         //定义是属于哪个玩家
 /*        struct KeyFlags flags;
     flags.deviceId = player;    // 假设设备ID是10*/
-        sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), KeyFlags{.deviceId = player}, Input::Action::RELEASED});
+        sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), EmuEx::KeyFlags{.deviceId = player}, Input::Action::RELEASED});
     }
     /**
      * true:显示模拟器设置
