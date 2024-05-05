@@ -247,7 +247,7 @@ public:
     //region 爱吾调用
     void onKeyPressAiWu(uint emuKey,uint8_t player);
     void onKeyReleaseAiWu(uint emuKey,uint8_t player);
-    void showSettingAiWu();
+    void showSettingAiWu(bool isShow = true);
     void changeEmulatorStateAiWu(bool pause);
     void resetAiWu();
     bool isSoundEnabledAiWu();
