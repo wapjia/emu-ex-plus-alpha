@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        image: ["GBA.emu"] #, "GBC.emu", "MD.emu", "PCE.emu", "NES.emu", "NGP.emu", "Snes9x", "Swan.emu", "Saturn.emu"
+        image: ["GBA.emu", "GBC.emu", "MD.emu", "PCE.emu", "NES.emu", "NGP.emu", "Snes9x", "Swan.emu", "Saturn.emu"] #
 
     steps:
     - name: Checkout emu-ex-plus-alpha repo

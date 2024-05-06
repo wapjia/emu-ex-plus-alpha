@@ -1993,7 +1993,7 @@ namespace IG
 
     /**
      * 设置叠加效果ID
-     * @param effectId
+     * @param overlayId
      */
     void ApplicationContext::setOverlayEffectIdAiWu(uint8_t overlayId)
     {
@@ -2033,7 +2033,7 @@ namespace IG
 
     /**
      * 设置屏幕比率
-     * @param effectId
+     * @param ratio
      */
     void ApplicationContext::setVideoAspectRatioAiWu(float ratio)
     {
