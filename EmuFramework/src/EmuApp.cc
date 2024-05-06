@@ -2033,5 +2033,27 @@ namespace IG
         }
         return 0;
     }
+
+    /**
+     * 设置叠加效果ID
+     * @param effectId
+     */
+    void ApplicationContext::setVideoAspectRatioAiWu(float ratio)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        app.setVideoAspectRatio(ratio);
+    }
+    /**
+     * 获取叠加效果Id
+     * @return
+     */
+    float ApplicationContext::getVideoAspectRatioAiWu()
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        return app.videoAspectRatio();
+    }
     //endregion
 }

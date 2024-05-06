@@ -594,6 +594,22 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                     {
                                         return IG::gAiWuAppContext().setOverlayEffectIdAiWu(overlayId);
                                     }
+                    },
+                    {
+                            "getVideoAspectRatio", "()F",
+                            (void *)
+                                    +[](JNIEnv* env, jobject thiz)
+                                    {
+                                        return IG::gAiWuAppContext().getVideoAspectRatioAiWu();
+                                    }
+                    },
+                    {
+                            "setVideoAspectRatio", "(F)V",
+                            (void *)
+                                    +[](JNIEnv* env, jobject thiz, jfloat ratio)
+                                    {
+                                        return IG::gAiWuAppContext().setVideoAspectRatioAiWu(ratio);
+                                    }
                     }
             };
     env->RegisterNatives(baseActivityClass, method, std::size(method));

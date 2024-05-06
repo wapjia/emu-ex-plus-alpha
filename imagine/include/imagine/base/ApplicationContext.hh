@@ -268,6 +268,8 @@ public:
     void setEffectIdAiWu(uint8_t effectId);//设置图像效果ID
     int getOverlayEffectIdAiWu();
     void setOverlayEffectIdAiWu(uint8_t overlayId);//设置图像效果ID
+    float getVideoAspectRatioAiWu();//获取屏幕比率
+    void setVideoAspectRatioAiWu(float ratio);//设置屏幕比率
 
     IG::WindowRect getGameScreenRectAiWu();
     //endregion
