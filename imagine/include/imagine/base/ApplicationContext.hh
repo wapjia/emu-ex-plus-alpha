@@ -261,7 +261,14 @@ public:
     void setDefaultConfigAiWu(std::list<std::string> configList);
     void setDebugEnabledAiWu(bool enabled);
     double getFrameRate();
-    double getFrameRate1();
+    //滤镜相关
+    bool usingLinearFilterAiWu();//是否在使用图像插值
+    void setLinearFilterAiWu(bool isOn);//设置图像插值
+    int getEffectIdAiWu();//获取图像效果ID
+    void setEffectAiWu(uint8_t effectId);//设置图像效果ID
+    int getOverlayEffectIdAiWu();
+    void setOverlayEffectIdAiWu(uint8_t overlayId);//设置图像效果ID
+
     IG::WindowRect getGameScreenRectAiWu();
     //endregion
 };

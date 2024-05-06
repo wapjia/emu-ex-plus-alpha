@@ -548,11 +548,51 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                     }
                     },
                     {
-                            "getFrameRate1", "()D",
+                            "usingLinearFilter", "()Z",
                             (void *)
                                     +[](JNIEnv* env, jobject thiz)
                                     {
-                                        return IG::gAiWuAppContext().getFrameRate1();
+                                        return IG::gAiWuAppContext().usingLinearFilterAiWu();
+                                    }
+                    },
+                    {
+                            "setLinearFilter", "(Z)V",
+                            (void *)
+                                    +[](JNIEnv* env, jobject thiz,jboolean isOn)
+                                    {
+                                        return IG::gAiWuAppContext().setLinearFilterAiWu(isOn);
+                                    }
+                    },
+                    {
+                            "getEffectId", "()I",
+                            (void *)
+                                    +[](JNIEnv* env, jobject thiz)
+                                    {
+                                        return IG::gAiWuAppContext().getEffectAiWu();
+                                    }
+                    },
+                    {
+                            "setEffectId", "(I)V",
+                            (void *)
+                                    +[](JNIEnv* env, jobject thiz, jint effectId)
+                                    {
+                                        return IG::gAiWuAppContext().setEffectAiWu(effectId);
+                                    }
+                    },
+                    {
+                            "getOverlayEffectId", "()I",
+                            (void *)
+                                    +[](JNIEnv* env, jobject thiz)
+                                    {
+                                        return IG::gAiWuAppContext().getOverlayEffectIdAiWu();
+                                    }
+                    },
+                    {
+                            "setOverlayEffectId", "(I)V",
+                            (void *)
+                                    +[](JNIEnv* env, jobject thiz, jint overlayId)
+                                    {
+                                        return IG::gAiWuAppContext().setOverlayEffectIdAiWu(overlayId);
                                     }
                     }
             };

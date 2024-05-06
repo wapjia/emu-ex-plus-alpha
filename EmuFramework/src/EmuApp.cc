@@ -1742,6 +1742,45 @@ void EmuApp::setScreenshotPathAiWu(FS::PathString path)
 {
     screenshotPathAiWu = std::move(path);
 }
+/**
+ * 是否在使用图像插值
+ * @return
+ */
+//bool EmuApp::usingLinearFilterAiWu()
+//{
+//    return videoLayer.usingLinearFilter();
+//}
+/**
+ * 设置图像插值
+ * @param isOn
+ */
+//void EmuApp::setLinearFilterAiWu(bool isOn)
+//{
+//    videoLayer.setLinearFilter(isOn);
+//    viewController().postDrawToEmuWindows();
+//}
+
+//void EmuApp::setEffectAiWu(uint8_t effectId)
+//{
+//    videoLayer.setEffect(system(), ImageEffectId(effectId), app().videoEffectPixelFormat());
+//    viewController().postDrawToEmuWindows();
+//}
+//
+//int EmuApp::getEffectAiWu()
+//{
+//    switch(videoLayer.effectId())
+//    {
+//        case ImageEffectId::DIRECT: return 0;
+//        case ImageEffectId::HQ2X: return 1;
+//        case ImageEffectId::SCALE2X: return 2;
+//        case ImageEffectId::PRESCALE2X: return 3;
+//        case ImageEffectId::PRESCALE3X: return 4;
+//        case ImageEffectId::PRESCALE4X: return 5;
+//    }
+//    return 0;
+//}
+
+
 //endregion
 }
 namespace IG
@@ -1888,6 +1927,7 @@ namespace IG
         auto &sys = app.system();
         sys.setDefaultConfigAiWu(configList);
     }
+
     double ApplicationContext::getFrameRate()
     {
         auto &app = EmuEx::EmuApp::get(*this);
@@ -1897,14 +1937,101 @@ namespace IG
 
         return sys.frameRate();
     }
-    double ApplicationContext::getFrameRate1()
+    /**
+     * 设置图像插值
+     * @param isOn
+     */
+    void ApplicationContext::setLinearFilterAiWu(bool isOn)
     {
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();
-        if(!sys.hasContent())//不在游戏中显示帧数0
-            return 0.0;
+        if(!sys.hasContent())
+            return;
+        app.videoLayer.setLinearFilter(isOn);
+        app.viewController().postDrawToEmuWindows();
+    }
+    /**
+     * 是否在使用图像插值
+     * @return
+     */
+    bool ApplicationContext::usingLinearFilterAiWu()
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        return app.videoLayer.usingLinearFilter();
+    }
+    /**
+     * 设置图像效果ID
+     * @param effectId
+     */
+    void ApplicationContext::setEffectIdAiWu(uint8_t effectId)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        app.videoLayer.setEffect(sys, ImageEffectId(effectId), app.videoEffectPixelFormat());
+        app.viewController().postDrawToEmuWindows();
+    }
+    /**
+     * 获取图像效果Id
+     * @return
+     */
+    int ApplicationContext::getEffectIdAiWu()
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        switch(app.videoLayer.effectId())
+        {
+            case ImageEffectId::DIRECT: return 0;
+            case ImageEffectId::HQ2X: return 1;
+            case ImageEffectId::SCALE2X: return 2;
+            case ImageEffectId::PRESCALE2X: return 3;
+            case ImageEffectId::PRESCALE3X: return 4;
+            case ImageEffectId::PRESCALE4X: return 5;
+        }
+        return 0;
+    }
 
-        return app.viewController().emuWindowScreen()->frameRate();
+    /**
+     * 设置叠加效果ID
+     * @param effectId
+     */
+    void ApplicationContext::setOverlayEffectIdAiWu(uint8_t overlayId)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        app.videoLayer.setOverlay(ImageOverlayId(overlayId));
+        app.viewController().postDrawToEmuWindows();
+    }
+    /**
+     * 获取叠加效果Id
+     * @return
+     */
+    int ApplicationContext::getOverlayEffectIdAiWu()
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        switch(app.videoLayer.overlayEffectId())
+        {
+            case ImageOverlayId::SCANLINES:
+                return 1;
+            case ImageOverlayId::SCANLINES_2:
+                return 2;
+            case ImageOverlayId::LCD:
+                return 10;
+            case ImageOverlayId::CRT_MASK:
+                return 20;
+            case ImageOverlayId::CRT_GRILLE:
+                return 21;
+            case ImageOverlayId::CRT_MASK_2:
+                return 30;
+            case ImageOverlayId::CRT_GRILLE_2:
+                return 31;
+        }
+        return 0;
     }
     //endregion
 }
