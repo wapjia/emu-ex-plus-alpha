@@ -568,7 +568,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                             (void *)
                                     +[](JNIEnv* env, jobject thiz)
                                     {
-                                        return IG::gAiWuAppContext().getEffectAiWu();
+                                        return IG::gAiWuAppContext().getEffectIdAiWu();
                                     }
                     },
                     {
@@ -576,7 +576,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                             (void *)
                                     +[](JNIEnv* env, jobject thiz, jint effectId)
                                     {
-                                        return IG::gAiWuAppContext().setEffectAiWu(effectId);
+                                        return IG::gAiWuAppContext().setEffectIdAiWu(effectId);
                                     }
                     },
                     {
