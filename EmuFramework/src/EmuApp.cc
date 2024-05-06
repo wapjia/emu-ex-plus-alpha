@@ -1957,9 +1957,6 @@ namespace IG
     bool ApplicationContext::usingLinearFilterAiWu()
     {
         auto &app = EmuEx::EmuApp::get(*this);
-        auto &sys = app.system();
-        if(!sys.hasContent())
-            return;
         return app.videoLayer.usingLinearFilter();
     }
     /**
