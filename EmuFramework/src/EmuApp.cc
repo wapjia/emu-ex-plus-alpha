@@ -1972,7 +1972,7 @@ namespace IG
         auto &sys = app.system();
         if(!sys.hasContent())
             return;
-        app.videoLayer.setEffect(sys, ImageEffectId(effectId), app.videoEffectPixelFormat());
+        app.videoLayer.setEffect(sys, EmuEx::ImageEffectId(effectId), app.videoEffectPixelFormat());
         app.viewController().postDrawToEmuWindows();
     }
     /**
@@ -2004,7 +2004,7 @@ namespace IG
         auto &sys = app.system();
         if(!sys.hasContent())
             return;
-        app.videoLayer.setOverlay(ImageOverlayId(overlayId));
+        app.videoLayer.setOverlay(EmuEx::ImageOverlayId(overlayId));
         app.viewController().postDrawToEmuWindows();
     }
     /**
@@ -2035,7 +2035,7 @@ namespace IG
     }
 
     /**
-     * 设置叠加效果ID
+     * 设置屏幕比率
      * @param effectId
      */
     void ApplicationContext::setVideoAspectRatioAiWu(float ratio)
@@ -2047,7 +2047,7 @@ namespace IG
         app.setVideoAspectRatio(ratio);
     }
     /**
-     * 获取叠加效果Id
+     * 获取屏幕比率
      * @return
      */
     float ApplicationContext::getVideoAspectRatioAiWu()
