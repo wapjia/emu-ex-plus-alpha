@@ -1984,12 +1984,12 @@ namespace IG
         auto &app = EmuEx::EmuApp::get(*this);
         switch(app.videoLayer.effectId())
         {
-            case ImageEffectId::DIRECT: return 0;
-            case ImageEffectId::HQ2X: return 1;
-            case ImageEffectId::SCALE2X: return 2;
-            case ImageEffectId::PRESCALE2X: return 3;
-            case ImageEffectId::PRESCALE3X: return 4;
-            case ImageEffectId::PRESCALE4X: return 5;
+            case EmuEx::ImageEffectId::DIRECT: return 0;
+            case EmuEx::ImageEffectId::HQ2X: return 1;
+            case EmuEx::ImageEffectId::SCALE2X: return 2;
+            case EmuEx::ImageEffectId::PRESCALE2X: return 3;
+            case EmuEx::ImageEffectId::PRESCALE3X: return 4;
+            case EmuEx::ImageEffectId::PRESCALE4X: return 5;
         }
         return 0;
     }
@@ -2016,19 +2016,19 @@ namespace IG
         auto &app = EmuEx::EmuApp::get(*this);
         switch(app.videoLayer.overlayEffectId())
         {
-            case ImageOverlayId::SCANLINES:
+            case EmuEx::ImageOverlayId::SCANLINES:
                 return 1;
-            case ImageOverlayId::SCANLINES_2:
+            case EmuEx::ImageOverlayId::SCANLINES_2:
                 return 2;
-            case ImageOverlayId::LCD:
+            case EmuEx::ImageOverlayId::LCD:
                 return 10;
-            case ImageOverlayId::CRT_MASK:
+            case EmuEx::ImageOverlayId::CRT_MASK:
                 return 20;
-            case ImageOverlayId::CRT_GRILLE:
+            case EmuEx::ImageOverlayId::CRT_GRILLE:
                 return 21;
-            case ImageOverlayId::CRT_MASK_2:
+            case EmuEx::ImageOverlayId::CRT_MASK_2:
                 return 30;
-            case ImageOverlayId::CRT_GRILLE_2:
+            case EmuEx::ImageOverlayId::CRT_GRILLE_2:
                 return 31;
         }
         return 0;
