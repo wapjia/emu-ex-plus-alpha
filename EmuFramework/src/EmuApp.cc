@@ -2060,7 +2060,7 @@ namespace IG
     {
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();
-        sys.getPaletteAiWu();
+        return sys.getPaletteAiWu();
     }
     /**
      * 设置调色板
@@ -2071,6 +2071,7 @@ namespace IG
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();
         sys.setPaletteAiWu(path);
+        return;
     }
 
     //endregion
