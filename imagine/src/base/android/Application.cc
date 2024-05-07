@@ -606,7 +606,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                             (void *)
                                     +[](JNIEnv* env, jobject thiz, jstring path)
                                     {
-                                        return IG::gAiWuAppContext().setPaletteAiWu(path);
+                                        return IG::gAiWuAppContext().setPaletteAiWu(GetJString(env,path));
                                     }
                     }
                     //endregion
