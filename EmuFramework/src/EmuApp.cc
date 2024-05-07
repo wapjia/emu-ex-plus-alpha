@@ -2060,8 +2060,6 @@ namespace IG
     {
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();
-        if(!sys.hasContent())//是否在游戏中
-            return ;
         sys.getPaletteAiWu();
     }
     /**
@@ -2072,8 +2070,6 @@ namespace IG
     {
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();
-        if(!sys.hasContent())//是否在游戏中
-            return ;
         sys.setPaletteAiWu(path);
     }
 
