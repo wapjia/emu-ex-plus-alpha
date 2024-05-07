@@ -116,6 +116,18 @@ void NesSystem::reset(EmuApp &app, ResetMode mode)
 }
 
 //region 爱吾修改
+std::string_view NesSystem::getPaletteAiWu()
+{
+    return defaultPalettePath;
+}
+void NesSystem::setPaletteAiWu(std::string_view path)
+{
+    if(!hasContent())
+        return;
+    defaultPalettePath = path;
+    setDefaultPalette(appContext(), defaultPalettePath);
+}
+
 const char *saveSlotCharNES(int slot)
 {
     switch(slot)

@@ -337,26 +337,6 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
     gAiWuAppContextPtr = ctx;
     JNINativeMethod method[]
             {
-//region GBA使用
-//                    {
-//                            "onKeyPress", "(I)V",
-//                            (void*)
-//                                    +[](JNIEnv* env, jobject thiz, jint keyCode)
-//                                    {
-//                                        IG::gAiWuAppContext().onKeyPressAiWu(keyCode);
-//                                    }
-//                    },
-//                    {
-//                            "onKeyRelease", "(I)V",
-//                            (void*)
-//                                    +[](JNIEnv* env, jobject thiz, jint keyCode)
-//                                    {
-//                                        IG::gAiWuAppContext().onKeyReleaseAiWu(keyCode);
-//                                    }
-//                    },
-//endregion
-
-//region SFC使用
                     {
                             "onKeyPress", "(II)V",
                             (void*)
@@ -375,7 +355,6 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                         IG::gAiWuAppContext().onKeyReleaseAiWu(keyCode , player);
                                     }
                     },
-//endregion
                     {
                             "showSetting", "(Z)V",
                             (void*)
@@ -609,6 +588,22 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                     +[](JNIEnv* env, jobject thiz, jfloat ratio)
                                     {
                                         return IG::gAiWuAppContext().setVideoAspectRatioAiWu(ratio);
+                                    }
+                    },
+                    {
+                            "getPalette", "()Ljava/lang/String;",
+                            (void *)
+                                    +[](JNIEnv* env, jobject thiz)
+                                    {
+                                        return IG::gAiWuAppContext().getPaletteAiWu();
+                                    }
+                    },
+                    {
+                            "setPalette", "(Ljava/lang/String;)V",
+                            (void *)
+                                    +[](JNIEnv* env, jobject thiz, jstring path)
+                                    {
+                                        return IG::gAiWuAppContext().setPaletteAiWu(path);
                                     }
                     }
             };

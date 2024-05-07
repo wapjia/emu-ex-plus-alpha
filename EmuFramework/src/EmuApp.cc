@@ -2052,5 +2052,30 @@ namespace IG
         auto &app = EmuEx::EmuApp::get(*this);
         return app.videoAspectRatio();
     }
+    /**
+    * 获取调色板
+    * @param filepath
+    */
+    std::string_view ApplicationContext::getPaletteAiWu()
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())//是否在游戏中
+            return ;
+        sys.getPaletteAiWu();
+    }
+    /**
+     * 设置调色板
+     * @param filepath
+     */
+    void ApplicationContext::setPaletteAiWu(std::string_view path)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())//是否在游戏中
+            return ;
+        sys.setPaletteAiWu(path);
+    }
+
     //endregion
 }
