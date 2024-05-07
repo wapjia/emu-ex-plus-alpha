@@ -165,7 +165,7 @@ public:
     //region爱吾
     void setCheatListAiWu(std::list<std::string> cheats);
     std::string_view getPaletteAiWu();
-    void setPaletteAiWu(std::string_view path);
+    void setPaletteAiWu(std::string path);
     //endregion
 private:
 	void cacheUsingZapper();

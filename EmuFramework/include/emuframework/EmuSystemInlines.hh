@@ -295,7 +295,7 @@ std::string_view EmuSystem::getPaletteAiWu()
     if(&MainSystem::getPaletteAiWu != &EmuSystem::getPaletteAiWu)
         static_cast<MainSystem*>(this)->getPaletteAiWu();
 }
-void EmuSystem::setPaletteAiWu(std::string_view path)
+void EmuSystem::setPaletteAiWu(std::string path)
 {
     if(&MainSystem::setPaletteAiWu != &EmuSystem::setPaletteAiWu)
         static_cast<MainSystem*>(this)->setPaletteAiWu(path);

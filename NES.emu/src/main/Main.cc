@@ -120,7 +120,7 @@ std::string_view NesSystem::getPaletteAiWu()
 {
     return defaultPalettePath;
 }
-void NesSystem::setPaletteAiWu(std::string_view path)
+void NesSystem::setPaletteAiWu(std::string path)
 {
     if(!hasContent())
         return;

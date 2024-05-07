@@ -375,7 +375,7 @@ public:
     void setDefaultConfigAiWu(std::list<std::string> configList);
     //FC专用的调色板
     std::string_view getPaletteAiWu();
-    void setPaletteAiWu(std::string_view path);
+    void setPaletteAiWu(std::string path);
     //endregion
 protected:
 	IG::ApplicationContext appCtx{};
