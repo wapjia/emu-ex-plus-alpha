@@ -271,7 +271,7 @@ public:
     float getVideoAspectRatioAiWu();//获取屏幕比率
     void setVideoAspectRatioAiWu(float ratio);//设置屏幕比率
     //调色板
-    std::string_view getPaletteAiWu();
+    std::string getPaletteAiWu();
     void setPaletteAiWu(std::string path);
     IG::WindowRect getGameScreenRectAiWu();
     //endregion

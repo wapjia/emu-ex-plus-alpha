@@ -290,10 +290,11 @@ void EmuSystem::setDefaultConfigAiWu(std::list<std::string> configList)
     if(&MainSystem::setDefaultConfigAiWu != &EmuSystem::setDefaultConfigAiWu)
         static_cast<MainSystem*>(this)->setDefaultConfigAiWu(configList);
 }
-std::string_view EmuSystem::getPaletteAiWu()
+std::string EmuSystem::getPaletteAiWu()
 {
     if(&MainSystem::getPaletteAiWu != &EmuSystem::getPaletteAiWu)
-        static_cast<MainSystem*>(this)->getPaletteAiWu();
+        return static_cast<MainSystem*>(this)->getPaletteAiWu();
+    return "";
 }
 void EmuSystem::setPaletteAiWu(std::string path)
 {

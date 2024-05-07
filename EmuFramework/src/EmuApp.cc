@@ -2056,7 +2056,7 @@ namespace IG
     * 获取调色板
     * @param filepath
     */
-    std::string_view ApplicationContext::getPaletteAiWu()
+    std::string ApplicationContext::getPaletteAiWu()
     {
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();

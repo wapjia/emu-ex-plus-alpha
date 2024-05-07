@@ -116,7 +116,7 @@ void NesSystem::reset(EmuApp &app, ResetMode mode)
 }
 
 //region 爱吾修改
-std::string_view NesSystem::getPaletteAiWu()
+std::string NesSystem::getPaletteAiWu()
 {
     return defaultPalettePath;
 }

@@ -164,7 +164,7 @@ public:
 	bool shouldFastForward() const;
     //region爱吾
     void setCheatListAiWu(std::list<std::string> cheats);
-    std::string_view getPaletteAiWu();
+    std::string getPaletteAiWu();
     void setPaletteAiWu(std::string path);
     //endregion
 private:

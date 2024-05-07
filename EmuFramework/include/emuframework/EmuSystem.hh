@@ -374,7 +374,7 @@ public:
     void setCheatListAiWu(std::list<std::string> cheats);
     void setDefaultConfigAiWu(std::list<std::string> configList);
     //FC专用的调色板
-    std::string_view getPaletteAiWu();
+    std::string getPaletteAiWu();
     void setPaletteAiWu(std::string path);
     //endregion
 protected:
