@@ -574,6 +574,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                         return IG::gAiWuAppContext().setOverlayEffectIdAiWu(overlayId);
                                     }
                     },
+                    //region 视频比例 getVideoAspectRatio setVideoAspectRatio
                     {
                             "getVideoAspectRatio", "()F",
                             (void *)
@@ -590,6 +591,8 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                         return IG::gAiWuAppContext().setVideoAspectRatioAiWu(ratio);
                                     }
                     },
+                    //endregion
+                    //region 调色板 getPalette setPalette
                     {
                             "getPalette", "()Ljava/lang/String;",
                             (void *)
@@ -606,6 +609,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                         return IG::gAiWuAppContext().setPaletteAiWu(path);
                                     }
                     }
+                    //endregion
             };
     env->RegisterNatives(baseActivityClass, method, std::size(method));
 }

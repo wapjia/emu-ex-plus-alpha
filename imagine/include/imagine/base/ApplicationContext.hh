@@ -270,7 +270,9 @@ public:
     void setOverlayEffectIdAiWu(uint8_t overlayId);//设置图像效果ID
     float getVideoAspectRatioAiWu();//获取屏幕比率
     void setVideoAspectRatioAiWu(float ratio);//设置屏幕比率
-
+    //调色板
+    std::string_view getPaletteAiWu();
+    void setPaletteAiWu(std::string_view path);
     IG::WindowRect getGameScreenRectAiWu();
     //endregion
 };
