@@ -2073,6 +2073,28 @@ namespace IG
         sys.setPaletteAiWu(path);
         return;
     }
-
+    /**
+     * 通过key 获取字符串数据，
+     * @param key
+     * @return
+     */
+    std::string ApplicationContext::getFuncAiWu(std::string key)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(key == "Palette"){
+            return sys.getFuncAiWu(key);
+        }
+        return "";
+    }
+    void ApplicationContext::setFuncAiWu(std::string key,std::string value)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(key == "Palette"){
+            sys.setFuncAiWu(key,value);
+        }
+        return;
+    }
     //endregion
 }

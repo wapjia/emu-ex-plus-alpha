@@ -99,6 +99,17 @@ void GbcSystem::setPaletteAiWu(std::string path)
     optionGBPal = id;
     applyGBPalette();
 }
+std::string GbcSystem::getFuncAiWu(std::string key)
+{
+    return std::to_string(optionGBPal);//目前只有一样所以无需判断
+}
+void GbcSystem::setFuncAiWu(std::string key,std::string value)
+{
+    int temp = std::stoi(value); // 首先转换为int
+    uint8_t id = static_cast<uint8_t>(temp);
+    optionGBPal = id;
+    applyGBPalette();
+}
 
 const char *saveSlotCharAiWu(int slot)
 {

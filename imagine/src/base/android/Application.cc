@@ -611,6 +611,26 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                     }
                     }
                     //endregion
+                    //region 通过Key与java进行交互 getFunc setFunc
+                    {
+                        "getFunc", "(Ljava/lang/String;)Ljava/lang/String;",
+                                (void *)
+                                        +[](JNIEnv* env, jobject thiz, jstring key)
+                                        {
+                                            return env->NewStringUTF(IG::gAiWuAppContext().getFuncAiWu(GetJString(env,key)));
+                                        }
+                    },
+                    {
+                        "setFunc", "(Ljava/lang/String;Ljava/lang/String;)V",
+                                (void *)
+                                        +[](JNIEnv* env, jobject thiz, jstring key, jstring value)
+                                        {
+                                            return IG::gAiWuAppContext().setFuncAiWu(GetJString(env,key),GetJString(env,value));
+                                        }
+                    }
+                    //endregion
+
+
             };
     env->RegisterNatives(baseActivityClass, method, std::size(method));
 }

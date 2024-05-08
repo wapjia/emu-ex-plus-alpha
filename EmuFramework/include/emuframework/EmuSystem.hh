@@ -376,7 +376,12 @@ public:
     //FC专用的调色板
     std::string getPaletteAiWu();
     void setPaletteAiWu(std::string path);
+
+    //通用的方法
+    std::string getFuncAiWu(std::string key);
+    void setFuncAiWu(std::string key,std::string value);
     //endregion
+
 protected:
 	IG::ApplicationContext appCtx{};
 public:
