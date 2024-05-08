@@ -88,6 +88,18 @@ void GbcSystem::reset(EmuApp &app, ResetMode mode)
 }
 
 //region 爱吾修改
+std::string GbcSystem::getPaletteAiWu()
+{
+    return std::to_string(optionGBPal);
+}
+void GbcSystem::setPaletteAiWu(std::string path)
+{
+    int temp = std::stoi(path); // 首先转换为int
+    uint8_t id = static_cast<uint8_t>(temp);
+    optionGBPal = id;
+    applyGBPalette();
+}
+
 const char *saveSlotCharAiWu(int slot)
 {
     switch(slot)

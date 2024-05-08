@@ -592,6 +592,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                     }
                     },
                     //endregion
+
                     //region 调色板 getPalette setPalette
                     {
                             "getPalette", "()Ljava/lang/String;",

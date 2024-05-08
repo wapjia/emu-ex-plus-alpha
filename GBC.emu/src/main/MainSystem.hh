@@ -114,6 +114,8 @@ public:
 	void renderFramebuffer(EmuVideo &);
     //region 爱吾
     void setCheatListAiWu(std::list<std::string> cheats);
+    std::string getPaletteAiWu();
+    void setPaletteAiWu(std::string path);
     //endregion
 
 protected:
