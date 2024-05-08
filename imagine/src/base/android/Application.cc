@@ -598,7 +598,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                             (void *)
                                     +[](JNIEnv* env, jobject thiz)
                                     {
-                                        return IG::gAiWuAppContext().getPaletteAiWu();
+                                        return env->NewStringUTF(IG::gAiWuAppContext().getPaletteAiWu().c_str());
                                     }
                     },
                     {
