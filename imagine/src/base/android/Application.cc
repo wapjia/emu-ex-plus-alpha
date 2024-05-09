@@ -626,7 +626,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                 (void *)
                                         +[](JNIEnv* env, jobject thiz, jstring key)
                                         {
-                                            std::string str = IG::gAiWuAppContext().getFuncAiWu(GetJString(env,key))
+                                            std::string str = IG::gAiWuAppContext().getFuncAiWu(GetJString(env,key));
                                             return env->NewStringUTF(str.c_str());
                                         }
                     },
