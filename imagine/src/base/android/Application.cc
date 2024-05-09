@@ -609,7 +609,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                     {
                                         return IG::gAiWuAppContext().setPaletteAiWu(GetJString(env,path));
                                     }
-                    }
+                    },
                     //endregion
                     //region 通过Key与java进行交互 getFunc setFunc
                     {
