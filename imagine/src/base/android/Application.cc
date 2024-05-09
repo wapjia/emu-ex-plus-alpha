@@ -387,6 +387,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                         IG::gAiWuAppContext().exit();
                                     }
                     },
+                    //region 声音 isSoundEnabled setSoundEnabled
                     {
                             "isSoundEnabled", "()Z",
                             (void *)
@@ -403,6 +404,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                         IG::gAiWuAppContext().setSoundEnabledAiWu(enabled);
                                     }
                     },
+                    //endregion
                     {
                             "screenshot", "(Ljava/lang/String;Lcom/imagine/OnScreenshotCompleteListener;)V",
                             (void*)
@@ -433,6 +435,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                         IG::gAiWuAppContext().fastForwardAiWu(jSpeed);
                                     }
                     },
+                    //region 存档 saveState loadState
                     {
                             "saveState", "(Ljava/lang/String;)V",
                             (void*)
@@ -453,6 +456,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                         IG::gAiWuAppContext().loadStateAiWu(path);
                                     }
                     },
+                    //endregion
                     {
                             "updateCheat", "([Ljava/lang/String;)V",
                             (void*)
@@ -526,6 +530,8 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                         return IG::gAiWuAppContext().getFrameRate();
                                     }
                     },
+
+                    //region 滤镜相关 usingLinearFilter setLinearFilter getEffectId setEffectId getOverlayEffectId setOverlayEffectId
                     {
                             "usingLinearFilter", "()Z",
                             (void *)
@@ -574,6 +580,8 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                         return IG::gAiWuAppContext().setOverlayEffectIdAiWu(overlayId);
                                     }
                     },
+                    //endregion
+
                     //region 视频比例 getVideoAspectRatio setVideoAspectRatio
                     {
                             "getVideoAspectRatio", "()F",
@@ -611,6 +619,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                     }
                     },
                     //endregion
+
                     //region 通过Key与java进行交互 getFunc setFunc
                     {
                         "getFunc", "(Ljava/lang/String;)Ljava/lang/String;",

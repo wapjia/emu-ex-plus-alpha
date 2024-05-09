@@ -273,6 +273,10 @@ public:
     //调色板
     std::string getPaletteAiWu();
     void setPaletteAiWu(std::string path);
+    //多功能函数
+    std::string getFuncAiWu(std::string key);
+    void setFuncAiWu(std::string key,std::string value);
+
     IG::WindowRect getGameScreenRectAiWu();
     //endregion
 };
