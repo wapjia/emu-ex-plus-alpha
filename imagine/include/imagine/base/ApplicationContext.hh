@@ -274,8 +274,8 @@ public:
     std::string getPaletteAiWu();
     void setPaletteAiWu(std::string path);
     //爱吾通用多功能函数
-    std::string getFuncAiWu(std::string key);
-    void setFuncAiWu(std::string key,std::string value);
+    std::string getFuncAiWu(std::string key,std::string param);
+    void setFuncAiWu(std::string key,std::string value,std::string param);
 
     IG::WindowRect getGameScreenRectAiWu();
     //endregion

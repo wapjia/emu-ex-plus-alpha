@@ -2078,21 +2078,21 @@ namespace IG
      * @param key
      * @return
      */
-    std::string ApplicationContext::getFuncAiWu(std::string key)
+    std::string ApplicationContext::getFuncAiWu(std::string key,std::string param)
     {
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();
         if(key == "Palette"){
-            return sys.getFuncAiWu(key);
+            return sys.getFuncAiWu(key,param);
         }
         return "";
     }
-    void ApplicationContext::setFuncAiWu(std::string key,std::string value)
+    void ApplicationContext::setFuncAiWu(std::string key,std::string value,std::string param)
     {
         auto &app = EmuEx::EmuApp::get(*this);
         auto &sys = app.system();
         if(key == "Palette"){
-            sys.setFuncAiWu(key,value);
+            sys.setFuncAiWu(key,value,param);//调用对应模拟器的函数
         }
         return;
     }

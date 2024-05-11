@@ -127,7 +127,20 @@ void NesSystem::setPaletteAiWu(std::string path)
     defaultPalettePath = path;
     setDefaultPalette(appContext(), defaultPalettePath);
 }
-
+std::string NesSystem::getFuncAiWu(std::string key,std::string param)
+{
+    if(key == "Palette"){//获取所有内存数据
+        return defaultPalettePath;
+    }
+    return "";
+}
+void NesSystem::setFuncAiWu(std::string key,std::string value,std::string param)
+{
+    if (key == "Palette"){
+        defaultPalettePath = value;
+        setDefaultPalette(appContext(), defaultPalettePath);
+    }
+}
 const char *saveSlotCharNES(int slot)
 {
     switch(slot)

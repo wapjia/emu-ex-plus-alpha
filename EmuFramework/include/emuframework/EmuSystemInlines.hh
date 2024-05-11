@@ -303,16 +303,16 @@ void EmuSystem::setPaletteAiWu(std::string path)
 }
 
 
-std::string EmuSystem::getFuncAiWu(std::string key)
+std::string EmuSystem::getFuncAiWu(std::string key,std::string param)
 {
     if(&MainSystem::getFuncAiWu != &EmuSystem::getFuncAiWu)
-        return static_cast<MainSystem*>(this)->getFuncAiWu(key);
+        return static_cast<MainSystem*>(this)->getFuncAiWu(key,param);
     return "";
 }
-void EmuSystem::setFuncAiWu(std::string key,std::string value)
+void EmuSystem::setFuncAiWu(std::string key,std::string value,std::string param)
 {
     if(&MainSystem::setFuncAiWu != &EmuSystem::setFuncAiWu)
-        static_cast<MainSystem*>(this)->setFuncAiWu(key,value);
+        static_cast<MainSystem*>(this)->setFuncAiWu(key,value,param);
 }
 //endregion
 }
