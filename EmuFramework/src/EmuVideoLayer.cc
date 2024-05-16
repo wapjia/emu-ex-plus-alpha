@@ -153,7 +153,7 @@ void EmuVideoLayer::draw(Gfx::RendererCommands &cmds)
 	using namespace IG::Gfx;
 	bool srgbOutput = srgbColorSpace();
 	auto c = srgbOutput ? brightnessSrgb : brightness;
-	cmds.setColor({0.f, 1.f, 0.f, 1.f});
+	cmds.setColor({c.r, c.g, c.b});//设置前景色
 	cmds.set(BlendMode::OFF);
 	if(effects.size())
 	{
