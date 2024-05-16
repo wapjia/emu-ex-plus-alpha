@@ -368,7 +368,7 @@ bool EmuViewController::drawMainWindow(IG::Window &win, IG::WindowDrawParams par
 		{
 			if(winData.hasEmuView && !isBlankFrame)
 			{
-                cmds.setColor(0.f, 1.f, 0.f, 1.f);//设置绿色
+                cmds.setColor({0.f, 1.f, 0.f, 1.f});//设置绿色
 				emuView.draw(cmds);
 			}
 			inputView.draw(cmds);
