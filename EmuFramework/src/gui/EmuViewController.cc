@@ -368,7 +368,6 @@ bool EmuViewController::drawMainWindow(IG::Window &win, IG::WindowDrawParams par
 		{
 			if(winData.hasEmuView && !isBlankFrame)
 			{
-                cmds.setColor({0.f, 1.f, 0.f, 1.f});//设置绿色
 				emuView.draw(cmds);
 			}
 			inputView.draw(cmds);
@@ -402,6 +401,7 @@ bool EmuViewController::drawExtraWindow(IG::Window &win, IG::WindowDrawParams pa
 	{
 		auto &winData = windowData(win);
 		cmds.basicEffect().setModelViewProjection(cmds, Gfx::Mat4::ident(), winData.projM);
+        cmds.setColor({0.f, 1.f, 0.f, 1.f});//设置绿色
 		emuView.draw(cmds);
 		if(winData.hasPopup)
 		{
