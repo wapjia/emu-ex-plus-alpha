@@ -155,6 +155,12 @@ void EmuVideoLayer::draw(Gfx::RendererCommands &cmds)
 	auto c = srgbOutput ? brightnessSrgb : brightness;
 	cmds.setColor({c.r, c.g, c.b});//设置前景色
 	cmds.set(BlendMode::OFF);
+	//region修改背景色
+	if(bgColorAiWu != NULL){
+	    cmds.setClearColor(bgColorAiWu);
+	    bgColorAiWu = NULL;
+	}
+	//endregion
 	if(effects.size())
 	{
 		cmds.setDither(false);
@@ -443,4 +449,8 @@ void EmuVideoLayer::writeConfig(FileIO &io) const
 	writeOptionValueIfNotDefault(io, CFGKEY_OVERLAY_EFFECT_LEVEL, int8_t(overlayIntensity() * 100.f), 75);
 }
 
+void EmuVideoLayer::setBgColorAiWu(IG::Gfx::Color4F bgColor)
+{
+    bgColorAiWu = bgColor;
+}
 }

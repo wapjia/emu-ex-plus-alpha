@@ -1917,6 +1917,11 @@ namespace IG
         auto &app = EmuEx::EmuApp::get(*this);
         return app.getGameScreenRectAiWu();
     }
+    void ApplicationContext::setBgColorAiWu(float red, float green, float blue)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        app.videoLayer.setBgColorAiWu({red, green, blue});
+    }
     /**
     * 对模拟器进行默认配置
     * @param configList

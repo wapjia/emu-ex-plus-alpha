@@ -503,6 +503,14 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                                     }
                     },
                     {
+                            "setBgColor", "(FFF)V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz, jfloat red, jfloat green, jfloat blue)
+                                    {
+                                       IG::gAiWuAppContext().setBgColorAiWu(red, green, blue);
+                                    }
+                    },
+                    {
                             "setDefaultConfig", "([Ljava/lang/String;)V",
                             (void*)
                                     +[](JNIEnv* env, jobject thiz,jobjectArray jConfigList)
