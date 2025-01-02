@@ -187,102 +187,103 @@ static void AddCheatEntry(const char *name, uint32 addr, uint8 val, int compare,
 */
 void FCEU_LoadGameCheats(FILE *override, int override_existing)
 {
-	FILE *fp;
-	unsigned int addr;
-	unsigned int val;
-	unsigned int status;
-	unsigned int type;
-	unsigned int compare;
-	int x;
-
-	char linebuf[2048] = { 0 };
-	char namebuf[128] = { 0 };
-	int tc = 0;
-	char *fn;
-
+    //去掉原版的.cht文件的金手指逻辑，防止干扰爱吾的金手指系统
+//	FILE *fp;
+//	unsigned int addr;
+//	unsigned int val;
+//	unsigned int status;
+//	unsigned int type;
+//	unsigned int compare;
+//	int x;
+//
+//	char linebuf[2048] = { 0 };
+//	char namebuf[128] = { 0 };
+//	int tc = 0;
+//	char *fn;
+//
 	if (override_existing)
 	{
 		numsubcheats = 0;
 		if (cheatMap)
 			FCEUI_RefreshCheatMap();
 	}
-
-	if(override)
-		fp = override;
-	else
-	{
-		fn = strdup(FCEU_MakeFName(FCEUMKF_CHEAT, 0, 0).c_str());
-		fp = FCEUD_UTF8fopen(fn, "rb");
-		free(fn);
-		if (!fp) {
-			return;
-		}
-	}
-
-	while(fgets(linebuf, 2048, fp) != nullptr)
-	{
-		char *tbuf = linebuf;
-		int doc = 0;
-
-		addr = val = compare = status = type = 0;
-
-		if(tbuf[0] == 'S')
-		{
-			tbuf++;
-			type = 1;
-		}
-		else
-			type = 0;
-
-		if(tbuf[0] == 'C')
-		{
-			tbuf++;
-			doc = 1;
-		}
-
-		if(tbuf[0] == ':')
-		{
-			tbuf++;
-			status = 0;
-		}
-		else status = 1;
-
-		if(doc)
-		{
-			char *neo = &tbuf[4+2+2+1+1+1];
-			if(sscanf(tbuf, "%04x%*[:]%02x%*[:]%02x", &addr, &val, &compare) != 3)
-				continue;
-			strcpy(namebuf, neo);
-		}
-		else
-		{
-			char *neo = &tbuf[4+2+1+1];
-			if(sscanf(tbuf, "%04x%*[:]%02x", &addr, &val) != 2)
-				continue;
-			strcpy(namebuf, neo);
-		}
-
-		for(x = 0; x < (int)strlen(namebuf); x++)
-		{
-			if(namebuf[x] == 10 || namebuf[x] == 13)
-			{
-				namebuf[x] = 0;
-				break;
-			}
-			else if(namebuf[x] > 0x00 && namebuf[x] < 0x20)
-				namebuf[x] = 0x20;
-		}
-
-		AddCheatEntry(namebuf, addr, val, doc ? compare : -1, status, type);
-		tc++;
-	}
-
-	RebuildSubCheats();
-
-	FCEU_DispMessage("Cheats file loaded.", 0); //Tells user a cheats file was loaded.
-
-	if(!override)
-		fclose(fp);
+//
+//	if(override)
+//		fp = override;
+//	else
+//	{
+//		fn = strdup(FCEU_MakeFName(FCEUMKF_CHEAT, 0, 0).c_str());
+//		fp = FCEUD_UTF8fopen(fn, "rb");
+//		free(fn);
+//		if (!fp) {
+//			return;
+//		}
+//	}
+//
+//	while(fgets(linebuf, 2048, fp) != nullptr)
+//	{
+//		char *tbuf = linebuf;
+//		int doc = 0;
+//
+//		addr = val = compare = status = type = 0;
+//
+//		if(tbuf[0] == 'S')
+//		{
+//			tbuf++;
+//			type = 1;
+//		}
+//		else
+//			type = 0;
+//
+//		if(tbuf[0] == 'C')
+//		{
+//			tbuf++;
+//			doc = 1;
+//		}
+//
+//		if(tbuf[0] == ':')
+//		{
+//			tbuf++;
+//			status = 0;
+//		}
+//		else status = 1;
+//
+//		if(doc)
+//		{
+//			char *neo = &tbuf[4+2+2+1+1+1];
+//			if(sscanf(tbuf, "%04x%*[:]%02x%*[:]%02x", &addr, &val, &compare) != 3)
+//				continue;
+//			strcpy(namebuf, neo);
+//		}
+//		else
+//		{
+//			char *neo = &tbuf[4+2+1+1];
+//			if(sscanf(tbuf, "%04x%*[:]%02x", &addr, &val) != 2)
+//				continue;
+//			strcpy(namebuf, neo);
+//		}
+//
+//		for(x = 0; x < (int)strlen(namebuf); x++)
+//		{
+//			if(namebuf[x] == 10 || namebuf[x] == 13)
+//			{
+//				namebuf[x] = 0;
+//				break;
+//			}
+//			else if(namebuf[x] > 0x00 && namebuf[x] < 0x20)
+//				namebuf[x] = 0x20;
+//		}
+//
+//		AddCheatEntry(namebuf, addr, val, doc ? compare : -1, status, type);
+//		tc++;
+//	}
+//
+//	RebuildSubCheats();
+//
+//	FCEU_DispMessage("Cheats file loaded.", 0); //Tells user a cheats file was loaded.
+//
+//	if(!override)
+//		fclose(fp);
 }
 
 void FCEU_SaveGameCheats(FILE* fp, int release)
@@ -333,35 +334,36 @@ void FCEU_FlushGameCheats(FILE *override, int nosave, bool freeCheats)
 	}
 	else
 	{
-		char *fn = 0;
-
-		if(!override)
-			fn = strdup(FCEU_MakeFName(FCEUMKF_CHEAT,0,0).c_str());
-
-		if(cheats)
-		{
-			FILE *fp;
-
-			if(override)
-				fp = override;
-			else
-				fp=FCEUD_UTF8fopen(fn,"wb");
-
-			if(fp)
-			{
-				FCEU_SaveGameCheats(fp, freeCheats);
-				if(!override)
-					fclose(fp);
-			}
-			else
-				FCEUD_PrintError("Error saving cheats.");
-			if(freeCheats)
-				cheats=cheatsl=0;
-		}
-		else if(!override)
-			remove(fn);
-		if(!override)
-			free(fn);
+        //去掉原版的.cht文件的金手指逻辑，防止干扰爱吾的金手指系统
+//		char *fn = 0;
+//
+//		if(!override)
+//			fn = strdup(FCEU_MakeFName(FCEUMKF_CHEAT,0,0).c_str());
+//
+//		if(cheats)
+//		{
+//			FILE *fp;
+//
+//			if(override)
+//				fp = override;
+//			else
+//				fp=FCEUD_UTF8fopen(fn,"wb");
+//
+//			if(fp)
+//			{
+//				FCEU_SaveGameCheats(fp, freeCheats);
+//				if(!override)
+//					fclose(fp);
+//			}
+//			else
+//				FCEUD_PrintError("Error saving cheats.");
+//			if(freeCheats)
+//				cheats=cheatsl=0;
+//		}
+//		else if(!override)
+//			remove(fn);
+//		if(!override)
+//			free(fn);
 		savecheats = 0;
 	}
 
