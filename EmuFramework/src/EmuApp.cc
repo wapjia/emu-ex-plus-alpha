@@ -202,7 +202,7 @@ void EmuApp::showLastViewFromSystem(ViewAttachParams attach, const Input::Event 
 	}
 }
 
-void EmuApp::showExitAlert(ViewAttachParams attach, const Input::Event &e)
+void EmuApp::showExitAlert(ViewAttachParams, const Input::Event&)
 {
 //	viewController().pushAndShowModal(std::make_unique<ExitConfirmAlertView>(
 //		attach, system().hasContent()), e, false);
@@ -1599,7 +1599,7 @@ namespace IG
         auto &sys = app.system();
         if(!sys.hasContent())//是否在游戏中
             return false;
-        return app.saveState(FS::PathString{filepath});
+        return app.saveState(FS::PathString{filepath}, false);
     }
     bool ApplicationContext::loadStateAiWu(const char *filepath)
     {
@@ -1649,7 +1649,7 @@ namespace IG
         if(!sys.hasContent())//是否在游戏中
             return 0.0;
 
-        return sys.frameRate();
+        return sys.frameRateAiwu();
     }
     /**
      * 设置图像插值

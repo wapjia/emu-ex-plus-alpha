@@ -368,6 +368,7 @@ public:
 	void loadContentFromFile(IG::IO, CStringView path, std::string_view displayName,
 		EmuSystemCreateParams, OnLoadProgressDelegate);
 	int updateAudioFramesPerVideoFrame();
+    double frameRateAiwu() const { return toHz(frameRate()); }
 	FrameRate scaledFrameRate() const
 	{
 		if(frameRateMultiplier == 1.)
