@@ -82,7 +82,7 @@ void BasicViewController::place()
 	view->place();
 }
 
-bool BasicViewController::inputEvent(const Input::Event &e)
+bool BasicViewController::inputEvent(const Input::Event& e)
 {
 	return view->inputEvent(e);
 }
@@ -294,7 +294,7 @@ void ViewStack::pop()
 void ViewStack::popViews(size_t num)
 {
 	auto win = view.size() ? &top().window() : nullptr;
-	for(auto i : iotaCount(num))
+	for([[maybe_unused]] auto i : iotaCount(num))
 	{
 		pop();
 	}

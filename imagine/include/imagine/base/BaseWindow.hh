@@ -28,6 +28,13 @@
 namespace IG
 {
 
+class WindowEvent: public WindowEventVariant, public AddVisit
+{
+public:
+	using WindowEventVariant::WindowEventVariant;
+	using AddVisit::visit;
+};
+
 class BaseWindow
 {
 public:
@@ -52,10 +59,11 @@ protected:
 
 	OnExit onExit;
 	DelegateFuncSet<OnFrameDelegate> onFrame;
+	SteadyClockTimePoint lastFrameTime{};
 	std::shared_ptr<void> appDataPtr;
 	std::shared_ptr<void> rendererDataPtr;
 	ConditionalMember<Config::BASE_MULTI_SCREEN, Screen*> screen_{};
-	CustomEvent drawEvent{"Window::drawEvent"};
+	CustomEvent drawEvent;
 	WSize winSizePixels{}; // size of full window surface
 	F2Size winSizeMM{}; // size in millimeter
 	F2Size mmToPixelScaler{};
@@ -70,7 +78,6 @@ protected:
 	ConditionalMemberOr<!Config::SYSTEM_ROTATES_WINDOWS, Rotation, Rotation::UP> softOrientation_{Rotation::UP};
 
 	F2Size smmPixelScaler() const;
-	void attachDrawEvent();
 };
 
 }

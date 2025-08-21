@@ -44,85 +44,103 @@ BaseWindow::BaseWindow(ApplicationContext ctx, WindowConfig config):
 					{
 						auto &win = *static_cast<Window*>(this);
 						win.setDrawEventPriority(savedDrawEventPriority);
-						attachDrawEvent();
+						drawEvent.attach();
 						return false;
 					}, WINDOW_ON_RESUME_PRIORITY
 				);
 			}
 			return true;
-		}, ctx, WINDOW_ON_EXIT_PRIORITY}
-{
-	attachDrawEvent();
-}
-
-void BaseWindow::attachDrawEvent()
-{
-	drawEvent.attach(
-		[&win = *static_cast<Window*>(this)]()
+		}, ctx, WINDOW_ON_EXIT_PRIORITY
+	},
+	drawEvent
+	{
+		{.debugLabel = "Window::drawEvent", .eventLoop = EventLoop::forThread()},
+		[&win = *static_cast<Window*>(this)]
 		{
 			//log.debug("running window events");
 			win.dispatchOnFrame();
 			win.dispatchOnDraw();
-		});
-}
+		}
+	} {}
 
-FrameTimeSource Window::evalFrameTimeSource(FrameTimeSource src) const
+void Window::addOnFrame(OnFrameDelegate del, FrameClockMode mode, int priority, InsertMode insMode)
 {
-	return src == FrameTimeSource::Unset ? defaultFrameTimeSource() : src;
-}
-
-bool Window::addOnFrame(OnFrameDelegate del, FrameTimeSource src, int priority)
-{
-	src = evalFrameTimeSource(src);
-	if(src != FrameTimeSource::Renderer)
+	if(mode == FrameClockMode::screen)
 	{
-		return screen()->addOnFrame(del);
+		screen()->addOnFrame(del, priority, insMode);
 	}
 	else
 	{
-		bool added = onFrame.add(del, priority);
+		onFrame.insert(del, priority, insMode);
 		if(drawPhase == DrawPhase::UPDATE)
 		{
 			// trigger a draw so delegate runs at start of next frame
 			setNeedsDraw(true);
 		}
 		drawEvent.notify();
-		return added;
 	}
 }
 
-bool Window::removeOnFrame(OnFrameDelegate del, FrameTimeSource src)
+bool Window::removeOnFrame(OnFrameDelegate del, FrameClockMode mode, DelegateFuncEqualsMode eqMode)
 {
-	src = evalFrameTimeSource(src);
-	if(src != FrameTimeSource::Renderer)
+	if(mode == FrameClockMode::screen)
 	{
-		return screen()->removeOnFrame(del);
+		return screen()->removeOnFrame(del, eqMode);
 	}
 	else
 	{
-		return onFrame.remove(del);
+		return onFrame.removeFirst(del, eqMode);
 	}
 }
 
-bool Window::moveOnFrame(Window &srcWin, OnFrameDelegate del, FrameTimeSource src)
+FrameClockSource Window::defaultFrameClockSource(FrameClockUsage usage) const
 {
-	srcWin.removeOnFrame(del, src);
-	return addOnFrame(del, src);
-}
-
-FrameTimeSource Window::defaultFrameTimeSource() const
-{
-	return screen()->supportsTimestamps() ? FrameTimeSource::Screen :
-		(Config::envIsAndroid ? FrameTimeSource::Renderer : FrameTimeSource::Timer);
-}
-
-void Window::configureFrameTimeSource(FrameTimeSource src)
-{
-	src = evalFrameTimeSource(src);
-	log.info("configuring for frame time source:{}", wise_enum::to_string(src));
-	if(src != FrameTimeSource::Renderer)
+	if(usage == FrameClockUsage::normal)
 	{
-		screen()->setVariableFrameTime(src == FrameTimeSource::Timer);
+		return supportsFrameClockSource(FrameClockSource::Screen) ? FrameClockSource::Screen : FrameClockSource::Renderer;
+	}
+	else
+	{
+		return supportsFrameClockSource(FrameClockSource::Screen) ? FrameClockSource::Screen :
+			Config::envIsAndroid ? FrameClockSource::Renderer : // Prefer double buffer vsync on old Android versions
+			FrameClockSource::Timer;
+	}
+}
+
+FrameClockSource Window::evalFrameClockSource(FrameClockSource src, FrameClockUsage usage) const
+{
+	return src == FrameClockSource::Unset ? defaultFrameClockSource(usage) : src;
+}
+
+FrameClockMode Window::toFrameClockMode(FrameClockSource src, FrameClockUsage usage) const
+{
+	src = evalFrameClockSource(src, usage);
+	return src == FrameClockSource::Renderer ? FrameClockMode::renderer : FrameClockMode::screen;
+}
+
+bool Window::supportsFrameClockSource(FrameClockSource src) const
+{
+	if(src == FrameClockSource::Screen)
+	{
+		return screen()->supportsTimestamps();
+	}
+	else if(src == FrameClockSource::Renderer)
+	{
+		if(Config::envIsAndroid) // Older Android versions without Choreographer API use double buffer vsync
+		{
+			return !screen()->supportsTimestamps();
+		}
+		return true;
+	}
+	return true;
+}
+
+void Window::configureFrameClock(FrameClockSource src, FrameClockUsage usage)
+{
+	src = evalFrameClockSource(src, usage);
+	if(src != FrameClockSource::Renderer)
+	{
+		screen()->setVariableFrameRate(src == FrameClockSource::Timer);
 	}
 }
 
@@ -182,6 +200,7 @@ void Window::unpostDraw()
 {
 	setNeedsDraw(false);
 	drawEvent.cancel();
+	lastFrameTime = {};
 	//log.debug("window:{} cancelled draw", this);
 }
 
@@ -206,12 +225,24 @@ void Window::postFrameReadyToMainThread()
 	postFrameReady();
 }
 
+void Window::setFrameEventsOnThisThread()
+{
+	screen()->setFrameEventsOnThisThread();
+	drawEvent.attach();
+}
+
+void Window::removeFrameEvents()
+{
+	unpostDraw();
+	screen()->removeFrameEvents();
+	drawEvent.detach();
+}
+
 int8_t Window::setDrawEventPriority(int8_t priority)
 {
 	if(priority == drawEventPriorityLocked)
 	{
 		setNeedsDraw(false);
-		drawPhase = DrawPhase::UPDATE;
 	}
 	return std::exchange(drawEventPriority_, priority);
 }
@@ -230,11 +261,11 @@ bool Window::dispatchInputEvent(Input::Event event)
 {
 	bool handled = onEvent.callCopy(*this, event);
 	return event.visit(overloaded{
-		[&](const Input::MotionEvent &e)
+		[&](const Input::MotionEvent& e)
 		{
 			return handled || (e.isPointer() && contentBounds().overlaps(e.pos()));
 		},
-		[&](const Input::KeyEvent &e) { return handled; }
+		[&](const Input::KeyEvent&) { return handled; }
 	});
 }
 
@@ -297,12 +328,15 @@ void Window::dispatchOnFrame()
 {
 	if(drawPhase != DrawPhase::READY || !onFrame.size())
 	{
+		lastFrameTime = {};
 		return;
 	}
 	drawPhase = DrawPhase::UPDATE;
 	//log.debug("running {} onFrame delegates", onFrame.size());
-	FrameParams frameParams{.timestamp = SteadyClock::now(), .frameTime = screen()->frameTime(), .timeSource = FrameTimeSource::Renderer};
+	auto now = SteadyClock::now();
+	FrameParams frameParams{.time = now, .lastTime = std::exchange(lastFrameTime, now), .duration = screen()->frameRate().duration(), .mode = FrameClockMode::renderer};
 	onFrame.runAll([&](OnFrameDelegate del){ return del(frameParams); });
+	setNeedsDraw(true);
 }
 
 void Window::draw(bool needsSync)

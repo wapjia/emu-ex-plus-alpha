@@ -16,6 +16,7 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/config/defs.hh>
+#include <imagine/base/ApplicationContext.hh>
 #include <imagine/time/Time.hh>
 #include <imagine/util/variant.hh>
 
@@ -29,9 +30,28 @@ public:
 	using VariantBase::VariantBase;
 	using AddVisit::visit;
 
-	void scheduleVSync() { visit([](auto &e){ e.scheduleVSync(); }); }
-	void cancel() { visit([](auto &e){ e.cancel(); }); }
-	void setFrameRate(FrameRate rate) { visit([&](auto &e){ e.setFrameRate(rate); }); }
+	void scheduleVSync() { visit([](auto& e){ e.scheduleVSync(); }); }
+	void cancel() { visit([](auto& e){ e.cancel(); }); }
+	void setFrameRate(FrameRate rate)
+	{
+		visit([&](auto& e)
+		{
+			if constexpr(requires {e.setFrameRate(rate);})
+				e.setFrameRate(rate);
+		});
+	}
+	FrameRate frameRate() const
+	{
+		return visit([&](auto& e)
+		{
+			if constexpr(requires {e.frameRate();})
+				return e.frameRate();
+			else
+				return FrameRate{};
+		});
+	}
+	void setEventsOnThisThread(ApplicationContext ctx) { visit([&](auto& e){ e.setEventsOnThisThread(ctx); }); }
+	void removeEvents(ApplicationContext ctx) { visit([&](auto& e){ e.removeEvents(ctx); }); }
 };
 
 }

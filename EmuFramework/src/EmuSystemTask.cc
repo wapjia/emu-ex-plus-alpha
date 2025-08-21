@@ -16,7 +16,9 @@
 #include <emuframework/EmuApp.hh>
 #include <emuframework/EmuVideo.hh>
 #include <emuframework/EmuSystemTask.hh>
+#include <emuframework/EmuViewController.hh>
 #include <imagine/thread/Thread.hh>
+#include <imagine/util/math.hh>
 #include <imagine/logger/logger.h>
 
 namespace EmuEx
@@ -24,144 +26,467 @@ namespace EmuEx
 
 constexpr SystemLogger log{"EmuSystemTask"};
 
-EmuSystemTask::EmuSystemTask(EmuApp &app):
-	app{app} {}
+EmuSystemTask::EmuSystemTask(EmuApp& app_):
+	app{app_},
+	onFrameUpdate
+	{
+		[this](FrameParams params)
+		{
+			bool renderingFrame = advanceFrames(params);
+			if(renderingFrame)
+			{
+				app.record(FrameTimingStatEvent::waitForPresent);
+				framePresentedSem.acquire();
+				auto endFrameTime = SteadyClock::now();
+				app.reportFrameWorkDuration(endFrameTime - params.time);
+				app.record(FrameTimingStatEvent::endOfFrame, endFrameTime);
+				app.viewController().emuView.setFrameTimingStats({.stats{app.frameTimingStats}, .lastFrameTime{params.lastTime},
+					.inputRate{app.system().frameRate()}, .outputRate{frameRateConfig.rate}});
+			}
+			if(params.isFromRenderer() && !renderingFrame)
+			{
+				drawWindowNow();
+			}
+			return true;
+		}
+	} {}
 
-using FrameParamsCommand = EmuSystemTask::FrameParamsCommand;
-using PauseCommand = EmuSystemTask::PauseCommand;
-using ExitCommand = EmuSystemTask::ExitCommand;
-
-void EmuSystemTask::start()
+void EmuSystemTask::start(Window& win)
 {
-	if(taskThread.joinable())
+	if(isStarted())
 		return;
+	win.removeFrameEvents();
+	win.setDrawEventPriority(Window::drawEventPriorityLocked); // block UI from posting draws
+	setWindowInternal(win);
 	taskThread = makeThreadSync(
 		[this](auto &sem)
 		{
-			threadId_ = thisThreadId();
+			auto threadId = thisThreadId();
+			threadId_ = threadId;
 			auto eventLoop = EventLoop::makeForThread();
+			window().setFrameEventsOnThisThread();
+			addOnFrameDelayed();
 			bool started = true;
 			commandPort.attach(eventLoop, [this, &started](auto msgs)
 			{
-				std::binary_semaphore *syncSemPtr{};
 				for(auto msg : msgs)
 				{
-					bool threadIsRunning = visit(overloaded
+					bool threadIsRunning = msg.command.visit(overloaded
 					{
-						[&](FrameParamsCommand &cmd)
+						[&](SetWindowCommand& cmd)
 						{
-							frameParams = cmd.params;
-							return true;
-						},
-						[&](FramePresentedCommand &cmd)
-						{
-							framePending = false;
-							return true;
-						},
-						[&](PauseCommand &)
-						{
-							//log.debug("got pause command");
+							//log.debug("got set window command");
+							isSuspended = true;
+							removeOnFrame();
+							setWindowInternal(*cmd.winPtr);
+							addOnFrame();
 							assumeExpr(msg.semPtr);
-							syncSemPtr = msg.semPtr;
+							msg.semPtr->release();
+							suspendSem.acquire();
 							return true;
 						},
-						[&](ExitCommand &)
+						[&](SuspendCommand&)
+						{
+							//log.debug("got suspend command");
+							isSuspended = true;
+							assumeExpr(msg.semPtr);
+							msg.semPtr->release();
+							suspendSem.acquire();
+							return true;
+						},
+						[&](ExitCommand&)
 						{
 							started = false;
+							removeOnFrame();
+							window().removeFrameEvents();
+							threadId_ = 0;
+							frameRateConfig = {};
 							EventLoop::forThread().stop();
 							return false;
 						},
-					}, msg.command);
+					});
 					if(!threadIsRunning)
 						return false;
-				}
-				if(hasTime(frameParams.timestamp))
-				{
-					if(!framePending)
-					{
-						auto params = std::exchange(frameParams, {});
-						bool renderingFrame = app.advanceFrames(params, this);
-						if(params.isFromRenderer())
-						{
-							framePending = false;
-							if(!renderingFrame)
-							{
-								app.emuWindow().postDraw(1);
-							}
-						}
-					}
-					else
-					{
-						log.debug("previous async frame not ready yet");
-						doIfUsed(app.frameTimeStats, [&](auto &stats) { stats.missedFrameCallbacks++; });
-					}
-				}
-				if(syncSemPtr)
-				{
-					framePending = false;
-					syncSemPtr->release();
 				}
 				return true;
 			});
 			sem.release();
-			log.info("starting thread event loop");
+			log.info("starting thread:{} event loop", threadId);
 			eventLoop.run(started);
-			log.info("exiting thread");
+			log.info("exiting thread:{}", threadId);
 			commandPort.detach();
 		});
 }
 
-void EmuSystemTask::pause()
+EmuSystemTask::SuspendContext EmuSystemTask::setWindow(Window& win)
 {
-	if(!taskThread.joinable())
+	assert(!isSuspended);
+	if(!isStarted())
+		return {};
+	commandPort.send({.command = SetWindowCommand{&win}}, MessageReplyMode::wait);
+	return {this};
+}
+
+void EmuSystemTask::setWindowInternal(Window& win)
+{
+	winPtr = &win;
+	updateSystemFrameRate();
+}
+
+void EmuSystemTask::drawWindowNow()
+{
+	waitingForPresent_ = true;
+	window().drawNow();
+	framePresentedSem.acquire();
+}
+
+EmuSystemTask::SuspendContext EmuSystemTask::suspend()
+{
+	if(!isStarted() || isSuspended)
+		return {};
+	//log.info("suspending emulation thread");
+	commandPort.send({.command = SuspendCommand{}}, MessageReplyMode::wait);
+	return {this};
+}
+
+void EmuSystemTask::resume()
+{
+	if(!isStarted() || !isSuspended)
 		return;
-	commandPort.send({.command = PauseCommand{}}, MessageReplyMode::wait);
-	app.flushMainThreadMessages();
+	//log.info("resuming emulation thread");
+	isSuspended = false;
+	suspendSem.release();
 }
 
 void EmuSystemTask::stop()
 {
-	if(!taskThread.joinable())
+	if(!isStarted())
 		return;
+	if(Config::DEBUG_BUILD)
+	{
+		auto threadId = thisThreadId();
+		log.info("request stop emulation thread:{} from:{}", threadId_, threadId);
+		assert(threadId_ != thisThreadId());
+	}
 	commandPort.send({.command = ExitCommand{}});
 	taskThread.join();
-	threadId_ = 0;
 	app.flushMainThreadMessages();
+	winPtr->setFrameEventsOnThisThread();
+	winPtr->setDrawEventPriority(); // allow UI to post draws again
+	winPtr->setIntendedFrameRate(0);
+	winPtr = {};
 }
 
-void EmuSystemTask::updateFrameParams(FrameParams params)
+void EmuSystemTask::sendVideoFormatChangedReply(EmuVideo&)
 {
-	if(!taskThread.joinable()) [[unlikely]]
-		return;
-	commandPort.send({.command = FrameParamsCommand{params}});
+	app.videoLayer.onVideoFormatChanged(app.videoEffectPixelFormat());
+	app.viewController().placeEmuViews();
 }
 
-void EmuSystemTask::notifyFramePresented()
+void EmuSystemTask::sendFrameFinishedReply(EmuVideo&)
 {
-	if(!taskThread.joinable()) [[unlikely]]
-		return;
-	commandPort.send({.command = FramePresentedCommand{}});
-}
-
-void EmuSystemTask::sendVideoFormatChangedReply(EmuVideo &video)
-{
-	app.runOnMainThread([&video](ApplicationContext)
-	{
-		video.dispatchFormatChanged();
-	});
-}
-
-void EmuSystemTask::sendFrameFinishedReply(EmuVideo &video)
-{
-	video.dispatchFrameFinished();
+	window().drawNow();
 }
 
 void EmuSystemTask::sendScreenshotReply(bool success)
 {
-	app.runOnMainThread([&app = app, success](ApplicationContext ctx)
+	app.runOnMainThread([&app = app, success](ApplicationContext)
 	{
 		app.printScreenshotResult(success);
 	});
+}
+
+IG::OnFrameDelegate EmuSystemTask::onFrameCalibrate()
+{
+	return [this](IG::FrameParams params)
+	{
+		if(app.system().frameRateMultiplier != 1.)
+			return true;
+		frameRateDetector.addFrame(params);
+		if(frameRateDetector.hasConsistentRate())
+		{
+			FrameRate detectedRate{frameRateDetector.estimatedFrameDuration()};
+			log.debug("detected frame duration:{} ({}Hz)", detectedRate.duration(), detectedRate.hz());
+			detectedFrameRateMap[frameRateDetector.frameDuration()] = detectedRate;
+			configFrameRate(detectedRate);
+			return false;
+		}
+		constexpr int maxFramesToProcess = 4096;
+		if(frameRateDetector.framesCounted() >= maxFramesToProcess)
+		{
+			log.warn("unable to detect frame rate");
+			return false;
+		}
+		return true;
+	};
+}
+
+IG::OnFrameDelegate EmuSystemTask::onFrameDelayed(uint16_t delay)
+{
+	return [this, delay](IG::FrameParams params)
+	{
+		if(params.isFromRenderer() || app.video.image())
+		{
+			drawWindowNow();
+		}
+		if(delay)
+		{
+			addOnFrameDelegate(onFrameDelayed(delay - 1));
+		}
+		else
+		{
+			addOnFrame();
+		}
+		return false;
+	};
+}
+
+void EmuSystemTask::addOnFrameDelegate(IG::OnFrameDelegate onFrame)
+{
+	window().addOnFrame(onFrame, window().toFrameClockMode(app.frameClockSource, FrameClockUsage::fixedRate));
+}
+
+void EmuSystemTask::addOnFrameDelayed()
+{
+	auto screenRate = screen().frameRate();
+	calibrateScreenFrameRate(screenRate);
+	// delay before adding onFrame handler to let timestamps stabilize
+	addOnFrameDelegate(onFrameDelayed(screenRate.hz() / 4));
+}
+
+void EmuSystemTask::addOnFrame()
+{
+	addOnFrameDelegate(onFrameUpdate);
+	savedAdvancedFrames = 0;
+}
+
+void EmuSystemTask::removeOnFrame()
+{
+	auto mode = window().toFrameClockMode(app.frameClockSource, FrameClockUsage::fixedRate);
+	window().removeOnFrame(onFrameDelayed(0), mode, DelegateFuncEqualsMode::byFunc);
+	window().removeOnFrame(onFrameUpdate, mode);
+	window().removeOnFrame(onFrameCalibrate(), FrameClockMode::screen);
+}
+
+FrameRate EmuSystemTask::remapScreenFrameRate(FrameRate rate) const
+{
+	return doIfUsedOr(detectedFrameRateMap, [&](auto& map)
+	{
+		if(app.effectiveOutputFrameRateMode() == OutputFrameRateMode::Detect)
+		{
+			auto it = map.find(rate.duration());
+			if(it != map.end())
+				return it->second;
+		}
+		return rate;
+	},
+	[&]()
+	{
+		if(app.effectiveOutputFrameRateMode() == OutputFrameRateMode::Detect &&
+			frameRateDetector.frameDuration() == rate.duration() &&
+			frameRateDetector.hasConsistentRate())
+		{
+			return FrameRate{frameRateDetector.estimatedFrameDuration()};
+		}
+		return rate;
+	});
+}
+
+FrameRateConfig EmuSystemTask::configFrameRate(const Screen& screen)
+{
+	if(app.overrideScreenFrameRate)
+	{
+		return configFrameRate(remapScreenFrameRate(app.overrideScreenFrameRate));
+	}
+	else if(app.effectiveOutputFrameRateMode() == OutputFrameRateMode::Detect)
+	{
+		if constexpr(Config::multipleScreenFrameRates)
+		{
+			auto rates = screen.supportedFrameRates();
+			FrameRate ratesCopy[rates.size()];
+			transformN(rates.data(), rates.size(), ratesCopy, [&](auto& r) { return remapScreenFrameRate(r); });
+			return configFrameRate(std::span{ratesCopy, rates.size()});
+		}
+		else
+		{
+			return configFrameRate(remapScreenFrameRate(screen.frameRate()));
+		}
+	}
+	else
+	{
+		return configFrameRate(screen.supportedFrameRates());
+	}
+}
+
+FrameRateConfig EmuSystemTask::configFrameRate(std::span<const FrameRate> supportedRates)
+{
+	auto &system = app.system();
+	auto frameClockSrc = app.effectiveFrameClockSource();
+	frameRateConfig = app.outputTimingManager.frameRateConfig(system, supportedRates, frameClockSrc);
+	system.configFrameRate(app.audio.format().rate, frameRateConfig.rate.duration());
+	system.timing.exactFrameDivisor = 0;
+	if(frameRateConfig.refreshMultiplier > 0 && (app.allowBlankFrameInsertion || !app.frameInterval))
+	{
+		system.timing.exactFrameDivisor = frameClockSrc == FrameClockSource::Timer ? 1 : frameRateConfig.refreshMultiplier;
+	}
+	if(system.timing.exactFrameDivisor)
+		log.info("using exact frame divisor:{}", system.timing.exactFrameDivisor);
+	return frameRateConfig;
+}
+
+void EmuSystemTask::updateScreenFrameRate(FrameRate rate)
+{
+	if(!winPtr) [[unlikely]]
+		return;
+	calibrateScreenFrameRate(rate);
+	configFrameRate(remapScreenFrameRate(rate));
+}
+
+void EmuSystemTask::updateSystemFrameRate()
+{
+	if(!winPtr) [[unlikely]]
+		return;
+	setIntendedFrameRate(configFrameRate(screen()));
+}
+
+void EmuSystemTask::calibrateScreenFrameRate(FrameRate rate)
+{
+	if(!app.system().isActive() ||
+		window().evalFrameClockSource(app.frameClockSource, FrameClockUsage::fixedRate) != FrameClockSource::Screen ||
+		app.effectiveOutputFrameRateMode() != OutputFrameRateMode::Detect ||
+		doIfUsed<bool>(detectedFrameRateMap, [&](auto& map){ return map.contains(rate.duration()); }) ||
+		!frameRateDetector.setFrameDuration(rate.duration()))
+	{
+		window().removeOnFrame(onFrameCalibrate(), FrameClockMode::screen);
+	}
+	else
+	{
+		log.info("performing host frame rate detection for screen rate:{}Hz", rate.hz());
+		window().addOnFrame(onFrameCalibrate(), FrameClockMode::screen, -1, InsertMode::unique);
+	}
+}
+
+void EmuSystemTask::setIntendedFrameRate(FrameRateConfig config)
+{
+	enableBlankFrameInsertion = false;
+	if(app.allowBlankFrameInsertion && config.refreshMultiplier > 1 && app.frameInterval <= 1)
+	{
+		enableBlankFrameInsertion = true;
+		if(!app.overrideScreenFrameRate)
+		{
+			config.rate = config.rate.hz() * config.refreshMultiplier;
+			log.info("Multiplied intended frame rate to:{:g}", config.rate.hz());
+		}
+	}
+	window().setIntendedFrameRate(app.overrideScreenFrameRate ? FrameRate{app.overrideScreenFrameRate} :
+		app.effectiveFrameClockSource() == FrameClockSource::Timer || config.refreshMultiplier ? config.rate :
+		screen().supportedFrameRates().back()); // frame rate doesn't divide evenly in screen's refresh rate, prefer the highest rate
+}
+
+bool EmuSystemTask::advanceFrames(FrameParams frameParams)
+{
+	assert(hasTime(frameParams.time));
+	auto &sys = app.system();
+	auto &viewCtrl = app.viewController();
+	auto *audioPtr = app.audio ? &app.audio : nullptr;
+	auto frameInfo = sys.timing.advanceFrames(frameParams);
+	int interval = app.frameInterval;
+	viewCtrl.presentTime = frameParams.presentTime(interval);
+	if(sys.shouldFastForward()) [[unlikely]]
+	{
+		// for skipping loading on disk-based computers
+		if(sys.skipForwardFrames({this}, 20))
+		{
+			// don't write any audio while skip is in progress
+			audioPtr = nullptr;
+		}
+		frameInfo.advanced = 1;
+	}
+	if(!frameInfo.advanced)
+	{
+		if(enableBlankFrameInsertion)
+		{
+			waitingForPresent_ = true;
+			viewCtrl.drawBlankFrame = true;
+			window().drawNow();
+			return true;
+		}
+		return false;
+	}
+	bool allowFrameSkip = interval || sys.frameRateMultiplier != 1.;
+	if(frameInfo.advanced + savedAdvancedFrames < interval)
+	{
+		// running at a lower target fps
+		savedAdvancedFrames += frameInfo.advanced;
+	}
+	else
+	{
+		savedAdvancedFrames = 0;
+		if(!allowFrameSkip)
+		{
+			frameInfo.advanced = 1;
+		}
+		if(frameInfo.advanced > 1 && frameParams.elapsedFrames() > 1)
+		{
+			if(sys.frameRateMultiplier == 1.)
+			{
+				app.frameTimingStats.missedFrameCallbacks += frameInfo.advanced - 1;
+			}
+			viewCtrl.presentTime = {};
+		}
+	}
+	assumeExpr(frameInfo.advanced > 0);
+	// cap advanced frames if we're falling behind
+	if(frameInfo.duration > Milliseconds{70})
+		frameInfo.advanced = std::min(frameInfo.advanced, 4);
+	EmuVideo *videoPtr = savedAdvancedFrames ? nullptr : &app.video;
+	if(videoPtr)
+	{
+		app.record(FrameTimingStatEvent::startOfFrame, frameParams.time);
+		app.record(FrameTimingStatEvent::startOfEmulation);
+		waitingForPresent_ = true;
+	}
+	//log.debug("running {} frame(s), skip:{}", frameInfo.advanced, !videoPtr);
+	sys.runFrames({this}, videoPtr, audioPtr, frameInfo.advanced);
+	app.inputManager.turboActions.update(app);
+	return videoPtr;
+}
+
+void EmuSystemTask::notifyWindowPresented()
+{
+	if(waitingForPresent_)
+	{
+		waitingForPresent_ = false;
+		framePresentedSem.release();
+	}
+}
+
+bool FrameRateDetector::addFrame(FrameParams params)
+{
+	if(!hasTime(params.lastTime))
+	{
+		return false;
+	}
+	auto delta = params.delta();
+	if(!isWithinThreshold(delta.count(), frameDuration_.count(), Nanoseconds{200000}.count()))
+	{
+		//log.debug("filtered delta:{} ({}Hz)", delta, toHz(delta));
+		return false;
+	}
+	auto prevEstimate = frameDurations ? estimatedFrameDuration() : SteadyClockDuration{};
+	allFrameDurations += delta;
+	frameDurations++;
+	auto estimate = estimatedFrameDuration();
+	if(isWithinThreshold(prevEstimate.count(), estimate.count(), Nanoseconds{16}.count()))
+	{
+		consistentDurations++;
+		//log.debug("consistent frame durations:{}", consistentDurations);
+	}
+	else
+	{
+		consistentDurations = {};
+	}
+	return true;
 }
 
 }

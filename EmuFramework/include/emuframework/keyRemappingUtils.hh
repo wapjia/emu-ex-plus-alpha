@@ -61,6 +61,7 @@ constexpr Input::Key genericGamepadKeycodeToXperiaPlay(Input::Key k)
 		case Keycode::GAME_B: return Keycode::XperiaPlay::CIRCLE;
 		case Keycode::GAME_X: return Keycode::XperiaPlay::SQUARE;
 		case Keycode::GAME_Y: return Keycode::XperiaPlay::TRIANGLE;
+		case Keycode::GAME_MODE: return Keycode::MENU;
 		default: return k;
 	}
 }

@@ -22,6 +22,7 @@
 #include <imagine/util/concepts.hh>
 #include <imagine/util/utility.h>
 #include <array>
+#include <string_view>
 
 namespace IG
 {
@@ -29,14 +30,11 @@ namespace IG
 class Pipe
 {
 public:
-	struct NullInit{};
-
-	Pipe(int preferredSize = 0): Pipe(nullptr, preferredSize) {}
-	Pipe(const char *debugLabel, int preferredSize = 0);
-	explicit constexpr Pipe(NullInit) {}
+	Pipe(int preferredSize = 0): Pipe({}, preferredSize) {}
+	Pipe(std::string_view debugLabel, int preferredSize = 0);
 	PosixIO &source();
 	PosixIO &sink();
-	void attach(EventLoop loop, PollEventDelegate del);
+	void attach(EventLoop loop);
 	void detach();
 	bool hasData();
 	void dispatchSourceEvents();
@@ -44,6 +42,7 @@ public:
 	void setReadNonBlocking(bool on);
 	bool isReadNonBlocking() const;
 	explicit operator bool() const;
+	auto debugLabel() const { return fdSrc.debugLabel(); }
 
 	void attach(auto &&f)
 	{
@@ -52,8 +51,7 @@ public:
 
 	void attach(EventLoop loop, Callable<bool, PosixIO&> auto &&f)
 	{
-		attach(loop,
-			PollEventDelegate
+		fdSrc.setCallback(PollEventDelegate
 			{
 				[=](int fd, int)
 				{
@@ -63,10 +61,10 @@ public:
 					return keep;
 				}
 			});
+		attach(loop);
 	}
 
 protected:
-	ConditionalMember<Config::DEBUG_BUILD, const char *> debugLabel{};
 	std::array<PosixIO, 2> io;
 	FDEventSource fdSrc;
 };

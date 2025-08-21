@@ -35,8 +35,8 @@ class PerformanceHintSession : public PerformanceHintSessionImpl
 {
 public:
 	using PerformanceHintSessionImpl::PerformanceHintSessionImpl;
-	void updateTargetWorkTime(Nanoseconds targetTime);
-	void reportActualWorkTime(Nanoseconds actualTime);
+	void updateTargetWorkDuration(Nanoseconds targetTime);
+	void reportActualWorkDuration(Nanoseconds actualTime);
 	explicit operator bool() const;
 };
 
@@ -44,7 +44,7 @@ class PerformanceHintManager : public PerformanceHintManagerImpl
 {
 public:
 	using PerformanceHintManagerImpl::PerformanceHintManagerImpl;
-	PerformanceHintSession session(std::span<const ThreadId> threadIds, Nanoseconds initialTargetWorkTime);
+	PerformanceHintSession session(std::span<const ThreadId> threadIds, Nanoseconds initialTargetWorkDuration);
 	explicit operator bool() const;
 };
 

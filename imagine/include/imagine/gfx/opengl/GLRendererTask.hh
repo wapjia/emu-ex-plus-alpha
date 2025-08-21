@@ -22,6 +22,7 @@
 #include <imagine/util/utility.h>
 #include <concepts>
 #include <array>
+#include <string_view>
 
 namespace IG
 {
@@ -41,7 +42,7 @@ public:
 	using CommandMessage = GLTask::CommandMessage;
 
 	GLRendererTask(ApplicationContext, Renderer &);
-	GLRendererTask(ApplicationContext, const char *debugLabel, Renderer &);
+	GLRendererTask(ApplicationContext, std::string_view debugLabel, Renderer &);
 	void initDefaultFramebuffer();
 	GLuint defaultFBO() const { return defaultFB; }
 	GLuint bindFramebuffer(Texture &tex);
@@ -81,7 +82,7 @@ protected:
 	Renderer *r{};
 	ConditionalMember<Config::Gfx::GLDRAWABLE_NEEDS_FRAMEBUFFER, GLuint> defaultFB{};
 	GLuint fbo = 0;
-	ConditionalMember<Config::Gfx::OPENGL_DEBUG_CONTEXT, bool> debugEnabled{};
+	ConditionalMember<Config::OpenGLDebugContext, bool> debugEnabled{};
 
 	void doPreDraw(Window &win, WindowDrawParams winParams, DrawParams &params) const;
 	void updateDrawable(Drawable, IRect viewportRect, int swapInterval);

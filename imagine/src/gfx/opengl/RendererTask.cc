@@ -29,9 +29,9 @@ namespace IG::Gfx
 constexpr SystemLogger log{"RendererTask"};
 
 GLRendererTask::GLRendererTask(ApplicationContext ctx, Renderer &r):
-	GLRendererTask{ctx, nullptr, r} {}
+	GLRendererTask{ctx, {}, r} {}
 
-GLRendererTask::GLRendererTask(ApplicationContext ctx, const char *debugLabel, Renderer &r):
+GLRendererTask::GLRendererTask(ApplicationContext ctx, std::string_view debugLabel, Renderer &r):
 	GLTask{ctx, debugLabel}, r{&r} {}
 
 void GLRendererTask::initDefaultFramebuffer()
@@ -165,7 +165,7 @@ void GLRendererTask::destroyDrawable(GLDrawable &drawable)
 	if(!drawable)
 		return;
 	GLTask::runSync(
-		[this, drawable = (Drawable)drawable](TaskContext ctx)
+		[this, drawable = (Drawable)drawable](TaskContext)
 		{
 			// unset the drawable if it's currently in use
 			if(GLManager::hasCurrentDrawable(drawable))

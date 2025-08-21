@@ -110,18 +110,16 @@ static const char *ps3ButtonName(Input::Key k)
 	return "";
 }
 
-PS3Controller::PS3Controller(ApplicationContext ctx, BluetoothAddr addr):
+PS3Controller::PS3Controller(ApplicationContext ctx, BluetoothAddr):
 	BluetoothInputDevice{ctx, Input::Map::PS3PAD, {.gamepad = true}, "PS3 Controller"},
-	ctlSock{ctx}, intSock{ctx},
-	addr{addr}
-{}
+	ctlSock{ctx}, intSock{ctx} {}
 
 const char *PS3Controller::keyName(Input::Key k) const
 {
 	return ps3ButtonName(k);
 }
 
-bool PS3Controller::open(BluetoothAdapter &adapter, Input::Device &dev)
+bool PS3Controller::open(BluetoothAdapter&, Input::Device&)
 {
 	return false;
 }
@@ -193,7 +191,7 @@ void PS3Controller::close()
 	ctlSock.close();
 }
 
-bool PS3Controller::dataHandler(Input::Device &dev, const char *packetPtr, size_t size)
+bool PS3Controller::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 {
 	auto packet = (const uint8_t*)packetPtr;
 	/*logMsg("data with size %d", (int)size);

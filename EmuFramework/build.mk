@@ -1,6 +1,7 @@
 include $(IMAGINE_PATH)/make/imagineStaticLibBase.mk
 
 SRC += \
+AssetManager.cc \
 AutosaveManager.cc \
 ConfigFile.cc \
 EmuApp.cc \
@@ -27,7 +28,6 @@ gui/AudioOptionView.cc \
 gui/AutosaveSlotView.cc \
 gui/BundledGamesView.cc \
 gui/ButtonConfigView.cc \
-gui/Cheats.cc \
 gui/CPUAffinityView.cc \
 gui/CreditsView.cc \
 gui/EmuInputView.cc \
@@ -38,6 +38,7 @@ gui/FilePicker.cc \
 gui/FrameTimingView.cc \
 gui/GUIOptionView.cc \
 gui/InputManagerView.cc \
+gui/InputOverridesView.cc \
 gui/LoadProgressView.cc \
 gui/MainMenuView.cc \
 gui/PlaceVControlsView.cc \

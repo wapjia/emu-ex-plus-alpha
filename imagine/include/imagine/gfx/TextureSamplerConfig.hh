@@ -17,6 +17,7 @@
 
 #include <imagine/gfx/defs.hh>
 #include <imagine/util/used.hh>
+#include <string_view>
 
 namespace IG::Gfx
 {
@@ -29,7 +30,7 @@ public:
 	MipFilter mipFilter = MipFilter::LINEAR;
 	WrapMode xWrapMode = WrapMode::CLAMP;
 	WrapMode yWrapMode = WrapMode::CLAMP;
-	ConditionalMember<Config::DEBUG_BUILD, const char *> debugLabel{};
+	ConditionalMember<Config::DEBUG_BUILD, std::string_view> debugLabel{};
 
 	constexpr void setLinearFilter(bool on) { minLinearFilter = magLinearFilter = on; }
 	constexpr void setWrapMode(WrapMode mode) { xWrapMode = yWrapMode = mode; }

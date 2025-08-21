@@ -50,7 +50,6 @@ protected:
 	Input::SingleDragTracker<> dragTracker;
 	VelocityTrackerType velTracker; // tracks y velocity as pixels/sec
 	Gfx::IQuads scrollBarQuads;
-	SteadyClockTimePoint lastFrameTimestamp;
 	float scrollVel{};
 	float scrollAccel{};
 	float offsetAsDec{};
@@ -64,7 +63,7 @@ protected:
 	bool allowScrollWholeArea_{};
 
 	void setContentSize(WSize size);
-	void drawScrollContent(Gfx::RendererCommands &cmds);
+	void drawScrollContent(Gfx::RendererCommands &cmds) const;
 	bool scrollInputEvent(const Input::MotionEvent &);
 	void stopScrollAnimation();
 };

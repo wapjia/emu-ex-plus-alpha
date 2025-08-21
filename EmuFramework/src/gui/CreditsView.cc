@@ -31,7 +31,7 @@ CreditsView::CreditsView(ViewAttachParams attach, UTF16String str):
 		[this](IG::FrameParams params)
 		{
 			window().setNeedsDraw(true);
-			return fade.update(params.timestamp);
+			return fade.update(params.time);
 		}
 	}
 {
@@ -45,7 +45,7 @@ void CreditsView::prepareDraw()
 	text.makeGlyphs();
 }
 
-void CreditsView::draw(Gfx::RendererCommands &__restrict__ cmds)
+void CreditsView::draw(Gfx::RendererCommands&__restrict__ cmds, ViewDrawParams) const
 {
 	using namespace IG::Gfx;
 	cmds.basicEffect().enableAlphaTexture(cmds);
@@ -57,7 +57,7 @@ void CreditsView::place()
 	text.compile({.alignment = Gfx::TextAlignment::center});
 }
 
-bool CreditsView::inputEvent(const Input::Event &e)
+bool CreditsView::inputEvent(const Input::Event& e, ViewInputEventParams)
 {
 	if(e.visit(overloaded
 		{

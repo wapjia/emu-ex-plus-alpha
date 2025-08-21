@@ -39,6 +39,7 @@ FSPicker::FSPicker(ViewAttachParams attach, Gfx::TextureSpan backRes, Gfx::Textu
 	filter{filter},
 	controller{attach},
 	msgText{attach.rendererTask, face_ ? face_ : &defaultFace()},
+	dirListEvent{{.debugLabel = "FSPicker::dirListEvent", .eventLoop = EventLoop::forThread()}, {}},
 	mode_{mode}
 {
 	auto nav = makeView<BasicNavView>
@@ -140,7 +141,7 @@ void FSPicker::onRightNavBtn(const Input::Event &e)
 		dismiss();
 }
 
-bool FSPicker::inputEvent(const Input::Event &e)
+bool FSPicker::inputEvent(const Input::Event& e, ViewInputEventParams)
 {
 	if(e.keyEvent())
 	{
@@ -177,7 +178,7 @@ void FSPicker::prepareDraw()
 	msgText.makeGlyphs();
 }
 
-void FSPicker::draw(Gfx::RendererCommands &__restrict__ cmds)
+void FSPicker::draw(Gfx::RendererCommands &__restrict__ cmds, ViewDrawParams) const
 {
 	if(!dirListThread.isWorking())
 	{
@@ -351,7 +352,7 @@ void FSPicker::pushFileLocationsView(const Input::Event &e)
 	if(appContext().hasSystemPathPicker())
 	{
 		view->appendItem("选择文件夹",
-			[this](View &view, const Input::Event &e)
+			[this](View& view, const Input::Event&)
 			{
 				if(!appContext().showSystemPathPicker())
 				{
@@ -363,7 +364,7 @@ void FSPicker::pushFileLocationsView(const Input::Event &e)
 	if(mode_ != Mode::DIR && appContext().hasSystemDocumentPicker())
 	{
 		view->appendItem("选择文件",
-			[this](View &view, const Input::Event &e)
+			[this](View& view, const Input::Event&)
 			{
 				if(!appContext().showSystemDocumentPicker())
 				{
@@ -375,7 +376,7 @@ void FSPicker::pushFileLocationsView(const Input::Event &e)
 	for(auto &loc : view->locations())
 	{
 		view->appendItem(loc.description,
-			[this, &loc](View &view, const Input::Event &e)
+			[this, &loc](View& view, const Input::Event& e)
 			{
 				auto ctx = appContext();
 				if(ctx.usesPermission(Permission::WRITE_EXT_STORAGE))
@@ -390,14 +391,14 @@ void FSPicker::pushFileLocationsView(const Input::Event &e)
 	if(Config::envIsLinux)
 	{
 		view->appendItem("Root Filesystem",
-			[this](View &view, const Input::Event &e)
+			[this](View& view, const Input::Event& e)
 			{
 				changeDirByInput("/", {}, e, DepthMode::reset);
 				view.dismiss();
 			});
 	}
 	view->appendItem("自定义路径",
-		[this](const Input::Event &e)
+		[this](const Input::Event& e)
 		{
 			auto textInputView = makeView<CollectTextInputView>(
 				"输入文件夹路径", root.path, Gfx::TextureSpan{},
@@ -520,7 +521,7 @@ void FSPicker::listDirectory(CStringView path, ThreadStop &stop)
 					item.text.setActive(false);
 				return true;
 			});
-		std::sort(dir.begin(), dir.end(),
+		std::ranges::sort(dir,
 			[](const FileEntry &e1, const FileEntry &e2)
 			{
 				if(e1.isDir() && !e2.isDir())

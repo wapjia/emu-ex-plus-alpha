@@ -27,50 +27,57 @@
 #endif
 
 #include <chrono>
+#include <string_view>
 
 namespace IG
 {
 
+struct TimerDesc
+{
+	std::string_view debugLabel{};
+	EventLoop eventLoop{};
+};
+
 struct Timer : public TimerImpl
 {
 public:
-	using Time = TimePoint::duration;
-	struct NullInit{};
+	using Duration = TimePoint::duration;
 
-	using TimerImpl::TimerImpl;
-	explicit constexpr Timer(NullInit) {}
-	Timer() : Timer{CallbackDelegate{}} {}
-	Timer(const char *debugLabel): Timer{debugLabel, CallbackDelegate{}} {}
-	void run(Time time, Time repeatTime, bool isAbsoluteTime = false, EventLoop loop = {}, CallbackDelegate c = {});
+	constexpr Timer() = default;
+	Timer(TimerDesc desc, CallbackDelegate del): TimerImpl{desc, del} {}
+	void run(Duration timeUntilRun, Duration repeatInterval, bool isAbsoluteTime = false, CallbackDelegate c = {});
 	void cancel();
-	void setCallback(CallbackDelegate c);
+	void setCallback(CallbackDelegate);
+	void setEventLoop(EventLoop);
+	void unsetEventLoop();
 	void dispatchEarly();
-	bool isArmed();
+	bool isArmed() const;
+	Duration timeUntilRun() const;
 	explicit operator bool() const;
 
-	void runIn(ChronoDuration auto time,
-		ChronoDuration auto repeatTime,
-		EventLoop loop = {}, CallbackDelegate f = {})
+	void runIn(ChronoDuration auto timeUntilRun,
+		ChronoDuration auto repeatInterval,
+		CallbackDelegate f = {})
 	{
-		run(time, repeatTime, false, loop, f);
+		run(timeUntilRun, repeatInterval, false, f);
 	}
 
 	void runAt(TimePoint time,
-		ChronoDuration auto repeatTime,
-		EventLoop loop = {}, CallbackDelegate f = {})
+		ChronoDuration auto repeatInterval,
+		CallbackDelegate f = {})
 	{
-		run(time.time_since_epoch(), repeatTime, true, loop, f);
+		run(time.time_since_epoch(), repeatInterval, true, f);
 	}
 
 	// non-repeating timer
-	void runIn(ChronoDuration auto time, EventLoop loop = {}, CallbackDelegate f = {})
+	void runIn(ChronoDuration auto timeUntilRun, CallbackDelegate f = {})
 	{
-		run(time, Time{}, false, loop, f);
+		run(timeUntilRun, Duration{}, false, f);
 	}
 
-	void runAt(TimePoint time, EventLoop loop = {}, CallbackDelegate f = {})
+	void runAt(TimePoint time, CallbackDelegate f = {})
 	{
-		run(time.time_since_epoch(), Time{}, true, loop, f);
+		run(time.time_since_epoch(), Duration{}, true, f);
 	}
 };
 

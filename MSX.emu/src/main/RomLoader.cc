@@ -105,9 +105,9 @@ UInt8 *romLoad(const char *filename, const char *filenameInArchive, int *size)
 {
 	if(!filename || !strlen(filename))
 		return nullptr;
-	EmuEx::log.info("loading ROM file:{}:{}", filename, filenameInArchive);
 	if(filenameInArchive && strlen(filenameInArchive))
 	{
+		EmuEx::log.info("loading zipped ROM:{}:{}", filename, filenameInArchive);
 		auto buff = (UInt8*)zipLoadFile(filename, filenameInArchive, size);
 		if(buff)
 			return buff;
@@ -116,6 +116,7 @@ UInt8 *romLoad(const char *filename, const char *filenameInArchive, int *size)
 	}
 	else
 	{
+		EmuEx::log.info("loading ROM:{}", filename);
 		auto &sys = static_cast<MsxSystem&>(gSystem());
 		auto appCtx = sys.appContext();
 		if(filename[0] == '/' || IG::isUri(filename)) // try to load absolute path directly

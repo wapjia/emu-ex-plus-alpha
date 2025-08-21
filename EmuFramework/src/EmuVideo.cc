@@ -71,7 +71,7 @@ bool EmuVideo::setFormat(IG::PixmapDesc desc, EmuSystemTaskContext taskCtx)
 	{
 		Gfx::TextureConfig conf{desc, samplerConfig()};
 		conf.colorSpace = colSpace;
-		bool singleBuffer = renderer().maxSwapChainImages() < 3 || app().effectiveFrameTimeSource() != FrameTimeSource::Renderer;
+		bool singleBuffer = renderer().maxSwapChainImages() < 3 || app().effectiveFrameClockSource() != FrameClockSource::Renderer;
 		vidImg = renderer().makePixmapBufferTexture(conf, bufferMode, singleBuffer);
 	}
 	else
@@ -83,16 +83,7 @@ bool EmuVideo::setFormat(IG::PixmapDesc desc, EmuSystemTaskContext taskCtx)
 	{
 		taskCtx.task().sendVideoFormatChangedReply(*this);
 	}
-	else
-	{
-		dispatchFormatChanged();
-	}
 	return true;
-}
-
-void EmuVideo::dispatchFormatChanged()
-{
-	onFormatChanged(*this);
 }
 
 EmuVideoImage EmuVideo::startFrame(EmuSystemTaskContext taskCtx)
@@ -142,12 +133,6 @@ void EmuVideo::startUnchangedFrame(EmuSystemTaskContext taskCtx)
 	postFrameFinished(taskCtx);
 }
 
-void EmuVideo::dispatchFrameFinished()
-{
-	//log.debug("frame finished");
-	onFrameFinished(*this);
-}
-
 void EmuVideo::postFrameFinished(EmuSystemTaskContext taskCtx)
 {
 	if(taskCtx)
@@ -162,7 +147,6 @@ void EmuVideo::finishFrame(EmuSystemTaskContext taskCtx, Gfx::LockedTextureBuffe
 	{
 		doScreenshot(taskCtx, texBuff.pixmap());
 	}
-	app().record(FrameTimeStatEvent::aboutToSubmitFrame);
 	vidImg.unlock(texBuff);
 	postFrameFinished(taskCtx);
 }
@@ -173,7 +157,6 @@ void EmuVideo::finishFrame(EmuSystemTaskContext taskCtx, IG::PixmapView pix)
 	{
 		doScreenshot(taskCtx, pix);
 	}
-	app().record(FrameTimeStatEvent::aboutToSubmitFrame);
 	vidImg.write(pix, {.async = true});
 	postFrameFinished(taskCtx);
 }
@@ -276,16 +259,6 @@ WSize EmuVideo::size() const
 bool EmuVideo::formatIsEqual(IG::PixmapDesc desc) const
 {
 	return vidImg && desc == vidImg.pixmapDesc();
-}
-
-void EmuVideo::setOnFrameFinished(FrameFinishedDelegate del)
-{
-	onFrameFinished = del;
-}
-
-void EmuVideo::setOnFormatChanged(FormatChangedDelegate del)
-{
-	onFormatChanged = del;
 }
 
 void EmuVideo::setTextureBufferMode(EmuSystem &sys, Gfx::TextureBufferMode mode)

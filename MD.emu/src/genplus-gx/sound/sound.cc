@@ -24,6 +24,10 @@
 #include "shared.h"
 #include "Fir_Resampler.h"
 
+#ifndef NO_SCD
+#include <scd/pcm.h>
+#endif
+
 /* Cycle-accurate samples */
 static unsigned int psg_cycles_ratio;
 static uint32 psg_cycles_count;
@@ -172,6 +176,10 @@ void sound_init(void)
 	Fir_Resampler_time_ratio(mclk / (double)snd.sample_rate / (144.0 * 7.0), config_rolloff);
 	}
   }
+
+#ifndef NO_SCD
+	scd_pcm_setRate(snd.sample_rate);
+#endif
 
 #ifdef LOGSOUND
   error("%d mcycles per PSG samples\n", psg_cycles_ratio);

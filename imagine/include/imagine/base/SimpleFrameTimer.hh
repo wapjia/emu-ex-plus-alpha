@@ -32,18 +32,19 @@ public:
 	void scheduleVSync();
 	void cancel();
 	void setFrameRate(FrameRate);
+	FrameRate frameRate() const { return rate; }
+	void setEventsOnThisThread(ApplicationContext);
+	void removeEvents(ApplicationContext);
 
 	explicit operator bool() const
 	{
-		return (bool)eventLoop;
+		return (bool)timer;
 	}
 
 protected:
-	Timer timer{Timer::NullInit{}};
-	Nanoseconds interval{};
-	EventLoop eventLoop{};
+	Timer timer;
+	FrameRate rate{};
 	bool requested{};
-	bool keepTimer{};
 };
 
 }

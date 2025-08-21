@@ -217,7 +217,7 @@ public:
 	}
 };
 
-static void sprintBTAddr(char *addrStr, bd_addr_t &addr)
+inline void sprintBTAddr(char *addrStr, bd_addr_t &addr)
 {
 	strcpy(addrStr, "");
 	for(auto i : iotaCount(6))
@@ -532,7 +532,7 @@ void BtstackBluetoothAdapter::packetHandler(uint8_t packet_type, uint16_t channe
 						break;
 					}
 
-					bool removedFromScanList = IG::erase_if(scanDevList, [&](BTDevice &dev){ return BD_ADDR_CMP(dev.address, addr) == 0; });
+					[[maybe_unused]] bool removedFromScanList = IG::erase_if(scanDevList, [&](BTDevice &dev){ return BD_ADDR_CMP(dev.address, addr) == 0; });
 					assert(removedFromScanList);
 
 					if(!cached && !scanDevList.size())
@@ -1001,7 +1001,7 @@ void BtstackBluetoothSocket::setPin(const void *pin, uint32_t size)
 	pinSize = size;
 }
 
-void BtstackBluetoothSocket::handleRfcommChannelOpened(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
+void BtstackBluetoothSocket::handleRfcommChannelOpened([[maybe_unused]] uint8_t packet_type, [[maybe_unused]] uint16_t channel, uint8_t *packet, [[maybe_unused]] uint16_t size)
 {
 	int ch = packet[11];
 	bd_addr_t addr;
@@ -1034,7 +1034,7 @@ void BtstackBluetoothSocket::handleRfcommChannelOpened(uint8_t packet_type, uint
 	}
 }
 
-void BtstackBluetoothSocket::handleL2capChannelOpened(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
+void BtstackBluetoothSocket::handleL2capChannelOpened([[maybe_unused]] uint8_t packet_type, [[maybe_unused]] uint16_t channel, uint8_t *packet, [[maybe_unused]] uint16_t size)
 {
 	uint16_t psm = READ_BT_16(packet, 11);
 	bd_addr_t addr;

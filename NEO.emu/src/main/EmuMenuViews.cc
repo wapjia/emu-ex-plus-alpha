@@ -66,7 +66,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 		std::min((int)system().optionTimerInt, 2),
 		timerItem,
 		{
-			.onSetDisplayString = [this](auto idx, Gfx::Text &t)
+			.onSetDisplayString = [](auto idx, Gfx::Text& t)
 			{
 				if(idx == 2)
 				{
@@ -454,7 +454,7 @@ constexpr RomListEntry romlist[]
 
 static FS::PathString gameFilePath(EmuApp &app, std::string_view name)
 {
-	auto basePath = app.contentSearchPath(name);
+	auto basePath = app.inContentSearchPath(name);
 	auto ctx = app.appContext();
 	if(auto zipPath = basePath + ".zip";
 		ctx.fileUriExists(zipPath))
@@ -506,7 +506,7 @@ public:
 		fileList.reserve(4095); // avoid initial small re-allocations
 		try
 		{
-			ctx.forEachInDirectoryUri(app().contentSearchPath(),
+			ctx.forEachInDirectoryUri(app().contentSearchPath,
 				[&](auto &entry)
 				{
 					if(entry.type() == FS::file_type::directory)

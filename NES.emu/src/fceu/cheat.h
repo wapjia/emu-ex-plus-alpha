@@ -1,5 +1,9 @@
 #ifndef CHEAT_H
 #define CHEAT_H
+
+#include <vector>
+#include <string>
+
 void FCEU_CheatResetRAM(void);
 void FCEU_CheatAddRAM(int s, uint32 A, uint8 *p);
 
@@ -33,6 +37,8 @@ extern int disableAutoLSCheats;
 int FCEU_DisableAllCheats(void);
 int FCEU_DeleteAllCheats(void);
 
+void FCEU_SetCheatChangeEventCallback( void (*func)(void*) = nullptr, void* userData = nullptr );
+
 struct CHEATF_SUBFAST
 {
 	uint16 addr;
@@ -46,15 +52,21 @@ struct CHEATF_SUBFAST
 	}
 };
 
-struct CHEATF {
-	struct CHEATF *next;
-	std::string name;
-	uint16 addr;
-	uint8 val;
-	int compare;	/* -1 for no compare. */
-	int type;	/* 0 for replace, 1 for substitute(GG). */
-	int status;
+struct CHEATCODE
+{
+	uint16 addr{};
+	uint8 val{};
+	int compare{};	/* -1 for no compare. */
+	int type{};	/* 0 for replace, 1 for substitute(GG). */
 };
+
+struct CHEATF {
+	std::string name;
+	std::vector<CHEATCODE> codes;
+	int status{};
+};
+
+extern std::vector<CHEATF> cheats;
 
 struct SEARCHPOSSIBLE {
 	uint16 addr;

@@ -41,7 +41,7 @@ prefix ?= $(IMAGINE_SDK_PLATFORM_PATH)
 imaginePkgconfigTemplate := $(IMAGINE_PATH)/pkgconfig/imagine.pc
 pkgName := $(libName)
 pkgDescription := Game/Multimedia Engine
-pkgVersion := 1.5.82
+pkgVersion := 1.5.83
 LDLIBS := -l$(libName) $(LDLIBS)
 ifdef libNameExt
  pkgCFlags := -DIMAGINE_CONFIG_H=$(configFilename)
@@ -49,6 +49,7 @@ ifdef libNameExt
 endif
 
 CFLAGS_WARN += -Werror
+CFLAGS_LANG = -std=gnu23
 
 include $(IMAGINE_PATH)/make/imagineStaticLibTarget.mk
 

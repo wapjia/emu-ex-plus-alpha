@@ -67,6 +67,7 @@ constexpr bool envIsAndroid = ENV == ANDROID_;
 constexpr bool envIsIOS = ENV == IOS;
 constexpr bool envIsMacOSX = ENV == MACOSX;
 constexpr bool envIsLinux = ENV == LINUX;
+constexpr bool is64Bit = sizeof(void*) == 8;
 
 #if defined __ANDROID__
 	#ifdef ANDROID_COMPAT_API

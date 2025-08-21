@@ -38,10 +38,6 @@ constexpr SystemLogger log{"Window"};
 static unsigned validO = UIInterfaceOrientationMaskAllButUpsideDown;
 #endif
 
-#ifndef CONFIG_BASE_IOS_RETINA_SCALE
-constexpr CGFloat IOSWindow::pointScale;
-#endif
-
 UIInterfaceOrientation gfxOrientationToUIInterfaceOrientation(Rotation orientation);
 
 const char *uiInterfaceOrientationToStr(UIInterfaceOrientation o)
@@ -87,7 +83,7 @@ bool Window::setValidOrientations(Orientations o)
 	return true;
 }
 
-bool Window::requestOrientationChange(Rotation o)
+bool Window::requestOrientationChange(Rotation)
 {
 	// no-op, OS manages orientation changes
 	return false;
@@ -178,11 +174,9 @@ Window::Window(ApplicationContext ctx, WindowConfig config, InitDelegate):
 	CGRect rect = screen()->uiScreen().bounds;
 	// Create a full-screen window
 	uiWin_ = (void*)CFBridgingRetain([[UIWindow alloc] initWithFrame:rect]);
-	#ifdef CONFIG_BASE_IOS_RETINA_SCALE
 	pointScale = hasAtLeastIOS8() ? [screen()->uiScreen() nativeScale] : [screen()->uiScreen() scale];
 	if(pointScale > 1.)
 		log.info("using point scale:{:g}", pointScale);
-	#endif
 	#ifndef CONFIG_GFX_SOFT_ORIENTATION
 	validO = defaultValidOrientationMask();
 	#endif
@@ -235,9 +229,9 @@ Window *windowForUIWindow(ApplicationContext ctx, UIWindow *uiWin)
 	return nullptr;
 }
 
-void Window::setTitle(const char *name) {}
+void Window::setTitle(const char*) {}
 
-void Window::setAcceptDnd(bool on) {}
+void Window::setAcceptDnd(bool) {}
 
 NativeWindow Window::nativeObject() const
 {
@@ -271,7 +265,7 @@ IG::PixelFormat Window::pixelFormat() const
 	return PixelFmtRGBA8888;
 }
 
-void Window::setIntendedFrameRate(FrameRate rate) {}
+void Window::setIntendedFrameRate(FrameRate) {}
 
 void WindowConfig::setFormat(IG::PixelFormat) {}
 

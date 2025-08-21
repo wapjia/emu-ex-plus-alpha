@@ -25,25 +25,10 @@ static void handleEndInterruption()
 	[[AVAudioSession sharedInstance] setActive:YES error:nil];
 }
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED < 60000
-@interface MainApp (AudioManager) <AVAudioSessionDelegate>
-{}
-@end
-
-@implementation MainApp (AudioManager)
-
-- (void)endInterruptionWithFlags:(NSUInteger)flags
-{
-	handleEndInterruption();
-}
-
-@end
-#endif
-
 namespace IG::Audio
 {
 	
-AvfManager::AvfManager(ApplicationContext ctx_) {}
+AvfManager::AvfManager(ApplicationContext) {}
 
 SampleFormat Manager::nativeSampleFormat() const
 {
@@ -86,9 +71,6 @@ void Manager::startSession()
 	{
 		logWarn("error in setActive()");
 	}
-	#if __IPHONE_OS_VERSION_MIN_REQUIRED < 60000
-	session.delegate = mainApp;
-	#else
 	NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
 	sessionInterruptionObserver = [center addObserverForName:AVAudioSessionInterruptionNotification object:nil
 		queue:nil usingBlock:
@@ -100,7 +82,6 @@ void Manager::startSession()
 				handleEndInterruption();
 			}
 		}];
-	#endif
 	sessionActive = true;
 }
 
@@ -113,13 +94,9 @@ void Manager::endSession()
 	{
 		logWarn("error in setActive()");
 	}
-	#if __IPHONE_OS_VERSION_MIN_REQUIRED < 60000
-	session.delegate = nil;
-	#else
 	NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
 	[center removeObserver:sessionInterruptionObserver];
 	sessionInterruptionObserver = nil;
-	#endif
 	sessionActive = false;
 }
 
@@ -128,7 +105,7 @@ std::vector<ApiDesc> Manager::audioAPIs() const
 	return {{"Core Audio", Api::COREAUDIO}};
 }
 
-Api Manager::makeValidAPI(Api api) const
+Api Manager::makeValidAPI(Api) const
 {
 	return Api::COREAUDIO;
 }

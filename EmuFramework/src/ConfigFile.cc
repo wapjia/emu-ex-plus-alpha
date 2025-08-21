@@ -52,7 +52,7 @@ void EmuApp::saveConfigFile(FileIO &io)
 	writeOptionValueIfNotDefault(io, hidesStatusBar);
 	writeOptionValueIfNotDefault(io, showsBundledGames);
 	writeOptionValueIfNotDefault(io, frameInterval);
-	writeOptionValueIfNotDefault(io, frameTimeSource);
+	writeOptionValueIfNotDefault(io, frameClockSource);
 	writeOptionValueIfNotDefault(io, idleDisplayPowerSave);
 	writeOptionValueIfNotDefault(io, confirmOverwriteState);
 	writeOptionValueIfNotDefault(io, systemActionsIsDefaultMenu);
@@ -62,8 +62,8 @@ void EmuApp::saveConfigFile(FileIO &io)
 	writeOptionValue(io, CFGKEY_BACK_NAVIGATION, viewManager.needsBackControlOption());
 	writeOptionValue(io, CFGKEY_SWAPPED_GAMEPAD_CONFIM, swappedConfirmKeysOption());
 	writeOptionValue(io, CFGKEY_AUDIO_SOLO_MIX, audio.manager.soloMixOption());
-	writeOptionValue(io, CFGKEY_WINDOW_PIXEL_FORMAT, windowDrawablePixelFormatOption());
-	writeOptionValue(io, CFGKEY_VIDEO_COLOR_SPACE, windowDrawableColorSpaceOption());
+	writeOptionValueIfNotDefault(io, windowDrawableConfig.pixelFormat);
+	writeOptionValueIfNotDefault(io, windowDrawableConfig.colorSpace);
 	writeOptionValueIfNotDefault(io, renderPixelFormat);
 	writeOptionValueIfNotDefault(io, textureBufferMode);
 	writeOptionValueIfNotDefault(io, showOnSecondScreen);
@@ -86,8 +86,8 @@ void EmuApp::saveConfigFile(FileIO &io)
 	writeOptionValueIfNotDefault(io, CFGKEY_VIDEO_PORTRAIT_OFFSET, videoLayer.portraitOffset, 0);
 	writeOptionValueIfNotDefault(io, fastModeSpeed);
 	writeOptionValueIfNotDefault(io, slowModeSpeed);
-	writeOptionValueIfNotDefault(io, CFGKEY_FRAME_RATE, outputTimingManager.frameTimeOption(VideoSystem::NATIVE_NTSC), OutputTimingManager::autoOption);
-	writeOptionValueIfNotDefault(io, CFGKEY_FRAME_RATE_PAL, outputTimingManager.frameTimeOption(VideoSystem::PAL), OutputTimingManager::autoOption);
+	writeOptionValueIfNotDefault(io, CFGKEY_FRAME_RATE, outputTimingManager.frameRateOption(VideoSystem::NATIVE_NTSC), OutputTimingManager::autoOption);
+	writeOptionValueIfNotDefault(io, CFGKEY_FRAME_RATE_PAL, outputTimingManager.frameRateOption(VideoSystem::PAL), OutputTimingManager::autoOption);
 	inputManager.vController.writeConfig(io);
 	autosaveManager.writeConfig(io);
 	rewindManager.writeConfig(io);
@@ -101,14 +101,15 @@ void EmuApp::saveConfigFile(FileIO &io)
 	writeOptionValueIfNotDefault(io, cpuAffinityMask);
 	writeOptionValueIfNotDefault(io, cpuAffinityMode);
 	writeOptionValueIfNotDefault(io, presentMode);
-	if(renderer.supportsPresentationTime())
-		writeOptionValueIfNotDefault(io, CFGKEY_RENDERER_PRESENTATION_TIME, presentationTimeMode, PresentationTimeMode::basic);
-	writeStringOptionValue(io, CFGKEY_LAST_DIR, contentSearchPath());
+	if(emuWindow().supportsFrameClockSource(FrameClockSource::Screen))
+		writeOptionValueIfNotDefault(io, outputFrameRateMode);
+	writeStringOptionValue(io, CFGKEY_LAST_DIR, contentSearchPath);
 	writeStringOptionValue(io, CFGKEY_SAVE_PATH, system().userSaveDirectory());
 	writeStringOptionValue(io, CFGKEY_SCREENSHOTS_PATH, userScreenshotPath);
 	system().writeConfig(ConfigType::MAIN, io);
 	inputManager.writeCustomKeyConfigs(io);
 	inputManager.writeSavedInputDevices(appContext(), io);
+	writeOptionValueIfNotDefault(io, showFrameTimingStats);
 }
 
 EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
@@ -168,18 +169,17 @@ EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
 					return false;
 				}
 				case CFGKEY_FRAME_INTERVAL: return readOptionValue(io, frameInterval);
-				case CFGKEY_FRAME_RATE: return readOptionValue<FrameTime>(io, [&](auto &&val){outputTimingManager.setFrameTimeOption(VideoSystem::NATIVE_NTSC, val);});
-				case CFGKEY_FRAME_RATE_PAL: return readOptionValue<FrameTime>(io, [&](auto &&val){outputTimingManager.setFrameTimeOption(VideoSystem::PAL, val);});
+				case CFGKEY_FRAME_RATE: return readOptionValue<FrameDuration>(io, [&](auto &&val){outputTimingManager.setFrameRateOption(VideoSystem::NATIVE_NTSC, val);});
+				case CFGKEY_FRAME_RATE_PAL: return readOptionValue<FrameDuration>(io, [&](auto &&val){outputTimingManager.setFrameRateOption(VideoSystem::PAL, val);});
 				case CFGKEY_LAST_DIR:
-					return readStringOptionValue<FS::PathString>(io, [&](auto &&path){setContentSearchPath(path);});
+					return readStringOptionValue<FS::PathString>(io, [&](auto &&path){contentSearchPath = path;});
 				case CFGKEY_FONT_Y_SIZE: return readOptionValue(io, fontSize);
 				case CFGKEY_GAME_ORIENTATION: return readOptionValue(io, emuOrientation);
 				case CFGKEY_MENU_ORIENTATION: return readOptionValue(io, menuOrientation);
 				case CFGKEY_MENU_SCALE: return readOptionValue(io, menuScale);
 				case CFGKEY_SHOW_ON_2ND_SCREEN: return readOptionValue(io, showOnSecondScreen);
 				case CFGKEY_IMAGE_EFFECT_PIXEL_FORMAT: return readOptionValue(io, imageEffectPixelFormat);
-				case CFGKEY_RENDER_PIXEL_FORMAT: return EmuSystem::canRenderRGBA8888 ? readOptionValue(io, renderPixelFormat) : false;
-				case CFGKEY_RECENT_CONTENT: return recentContent.readLegacyConfig(io, system());
+				case CFGKEY_RENDER_PIXEL_FORMAT: return EmuSystem::canRenderMultipleFormats() ? readOptionValue(io, renderPixelFormat) : false;
 				case CFGKEY_SWAPPED_GAMEPAD_CONFIM:
 					setSwappedConfirmKeys(readOptionValue<bool>(io));
 					return true;
@@ -210,9 +210,8 @@ EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
 				case CFGKEY_CPU_AFFINITY_MASK: return readOptionValue(io, cpuAffinityMask);
 				case CFGKEY_CPU_AFFINITY_MODE: return readOptionValue(io, cpuAffinityMode);
 				case CFGKEY_RENDERER_PRESENT_MODE: return readOptionValue(io, presentMode);
-				case CFGKEY_RENDERER_PRESENTATION_TIME:
-					return used(presentationTimeMode) ? readOptionValue(io, presentationTimeMode, [](auto m){return m <= lastEnum<PresentationTimeMode>;}) : false;
-				case CFGKEY_FRAME_CLOCK: return readOptionValue(io, frameTimeSource);
+				case CFGKEY_OUTPUT_FRAME_RATE_MODE: return readOptionValue(io, outputFrameRateMode);
+				case CFGKEY_FRAME_CLOCK: return readOptionValue(io, frameClockSource);
 				case CFGKEY_AUDIO_SOLO_MIX:
 					audio.manager.setSoloMix(readOptionValue<bool>(io));
 					return true;
@@ -232,6 +231,7 @@ EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
 				case CFGKEY_VIDEO_PORTRAIT_OFFSET: return readOptionValue(io, videoLayer.portraitOffset, [](auto v){return v >= -4096 && v <= 4096;});
 				case CFGKEY_INPUT_KEY_CONFIGS_V2: return inputManager.readCustomKeyConfig(io);
 				case CFGKEY_INPUT_DEVICE_CONFIGS: return inputManager.readSavedInputDevices(io);
+				case CFGKEY_SHOW_FRAME_TIMING_STATS: return readOptionValue(io, showFrameTimingStats);
 			}
 			return false;
 		});
@@ -241,7 +241,7 @@ EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
 	{
 		if(pendingWindowDrawableConf.colorSpace != Gfx::ColorSpace{} && pendingWindowDrawableConf.pixelFormat != IG::PixelFmtRGBA8888)
 			pendingWindowDrawableConf.colorSpace = {};
-		windowDrawableConf = pendingWindowDrawableConf;
+		windowDrawableConfig = pendingWindowDrawableConf;
 	}
 
 	return appConfig;

@@ -20,11 +20,25 @@
 #include <fceu/driver.h>
 #include <fceu/palette.h>
 #include <fceu/state.h>
+#include <fceu/cheat.h>
 
 namespace EmuEx
 {
 
 class EmuAudio;
+
+class Cheat: public CHEATF
+{
+public:
+	Cheat(std::string_view name): CHEATF{.name = std::string{name}} {}
+};
+
+class CheatCode: public CHEATCODE
+{
+public:
+	CheatCode(uint16 addr, uint8 val, int compare, int type):
+		CHEATCODE{.addr = addr, .val = val, .compare = compare, .type = type} {}
+};
 
 enum
 {
@@ -105,8 +119,8 @@ public:
 	Property<uint8_t, CFGKEY_DEFAULT_VIDEO_SYSTEM,
 		PropertyDesc<uint8_t>{.defaultValue = 0, .isValid = isValidWithMax<3>}> optionDefaultVideoSystem;
 	Property<bool, CFGKEY_SPRITE_LIMIT, PropertyDesc<bool>{.defaultValue = true}> optionSpriteLimit;
-	Property<uint8_t, CFGKEY_SOUND_QUALITY,
-		PropertyDesc<uint8_t>{.defaultValue = 0, .isValid = isValidWithMax<2>}> optionSoundQuality;
+	Property<uint8_t, CFGKEY_SOUND_QUALITY, // default to "High" (1) as "Normal" (0) has low accuracy affecting samples per frame
+		PropertyDesc<uint8_t>{.defaultValue = 1, .isValid = isValidWithMax<2>}> optionSoundQuality;
 	Property<bool, CFGKEY_COMPATIBLE_FRAMESKIP> optionCompatibleFrameskip;
 	Property<uint8_t, CFGKEY_START_VIDEO_LINE,
 		PropertyDesc<uint8_t>{.defaultValue = 8, .isValid = isSupportedStartingLine}> optionDefaultStartVideoLine;
@@ -118,8 +132,8 @@ public:
 		PropertyDesc<uint8_t>{.defaultValue = 224, .isValid = isSupportedLineCount}> optionVisibleVideoLines;
 	Property<bool, CFGKEY_HORIZONTAL_VIDEO_CROP> optionHorizontalVideoCrop;
 	Property<bool, CFGKEY_CORRECT_LINE_ASPECT> optionCorrectLineAspect;
-	static constexpr auto ntscFrameTime{fromSeconds<FrameTime>(16777215./ 1008307711.)}; // ~60.099Hz
-	static constexpr auto palFrameTime{fromSeconds<FrameTime>(16777215. / 838977920.)}; // ~50.00Hz
+	static constexpr FrameRate ntscFrameRate{1008307711. / 16777215.}; // ~60.099Hz
+	static constexpr FrameRate palFrameRate{838977920. / 16777215.}; // ~50.00Hz
 
 	NesSystem(ApplicationContext);
 	void connectNESInput(int port, ESI type);
@@ -143,8 +157,8 @@ public:
 	void clearInputBuffers(EmuInputView &view);
 	void handleInputAction(EmuApp *, InputAction);
 	SystemInputDeviceDesc inputDeviceDesc(int idx) const;
-	FrameTime frameTime() const { return videoSystem() == VideoSystem::PAL ? palFrameTime : ntscFrameTime; }
-	void configAudioRate(FrameTime outputFrameTime, int outputRate);
+	FrameRate frameRate() const { return videoSystem() == VideoSystem::PAL ? palFrameRate : ntscFrameRate; }
+	void configAudioRate(FrameRate outputFrameRate, int outputRate);
 	static std::span<const AspectRatioInfo> aspectRatioInfos();
 
 	// optional API functions
@@ -162,6 +176,18 @@ public:
 	double videoAspectRatioScale() const;
 	bool onVideoRenderFormatChange(EmuVideo &, IG::PixelFormat);
 	bool shouldFastForward() const;
+	Cheat* newCheat(EmuApp&, const char* name, CheatCodeDesc);
+	bool setCheatName(Cheat&, const char* name);
+	std::string_view cheatName(const Cheat&) const;
+	void setCheatEnabled(Cheat&, bool on);
+	bool isCheatEnabled(const Cheat&) const;
+	bool addCheatCode(EmuApp&, Cheat*&, CheatCodeDesc);
+	bool modifyCheatCode(EmuApp&, Cheat&, CheatCode&, CheatCodeDesc);
+	Cheat* removeCheatCode(Cheat&, CheatCode&);
+	bool removeCheat(Cheat&);
+	void forEachCheat(DelegateFunc<bool(Cheat&, std::string_view)>);
+	void forEachCheatCode(Cheat&, DelegateFunc<bool(CheatCode&, std::string_view)>);
+
     //region爱吾
     void setCheatListAiWu(std::list<std::string> cheats);
     std::string getPaletteAiWu();

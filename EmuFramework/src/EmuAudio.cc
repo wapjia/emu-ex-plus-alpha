@@ -26,28 +26,12 @@ namespace EmuEx
 
 constexpr SystemLogger log{"EmuAudio"};
 
-struct AudioStats
-{
-	constexpr AudioStats() = default;
-	int underruns{};
-	int overruns{};
-	std::atomic_uint callbacks{};
-	std::atomic_uint callbackBytes{};
-
-	void reset()
-	{
-		underruns = overruns = 0;
-		callbacks = 0;
-		callbackBytes = 0;
-	}
-};
-
 #ifdef CONFIG_EMUFRAMEWORK_AUDIO_STATS
 static AudioStats audioStats{};
 static IG::Timer audioStatsTimer{"audioStatsTimer"};
 #endif
 
-static void startAudioStats(IG::Audio::Format format)
+static void startAudioStats([[maybe_unused]] Audio::Format format)
 {
 	#ifdef CONFIG_EMUFRAMEWORK_AUDIO_STATS
 	audioStats.reset();
@@ -194,7 +178,7 @@ void EmuAudio::start(FloatSeconds bufferDuration)
 					{
 						auto padFrames = frames - framesToRead;
 						std::fill_n(frameEndAddr, outputFormat.framesToBytes(padFrames), 0);
-						//log.warn("underrun, {} bytes ready out of {}", span.size, inputFormat.framesToBytes(frames));
+						//log.warn("underrun, {} bytes ready out of {}", span.size(), inputFormat.framesToBytes(frames));
 						auto now = SteadyClock::now();
 						if(now - lastUnderrunTime < IG::Seconds(1))
 						{
@@ -452,7 +436,7 @@ void EmuAudio::writeConfig(FileIO &io) const
 	writeOptionValueIfNotDefault(io, CFGKEY_SOUND, flags, defaultAudioFlags);
 	if(!EmuSystem::forcedSoundRate)
 		writeOptionValueIfNotDefault(io, CFGKEY_SOUND_RATE, rate_, defaultRate);
-	writeOptionValueIfNotDefault(io, CFGKEY_SOUND_BUFFERS, soundBuffers, defaultSoundBuffers);
+	writeOptionValueIfNotDefault(io, soundBuffers);
 	writeOptionValueIfNotDefault(io, CFGKEY_SOUND_VOLUME, maxVolume(), 100);
 	writeOptionValueIfNotDefault(io, CFGKEY_ADD_SOUND_BUFFERS_ON_UNDERRUN, addSoundBuffersOnUnderrunSetting, false);
 	writeOptionValueIfNotDefault(io, CFGKEY_AUDIO_API, audioAPI, Audio::Api::DEFAULT);
@@ -464,7 +448,7 @@ bool EmuAudio::readConfig(MapIO &io, unsigned key)
 	{
 		case CFGKEY_SOUND: return readOptionValue(io, flags);
 		case CFGKEY_SOUND_RATE: return EmuSystem::forcedSoundRate ? false : readOptionValue(io, rate_, isValidSoundRate);
-		case CFGKEY_SOUND_BUFFERS: return readOptionValue(io, soundBuffers, isValidWithMinMax<1, 7, int8_t>);
+		case CFGKEY_SOUND_BUFFERS: return readOptionValue(io, soundBuffers);
 		case CFGKEY_SOUND_VOLUME: return readOptionValue<int8_t>(io, [&](auto v){ setMaxVolume(v); }, isValidVolumeSetting);
 		case CFGKEY_ADD_SOUND_BUFFERS_ON_UNDERRUN: return readOptionValue(io, addSoundBuffersOnUnderrunSetting);
 		case CFGKEY_AUDIO_API: return readOptionValue(io, audioAPI);

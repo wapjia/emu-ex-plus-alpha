@@ -13,7 +13,6 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "PerfHint"
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/base/PerformanceHintManager.hh>
 #include <imagine/base/sharedLibrary.hh>
@@ -23,12 +22,14 @@
 namespace IG
 {
 
-static APerformanceHintSession* (*APerformanceHint_createSession)(APerformanceHintManager* manager,
+[[maybe_unused]] constexpr SystemLogger log{"PerfHint"};
+
+static APerformanceHintSession* (*APerformanceHint_createSession)(APerformanceHintManager*,
 	const int32_t* threadIds, size_t size, int64_t initialTargetWorkDurationNanos);
-static int64_t (*APerformanceHint_getPreferredUpdateRateNanos)(APerformanceHintManager* manager); // unused
-static int (*APerformanceHint_updateTargetWorkDuration)(APerformanceHintSession* session, int64_t targetDurationNanos);
-static int (*APerformanceHint_reportActualWorkDuration)(APerformanceHintSession* session, int64_t actualDurationNanos);
-static void (*APerformanceHint_closeSession)(APerformanceHintSession* session);
+//static int64_t (*APerformanceHint_getPreferredUpdateRateNanos)(APerformanceHintManager*); // unused
+static int (*APerformanceHint_updateTargetWorkDuration)(APerformanceHintSession*, int64_t targetDurationNanos);
+static int (*APerformanceHint_reportActualWorkDuration)(APerformanceHintSession*, int64_t actualDurationNanos);
+static void (*APerformanceHint_closeSession)(APerformanceHintSession*);
 
 static void loadPerformanceHintFunc()
 {
@@ -41,7 +42,9 @@ static void loadPerformanceHintFunc()
 PerformanceHintManager ApplicationContext::performanceHintManager()
 {
 	if(androidSDK() < __ANDROID_API_T__)
+	{
 		return {};
+	}
 	APerformanceHintManager* (*APerformanceHint_getManager)(){};
 	loadSymbol(APerformanceHint_getManager, {}, "APerformanceHint_getManager");
 	if(!APerformanceHint_createSession)
@@ -49,23 +52,27 @@ PerformanceHintManager ApplicationContext::performanceHintManager()
 	return APerformanceHint_getManager();
 }
 
-PerformanceHintSession PerformanceHintManager::session(std::span<const ThreadId> threadIds, Nanoseconds initialTargetWorkTime)
+PerformanceHintSession PerformanceHintManager::session(std::span<const ThreadId> threadIds, Nanoseconds initialTargetWorkDuration)
 {
 	if(!mgrPtr)
 		return {};
-	return APerformanceHint_createSession(mgrPtr, threadIds.data(), threadIds.size(), initialTargetWorkTime.count());
+	return APerformanceHint_createSession(mgrPtr, threadIds.data(), threadIds.size(), initialTargetWorkDuration.count());
 }
 
 PerformanceHintManager::operator bool() const { return mgrPtr; }
 
-void PerformanceHintSession::updateTargetWorkTime(Nanoseconds targetTime)
+void PerformanceHintSession::updateTargetWorkDuration(Nanoseconds targetTime)
 {
+	if(!sessionPtr)
+		return;
 	if(APerformanceHint_updateTargetWorkDuration(sessionPtr.get(), targetTime.count()))
 		logErr("error in APerformanceHint_updateTargetWorkDuration(%p, %lld)", sessionPtr.get(), (long long)targetTime.count());
 }
 
-void PerformanceHintSession::reportActualWorkTime(Nanoseconds actualTime)
+void PerformanceHintSession::reportActualWorkDuration(Nanoseconds actualTime)
 {
+	if(!sessionPtr)
+		return;
 	if(APerformanceHint_reportActualWorkDuration(sessionPtr.get(), actualTime.count()))
 		logErr("error in APerformanceHint_reportActualWorkDuration(%p, %lld)", sessionPtr.get(), (long long)actualTime.count());
 }

@@ -53,7 +53,7 @@ bool TextEntry::isAcceptingInput() const
 
 bool TextEntry::inputEvent(View &parentView, const Input::Event &e)
 {
-	return visit(overloaded
+	return e.visit(overloaded
 	{
 		[&](const Input::MotionEvent &motionEv)
 		{
@@ -109,31 +109,31 @@ bool TextEntry::inputEvent(View &parentView, const Input::Event &e)
 			}
 			return false;
 		}
-	}, e);
+	});
 }
 
-void TextEntry::prepareDraw(Gfx::Renderer &r)
+void TextEntry::prepareDraw()
 {
 	t.makeGlyphs();
 }
 
-void TextEntry::draw(Gfx::RendererCommands &__restrict__ cmds)
+void TextEntry::draw(Gfx::RendererCommands &__restrict__ cmds) const
 {
 	using namespace Gfx;
 	cmds.basicEffect().enableAlphaTexture(cmds);
 	t.draw(cmds, b.pos(LC2DO), LC2DO, ColorName::WHITE);
 }
 
-void TextEntry::place(Gfx::Renderer &r)
+void TextEntry::place()
 {
 	t.compile();
 }
 
-void TextEntry::place(Gfx::Renderer &r, WindowRect rect)
+void TextEntry::place(WindowRect rect)
 {
 	b = rect;
 	bgQuads.write(0, {.bounds = rect.as<int16_t>()});
-	place(r);
+	place();
 }
 
 const char *TextEntry::textStr() const
@@ -218,7 +218,7 @@ void CollectTextInputView::place()
 		[&](auto &textEntry)
 		{
 			textRect.setPosRel(viewRect().pos(C2DO), {xSize, int(ySize * 1.5f)}, C2DO);
-			textEntry.place(renderer(), textRect);
+			textEntry.place(textRect);
 		},
 		[&]()
 		{
@@ -227,9 +227,9 @@ void CollectTextInputView::place()
 		});
 }
 
-bool CollectTextInputView::inputEvent(const Input::Event &e)
+bool CollectTextInputView::inputEvent(const Input::Event& e, ViewInputEventParams)
 {
-	if(visit(overloaded
+	if(e.visit(overloaded
 		{
 			[&](const Input::MotionEvent &e) -> bool
 			{
@@ -239,7 +239,7 @@ bool CollectTextInputView::inputEvent(const Input::Event &e)
 				});
 			},
 			[&](const Input::KeyEvent &e)	{ return e.pushed(Input::DefaultKey::CANCEL); }
-		}, e))
+		}))
 	{
 		dismiss();
 		return true;
@@ -269,13 +269,13 @@ void CollectTextInputView::prepareDraw()
 {
 	message.makeGlyphs();
 	doIfUsed(textEntry,
-		[this](auto &textEntry)
+		[](auto &textEntry)
 		{
-			textEntry.prepareDraw(renderer());
+			textEntry.prepareDraw();
 		});
 }
 
-void CollectTextInputView::draw(Gfx::RendererCommands &__restrict__ cmds)
+void CollectTextInputView::draw(Gfx::RendererCommands &__restrict__ cmds, ViewDrawParams) const
 {
 	using namespace Gfx;
 	auto &basicEffect = cmds.basicEffect();

@@ -44,7 +44,7 @@ static void initPresentationJNI(JNIEnv* env, jobject presentation)
 		{
 			"onSurfaceCreated", "(JLandroid/view/Surface;)V",
 			(void*)
-			+[](JNIEnv* env, jobject thiz, jlong windowAddr, jobject surface)
+			+[](JNIEnv* env, jobject, jlong windowAddr, jobject surface)
 			{
 				auto nWin = ANativeWindow_fromSurface(env, surface);
 				auto &win = *((Window*)windowAddr);
@@ -54,7 +54,7 @@ static void initPresentationJNI(JNIEnv* env, jobject presentation)
 		{
 			"onSurfaceRedrawNeeded", "(J)V",
 			(void*)
-			+[](JNIEnv* env, jobject thiz, jlong windowAddr)
+			+[](JNIEnv*, jobject, jlong windowAddr)
 			{
 				auto &win = *((Window*)windowAddr);
 				win.systemRequestsRedraw(true);
@@ -63,7 +63,7 @@ static void initPresentationJNI(JNIEnv* env, jobject presentation)
 		{
 			"onSurfaceDestroyed", "(J)V",
 			(void*)
-			+[](JNIEnv* env, jobject thiz, jlong windowAddr)
+			+[](JNIEnv*, jobject, jlong windowAddr)
 			{
 				auto &win = *((Window*)windowAddr);
 				ANativeWindow_release(win.nativeObject());
@@ -73,7 +73,7 @@ static void initPresentationJNI(JNIEnv* env, jobject presentation)
 		{
 			"onWindowDismiss", "(J)V",
 			(void*)
-			+[](JNIEnv* env, jobject thiz, jlong windowAddr)
+			+[](JNIEnv*, jobject, jlong windowAddr)
 			{
 				auto &win = *((Window*)windowAddr);
 				win.dismiss();
@@ -121,7 +121,7 @@ bool Window::setValidOrientations(Orientations o)
 //	return true;
 }
 
-bool Window::requestOrientationChange(Rotation o)
+bool Window::requestOrientationChange(Rotation)
 {
 	// no-op, OS manages orientation changes
 	return false;
@@ -216,6 +216,10 @@ void AndroidWindow::setNativeWindow(ApplicationContext ctx, ANativeWindow *nWind
 	if(!nWindow)
 		return;
 	nWin = nWindow;
+	if(ctx.androidSDK() >= 35) // set default refresh rate since ARR is disabled
+	{
+		thisWindow.setIntendedFrameRate(0);
+	}
 	thisWindow.setFormat(nPixelFormat);
 	if(onInit)
 	{
@@ -243,16 +247,21 @@ NativeWindow Window::nativeObject() const
 void Window::setIntendedFrameRate(FrameRate rate)
 {
 	screen()->setFrameRate(rate);
-	if(appContext().androidSDK() < 30 || !nWin)
+	auto ctx = appContext();
+	if(ctx.androidSDK() < 30 || !nWin)
 		return;
+	if(ctx.androidSDK() >= 35 && !rate) // explicitly set a refresh rate since ARR is disabled
+	{
+		rate = screen()->supportedFrameRates().back();
+	}
 	if(!ANativeWindow_setFrameRate) [[unlikely]]
 	{
 		auto lib = openSharedLibrary("libnativewindow.so");
 		loadSymbol(ANativeWindow_setFrameRate, lib, "ANativeWindow_setFrameRate");
 	}
-	if(ANativeWindow_setFrameRate(nWin, rate, 0))
+	if(ANativeWindow_setFrameRate(nWin, rate.hz(), 0))
 	{
-		log.error("error in ANativeWindow_setFrameRate() with window:{} rate:{:g}", (void*)nWin, rate);
+		log.error("error in ANativeWindow_setFrameRate() with window:{} rate:{:g}", (void*)nWin, rate.hz());
 	}
 }
 
@@ -336,7 +345,7 @@ void AndroidWindow::setContentRect(WindowRect rect, WSize winSize)
 	else
 	{
 		contentRect.start(*static_cast<Window*>(this), contentRect.value(), rect, Milliseconds{165},
-			[](auto &win, auto newRect)
+			[](auto &win, [[maybe_unused]] auto newRect)
 			{
 				win.surfaceChangeFlags.contentRectResized = true;
 				win.setNeedsDraw(true);
@@ -345,9 +354,9 @@ void AndroidWindow::setContentRect(WindowRect rect, WSize winSize)
 	win.postDraw();
 }
 
-void Window::setTitle(const char *name) {}
+void Window::setTitle(const char*) {}
 
-void Window::setAcceptDnd(bool on) {}
+void Window::setAcceptDnd(bool) {}
 
 void WindowConfig::setFormat(PixelFormat fmt)
 {

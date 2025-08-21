@@ -19,7 +19,6 @@
 #include <emuframework/FilePathOptionView.hh>
 #include <emuframework/UserPathSelectView.hh>
 #include <emuframework/SystemActionsView.hh>
-#include "EmuCheatViews.hh"
 #include "Palette.hh"
 #include "MainApp.hh"
 #include <resample/resamplerinfo.h>
@@ -57,11 +56,7 @@ public:
 			ResamplerInfo r = ResamplerInfo::get(i);
 			logMsg("%zu %s", i, r.desc);
 			resamplerItem.emplace_back(r.desc, attachParams(),
-				[this, i]()
-				{
-					system().optionAudioResampler = i;
-					app().configFrameTime();
-				});
+				[this, i](){ system().optionAudioResampler = i; });
 		}
 		item.emplace_back(&resampler);
 	}
@@ -108,7 +103,7 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper
 	{
 		"饱和GBC颜色", attachParams(),
 		(bool)system().optionFullGbcSaturation,
-		[this](BoolMenuItem &item, View &, Input::Event e)
+		[this](BoolMenuItem &item)
 		{
 			system().optionFullGbcSaturation = item.flipBoolValue(*this);
 			if(system().hasContent())
@@ -134,7 +129,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 	{
 		"使用内置GB调色板", attachParams(),
 		(bool)system().optionUseBuiltinGBPalette,
-		[this](BoolMenuItem &item, View &, Input::Event e)
+		[this](BoolMenuItem &item)
 		{
 			system().sessionOptionSet();
 			system().optionUseBuiltinGBPalette = item.flipBoolValue(*this);
@@ -228,8 +223,6 @@ std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
 		case ViewID::AUDIO_OPTIONS: return std::make_unique<CustomAudioOptionView>(attach, audio);
 		case ViewID::SYSTEM_ACTIONS: return std::make_unique<CustomSystemActionsView>(attach);
 		case ViewID::FILE_PATH_OPTIONS: return std::make_unique<CustomFilePathOptionView>(attach);
-		case ViewID::EDIT_CHEATS: return std::make_unique<EmuEditCheatListView>(attach);
-		case ViewID::LIST_CHEATS: return std::make_unique<EmuCheatsView>(attach);
 		default: return nullptr;
 	}
 }

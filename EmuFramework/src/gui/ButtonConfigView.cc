@@ -15,8 +15,8 @@
 
 #include <emuframework/ButtonConfigView.hh>
 #include <emuframework/AppKeyCode.hh>
-#include <emuframework/InputManagerView.hh>
 #include <emuframework/EmuApp.hh>
+#include "InputManagerView.hh"
 #include "../InputDeviceConfig.hh"
 #include "../InputDeviceData.hh"
 #include <imagine/gfx/RendererCommands.hh>
@@ -50,10 +50,10 @@ ButtonConfigView::ButtonConfigView(ViewAttachParams attach, InputManagerView &ro
 		attach,
 		[this](ItemMessage msg) -> ItemReply
 		{
-			return visit(overloaded
+			return msg.visit(overloaded
 			{
-				[&](const ItemsMessage &m) -> ItemReply { return resetItemsSize + cat.keys.size(); },
-				[&](const GetItemMessage &m) -> ItemReply
+				[&](const ItemsMessage&) -> ItemReply { return resetItemsSize + cat.keys.size(); },
+				[&](const GetItemMessage& m) -> ItemReply
 				{
 					if(m.idx == 0)
 						return &resetDefaults;
@@ -62,7 +62,7 @@ ButtonConfigView::ButtonConfigView(ViewAttachParams attach, InputManagerView &ro
 					else
 						return &btn[m.idx - resetItemsSize];
 				},
-			}, msg);
+			});
 		}
 	},
 	rootIMView{rootIMView_},
@@ -141,15 +141,15 @@ void ButtonConfigView::onSet(int catIdx, MappedKeys mapKey)
 	devConf.buildKeyMap(app().inputManager);
 	auto &b = btn[catIdx];
 	b.set2ndName(keyNames(mapKey, devConf.device()));
-	b.compile2nd();
+	b.place2nd();
 }
 
-bool ButtonConfigView::inputEvent(const Input::Event &e)
+bool ButtonConfigView::inputEvent(const Input::Event& e, ViewInputEventParams)
 {
 	if(e.keyEvent() && e.keyEvent()->pushed(Input::DefaultKey::LEFT) && selected >= resetItemsSize)
 	{
 		auto &keyEv = *e.keyEvent();
-		auto durationSinceLastKeySet = hasTime(leftKeyPushTime) ? keyEv.time() - leftKeyPushTime : SteadyClockTime{};
+		auto durationSinceLastKeySet = hasTime(leftKeyPushTime) ? keyEv.time() - leftKeyPushTime : SteadyClockDuration{};
 		leftKeyPushTime = keyEv.time();
 		if(durationSinceLastKeySet.count() && durationSinceLastKeySet <= Milliseconds(500))
 		{
@@ -171,7 +171,7 @@ void ButtonConfigView::updateKeyNames(const KeyConfig &conf)
 	for(auto &&[i, key]: enumerate(cat.keys))
 	{
 		btn[i].set2ndName(keyNames(conf.get(key), devConf.device()));
-		btn[i].compile2nd();
+		btn[i].place2nd();
 	}
 }
 
@@ -186,7 +186,7 @@ ButtonConfigSetView::ButtonConfigSetView(ViewAttachParams attach,
 		rootIMView{rootIMView},
 		actionStr{actionName} {}
 
-bool ButtonConfigSetView::pointerUIIsInit()
+bool ButtonConfigSetView::pointerUIIsInit() const
 {
 	return unbindB.x != unbindB.x2;
 }
@@ -206,25 +206,21 @@ void ButtonConfigSetView::place()
 	text.compile({.alignment = Gfx::TextAlignment::center});
 	using Quad = decltype(quads)::Type;
 	auto map = quads.map();
-	Quad{{.bounds = viewRect().as<int16_t>()}}.write(map, 0);
+	Quad{{.bounds = displayRect().as<int16_t>()}}.write(map, 0);
 	if(pointerUIIsInit())
 	{
 		unbind.compile();
 		cancel.compile();
-		WRect btnFrame;
-		btnFrame.setPosRel(viewRect().pos(LB2DO), unbind.nominalHeight() * 2, LB2DO);
-		unbindB = btnFrame;
-		unbindB.x = (viewRect().xSize()/2)*0;
-		unbindB.x2 = (viewRect().xSize()/2)*1;
-		cancelB = btnFrame;
-		cancelB.x = (viewRect().xSize()/2)*1;
-		cancelB.x2 = (viewRect().xSize()/2)*2;
+		WRect btnFrame{{0, 0}, {viewRect().xSize() / 2 - unbind.nominalHeight() / 2, unbind.nominalHeight() * 2}};
+		unbindB = cancelB = btnFrame;
+		unbindB.setPos(viewRect().pos(CB2DO) + Point2D{-viewRect().xSize() / 4, -unbind.nominalHeight() / 2}, CB2DO);
+		cancelB.setPos(viewRect().pos(CB2DO) + Point2D{ viewRect().xSize() / 4, -unbind.nominalHeight() / 2}, CB2DO);
 		Quad{{.bounds = unbindB.as<int16_t>()}}.write(map, 1);
 		Quad{{.bounds = cancelB.as<int16_t>()}}.write(map, 2);
 	}
 }
 
-bool ButtonConfigSetView::inputEvent(const Input::Event &e)
+bool ButtonConfigSetView::inputEvent(const Input::Event& e, ViewInputEventParams)
 {
 	return e.visit(overloaded
 	{
@@ -281,11 +277,11 @@ bool ButtonConfigSetView::inputEvent(const Input::Event &e)
 					}
 					return true;
 				}
-				if(contains(pushedKeys, keyEv.key()))
+				if(std::ranges::contains(pushedKeys, keyEv.key()))
 				{
 					return true;
 				}
-				if((contains(pushedKeys, Input::Keycode::GAME_L2) || contains(pushedKeys, Input::Keycode::GAME_R2)) &&
+				if((std::ranges::contains(pushedKeys, Input::Keycode::GAME_L2) || std::ranges::contains(pushedKeys, Input::Keycode::GAME_R2)) &&
 					(keyEv.key() == Input::Keycode::JS_LTRIGGER_AXIS || keyEv.key() == Input::Keycode::JS_RTRIGGER_AXIS))
 				{
 					log.info("ignoring trigger axis to avoid duplicate events since L2/R2 keys are pushed");
@@ -311,7 +307,7 @@ void ButtonConfigSetView::finalize()
 	onSet(mappedKeys);
 }
 
-void ButtonConfigSetView::draw(Gfx::RendererCommands &__restrict__ cmds)
+void ButtonConfigSetView::draw(Gfx::RendererCommands&__restrict__ cmds, ViewDrawParams) const
 {
 	using namespace IG::Gfx;
 	auto &basicEffect = cmds.basicEffect();

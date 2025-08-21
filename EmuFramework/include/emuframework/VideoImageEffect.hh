@@ -63,8 +63,8 @@ private:
 	int srcTexelDeltaU{};
 	int srcTexelHalfDeltaU{};
 	int srcPixelsU{};
-	WSize renderTargetScale;
-	WSize renderTargetImgSize;
+	WSize renderTargetScale{};
+	WSize renderTargetImgSize{};
 	WSize inputImgSize{1, 1};
 	IG::PixelFormat format;
 	Gfx::ColorSpace colorSpace{Gfx::ColorSpace::LINEAR};

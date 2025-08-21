@@ -26,6 +26,8 @@ else
 LIPO := lipo
 PLUTIL := plutil
 endif
+SSH := ssh -oHostKeyAlgorithms=+ssh-rsa
+SCP := scp -oHostKeyAlgorithms=+ssh-rsa
 
 # Host/IP of the iOS device to install the app over SSH
 ios_installHost := iphone5
@@ -72,11 +74,11 @@ ios_cleanTargets += ios-armv7-clean
 
 .PHONY: ios-armv7-install
 ios-armv7-install : $(ios_armv7Exec)
-	ssh root@$(ios_installHost) rm -f $(ios_deviceExecPath)
-	scp $^ root@$(ios_installHost):$(ios_deviceExecPath)
-	ssh root@$(ios_installHost) chmod a+x $(ios_deviceExecPath)
+	$(SSH) root@$(ios_installHost) rm -f $(ios_deviceExecPath)
+	$(SCP) $^ root@$(ios_installHost):$(ios_deviceExecPath)
+	$(SSH) root@$(ios_installHost) chmod a+x $(ios_deviceExecPath)
 ifdef iOS_metadata_setuid
-	ssh root@$(ios_installHost) chmod gu+s $(ios_deviceExecPath)
+	$(SSH) root@$(ios_installHost) chmod gu+s $(ios_deviceExecPath)
 endif
 
 endif
@@ -105,11 +107,11 @@ ios_cleanTargets += ios-arm64-clean
 
 .PHONY: ios-arm64-install
 ios-arm64-install : $(ios_arm64Exec)
-	ssh root@$(ios_installHost) rm -f $(ios_deviceExecPath)
-	scp $^ root@$(ios_installHost):$(ios_deviceExecPath)
-	ssh root@$(ios_installHost) chmod a+x $(ios_deviceExecPath)
+	$(SSH) root@$(ios_installHost) rm -f $(ios_deviceExecPath)
+	$(SCP) $^ root@$(ios_installHost):$(ios_deviceExecPath)
+	$(SSH) root@$(ios_installHost) chmod a+x $(ios_deviceExecPath)
 ifdef iOS_metadata_setuid
-	ssh root@$(ios_installHost) chmod gu+s $(ios_deviceExecPath)
+	$(SSH) root@$(ios_installHost) chmod gu+s $(ios_deviceExecPath)
 endif
 
 endif
@@ -160,31 +162,31 @@ endif
 
 .PHONY: ios-resources-install
 ios-resources-install : $(ios_plist) $(ios_setuidLauncher)
-	ssh root@$(ios_installHost) mkdir -p $(ios_deviceAppBundlePath)
-	scp -r $(ios_resourcePath)/* root@$(ios_installHost):$(ios_deviceAppBundlePath)/
-	scp $(ios_icons) root@$(ios_installHost):$(ios_deviceAppBundlePath)/
-	ssh root@$(ios_installHost) chmod -R a+r $(ios_deviceAppBundlePath)
+	$(SSH) root@$(ios_installHost) mkdir -p $(ios_deviceAppBundlePath)
+	$(SCP) -r $(ios_resourcePath)/* root@$(ios_installHost):$(ios_deviceAppBundlePath)/
+	$(SCP) $(ios_icons) root@$(ios_installHost):$(ios_deviceAppBundlePath)/
+	$(SSH) root@$(ios_installHost) chmod -R a+r $(ios_deviceAppBundlePath)
 
 .PHONY: ios-plist-install
 ios-plist-install : $(ios_plist)
-	scp $(ios_plist) root@$(ios_installHost):$(ios_deviceAppBundlePath)/
+	$(SCP) $(ios_plist) root@$(ios_installHost):$(ios_deviceAppBundlePath)/
 
 .PHONY: ios-install
 ios-install : ios-build
-	ssh root@$(ios_installHost) rm -f $(ios_deviceExecPath)
-	scp $(ios_fatExec) root@$(ios_installHost):$(ios_deviceExecPath)
-	ssh root@$(ios_installHost) chmod a+x $(ios_deviceExecPath)
+	$(SSH) root@$(ios_installHost) rm -f $(ios_deviceExecPath)
+	$(SCP) $(ios_fatExec) root@$(ios_installHost):$(ios_deviceExecPath)
+	$(SSH) root@$(ios_installHost) chmod a+x $(ios_deviceExecPath)
 ifdef iOS_metadata_setuid
-	ssh root@$(ios_installHost) chmod gu+s $(ios_deviceExecPath)
+	$(SSH) root@$(ios_installHost) chmod gu+s $(ios_deviceExecPath)
 endif
 
 .PHONY: ios-install-only
 ios-install-only :
-	ssh root@$(ios_installHost) rm -f $(ios_deviceExecPath)
-	scp $(ios_fatExec) root@$(ios_installHost):$(ios_deviceExecPath)
-	ssh root@$(ios_installHost) chmod a+x $(ios_deviceExecPath)
+	$(SSH) root@$(ios_installHost) rm -f $(ios_deviceExecPath)
+	$(SCP) $(ios_fatExec) root@$(ios_installHost):$(ios_deviceExecPath)
+	$(SSH) root@$(ios_installHost) chmod a+x $(ios_deviceExecPath)
 ifdef iOS_metadata_setuid
-	ssh root@$(ios_installHost) chmod gu+s $(ios_deviceExecPath)
+	$(SSH) root@$(ios_installHost) chmod gu+s $(ios_deviceExecPath)
 endif
 
 # metadata

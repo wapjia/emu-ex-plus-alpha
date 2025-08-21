@@ -13,7 +13,6 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "FrameTimer"
 #include <imagine/base/Screen.hh>
 #include <imagine/base/EventLoop.hh>
 #include <imagine/base/ApplicationContext.hh>
@@ -30,6 +29,8 @@
 
 namespace IG
 {
+
+constexpr SystemLogger log{"Choreographer"};
 
 void AndroidApplication::emplaceFrameTimer(FrameTimer &t, Screen &screen, bool useVariableTime)
 {
@@ -74,49 +75,49 @@ void AndroidApplication::initChoreographer(JNIEnv *env, jobject baseActivity, jc
 	}
 }
 
-static void updatePostedScreens(auto &choreographer, SteadyClockTimePoint timestamp, AndroidApplication &app)
+static void updatePostedScreens(auto& choreographer, SteadyClockTimePoint time, AndroidApplication& app)
 {
 	bool didUpdate{};
-	app.flushSystemInputEvents();
 	for(auto &s : app.screens())
 	{
 		if(s->isPosted())
 		{
-			didUpdate |= s->frameUpdate(timestamp);
+			didUpdate |= s->frameUpdate(time);
 		}
 	}
-	if(didUpdate)
+	if(!didUpdate)
 	{
-		choreographer.scheduleVSync();
-	}
-	else
-	{
-		//logMsg("stopping screen updates");
+		//log.debug("stopping screen updates");
+		choreographer.cancel();
 	}
 }
 
 JavaChoreographer::JavaChoreographer(AndroidApplication &app, JNIEnv *env, jobject baseActivity, jclass baseActivityClass):
 	appPtr{&app}
 {
+	jniEnv = env;
 	JNI::InstMethod<jobject(jlong)> jChoreographerHelper{env, baseActivityClass, "choreographerHelper", "(J)Lcom/imagine/ChoreographerHelper;"};
 	frameHelper = {env, jChoreographerHelper(env, baseActivity, (jlong)this)};
 	auto choreographerHelperCls = env->GetObjectClass(frameHelper);
 	jPostFrame = {env, choreographerHelperCls, "postFrame", "()V"};
+	jSetInstance = {env, choreographerHelperCls, "setInstance", "(Z)V"};
 	JNINativeMethod method[]
 	{
 		{
 			"onFrame", "(JJ)V",
 			(void*)
-			+[](JNIEnv* env, jobject thiz, jlong userData, jlong frameTimeNanos)
+			+[](JNIEnv*, jobject, jlong userData, jlong frameTimeNanos)
 			{
 				auto &inst = *((JavaChoreographer*)userData);
+				if(!inst.requested) [[unlikely]]
+					return;
 				inst.requested = false;
 				updatePostedScreens(inst, SteadyClockTimePoint{Nanoseconds{frameTimeNanos}}, *inst.appPtr);
 			}
 		}
 	};
 	env->RegisterNatives(choreographerHelperCls, method, std::size(method));
-	logMsg("using Java Choreographer");
+	log.info("created java choreographer");
 }
 
 void JavaChoreographer::scheduleVSync()
@@ -125,20 +126,32 @@ void JavaChoreographer::scheduleVSync()
 	if(requested)
 		return;
 	requested = true;
-	jPostFrame(frameHelper.jniEnv(), frameHelper);
+	jPostFrame(jniEnv, frameHelper);
+}
+
+void JavaChoreographer::setEventsOnThisThread(ApplicationContext ctx)
+{
+	jniEnv = ctx.thisThreadJniEnv();
+	jSetInstance(jniEnv, frameHelper, true);
+}
+
+void JavaChoreographer::removeEvents(ApplicationContext ctx)
+{
+	cancel();
+	jniEnv = ctx.thisThreadJniEnv();
+	jSetInstance(jniEnv, frameHelper, false);
 }
 
 NativeChoreographer::NativeChoreographer(AndroidApplication &app):
 	appPtr{&app}
 {
-	AChoreographer* (*getInstance)(){};
 	loadSymbol(getInstance, {}, "AChoreographer_getInstance");
 	assert(getInstance);
 	loadSymbol(postFrameCallback, {}, "AChoreographer_postFrameCallback");
 	assert(postFrameCallback);
 	choreographer = getInstance();
 	assert(choreographer);
-	logMsg("using native Choreographer");
+	log.info("created native choreographer");
 }
 
 void NativeChoreographer::scheduleVSync()
@@ -146,13 +159,24 @@ void NativeChoreographer::scheduleVSync()
 	if(requested)
 		return;
 	requested = true;
-	postFrameCallback(choreographer,
-		[](long frameTimeNanos, void* userData)
-		{
-			auto &inst = *((NativeChoreographer*)userData);
-			inst.requested = false;
-			updatePostedScreens(inst, SteadyClockTimePoint{Nanoseconds{frameTimeNanos}}, *inst.appPtr);
-		}, this);
+	postFrameCallback(choreographer, [](long frameTimeNanos, void* userData)
+	{
+		auto &inst = *((NativeChoreographer*)userData);
+		if(!inst.requested || inst.choreographer != inst.getInstance()) [[unlikely]]
+			return;
+		inst.requested = false;
+		updatePostedScreens(inst, SteadyClockTimePoint{Nanoseconds{frameTimeNanos}}, *inst.appPtr);
+	}, this);
+}
+
+void NativeChoreographer::setEventsOnThisThread(ApplicationContext)
+{
+	choreographer = getInstance();
+}
+
+void NativeChoreographer::removeEvents(ApplicationContext)
+{
+	cancel();
 }
 
 }

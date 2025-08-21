@@ -40,6 +40,7 @@ class IOSApplication : public BaseApplication
 public:
 	IOSApplication(ApplicationInitParams);
 	Window *deviceWindow() const;
+	void emplaceFrameTimer(FrameTimer&, Screen&, bool useVariableTime = {});
 };
 
 using ApplicationImpl = IOSApplication;

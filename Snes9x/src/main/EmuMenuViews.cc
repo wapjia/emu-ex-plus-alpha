@@ -65,7 +65,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 	{
 		"5-玩家模式", attachParams(),
 		(bool)system().optionMultitap,
-		[this](BoolMenuItem &item, View &, Input::Event e)
+		[this](BoolMenuItem &item)
 		{
 			system().sessionOptionSet();
 			system().optionMultitap = item.flipBoolValue(*this);
@@ -130,7 +130,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 	{
 		"允许扩展 239/478 线路", attachParams(),
 		(bool)system().optionAllowExtendedVideoLines,
-		[this](BoolMenuItem &item, View &, Input::Event e)
+		[this](BoolMenuItem &item)
 		{
 			system().sessionOptionSet();
 			system().optionAllowExtendedVideoLines = item.flipBoolValue(*this);
@@ -164,7 +164,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 	{
 		"允许无效的VRAM访问", attachParams(),
 		(bool)!system().optionBlockInvalidVRAMAccess,
-		[this](BoolMenuItem &item, View &, Input::Event e)
+		[this](BoolMenuItem &item)
 		{
 			system().sessionOptionSet();
 			system().optionBlockInvalidVRAMAccess = !item.flipBoolValue(*this);
@@ -176,7 +176,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 	{
 		"将回声缓冲区与Ram分开", attachParams(),
 		(bool)system().optionSeparateEchoBuffer,
-		[this](BoolMenuItem &item, View &, Input::Event e)
+		[this](BoolMenuItem &item)
 		{
 			system().sessionOptionSet();
 			system().optionSeparateEchoBuffer = item.flipBoolValue(*this);
@@ -230,7 +230,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 		}(),
 		superFXClockItem,
 		{
-			.onSetDisplayString = [this](auto idx, Gfx::Text &t)
+			.onSetDisplayString = [this](auto, Gfx::Text& t)
 			{
 				t.resetString(std::format("{}%", system().optionSuperFXClockMultiplier.value()));
 				return true;
@@ -351,7 +351,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		{
 			pushAndShow(makeViewWithName<DataFileSelectView<>>("BS-X BIOS",
 				app().validSearchPath(FS::dirnameUri(system().bsxBiosPath)),
-				[this](CStringView path, FS::file_type type)
+				[this](CStringView path, FS::file_type)
 				{
 					system().bsxBiosPath = path;
 					logMsg("set BS-X bios:%s", path.data());
@@ -373,7 +373,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		{
 			pushAndShow(makeViewWithName<DataFileSelectView<>>("Sufami Turbo BIOS",
 				app().validSearchPath(FS::dirnameUri(system().sufamiBiosPath)),
-				[this](CStringView path, FS::file_type type)
+				[this](CStringView path, FS::file_type)
 				{
 					system().sufamiBiosPath = path;
 					logMsg("set Sufami Turbo bios:%s", path.data());
@@ -409,8 +409,6 @@ std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
 		#endif
 		case ViewID::FILE_PATH_OPTIONS: return std::make_unique<CustomFilePathOptionView>(attach);
 		case ViewID::SYSTEM_ACTIONS: return std::make_unique<CustomSystemActionsView>(attach);
-		case ViewID::EDIT_CHEATS: return std::make_unique<EmuEditCheatListView>(attach);
-		case ViewID::LIST_CHEATS: return std::make_unique<EmuCheatsView>(attach);
 		default: return nullptr;
 	}
 }

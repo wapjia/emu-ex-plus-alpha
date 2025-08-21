@@ -1,28 +1,28 @@
 buildscript {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.3.0'
+        classpath 'com.android.tools.build:gradle:8.12.0'
     }
 }
 
 allprojects {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
 }
 
 apply plugin: 'android-library'
 
 android {
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         minSdkVersion 9
-        targetSdkVersion 34
+        targetSdkVersion 36
     }
 
     buildTypes {

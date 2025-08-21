@@ -19,19 +19,19 @@
 #include <emuframework/OutSizeTracker.hh>
 #include <imagine/util/ScopeGuard.hh>
 #include <imagine/util/format.hh>
+#include <imagine/util/string.h>
 #include <imagine/fs/FS.hh>
 #include <imagine/io/IOStream.hh>
 #include <resample/resampler.h>
 #include <resample/resamplerinfo.h>
 #include <libgambatte/src/mem/cartridge.h>
-#include <main/Cheats.hh>
 #include <imagine/logger/logger.h>
 
 namespace EmuEx
 {
 
 constexpr SystemLogger log{"GBC.emu"};
-const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2024\nRobert Broglia\nwww.explusalpha.com\n\n\nPortions (c) the\nGambatte Team\ngambatte.sourceforge.net";
+const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2025\nRobert Broglia\nwww.explusalpha.com\n\n\nPortions (c) the\nGambatte Team\ngambatte.sourceforge.net";
 bool EmuSystem::hasCheats = true;
 constexpr WSize lcdSize{gambatte::lcd_hres, gambatte::lcd_vres};
 
@@ -80,7 +80,8 @@ void GbcSystem::applyGBPalette()
 	for(auto i : iotaCount(4))
 		gbEmu.setDmgPaletteColor(2, i, makeOutputColor(pal.sp2[i]));
 }
-void GbcSystem::reset(EmuApp &app, ResetMode mode)
+
+void GbcSystem::reset(EmuApp& app, ResetMode)
 {
 	flushBackupMemory(app);
 	gbEmu.reset();
@@ -136,14 +137,14 @@ FS::FileString GbcSystem::stateFilename(int slot, std::string_view name) const
 }
 //endregion
 
-void GbcSystem::readState(EmuApp &app, std::span<uint8_t> buff)
+void GbcSystem::readState(EmuApp&, std::span<uint8_t> buff)
 {
 	IStream<MapIO> stream{buff};
 	if(!gbEmu.loadState(stream))
 		throw std::runtime_error("Invalid state data");
 }
 
-size_t GbcSystem::writeState(std::span<uint8_t> buff, SaveStateFlags flags)
+size_t GbcSystem::writeState(std::span<uint8_t> buff, SaveStateFlags)
 {
 	assert(saveStateSize == buff.size());
 	OStream<MapIO> stream{buff};
@@ -227,7 +228,7 @@ void GbcSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDelegat
 			log.info("game {} has built-in palette", gbEmu.romTitle());
 		applyGBPalette();
 	}
-	readCheatFile(*this);
+	readCheatFile();
 	applyCheats();
 	saveStateSize = 0;
 	OStream<OutSizeTracker> stream{&saveStateSize};
@@ -252,9 +253,10 @@ bool GbcSystem::onVideoRenderFormatChange(EmuVideo &video, IG::PixelFormat fmt)
 	return true;
 }
 
-void GbcSystem::configAudioRate(FrameTime outputFrameTime, int outputRate)
+void GbcSystem::configAudioRate(FrameRate outputFrameRate, int outputRate)
 {
-	long inputRate = gbFrameTimeSecs / duration_cast<FloatSeconds>(outputFrameTime) * 2097152.;
+	// input/output frame rate parameters swapped to generate the sound input rate
+	long inputRate = std::round(audioMixRate(2097152, outputFrameRate, frameRate()));
 	if(optionAudioResampler >= ResamplerInfo::num())
 		optionAudioResampler = std::min(ResamplerInfo::num(), 1zu);
 	if(!resampler || optionAudioResampler != activeResampler

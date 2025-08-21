@@ -1,29 +1,28 @@
 buildscript {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.3.0'
+        classpath 'com.android.tools.build:gradle:8.12.0'
     }
 }
 
 allprojects {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
     }
 }
 
 apply plugin: 'android'
 
 android {
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         minSdkVersion METADATA_MIN_SDK
         targetSdkVersion METADATA_TARGET_SDK
-        archivesBaseName = METADATA_PROJECT
     }
 
     def signingConfigType = signingConfigs.debug
@@ -64,6 +63,10 @@ android {
 	}
 
 	namespace METADATA_NAMESPACE
+}
+
+base {
+	archivesName = METADATA_PROJECT
 }
 
 dependencies {

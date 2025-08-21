@@ -17,6 +17,7 @@
 
 #include <imagine/config/defs.hh>
 #include <imagine/base/baseDefs.hh>
+#include <imagine/base/ApplicationContext.hh>
 #include <imagine/util/jni.hh>
 #include <variant>
 
@@ -31,17 +32,21 @@ class NativeChoreographer
 {
 public:
 	constexpr NativeChoreographer() = default;
-	NativeChoreographer(AndroidApplication &);
+	NativeChoreographer(AndroidApplication&);
 	void scheduleVSync();
+	void cancel() { requested = false; }
+	void setEventsOnThisThread(ApplicationContext);
+	void removeEvents(ApplicationContext);
 	explicit constexpr operator bool() const { return choreographer; }
 
 protected:
 	using AChoreographerFrameCallback = void (*)(long frameTimeNanos, void* data);
 	using PostFrameCallbackFunc = void (*)(AChoreographer*, AChoreographerFrameCallback, void* data);
 
-	AndroidApplication *appPtr{};
-	AChoreographer *choreographer{};
+	AndroidApplication* appPtr{};
+	AChoreographer* choreographer{};
 	PostFrameCallbackFunc postFrameCallback{};
+	AChoreographer* (*getInstance)(){};
 	bool requested{};
 };
 
@@ -51,12 +56,17 @@ public:
 	constexpr JavaChoreographer() = default;
 	JavaChoreographer(AndroidApplication &, JNIEnv *, jobject baseActivity, jclass baseActivityClass);
 	void scheduleVSync();
+	void cancel() { requested = false; }
+	void setEventsOnThisThread(ApplicationContext);
+	void removeEvents(ApplicationContext);
 	explicit constexpr operator bool() const { return frameHelper; }
 
 protected:
-	AndroidApplication *appPtr{};
-	JNI::UniqueGlobalRef frameHelper{};
-	JNI::InstMethod<void()> jPostFrame{};
+	AndroidApplication* appPtr{};
+	JNIEnv* jniEnv{};
+	JNI::UniqueGlobalRef frameHelper;
+	JNI::InstMethod<void()> jPostFrame;
+	JNI::InstMethod<void(jboolean)> jSetInstance;
 	bool requested{};
 };
 
@@ -68,8 +78,9 @@ public:
 	ChoreographerFrameTimer(ChoreographerBase &choreographer):
 		choreographerPtr{&choreographer} {}
 	void scheduleVSync() { choreographerPtr->scheduleVSync(); }
-	void cancel() {}
-	void setFrameRate(FrameRate) {}
+	void cancel() { choreographerPtr->cancel(); }
+	void setEventsOnThisThread(ApplicationContext ctx) { choreographerPtr->setEventsOnThisThread(ctx); }
+	void removeEvents(ApplicationContext ctx) { choreographerPtr->removeEvents(ctx); }
 
 protected:
 	ChoreographerBase *choreographerPtr{};

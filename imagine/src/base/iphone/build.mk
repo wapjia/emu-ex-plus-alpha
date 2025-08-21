@@ -20,6 +20,7 @@ SRC += base/iphone/iphone.mm \
  base/iphone/IOSGLContext.mm \
  base/common/timer/CFTimer.cc \
  base/common/PosixPipe.cc \
+ base/common/SimpleFrameTimer.cc \
  base/common/eventloop/CFEventLoop.cc \
  base/common/eventloop/FDCustomEvent.cc \
  util/string/apple.mm

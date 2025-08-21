@@ -21,12 +21,12 @@
 #include <imagine/base/eventloop/ALooperEventLoop.hh>
 #elif defined __linux__
 #include <imagine/base/eventloop/GlibEventLoop.hh>
-#define CONFIG_BASE_GLIB
 #elif defined __APPLE__
 #include <imagine/base/eventloop/CFEventLoop.hh>
 #endif
 
 #include <utility>
+#include <string_view>
 
 namespace IG
 {
@@ -39,37 +39,40 @@ public:
 	constexpr EventLoop() = default;
 	static EventLoop forThread();
 	static EventLoop makeForThread();
-	void run();
+	void run(const bool& condition);
 	void stop();
 	explicit operator bool() const;
+};
 
-	void run(const auto &condition)
-	{
-		while((bool)condition)
-		{
-			run();
-		}
-	}
+struct FDEventSourceDesc
+{
+	std::string_view debugLabel{};
+	std::optional<EventLoop> eventLoop{};
+	PollEventFlags events{pollEventInput};
 };
 
 class FDEventSource : public FDEventSourceImpl
 {
 public:
-	using FDEventSourceImpl::FDEventSourceImpl;
-	FDEventSource(MaybeUniqueFileDescriptor fd, EventLoop loop, PollEventDelegate callback, uint32_t events = POLLEV_IN):
-		FDEventSource(nullptr, std::move(fd), loop, callback, events) {}
-	FDEventSource(const char *debugLabel, MaybeUniqueFileDescriptor fd, EventLoop loop, PollEventDelegate callback, uint32_t events = POLLEV_IN);
-	bool attach(PollEventDelegate callback, uint32_t events = POLLEV_IN);
-	bool attach(EventLoop loop, PollEventDelegate callback, uint32_t events = POLLEV_IN);
-	#if defined CONFIG_BASE_GLIB
-	bool attach(EventLoop, GSource *, uint32_t events = POLLEV_IN);
-	#endif
+	constexpr FDEventSource() = default;
+	FDEventSource(MaybeUniqueFileDescriptor fd, FDEventSourceDesc desc, PollEventDelegate del):
+		FDEventSourceImpl{std::move(fd), desc, del},
+		debugLabel_{desc.debugLabel.size() ? desc.debugLabel : "unnamed"}
+	{
+		if(desc.eventLoop)
+			attach(*desc.eventLoop, desc.events);
+	}
+	bool attach(EventLoop loop = {}, PollEventFlags events = pollEventInput);
 	void detach();
-	void setEvents(uint32_t events);
-	void dispatchEvents(uint32_t events);
-	void setCallback(PollEventDelegate callback);
+	void setEvents(PollEventFlags);
+	void dispatchEvents(PollEventFlags);
+	void setCallback(PollEventDelegate);
 	bool hasEventLoop() const;
 	int fd() const;
+	std::string_view debugLabel() const { return debugLabel_; }
+
+protected:
+	ConditionalMember<Config::DEBUG_BUILD, std::string_view> debugLabel_{};
 };
 
 }

@@ -118,7 +118,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 		MenuId{system().optionVideoSystem},
 		videoSystemItem,
 		{
-			.onSetDisplayString = [this](auto idx, Gfx::Text &t)
+			.onSetDisplayString = [](auto idx, Gfx::Text &t)
 			{
 				if(idx == 0)
 				{
@@ -368,7 +368,7 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper
 						dismissPrevious();
 						picker.dismiss();
 					});
-				fPicker->setPath(app().contentSearchPath(), e);
+				fPicker->setPath(app().contentSearchPath, e);
 				app().pushAndShowModalView(std::move(fPicker), e);
 				return false;
 			}},
@@ -697,7 +697,7 @@ private:
 	TextMenuItem insertEject
 	{
 		"弹出", attachParams(),
-		[this](View &view, Input::Event e)
+		[](View& view)
 		{
 			if(FCEU_FDSInserted())
 			{
@@ -798,8 +798,6 @@ std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
 		case ViewID::AUDIO_OPTIONS: return std::make_unique<CustomAudioOptionView>(attach, audio);
 		case ViewID::SYSTEM_OPTIONS: return std::make_unique<CustomSystemOptionView>(attach);
 		case ViewID::FILE_PATH_OPTIONS: return std::make_unique<CustomFilePathOptionView>(attach);
-		case ViewID::EDIT_CHEATS: return std::make_unique<EmuEditCheatListView>(attach);
-		case ViewID::LIST_CHEATS: return std::make_unique<EmuCheatsView>(attach);
 		default: return nullptr;
 	}
 }

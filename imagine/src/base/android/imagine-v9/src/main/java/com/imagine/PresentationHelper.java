@@ -49,7 +49,13 @@ final class PresentationHelper extends Presentation
 	@Override protected void onCreate(Bundle savedInstanceState)
 	{
 		//Log.i(logTag, "onCreate");
-		getWindow().takeSurface(this);
+		Window win = getWindow();
+		win.takeSurface(this);
+		if(android.os.Build.VERSION.SDK_INT >= 35)
+		{
+			// Disable ARR to restore usage of ANativeWindow_setFrameRate() API
+			win.setFrameRatePowerSavingsBalanced(false);
+		}
 		setContentView(contentView);
 	}
 	

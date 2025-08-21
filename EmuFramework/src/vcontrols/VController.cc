@@ -65,7 +65,7 @@ static void updateTexture(const EmuApp &app, VControllerElement &e, Gfx::Rendere
 {
 	e.visit(overloaded
 	{
-		[&](VControllerDPad &dpad){ dpad.setImage(task, app.asset(app.vControllerAssetDesc(0)), fanQuadIdxs); },
+		[&](VControllerDPad& dpad){ dpad.setImage(task, app.asset(app.vControllerAssetDesc(KeyInfo{0})), fanQuadIdxs); },
 		[&](VControllerButtonGroup &grp)
 		{
 			for(auto &btn : grp.buttons)
@@ -177,7 +177,6 @@ void VController::place()
 {
 	if(!hasWindow())
 		return;
-	auto &winData = windowData();
 	auto &win = window();
 	applyButtonSize();
 	auto bounds = layoutBounds();
@@ -220,7 +219,7 @@ std::array<KeyInfo, 2> VController::findGamepadElements(WPt pos)
 					return {};
 				return grp.findButtonIndices(pos);
 			},
-			[](auto &e) -> std::array<KeyInfo, 2> { return {}; }
+			[](auto&) -> std::array<KeyInfo, 2> { return {}; }
 		});
 		if(indices != std::array<KeyInfo, 2>{})
 			return indices;
@@ -251,7 +250,7 @@ KeyInfo VController::keyboardKeyFromPointer(const Input::MotionEvent &e)
 		if(!e.pushed())
 			return {};
 		log.info("switch kb mode");
-		kb.cycleMode(system(), renderer());
+		kb.cycleMode(system());
 		resetInput();
 	}
 	else
@@ -300,7 +299,7 @@ bool VController::pointerInputEvent(const Input::MotionEvent &e, IG::WindowRect 
 			// release old buttons
 			for(auto vBtn : prevElements)
 			{
-				if(vBtn && !contains(currElements, vBtn))
+				if(vBtn && !std::ranges::contains(currElements, vBtn))
 				{
 					//log.info("releasing {}", vBtn[0]);
 					app.handleSystemKeyInput(vBtn, Input::Action::RELEASED);
@@ -309,7 +308,7 @@ bool VController::pointerInputEvent(const Input::MotionEvent &e, IG::WindowRect 
 			// push new buttons
 			for(auto vBtn : currElements)
 			{
-				if(vBtn && !contains(prevElements, vBtn))
+				if(vBtn && !std::ranges::contains(prevElements, vBtn))
 				{
 					//log.info("pushing {}", vBtn[0]);
 					app.handleSystemKeyInput(vBtn, Input::Action::PUSHED);
@@ -358,7 +357,7 @@ bool VController::keyInput(const Input::KeyEvent &e)
 {
 	if(!isInKeyboardMode())
 		return false;
-	return kb.keyInput(*this, renderer(), e);
+	return kb.keyInput(*this, e);
 }
 
 void VController::draw(Gfx::RendererCommands &__restrict__ cmds, bool showHidden)
@@ -425,9 +424,9 @@ bool VController::keyIsEnabled(KeyInfo k) const
 {
 	if(!disabledKeys.size())
 		return true;
-	return !contains(disabledKeys, k.codes[0])
-		&& !contains(disabledKeys, k.codes[1])
-		&& !contains(disabledKeys, k.codes[2]);
+	return !std::ranges::contains(disabledKeys, k.codes[0])
+		&& !std::ranges::contains(disabledKeys, k.codes[1])
+		&& !std::ranges::contains(disabledKeys, k.codes[2]);
 }
 
 void VController::setDisabledInputKeys(std::span<const KeyCode> disabledKeys_)
@@ -438,7 +437,7 @@ void VController::setDisabledInputKeys(std::span<const KeyCode> disabledKeys_)
 		e.visit(overloaded
 		{
 			[&](VControllerButtonGroup &grp) { updateEnabledButtons(grp); },
-			[](auto &e){}
+			[](auto&){}
 		});
 	}
 	place();
@@ -597,8 +596,7 @@ static bool readVControllerElement(InputManager &mgr, MapIO &io, std::vector<VCo
 			VControllerUIButtonGroup::Config config;
 			io.read(config.layout.rowItems);
 			config.layout.origin = _2DOrigin::unpack(io.get<_2DOrigin::PackedType>());
-			auto keys = io.get<uint8_t>();
-			io.readSized(config.keys, keys);
+			readSizedData<uint8_t>(io, config.keys);
 			config.validate(mgr);
 			elems.emplace_back(std::in_place_type<VControllerUIButtonGroup>, std::move(config));
 		}
@@ -612,8 +610,7 @@ static bool readVControllerElement(InputManager &mgr, MapIO &io, std::vector<VCo
 			io.read(config.layout.staggerType);
 			config.layout.origin = _2DOrigin::unpack(io.get<_2DOrigin::PackedType>());
 			io.read(config.layout.showBoundingArea);
-			auto keys = io.get<uint8_t>();
-			io.readSized(config.keys, keys);
+			readSizedData<uint8_t>(io, config.keys);
 			config.validate(mgr);
 			elems.emplace_back(std::in_place_type<VControllerButtonGroup>, std::move(config));
 		}
@@ -671,11 +668,11 @@ bool VController::readConfig(EmuApp &app, MapIO &io, unsigned key)
 		case CFGKEY_VCONTROLLER_DEVICE_BUTTONS_V2:
 		{
 			gpElements.clear();
-			auto emuDeviceId = io.get<uint8_t>(); // reserved for future use
-			auto configId = io.get<uint8_t>(); // reserved for future use
+			[[maybe_unused]] auto emuDeviceId = io.get<uint8_t>(); // reserved for future use
+			[[maybe_unused]] auto configId = io.get<uint8_t>(); // reserved for future use
 			auto elements = io.get<uint8_t>();
 			log.info("read emu device button data ({} bytes) with {} element(s)", io.size(), elements);
-			for(auto i : iotaCount(elements))
+			for([[maybe_unused]] auto i : iotaCount(elements))
 			{
 				if(!readVControllerElement(app.inputManager, io, gpElements, false))
 					return false;
@@ -714,18 +711,14 @@ static void writeToConfig(const VControllerElement &e, FileIO &io)
 			io.put(config.layout.staggerType);
 			io.put(config.layout.origin.pack());
 			io.put(config.layout.showBoundingArea);
-			auto keyCount = uint8_t(std::min(config.keys.size(), 255zu));
-			io.put(keyCount);
-			io.write(config.keys.data(), keyCount);
+			writeSizedData<uint8_t>(io, config.keys);
 		},
 		[&](const VControllerUIButtonGroup &e)
 		{
 			auto config = e.config();
 			io.put(config.layout.rowItems);
 			io.put(config.layout.origin.pack());
-			auto keyCount = uint8_t(std::min(config.keys.size(), 255zu));
-			io.put(keyCount);
-			io.write(config.keys.data(), keyCount);
+			writeSizedData<uint8_t>(io, config.keys);
 		},
 		[&](const VControllerDPad &e)
 		{
@@ -1099,7 +1092,7 @@ void VController::updateSystemKeys(KeyInfo key, bool isPushed)
 				if(didUpdate)
 					dpad.setAlpha(alphaF);
 			},
-			[](auto &e){}
+			[](auto&){}
 		});
 	}
 }
@@ -1121,7 +1114,7 @@ void VController::resetHighlightedKeys()
 					}
 				}
 			},
-			[](auto &e){}
+			[](auto&){}
 		});
 	}
 }

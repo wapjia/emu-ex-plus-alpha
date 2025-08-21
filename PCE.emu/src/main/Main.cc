@@ -34,12 +34,12 @@
 namespace EmuEx
 {
 
-const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2024\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nMednafen Team\nmednafen.github.io";
+const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2025\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nMednafen Team\nmednafen.github.io";
 bool EmuSystem::hasRectangularPixels = true;
 bool EmuSystem::stateSizeChangesAtRuntime = true;
 constexpr double masterClockFrac = 21477272.727273 / 3.;
-constexpr auto pceFrameTimeWith262Lines{fromSeconds<FrameTime>(455. * 262. / masterClockFrac)}; // ~60.05Hz
-constexpr auto pceFrameTime{fromSeconds<FrameTime>(455. * 263. / masterClockFrac)}; //~59.82Hz
+constexpr FrameRate pceFrameRateWith262Lines{masterClockFrac / (455. * 262.)}; // ~60.05Hz
+constexpr FrameRate pceFrameRate{masterClockFrac / (455. * 263.)}; // ~59.82Hz
 bool EmuApp::needsGlobalInstance = true;
 
 PceApp::PceApp(ApplicationInitParams initParams, ApplicationContext &ctx):
@@ -227,12 +227,12 @@ void PceSystem::updatePixmap(IG::PixelFormat fmt)
 	return;
 }
 
-FrameTime PceSystem::frameTime() const { return isUsing263Lines() ? pceFrameTime : pceFrameTimeWith262Lines; }
+FrameRate PceSystem::frameRate() const { return isUsing263Lines() ? pceFrameRate : pceFrameRateWith262Lines; }
 
-void PceSystem::configAudioRate(FrameTime outputFrameTime, int outputRate)
+void PceSystem::configAudioRate(FrameRate outputFrameRate, int outputRate)
 {
 	configuredFor263Lines = isUsing263Lines();
-	auto mixRate = audioMixRate(outputRate, outputFrameTime);
+	auto mixRate = audioMixRate(outputRate, outputFrameRate);
 	if(!isUsingAccurateCore())
 		mixRate = std::round(mixRate);
 	auto currMixRate = isUsingAccurateCore() ? MDFN_IEN_PCE::GetSoundRate() : MDFN_IEN_PCE_FAST::GetSoundRate();
@@ -252,7 +252,7 @@ void PceSystem::runFrame(EmuSystemTaskContext taskCtx, EmuVideo *video, EmuAudio
 	EmuEx::runFrame(*this, mdfnGameInfo, taskCtx, video, mSurfacePix, audio, maxAudioFrames, maxLineWidths);
 	if(configuredFor263Lines != isUsing263Lines()) [[unlikely]]
 	{
-		onFrameTimeChanged();
+		onFrameRateChanged();
 	}
 }
 
@@ -263,7 +263,7 @@ void PceSystem::reset(EmuApp &, ResetMode mode)
 }
 
 size_t PceSystem::stateSize() { return stateSizeMDFN(); }
-void PceSystem::readState(EmuApp &app, std::span<uint8_t> buff) { readStateMDFN(app, buff); }
+void PceSystem::readState(EmuApp&, std::span<uint8_t> buff) { readStateMDFN(buff); }
 size_t PceSystem::writeState(std::span<uint8_t> buff, SaveStateFlags flags) { return writeStateMDFN(buff, flags); }
 
 double PceSystem::videoAspectRatioScale() const
@@ -319,7 +319,7 @@ static void renderMultiresOutput(EmulateSpecStruct spec, IG::PixmapView srcPix, 
 					bug_unreachable("width == %d", width);
 				case 256:
 				{
-					for(auto w : IG::iotaCount(256))
+					for([[maybe_unused]] auto w : IG::iotaCount(256))
 					{
 						*destPixAddr++ = *srcPixAddr;
 						*destPixAddr++ = *srcPixAddr;
@@ -330,7 +330,7 @@ static void renderMultiresOutput(EmulateSpecStruct spec, IG::PixmapView srcPix, 
 				}
 				case 341:
 				{
-					for(auto w : IG::iotaCount(340))
+					for([[maybe_unused]] auto w : IG::iotaCount(340))
 					{
 						*destPixAddr++ = *srcPixAddr;
 						*destPixAddr++ = *srcPixAddr;
@@ -344,7 +344,7 @@ static void renderMultiresOutput(EmulateSpecStruct spec, IG::PixmapView srcPix, 
 				}
 				case 512:
 				{
-					for(auto w : IG::iotaCount(512))
+					for([[maybe_unused]] auto w : IG::iotaCount(512))
 					{
 						*destPixAddr++ = *srcPixAddr;
 						*destPixAddr++ = *srcPixAddr++;
@@ -367,7 +367,7 @@ static void renderMultiresOutput(EmulateSpecStruct spec, IG::PixmapView srcPix, 
 					bug_unreachable("width == %d", width);
 				case 256:
 				{
-					for(auto w : IG::iotaCount(256))
+					for([[maybe_unused]] auto w : IG::iotaCount(256))
 					{
 						*destPixAddr++ = *srcPixAddr;
 						*destPixAddr++ = *srcPixAddr++;

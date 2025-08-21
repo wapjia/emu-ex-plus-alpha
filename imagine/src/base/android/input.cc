@@ -20,9 +20,9 @@
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/logger/logger.h>
 #include <imagine/util/ranges.hh>
+#include <imagine/util/algorithm.h>
 #include <imagine/base/android/AndroidInputDevice.hh>
 #include <android/input.h>
-#include <ranges>
 
 namespace IG
 {
@@ -31,16 +31,9 @@ extern int32_t (*AMotionEvent_getActionButton_)(const AInputEvent* motion_event)
 
 static const char* aInputSourceToStr(uint32_t source);
 
-Input::Device *AndroidApplication::inputDeviceForId(int id) const
+Input::Device* AndroidApplication::inputDeviceForId(int id) const
 {
-	auto existingIt = std::ranges::find_if(inputDev,
-		[=](const auto &e)
-		{ return e->map() == Input::Map::SYSTEM && e->id() == id; });
-	if(existingIt == inputDev.end())
-	{
-		return nullptr;
-	}
-	return existingIt->get();
+	return findPtr(inputDev, [=](const auto &e) { return e->map() == Input::Map::SYSTEM && e->id() == id; });
 }
 
 std::pair<Input::Device*, int> AndroidApplication::inputDeviceForEvent(AInputEvent *event)
@@ -67,7 +60,7 @@ static auto makeTimeFromKeyEvent(AInputEvent *event)
 }
 
 static std::pair<int32_t, Input::Source> mapKeycodesForSpecialDevices(const Input::Device &dev,
-	int32_t keyCode, int32_t metaState, Input::Source src, AInputEvent *event)
+	int32_t keyCode, int32_t metaState, Input::Source src)
 {
 	using namespace IG::Input;
 	switch(dev.subtype())
@@ -100,7 +93,7 @@ static std::pair<int32_t, Input::Source> mapKeycodesForSpecialDevices(const Inpu
 	return {keyCode, src};
 }
 
-static const char *keyEventActionStr(uint32_t action)
+constexpr const char *keyEventActionStr(uint32_t action)
 {
 	switch(action)
 	{
@@ -120,13 +113,12 @@ static int32_t AMotionEvent_getActionButtonCompat(const AInputEvent* event, int3
 	{
 		return AMotionEvent_getActionButton_(event);
 	}
-	static const bool ptrIs64Bits = sizeof(void*) == 8;
 	auto asIntPtr = (const int32_t *)event;
 	switch(sdkVersion)
 	{
-		case 23 ... 28: return asIntPtr[ptrIs64Bits ? 5  : 4];
-		case 29:        return asIntPtr[ptrIs64Bits ? 6  : 5];
-		case 30 ... 32: return asIntPtr[ptrIs64Bits ? 15 : 14];
+		case 23 ... 28: return asIntPtr[Config::is64Bit ? 5  : 4];
+		case 29:        return asIntPtr[Config::is64Bit ? 6  : 5];
+		case 30 ... 32: return asIntPtr[Config::is64Bit ? 15 : 14];
 	}
 	return AMOTION_EVENT_BUTTON_PRIMARY; // can't determine button, fall back to primary
 }
@@ -251,7 +243,6 @@ bool AndroidApplication::processInputEvent(AInputEvent* event, Input::Device *de
 					float iX = x * 1000.f, iY = y * 1000.f;
 					auto pos = win.transformInputPos({iX, iY});
 					//logMsg("trackball ev %s %f %f", androidEventEnumToStr(action), x, y);
-					auto src = Source::KEYBOARD;
 					if(actionCode == AMOTION_EVENT_ACTION_MOVE)
 						win.dispatchInputEvent(MotionEvent{Map::REL_POINTER, 0, 0, Action::MOVED_RELATIVE, pos.x, pos.y, 0, Source::NAVIGATION, time, nullptr});
 					else
@@ -343,7 +334,7 @@ bool AndroidApplication::processInputEvent(AInputEvent* event, Input::Device *de
 				//	repeatCount, keyEventActionStr(AKeyEvent_getAction(event)), sourceStr(eventSource));
 			}
 			auto metaState = AKeyEvent_getMetaState(event);
-			auto [mappedKeyCode, mappedSource] = mapKeycodesForSpecialDevices(*devPtr, keyCode, metaState, eventSource, event);
+			auto [mappedKeyCode, mappedSource] = mapKeycodesForSpecialDevices(*devPtr, keyCode, metaState, eventSource);
 			keyCode = mappedKeyCode;
 			eventSource = mappedSource;
 			if(!keyCode) [[unlikely]] // ignore "unknown" key codes

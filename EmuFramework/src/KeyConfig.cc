@@ -15,6 +15,7 @@
 
 #include <emuframework/EmuInput.hh>
 #include <emuframework/EmuOptions.hh>
+#include <emuframework/Option.hh>
 #include <imagine/io/MapIO.hh>
 #include <imagine/io/FileIO.hh>
 #include <imagine/logger/logger.h>
@@ -29,11 +30,10 @@ KeyConfig KeyConfig::readConfig(MapIO &io)
 	KeyConfig keyConf;
 	keyConf.map = Input::Map(io.get<uint8_t>());
 	const auto keyMax = Input::KeyEvent::mapNumKeys(keyConf.map);
-	auto nameLen = io.get<uint8_t>();
-	io.readSized(keyConf.name, nameLen);
+	readSizedData<uint8_t>(io, keyConf.name);
 	auto mappings = io.get<uint8_t>();
 	keyConf.keyMap.reserve(mappings);
-	for(auto mappingIdx : iotaCount(mappings))
+	for(auto _ : iotaCount(mappings))
 	{
 		KeyMapping m;
 		io.read(m.key.codes.data(), m.key.codes.capacity());
@@ -86,7 +86,7 @@ void KeyConfig::set(KeyInfo key, MappedKeys mapKey)
 {
 	if(!mapKey[0])
 	{
-		std::ranges::remove_if(keyMap, [&](auto &val){ return val.key == key; });
+		std::erase_if(keyMap, [&](auto &val){ return val.key == key; });
 		return;
 	}
 	if(auto it = find(key);
@@ -97,7 +97,7 @@ void KeyConfig::set(KeyInfo key, MappedKeys mapKey)
 	}
 	else
 	{
-		log.info("adding key mapping:{:X}", mapKey[0]);
+		//log.info("adding key mapping:{:X}", mapKey[0]);
 		keyMap.emplace_back(key, mapKey);
 	}
 }

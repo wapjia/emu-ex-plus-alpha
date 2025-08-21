@@ -89,6 +89,7 @@ extern uint8 system_hw;
 
 /* Function prototypes */
 extern int audio_init(int samplerate,float framerate);
+extern void audio_set_rate(int samplerate,float framerate);
 extern void audio_reset(void);
 extern void audio_shutdown(void);
 extern int audio_update(int16 *sb);

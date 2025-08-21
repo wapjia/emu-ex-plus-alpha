@@ -21,7 +21,6 @@
 #include <emuframework/SystemActionsView.hh>
 #include <emuframework/DataPathSelectView.hh>
 #include <emuframework/viewUtils.hh>
-#include "EmuCheatViews.hh"
 #include "MainApp.hh"
 #include "GBASys.hh"
 #include <imagine/gui/AlertView.hh>
@@ -77,7 +76,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 		MenuId{system().optionRtcEmulation.value()},
 		rtcItem,
 		{
-			.onSetDisplayString = [this](auto idx, Gfx::Text &t)
+			.onSetDisplayString = [](auto idx, Gfx::Text& t)
 			{
 				if(idx == 0)
 				{
@@ -242,13 +241,13 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 			TextMenuItem
 			{
 				"默认", attachParams(),
-				[this, gbVol]() { soundSetVolume(gGba, 1.f, gbVol); },
+				[gbVol]() { soundSetVolume(gGba, 1.f, gbVol); },
 				{.id = 100}
 			},
 			TextMenuItem
 			{
 				"关", attachParams(),
-				[this, gbVol]() { soundSetVolume(gGba, 0, gbVol); },
+				[gbVol]() { soundSetVolume(gGba, 0, gbVol); },
 				{.id = 0}
 			},
 			TextMenuItem
@@ -285,7 +284,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 			MenuId{soundVolumeAsInt(gGba, gbVol)},
 			volumeLevelItem[gbVol ? 1 : 0],
 			{
-				.onSetDisplayString = [this, gbVol](auto idx, Gfx::Text &t)
+				.onSetDisplayString = [gbVol](auto idx, Gfx::Text& t)
 				{
 					t.resetString(std::format("{}%", soundVolumeAsInt(gGba, gbVol)));
 					return true;
@@ -328,7 +327,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 		TextMenuItem
 		{
 			"默认", attachParams(),
-			[this]() { soundSetFiltering(gGba, .5f); },
+			[]() { soundSetFiltering(gGba, .5f); },
 			{.id = 50}
 		},
 		TextMenuItem
@@ -355,7 +354,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 		MenuId{soundFilteringAsInt(gGba)},
 		filteringLevelItem,
 		{
-			.onSetDisplayString = [this](auto idx, Gfx::Text &t)
+			.onSetDisplayString = [](auto, Gfx::Text& t)
 			{
 				t.resetString(std::format("{}%", soundFilteringAsInt(gGba)));
 				return true;
@@ -539,8 +538,6 @@ std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
 		case ViewID::SYSTEM_OPTIONS: return std::make_unique<CustomSystemOptionView>(attach);
 		case ViewID::AUDIO_OPTIONS: return std::make_unique<CustomAudioOptionView>(attach, audio);
 		case ViewID::FILE_PATH_OPTIONS: return std::make_unique<CustomFilePathOptionView>(attach);
-		case ViewID::EDIT_CHEATS: return std::make_unique<EmuEditCheatListView>(attach);
-		case ViewID::LIST_CHEATS: return std::make_unique<EmuCheatsView>(attach);
 		default: return nullptr;
 	}
 }

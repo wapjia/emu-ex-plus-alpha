@@ -12,9 +12,6 @@ endif
 
 include $(buildSysPath)/gcc.mk
 
-ifndef PROFILE
- OPTIMIZE_LDFLAGS = -s
-endif
 LDFLAGS_SYSTEM += -mwindows -Wl,-O1,--gc-sections,--as-needed,--stack,16777216
 
 #-municode

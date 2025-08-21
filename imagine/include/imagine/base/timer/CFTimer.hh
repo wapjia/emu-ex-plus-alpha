@@ -20,6 +20,7 @@
 #include <imagine/util/used.hh>
 #include <CoreFoundation/CoreFoundation.h>
 #include <memory>
+#include <string_view>
 
 namespace IG
 {
@@ -28,6 +29,7 @@ struct CFTimerInfo
 {
 	CallbackDelegate callback{};
 	CFRunLoopRef loop{};
+	CFRunLoopRef setLoop{};
 };
 
 class CFTimer
@@ -36,14 +38,14 @@ public:
 	using TimePoint = SteadyClockTimePoint;
 
 	constexpr CFTimer() = default;
-	CFTimer(CallbackDelegate c) : CFTimer{nullptr, c} {}
-	CFTimer(const char *debugLabel, CallbackDelegate c);
-	CFTimer(CFTimer &&o) noexcept;
-	CFTimer &operator=(CFTimer &&o) noexcept;
+	CFTimer(TimerDesc, CallbackDelegate);
+	CFTimer(CFTimer&&) noexcept;
+	CFTimer &operator=(CFTimer&&) noexcept;
 	~CFTimer();
+	std::string_view debugLabel() const { return debugLabel_; }
 
 protected:
-	ConditionalMember<Config::DEBUG_BUILD, const char *> debugLabel{};
+	ConditionalMember<Config::DEBUG_BUILD, std::string_view> debugLabel_{};
 	CFRunLoopTimerRef timer{};
 	std::unique_ptr<CFTimerInfo> info;
 

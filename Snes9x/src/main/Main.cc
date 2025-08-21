@@ -30,7 +30,7 @@ static bool S9xInterlaceField()
 namespace EmuEx
 {
 
-const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2024\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nSnes9x Team\nwww.snes9x.com";
+const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2025\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nSnes9x Team\nwww.snes9x.com";
 #if PIXEL_FORMAT == RGB565
 constexpr auto srcPixFmt = IG::PixelFmtRGB565;
 #else
@@ -56,7 +56,7 @@ EmuSystem::NameFilterFunc EmuSystem::defaultFsFilter =
 Snes9xApp::Snes9xApp(ApplicationInitParams initParams, ApplicationContext &ctx):
 	EmuApp{initParams, ctx}, snes9xSystem{ctx} {}
 
-const BundledGameInfo &EmuSystem::bundledGameInfo(int idx) const
+const BundledGameInfo &EmuSystem::bundledGameInfo(int) const
 {
 	static constexpr BundledGameInfo info[]
 	{
@@ -86,7 +86,7 @@ MutablePixmapView Snes9xSystem::fbPixmapView(WSize size, bool useInterlaceFields
 	return pix;
 }
 
-void Snes9xSystem::renderFramebuffer(EmuVideo &video)
+void Snes9xSystem::renderFramebuffer(EmuVideo&)
 {
 	emuSysTask = {};
 	S9xDeinitUpdate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
@@ -369,10 +369,11 @@ void Snes9xSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDele
 	IPPU.RenderThisFrame = TRUE;
 }
 
-void Snes9xSystem::configAudioRate(FrameTime outputFrameTime, int outputRate)
+void Snes9xSystem::configAudioRate(FrameRate outputFrameRate, int outputRate)
 {
 	#ifndef SNES9X_VERSION_1_4
-	auto inputRate = frameTimeSecs().count() / duration_cast<FloatSeconds>(outputFrameTime).count() * 32040.;
+	// input/output frame rate parameters swapped to generate the sound input rate
+	auto inputRate = audioMixRate(32040, outputFrameRate, frameRate());
 	if(inputRate == Settings.SoundInputRate && outputRate == Settings.SoundPlaybackRate)
 		return;
 	Settings.SoundPlaybackRate = outputRate;
@@ -380,7 +381,7 @@ void Snes9xSystem::configAudioRate(FrameTime outputFrameTime, int outputRate)
 	logMsg("set sound input rate:%.2f output rate:%d", inputRate, outputRate);
 	S9xUpdateDynamicRate(0, 10);
 	#else
-	int mixRate = std::round(audioMixRate(outputRate, outputFrameTime));
+	int mixRate = std::round(audioMixRate(outputRate, outputFrameRate));
 	if(mixRate == Settings.SoundPlaybackRate)
 		return;
 	Settings.SoundPlaybackRate = mixRate;

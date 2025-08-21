@@ -13,7 +13,6 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/base/EventLoop.hh>
 #include <imagine/base/Window.hh>
 #include <imagine/base/GLContext.hh>
 #include <imagine/base/sharedLibrary.hh>
@@ -57,17 +56,6 @@ std::string_view asString(Orientations o)
 	return "Unknown";
 }
 
-FDEventSource::FDEventSource(const char *debugLabel, MaybeUniqueFileDescriptor fd, EventLoop loop, PollEventDelegate callback, uint32_t events):
-	FDEventSource{debugLabel, std::move(fd)}
-{
-	attach(loop, callback, events);
-}
-
-bool FDEventSource::attach(PollEventDelegate callback, uint32_t events)
-{
-	return attach({}, callback, events);
-}
-
 SharedLibraryRef openSharedLibrary(const char *name, OpenSharedLibraryFlags flags)
 {
 	int mode = flags.resolveAllSymbols ? RTLD_NOW : RTLD_LAZY;
@@ -106,27 +94,27 @@ void GLManager::resetCurrentContext() const
 	display().resetCurrentContext();
 }
 
-SteadyClockTimePoint FrameParams::presentTime(int frames) const
+GLBufferConfig GLManager::makeBufferConfig(ApplicationContext ctx, const GLBufferRenderConfigAttributes& attrs) const
 {
-	if(frames <= 0)
-		return {};
-	return frameTime * frames + timestamp;
+	return makeBufferConfig(ctx, std::span{&attrs, 1});
 }
 
-int FrameParams::elapsedFrames(SteadyClockTimePoint lastTimestamp) const
+GLBufferConfig GLManager::makeBufferConfig(ApplicationContext ctx, std::span<const GLBufferRenderConfigAttributes> attrsSpan) const
 {
-	return elapsedFrames(timestamp, lastTimestamp, frameTime);
+	for(const auto &attrs : attrsSpan)
+	{
+		auto config = tryBufferConfig(ctx, attrs);
+		if(config)
+			return *config;
+	}
+	throw std::runtime_error("Error finding a GL configuration");
 }
 
-int FrameParams::elapsedFrames(SteadyClockTimePoint timestamp, SteadyClockTimePoint lastTimestamp, SteadyClockTime frameTime)
+int FrameParams::elapsedFrames(SteadyClockDuration delta, SteadyClockDuration frameDuration)
 {
-	if(!hasTime(lastTimestamp))
-		return 1;
-	assumeExpr(timestamp >= lastTimestamp);
-	assumeExpr(frameTime.count() > 0);
-	auto diff = timestamp - lastTimestamp;
-	auto elapsed = divRoundClosestPositive(diff.count(), frameTime.count());
-	return std::max(elapsed, decltype(elapsed){1});
+	assumeExpr(frameDuration.count() > 0);
+	auto elapsed = divRoundClosestPositive(delta.count(), frameDuration.count());
+	return elapsed;
 }
 
 WRect Viewport::relRect(WPt pos, WSize size, _2DOrigin posOrigin, _2DOrigin screenOrigin) const
@@ -148,7 +136,7 @@ WRect Viewport::relRectBestFit(WPt pos, float aspectRatio, _2DOrigin posOrigin, 
 }
 
 #ifndef __ANDROID__
-static void logBacktrace()
+inline void logBacktrace()
 {
 	void *arr[10];
 	auto size = backtrace(arr, 10);

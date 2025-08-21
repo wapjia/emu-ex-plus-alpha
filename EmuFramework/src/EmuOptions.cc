@@ -36,7 +36,7 @@ namespace EmuEx
 
 constexpr SystemLogger log{"App"};
 
-void EmuApp::initOptions(IG::ApplicationContext ctx)
+void EmuApp::initOptions([[maybe_unused]] IG::ApplicationContext ctx)
 {
 	#ifdef CONFIG_OS_IOS
 	if(ctx.deviceIsIPad())
@@ -56,10 +56,6 @@ void EmuApp::initOptions(IG::ApplicationContext ctx)
 	if(androidSdk >= 17)
 	{
 		showsBluetoothScan.resetDefault(false);
-	}
-	if(androidSdk < 27) // use safer value for devices defaulting to OpenSL ES
-	{
-		audio.soundBuffers = audio.defaultSoundBuffers = 4;
 	}
 	#endif
 }

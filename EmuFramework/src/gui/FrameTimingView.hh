@@ -36,27 +36,27 @@ public:
 	void loadStockItems();
 
 protected:
-	static constexpr int MAX_ASPECT_RATIO_ITEMS = 5;
+	static constexpr size_t maxFrameClockItems = 4;
 	TextMenuItem frameIntervalItem[5];
 	MultiChoiceMenuItem frameInterval;
-	TextMenuItem frameRateItems[4];
+	TextMenuItem frameRateItems[3];
 	VideoSystem activeVideoSystem{};
 	MultiChoiceMenuItem frameRate;
 	MultiChoiceMenuItem frameRatePAL;
-	ConditionalMember<enableFrameTimeStats, BoolMenuItem> frameTimeStats;
-	TextMenuItem frameClockItems[4];
+	BoolMenuItem frameTimingStats;
+	StaticArrayList<TextMenuItem, maxFrameClockItems> frameClockItems;
 	MultiChoiceMenuItem frameClock;
+	TextMenuItem outputRateModeItems[3];
+	MultiChoiceMenuItem outputRateMode;
 	ConditionalMember<Gfx::supportsPresentModes, TextMenuItem> presentModeItems[3];
 	ConditionalMember<Gfx::supportsPresentModes, MultiChoiceMenuItem> presentMode;
 	ConditionalMember<Config::multipleScreenFrameRates, std::vector<TextMenuItem>> screenFrameRateItems;
 	ConditionalMember<Config::multipleScreenFrameRates, MultiChoiceMenuItem> screenFrameRate;
-	ConditionalMember<Gfx::supportsPresentationTime, TextMenuItem> presentationTimeItems[3];
-	ConditionalMember<Gfx::supportsPresentationTime, MultiChoiceMenuItem> presentationTime;
 	BoolMenuItem blankFrameInsertion;
 	TextHeadingMenuItem advancedHeading;
 	StaticArrayList<MenuItem*, 10> item;
 
-	bool onFrameTimeChange(VideoSystem vidSys, SteadyClockTime time);
+	bool onFrameRateChange(VideoSystem, SteadyClockDuration);
 };
 
 }

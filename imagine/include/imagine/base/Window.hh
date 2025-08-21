@@ -29,7 +29,7 @@ namespace IG
 {
 
 class PixelFormat;
-enum class FrameTimeSource : uint8_t;
+enum class FrameClockSource : uint8_t;
 
 class Window : public WindowImpl
 {
@@ -46,6 +46,8 @@ public:
 	void postFrameReady();
 	void postDrawToMainThread(int8_t priority = 0);
 	void postFrameReadyToMainThread();
+	void setFrameEventsOnThisThread();
+	void removeFrameEvents();
 	static constexpr int8_t drawEventPriorityLocked = 127; // max value passed to setDrawEventPriority() also blocks implicit drawing
 	int8_t setDrawEventPriority(int8_t = 0);
 	int8_t drawEventPriority() const;
@@ -54,17 +56,21 @@ public:
 	void drawNow(bool needsSync = false);
 	Screen *screen() const;
 	NativeWindow nativeObject() const;
-	void setIntendedFrameRate(FrameRate rate);
+	void setIntendedFrameRate(FrameRate);
 	void setFormat(NativeWindowFormat);
 	void setFormat(PixelFormat);
 	PixelFormat pixelFormat() const;
 	bool operator ==(Window const &rhs) const;
-	bool addOnFrame(OnFrameDelegate, FrameTimeSource src = {}, int priority = 0);
-	bool removeOnFrame(OnFrameDelegate, FrameTimeSource src = {});
-	bool moveOnFrame(Window &srcWin, OnFrameDelegate, FrameTimeSource src = {});
-	FrameTimeSource defaultFrameTimeSource() const;
-	FrameTimeSource evalFrameTimeSource(FrameTimeSource) const;
-	void configureFrameTimeSource(FrameTimeSource);
+	void addOnFrame(OnFrameDelegate, FrameClockMode mode, int priority = 0, InsertMode insMode = {});
+	bool removeOnFrame(OnFrameDelegate, FrameClockMode mode, DelegateFuncEqualsMode eqMode = {});
+	void addOnFrame(OnFrameDelegate d, int priority = 0, InsertMode insMode = {}) { addOnFrame(d, defaultFrameClockMode(), priority, insMode); }
+	bool removeOnFrame(OnFrameDelegate d, DelegateFuncEqualsMode eqMode = {})  { return removeOnFrame(d, defaultFrameClockMode(), eqMode); }
+	FrameClockSource defaultFrameClockSource(FrameClockUsage usage = {}) const;
+	FrameClockSource evalFrameClockSource(FrameClockSource, FrameClockUsage usage = {}) const;
+	FrameClockMode toFrameClockMode(FrameClockSource, FrameClockUsage usage = {}) const;
+	FrameClockMode defaultFrameClockMode() const { return toFrameClockMode(defaultFrameClockSource()); }
+	bool supportsFrameClockSource(FrameClockSource) const;
+	void configureFrameClock(FrameClockSource src = {}, FrameClockUsage usage = {});
 	void resetAppData();
 	void resetRendererData();
 	bool isMainWindow() const;

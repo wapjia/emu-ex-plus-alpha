@@ -26,30 +26,21 @@ constexpr SystemLogger log{"SimpleFrameTimer"};
 SimpleFrameTimer::SimpleFrameTimer(Screen &screen, EventLoop loop):
 	timer
 	{
-		"SimpleFrameTimer",
+		{.debugLabel = "SimpleFrameTimer", .eventLoop = loop},
 		[this, &screen]()
 		{
-			if(!requested)
+			if(!requested || !screen.frameUpdate(SteadyClock::now()))
 			{
-				if(keepTimer)
-				{
-					// wait one more tick due to simulated vsync inaccuracy
-					keepTimer = false;
-					return true;
-				}
-				else
-				{
-					return false;
-				}
+				cancel();
+				return false;
 			}
-			requested = false;
-			if(screen.frameUpdate(SteadyClock::now()))
-				scheduleVSync();
 			return true;
 		}
 	},
-	interval{fromHz<Nanoseconds>(screen.frameRate())},
-	eventLoop{loop} {}
+	rate{screen.frameRate()}
+{
+	log.info("created frame timer");
+}
 
 void SimpleFrameTimer::scheduleVSync()
 {
@@ -58,29 +49,38 @@ void SimpleFrameTimer::scheduleVSync()
 		return;
 	}
 	requested = true;
-	keepTimer = true;
 	if(timer.isArmed())
 	{
 		return;
 	}
-	assert(interval.count());
-	timer.runIn(Nanoseconds{1}, interval, eventLoop);
+	assert(rate.hz());
+	timer.runIn(Nanoseconds{1}, rate.duration());
 }
 
 void SimpleFrameTimer::cancel()
 {
 	requested = false;
-	keepTimer = false;
 }
 
-void SimpleFrameTimer::setFrameRate(FrameRate rate)
+void SimpleFrameTimer::setFrameRate(FrameRate rate_)
 {
-	interval = fromHz<Nanoseconds>(rate);
-	log.info("set frame rate:{:g} (timer interval:{}ns)", rate, interval.count());
+	rate = rate_;
+	log.info("set frame rate:{:g} (timer interval:{})", rate.hz(), rate.duration());
 	if(timer.isArmed())
 	{
-		timer.runIn(Nanoseconds{1}, interval, eventLoop);
+		timer.runIn(timer.timeUntilRun(), rate.duration());
 	}
+}
+
+void SimpleFrameTimer::setEventsOnThisThread(ApplicationContext)
+{
+	timer.setEventLoop({});
+}
+
+void SimpleFrameTimer::removeEvents(ApplicationContext)
+{
+	cancel();
+	timer.unsetEventLoop();
 }
 
 }

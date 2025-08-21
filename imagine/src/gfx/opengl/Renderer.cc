@@ -25,7 +25,7 @@
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/base/Viewport.hh>
 #include <imagine/data-type/image/PixmapSource.hh>
-#include <imagine/util/ctype.hh>
+#include <imagine/util/opengl/glUtils.hh>
 #include "internalDefs.hh"
 
 namespace IG::Gfx
@@ -54,7 +54,17 @@ Renderer::~Renderer()
 GLRenderer::GLRenderer(ApplicationContext ctx):
 	glManager{ctx.nativeDisplayConnection(), glAPI},
 	mainTask{ctx, "Main GL Context Messages", *static_cast<Renderer*>(this)},
-	releaseShaderCompilerEvent{"GLRenderer::releaseShaderCompilerEvent"}
+	releaseShaderCompilerEvent
+	{
+		{.debugLabel = "GLRenderer::releaseShaderCompilerEvent"},
+		[&task = mainTask, ctx]
+		{
+			if(!ctx.isRunning())
+				return;
+			logMsg("automatically releasing shader compiler");
+			task.releaseShaderCompiler();
+		}
+	}
 {
 	if(!glManager)
 	{
@@ -316,7 +326,7 @@ int GLRenderer::toSwapInterval(const Window &win, PresentMode mode) const
 	std::unreachable();
 }
 
-PresentMode Renderer::evalPresentMode(const Window &win, PresentMode mode) const
+PresentMode Renderer::evalPresentMode(const Window&, PresentMode mode) const
 {
 	if(mode == PresentMode::Auto)
 		return PresentMode::FIFO;
@@ -491,10 +501,10 @@ BasicEffect &Renderer::basicEffect()
 void Renderer::animateWindowRotation(Window &win, float srcAngle, float destAngle)
 {
 	winData(win).projAngleM = {srcAngle, destAngle, {}, SteadyClock::now(), Milliseconds{165}};
-	win.addOnFrame([this, &win](FrameParams params)
+	win.addOnFrame([&win](FrameParams params)
 	{
 		win.signalSurfaceChanged({.contentRectResized = true});
-		bool didUpdate = winData(win).projAngleM.update(params.timestamp);
+		bool didUpdate = winData(win).projAngleM.update(params.time);
 		return didUpdate;
 	});
 }
@@ -549,7 +559,7 @@ void Renderer::setCorrectnessChecks(bool on)
 
 static void printFeatures(DrawContextSupport support)
 {
-	if(!Config::DEBUG_BUILD)
+	if constexpr(!Config::DEBUG_BUILD)
 		return;
 	std::string featuresStr{};
 	featuresStr.reserve(256);
@@ -558,9 +568,9 @@ static void printFeatures(DrawContextSupport support)
 	featuresStr.append(std::format("{}", support.textureSizeSupport.maxXSize));
 	featuresStr.append("]");
 	if(support.textureSizeSupport.nonPow2CanRepeat)
-		featuresStr.append("[NPOT Textures w/ Mipmap+Repeat]");
+		featuresStr.append(" [NPOT Textures w/ Mipmap+Repeat]");
 	else if(support.textureSizeSupport.nonPow2CanMipmap)
-		featuresStr.append("[NPOT Textures w/ Mipmap]");
+		featuresStr.append(" [NPOT Textures w/ Mipmap]");
 	#ifdef CONFIG_GFX_OPENGL_ES
 	if(support.hasBGRPixels)
 	{
@@ -650,7 +660,7 @@ void GLRenderer::setupNonPow2MipmapRepeatTextures()
 	support.textureSizeSupport.nonPow2CanRepeat = true;
 }
 
-void GLRenderer::setupImmutableTexStorage(bool extSuffix)
+void GLRenderer::setupImmutableTexStorage([[maybe_unused]] bool extSuffix)
 {
 	if(support.hasImmutableTexStorage)
 		return;
@@ -738,7 +748,7 @@ void GLRenderer::setupMemoryBarrier()
 	#endif*/
 }
 
-void GLRenderer::setupVAOFuncs(bool oes)
+void GLRenderer::setupVAOFuncs([[maybe_unused]] bool oes)
 {
 	#ifdef CONFIG_GFX_OPENGL_ES
 	if(support.glBindVertexArray)
@@ -782,7 +792,7 @@ void GLRenderer::setupAppleFenceSync()
 	#endif
 }
 
-void GLRenderer::setupEglFenceSync(std::string_view eglExtenstionStr)
+void GLRenderer::setupEglFenceSync([[maybe_unused]] std::string_view eglExtenstionStr)
 {
 	if(Config::MACHINE_IS_PANDORA)	// TODO: driver waits for full timeout even if commands complete,
 		return;												// possibly broken glFlush() behavior?
@@ -806,7 +816,7 @@ void GLRenderer::setupEglFenceSync(std::string_view eglExtenstionStr)
 void GLRenderer::checkExtensionString(std::string_view extStr)
 {
 	//logMsg("checking %s", extStr);
-	if(Config::DEBUG_BUILD && Config::Gfx::OPENGL_DEBUG_CONTEXT && extStr == "GL_KHR_debug")
+	if(Config::DEBUG_BUILD && Config::OpenGLDebugContext && extStr == "GL_KHR_debug")
 	{
 		support.hasDebugOutput = true;
 		#ifdef __ANDROID__
@@ -926,29 +936,18 @@ void GLRenderer::checkExtensionString(std::string_view extStr)
 	#endif
 }
 
-void GLRenderer::checkFullExtensionString(const char *fullExtStr)
+static void printGLExtensions()
 {
-	std::string fullExtStrTemp{fullExtStr};
-	char *savePtr;
-	auto extStr = strtok_r(fullExtStrTemp.data(), " ", &savePtr);
-	while(extStr)
+	if constexpr(!Config::DEBUG_BUILD)
+		return;
+	std::string allExtStr;
+	log.beginInfo(allExtStr, "extensions: ");
+	forEachOpenGLExtension([&](const auto &extStr)
 	{
-		checkExtensionString(extStr);
-		extStr = strtok_r(nullptr, " ", &savePtr);
-	}
-}
-
-static int glVersionFromStr(const char *versionStr)
-{
-	// skip to version number
-	while(!isDigit(*versionStr) && *versionStr != '\0')
-		versionStr++;
-	int major = 1, minor = 0;
-	if(sscanf(versionStr, "%d.%d", &major, &minor) != 2)
-	{
-		logErr("unable to parse GL version string");
-	}
-	return 10 * major + minor;
+		allExtStr += extStr;
+		allExtStr += ' ';
+	});
+	log.printInfo(allExtStr);
 }
 
 void Renderer::configureRenderer()
@@ -976,22 +975,10 @@ void Renderer::configureRenderer()
 			#endif
 
 			#ifndef CONFIG_GFX_OPENGL_ES
-			assert(glVer >= 33);
-			// extension functionality
-			GLint numExtensions;
-			glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
-			if(Config::DEBUG_BUILD)
+			if(glVer < 33)
 			{
-				logMsgNoBreak("extensions: ");
-				for(auto i : iotaCount(numExtensions))
-				{
-					logger_printf(LOG_M, "%s ", (const char*)glGetStringi(GL_EXTENSIONS, i));
-				}
-				logger_printf(LOG_M, "\n");
-			}
-			for(auto i : iotaCount(numExtensions))
-			{
-				checkExtensionString((const char*)glGetStringi(GL_EXTENSIONS, i));
+				log.error("At least OpenGL 3.3 is required");
+				return;
 			}
 			#else
 			// core functionality
@@ -1020,13 +1007,14 @@ void Renderer::configureRenderer()
 			{
 				setupMemoryBarrier();
 			}
+			#endif // CONFIG_GFX_OPENGL_ES
 
 			// extension functionality
-			auto extensions = (const char*)glGetString(GL_EXTENSIONS);
-			assert(extensions);
-			logMsg("extensions: %s", extensions);
-			checkFullExtensionString(extensions);
-			#endif // CONFIG_GFX_OPENGL_ES
+			forEachOpenGLExtension([&](const auto &extStr)
+			{
+				checkExtensionString(extStr);
+			});
+			printGLExtensions();
 
 			GLint texSize;
 			glGetIntegerv(GL_MAX_TEXTURE_SIZE, &texSize);
@@ -1065,15 +1053,9 @@ void Renderer::setWindowValidOrientations(Window &win, Orientations validO)
 	}
 }
 
-void GLRenderer::addEventHandlers(ApplicationContext ctx, RendererTask &task)
+void GLRenderer::addEventHandlers(ApplicationContext, RendererTask &task)
 {
-	releaseShaderCompilerEvent.attach([&task, ctx]()
-	{
-		if(!ctx.isRunning())
-			return;
-		logMsg("automatically releasing shader compiler");
-		task.releaseShaderCompiler();
-	});
+	releaseShaderCompilerEvent.attach();
 	if constexpr(Config::envIsIOS)
 		task.setIOSDrawableDelegates();
 }
@@ -1087,22 +1069,23 @@ std::optional<GLBufferConfig> GLRenderer::makeGLBufferConfig(ApplicationContext 
 		else
 			pixelFormat = ctx.defaultWindowPixelFormat();
 	}
-	GLBufferConfigAttributes glBuffAttr{.pixelFormat = pixelFormat};
-	if constexpr(Config::Gfx::OPENGL_ES)
+	try
 	{
-		if(auto config = glManager.makeBufferConfig(ctx, glBuffAttr, glAPI, 3);
-			config)
+		if constexpr(Config::Gfx::OPENGL_ES)
 		{
-			return config;
+			// prefer ES 3.x and fall back to 2.0
+			const GLBufferRenderConfigAttributes gl3Attrs{.bufferAttrs{.pixelFormat = pixelFormat}, .version = {3}, .api = glAPI};
+			const GLBufferRenderConfigAttributes gl2Attrs{.bufferAttrs{.pixelFormat = pixelFormat}, .version = {2}, .api = glAPI};
+			return glManager.makeBufferConfig(ctx, std::array{gl3Attrs, gl2Attrs});
 		}
-		// fall back to OpenGL ES 2.0
-		return glManager.makeBufferConfig(ctx, glBuffAttr, glAPI, 2);
+		else
+		{
+			// full OpenGL
+			const GLBufferRenderConfigAttributes gl3Attrs{.bufferAttrs{.pixelFormat = pixelFormat}, .version = {3, 3}, .api = glAPI};
+			return glManager.makeBufferConfig(ctx, gl3Attrs);
+		}
 	}
-	else
-	{
-		// full OpenGL
-		return glManager.makeBufferConfig(ctx, glBuffAttr, glAPI);
-	}
+	catch(...) { return {}; }
 }
 
 }

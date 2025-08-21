@@ -19,7 +19,7 @@
 namespace IG
 {
 
-const char *copyright = "Imagine is Copyright 2010-2023 Robert Broglia";
+const char *copyright = "Imagine is Copyright 2010-2025 Robert Broglia";
 constexpr SystemLogger log{"App"};
 
 BaseApplication::BaseApplication(ApplicationContext ctx)
@@ -45,7 +45,7 @@ void BaseApplication::addWindow(std::unique_ptr<Window> winPtr)
 
 std::unique_ptr<Window> BaseApplication::moveOutWindow(Window &win)
 {
-	return IG::moveOutIf(window_, [&](auto &w){ return *w == win; });
+	return moveOut(window_, [&](const auto& w){ return *w == win; });
 }
 
 void BaseApplication::deinitWindows()
@@ -72,19 +72,14 @@ Screen &BaseApplication::addScreen(ApplicationContext ctx, std::unique_ptr<Scree
 	return *newScreen;
 }
 
-Screen *BaseApplication::findScreen(ScreenId id) const
+Screen* BaseApplication::findScreen(ScreenId id) const
 {
-	auto it = std::ranges::find_if(screen_, [&](const auto &s) { return *s == id; });
-	if(it == screen_.end())
-	{
-		return nullptr;
-	}
-	return it->get();
+	return findPtr(screen_, [&](const auto &s) { return *s == id; });
 }
 
 std::unique_ptr<Screen> BaseApplication::removeScreen(ApplicationContext ctx, ScreenId id, bool notify)
 {
-	auto removedScreen = IG::moveOutIf(screen_, [&](const auto &s){ return *s == id; });
+	auto removedScreen = moveOut(screen_, [&](const auto &s){ return *s == id; });
 	if(notify && removedScreen)
 		onEvent(ctx, ScreenChangeEvent{*removedScreen, ScreenChange::removed});
 	return removedScreen;
@@ -171,12 +166,12 @@ bool BaseApplication::isExiting() const
 
 bool BaseApplication::addOnResume(ResumeDelegate del, int priority)
 {
-	return onResume_.add(del, priority);
+	return onResume_.insert(del, priority, InsertMode::unique);
 }
 
 bool BaseApplication::removeOnResume(ResumeDelegate del)
 {
-	return onResume_.remove(del);
+	return onResume_.removeFirst(del);
 }
 
 bool BaseApplication::containsOnResume(ResumeDelegate del) const
@@ -186,12 +181,12 @@ bool BaseApplication::containsOnResume(ResumeDelegate del) const
 
 bool BaseApplication::addOnExit(ExitDelegate del, int priority)
 {
-	return onExit_.add(del, priority);
+	return onExit_.insert(del, priority, InsertMode::unique);
 }
 
 bool BaseApplication::removeOnExit(ExitDelegate del)
 {
-	return onExit_.remove(del);
+	return onExit_.removeFirst(del);
 }
 
 bool BaseApplication::containsOnExit(ExitDelegate del) const
@@ -231,13 +226,13 @@ void BaseApplication::dispatchOnExit(ApplicationContext ctx, bool backgrounded)
 	}
 }
 
-[[gnu::weak]] void ApplicationContext::setIdleDisplayPowerSave(bool on) {}
+[[gnu::weak]] void ApplicationContext::setIdleDisplayPowerSave(bool) {}
 
 [[gnu::weak]] void ApplicationContext::endIdleByUserActivity() {}
 
-[[gnu::weak]] bool ApplicationContext::registerInstance(ApplicationInitParams, const char *) { return false; }
+[[gnu::weak]] bool ApplicationContext::registerInstance(ApplicationInitParams, const char*) { return false; }
 
-[[gnu::weak]] void ApplicationContext::setAcceptIPC(bool on, const char *) {}
+[[gnu::weak]] void ApplicationContext::setAcceptIPC(bool, const char*) {}
 
 void Application::runOnMainThread(MainThreadMessageDelegate del)
 {

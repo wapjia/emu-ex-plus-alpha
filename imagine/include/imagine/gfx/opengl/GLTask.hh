@@ -24,6 +24,7 @@
 #include <imagine/util/utility.h>
 #include <concepts>
 #include <thread>
+#include <string_view>
 
 namespace IG::Gfx
 {
@@ -71,7 +72,7 @@ public:
 	};
 
 	GLTask(ApplicationContext);
-	GLTask(ApplicationContext, const char *debugLabel);
+	GLTask(ApplicationContext, std::string_view debugLabel);
 	~GLTask();
 	GLTask &operator=(GLTask &&) = delete;
 	bool makeGLContext(GLTaskConfig);
@@ -127,7 +128,7 @@ protected:
 	GLContext context{};
 	GLBufferConfig bufferConfig{};
 	OnExit onExit;
-	CommandMessagePort commandPort{CommandMessagePort::NullInit{}};
+	CommandMessagePort commandPort;
 	ThreadId threadId_{};
 
 	GLContext makeGLContext(GLManager &, GLBufferConfig bufferConf);

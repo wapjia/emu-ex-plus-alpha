@@ -24,22 +24,13 @@ template<class Frequency>
 class PausableTimer
 {
 public:
-	struct NullInit{};
-
-	explicit constexpr PausableTimer(NullInit) {}
-	PausableTimer(Frequency f) : timer{CallbackDelegate{}} {}
-	PausableTimer(Frequency f, CallbackDelegate c):
-		timer{nullptr, c}, frequency{f} {}
-	PausableTimer(Frequency f, const char *debugLabel):
-		timer{debugLabel, CallbackDelegate{}}, frequency{f} {}
-	PausableTimer(Frequency f, const char *debugLabel, CallbackDelegate c):
-		timer{debugLabel, c}, frequency{f} {}
+	PausableTimer(Frequency f, TimerDesc desc, CallbackDelegate del):timer{desc, del}, frequency{f} {}
 
 	void start()
 	{
 		if(!frequency.count() || timer.isArmed())
 			return;
-		timer.run(nextFireTime(), frequency);
+		timer.run(nextFireDuration(), frequency);
 		startTime = SteadyClock::now();
 	}
 
@@ -47,14 +38,14 @@ public:
 	{
 		if(!startTime.time_since_epoch().count())
 			return;
-		elapsedTime += SteadyClock::now() - startTime;
+		elapsedDuration += SteadyClock::now() - startTime;
 		startTime = {};
 		timer.cancel();
 	}
 
 	void cancel()
 	{
-		elapsedTime = {};
+		elapsedDuration = {};
 		startTime = {};
 		timer.cancel();
 	}
@@ -70,20 +61,20 @@ public:
 		if(!startTime.time_since_epoch().count())
 			return;
 		startTime = SteadyClock::now();
-		elapsedTime = {};
+		elapsedDuration = {};
 	}
 
-	SteadyClockTime nextFireTime() const
+	SteadyClockDuration nextFireDuration() const
 	{
-		if(elapsedTime < frequency)
-			return frequency - elapsedTime;
+		if(elapsedDuration < frequency)
+			return frequency - elapsedDuration;
 		return Nanoseconds{1};
 	}
 
 private:
 	Timer timer;
 	SteadyClockTimePoint startTime{};
-	SteadyClockTime elapsedTime{};
+	SteadyClockDuration elapsedDuration{};
 public:
 	Frequency frequency{};
 };

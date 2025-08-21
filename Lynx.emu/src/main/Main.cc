@@ -36,13 +36,13 @@ namespace EmuEx
 {
 
 constexpr SystemLogger log{"Lynx.emu"};
-const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2024\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nMednafen Team\nmednafen.github.io";
+const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2025\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nMednafen Team\nmednafen.github.io";
 bool EmuApp::needsGlobalInstance = true;
 
 EmuSystem::NameFilterFunc EmuSystem::defaultFsFilter =
 	[](std::string_view name)
 	{
-		return endsWithAnyCaseless(name, ".lnx", ".o");
+		return endsWithAnyCaseless(name, ".lnx", ".lyx", ".o");
 	};
 
 using namespace Mednafen;
@@ -53,7 +53,7 @@ LynxApp::LynxApp(ApplicationInitParams initParams, ApplicationContext &ctx):
 const char *EmuSystem::shortSystemName() const { return "Lynx"; }
 const char *EmuSystem::systemName() const { return "Lynx"; }
 
-void LynxSystem::reset(EmuApp &, ResetMode mode)
+void LynxSystem::reset(EmuApp&, ResetMode)
 {
 	assert(hasContent());
 	MDFN_DoSimpleCommand(MDFN_MSC_RESET);
@@ -65,7 +65,7 @@ FS::FileString LynxSystem::stateFilename(int slot, std::string_view name) const
 }
 
 size_t LynxSystem::stateSize() { return stateSizeMDFN(); }
-void LynxSystem::readState(EmuApp &app, std::span<uint8_t> buff) { readStateMDFN(app, buff); }
+void LynxSystem::readState(EmuApp&, std::span<uint8_t> buff) { readStateMDFN(buff); }
 size_t LynxSystem::writeState(std::span<uint8_t> buff, SaveStateFlags flags) { return writeStateMDFN(buff, flags); }
 
 void LynxSystem::closeSystem()
@@ -96,11 +96,11 @@ static auto microsecondsPerFrame()
 	return Microseconds{Lynx_HCount() * linesPerFrame};
 }
 
-FrameTime LynxSystem::frameTime() const { return FrameTime{microsecondsPerFrame()}; }
+FrameRate LynxSystem::frameRate() const { return FrameRate{microsecondsPerFrame()}; }
 
-void LynxSystem::configAudioRate(FrameTime outputFrameTime, int outputRate)
+void LynxSystem::configAudioRate(FrameRate outputFrameRate, int outputRate)
 {
-	long mixRate = std::round(audioMixRate(outputRate, outputFrameTime));
+	long mixRate = std::round(audioMixRate(outputRate, outputFrameRate));
 	configuredHCount = Lynx_HCount();
 	if(Lynx_GetSoundRate() == mixRate)
 		return;
@@ -114,7 +114,7 @@ void LynxSystem::runFrame(EmuSystemTaskContext taskCtx, EmuVideo *video, EmuAudi
 	EmuEx::runFrame(*this, mdfnGameInfo, taskCtx, video, mSurfacePix, audio, maxAudioFrames);
 	if(configuredHCount != Lynx_HCount()) [[unlikely]]
 	{
-		onFrameTimeChanged();
+		onFrameRateChanged();
 	}
 }
 

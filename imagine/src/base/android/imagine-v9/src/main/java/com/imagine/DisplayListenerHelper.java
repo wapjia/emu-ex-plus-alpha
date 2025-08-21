@@ -29,7 +29,7 @@ final class DisplayListenerHelper
 	private long nativeUserData;
 	private native void displayAdd(long nActivityAddr, int id, Display dpy, float refreshRate,
 		long presentationDeadline, DisplayMetrics metrics);
-	private native void displayChange(long nActivityAddr, int id, float refreshRate);
+	private native void displayChange(long nActivityAddr, int id, float refreshRate, long presentationDeadline);
 	private native void displayRemove(long nActivityAddr, int id);
 	private final class Listener implements DisplayManager.DisplayListener
 	{
@@ -59,7 +59,7 @@ final class DisplayListenerHelper
 				//Log.i(logTag, "skipped changed display with id: " + deviceId);
 				return;
 			}
-			displayChange(nativeUserData, deviceId, dpy.getRefreshRate());
+			displayChange(nativeUserData, deviceId, dpy.getRefreshRate(), BaseActivity.getPresentationDeadlineNanos(dpy));
 		}
 
 		@Override public void onDisplayRemoved(int deviceId)

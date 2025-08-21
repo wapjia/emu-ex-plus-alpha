@@ -21,6 +21,7 @@
 #include <imagine/io/FileIO.hh>
 #include <imagine/util/enum.hh>
 #include <core/gba/gba.h>
+#include <core/gba/gbaCheats.h>
 #include <list>
 
 namespace IG
@@ -46,7 +47,6 @@ enum
 	CFGKEY_BIOS_PATH = 268
 };
 
-void readCheatFile(class EmuSystem &);
 void setSaveType(int type, int size);
 const char *saveTypeStr(int type, int size);
 bool saveMemoryHasContent();
@@ -71,6 +71,9 @@ WISE_ENUM_CLASS((GbaSensorType, uint8_t),
 
 constexpr float lightSensorScaleLuxDefault = 10000.f;
 constexpr uint8_t darknessLevelDefault = 0xee;
+
+class Cheat: public CheatsData {};
+class CheatCode: public CheatsData {};
 
 class GbaSystem final: public EmuSystem
 {
@@ -97,7 +100,7 @@ public:
 	Property<bool, CFGKEY_DEFAULT_USE_BIOS> defaultUseBios;
 	ConditionalMember<Config::SENSORS, GbaSensorType> sensorType{};
 	ConditionalMember<Config::SENSORS, GbaSensorType> detectedSensorType{};
-	static constexpr auto gbaFrameTime{fromSeconds<FrameTime>(280896. / 16777216.)}; // ~59.7275Hz
+	static constexpr FrameRate gbaFrameRate{16777216. / 280896.}; // ~59.7275Hz
 
 	GbaSystem(ApplicationContext ctx):
 		EmuSystem{ctx} {}
@@ -123,8 +126,8 @@ public:
 	void clearInputBuffers(EmuInputView &view);
 	void handleInputAction(EmuApp *, InputAction);
 	SystemInputDeviceDesc inputDeviceDesc(int idx) const;
-	FrameTime frameTime() const { return gbaFrameTime; }
-	void configAudioRate(FrameTime outputFrameTime, int outputRate);
+	FrameRate frameRate() const { return gbaFrameRate; }
+	void configAudioRate(FrameRate outputFrameRate, int outputRate);
 	static std::span<const AspectRatioInfo> aspectRatioInfos();
 
 	// optional API functions
@@ -137,10 +140,23 @@ public:
 	void closeSystem();
 	bool onVideoRenderFormatChange(EmuVideo &, IG::PixelFormat);
 	void renderFramebuffer(EmuVideo &);
+	Cheat* newCheat(EmuApp&, const char* name, CheatCodeDesc);
+	bool setCheatName(Cheat&, const char* name);
+	std::string_view cheatName(const Cheat&) const;
+	void setCheatEnabled(Cheat&, bool on);
+	bool isCheatEnabled(const Cheat&) const;
+	bool addCheatCode(EmuApp&, Cheat*&, CheatCodeDesc);
+	Cheat* removeCheatCode(Cheat&, CheatCode&);
+	bool removeCheat(Cheat&);
+	void forEachCheat(DelegateFunc<bool(Cheat&, std::string_view)>);
+	void forEachCheatCode(Cheat&, DelegateFunc<bool(CheatCode&, std::string_view)>);
+
     //region 爱吾修改
     void setCheatListAiWu(std::list<std::string> cheats);
     //endregion
 private:
+	void readCheatFile();
+	void writeCheatFile();
 	void applyGamePatches(uint8_t *rom, int &romSize);
 	bool shouldUseBios() const
 	{

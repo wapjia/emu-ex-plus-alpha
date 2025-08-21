@@ -32,9 +32,13 @@ enum
 
 #ifdef SNES9X_VERSION_1_4
 constexpr bool IS_SNES9X_VERSION_1_4 = true;
+class Cheat: public SCheat {};
 #else
 constexpr bool IS_SNES9X_VERSION_1_4 = false;
+class Cheat: public SCheatGroup {};
 #endif
+
+class CheatCode: public SCheat {};
 
 constexpr int inputPortMinVal = IS_SNES9X_VERSION_1_4 ? 0 : -1;
 
@@ -88,10 +92,8 @@ public:
 	Property<uint8_t, CFGKEY_AUDIO_DSP_INTERPOLATON,
 		PropertyDesc<uint8_t>{.defaultValue = DSP_INTERPOLATION_GAUSSIAN, .isValid = isValidWithMax<4>}> optionAudioDSPInterpolation;
 	#endif
-	static constexpr FloatSeconds ntscFrameTimeSecs{357366. / 21477272.}; // ~60.098Hz
-	static constexpr FloatSeconds palFrameTimeSecs{425568. / 21281370.}; // ~50.00Hz
-	static constexpr auto ntscFrameTime{round<FrameTime>(ntscFrameTimeSecs)};
-	static constexpr auto palFrameTime{round<FrameTime>(palFrameTimeSecs)};
+	static constexpr FrameRate ntscFrameRate{21477272. / 357366.}; // ~60.098Hz
+	static constexpr FrameRate palFrameRate{21281370. / 425568.}; // ~50.00Hz
 
 	Snes9xSystem(ApplicationContext ctx):
 		EmuSystem{ctx}
@@ -116,8 +118,8 @@ public:
 	}
 	void setupSNESInput(VController &);
 	static bool hasBiosExtension(std::string_view name);
-	FloatSeconds frameTimeSecs() const { return videoSystem() == VideoSystem::PAL ? palFrameTimeSecs : ntscFrameTimeSecs; }
 	MutablePixmapView fbPixmapView(WSize size, bool useInterlaceFields);
+	void writeCheatFile();
 
 	// required API functions
 	void loadContent(IO &, EmuSystemCreateParams, OnLoadProgressDelegate);
@@ -133,8 +135,8 @@ public:
 	void clearInputBuffers(EmuInputView &view);
 	void handleInputAction(EmuApp *, InputAction);
 	SystemInputDeviceDesc inputDeviceDesc(int idx) const;
-	FrameTime frameTime() const { return videoSystem() == VideoSystem::PAL ? palFrameTime : ntscFrameTime; }
-	void configAudioRate(FrameTime outputFrameTime, int outputRate);
+	FrameRate frameRate() const { return videoSystem() == VideoSystem::PAL ? palFrameRate : ntscFrameRate; }
+	void configAudioRate(FrameRate outputFrameRate, int outputRate);
 	static std::span<const AspectRatioInfo> aspectRatioInfos();
 
 	// optional API functions
@@ -151,6 +153,17 @@ public:
 	bool onPointerInputUpdate(const Input::MotionEvent &, Input::DragTrackerState,
 		Input::DragTrackerState prevDragState, IG::WindowRect gameRect);
 	bool onPointerInputEnd(const Input::MotionEvent &, Input::DragTrackerState, IG::WindowRect gameRect);
+	Cheat* newCheat(EmuApp&, const char* name, CheatCodeDesc);
+	bool setCheatName(Cheat&, const char* name);
+	std::string_view cheatName(const Cheat&) const;
+	void setCheatEnabled(Cheat&, bool on);
+	bool isCheatEnabled(const Cheat&) const;
+	bool addCheatCode(EmuApp&, Cheat*&, CheatCodeDesc);
+	Cheat* removeCheatCode(Cheat&, CheatCode&);
+	bool removeCheat(Cheat&);
+	void forEachCheat(DelegateFunc<bool(Cheat&, std::string_view)>);
+	void forEachCheatCode(Cheat&, DelegateFunc<bool(CheatCode&, std::string_view)>);
+
     //region 爱吾
     void setCheatListAiWu(std::list<std::string> cheats);
     void setDefaultConfigAiWu(std::list<std::string> configList);

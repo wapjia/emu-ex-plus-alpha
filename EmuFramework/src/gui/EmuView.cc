@@ -15,65 +15,58 @@
 
 #include <emuframework/EmuView.hh>
 #include <emuframework/EmuVideoLayer.hh>
+#include <emuframework/EmuAudio.hh>
 #include <emuframework/EmuSystem.hh>
 #include <emuframework/OutputTimingManager.hh>
 #include <imagine/base/Screen.hh>
 #include <imagine/gfx/Renderer.hh>
+#include <imagine/logger/logger.h>
 #include <algorithm>
 #include <format>
 
 namespace EmuEx
 {
 
+[[maybe_unused]]
+constexpr SystemLogger log{"EmuView"};
+
 EmuView::EmuView(ViewAttachParams attach, EmuVideoLayer *layer, EmuSystem &sys):
 	View{attach},
 	layer{layer},
 	sysPtr{&sys},
-	frameTimeStats{Gfx::Text{attach.rendererTask, &defaultFace()}, Gfx::IQuads{attach.rendererTask, {.size = 1}}} {}
+	statsDisplay{Gfx::Text{attach.rendererTask, &defaultFace()}, Gfx::IQuads{attach.rendererTask, {.size = 1}}} {}
 
 void EmuView::prepareDraw()
 {
-	doIfUsed(frameTimeStats, [&](auto &stats){ stats.text.makeGlyphs(); });
-	#ifdef CONFIG_EMUFRAMEWORK_AUDIO_STATS
-	audioStatsText.makeGlyphs(renderer());
-	#endif
+	if(showStats)
+	{
+		statsDisplay.text.makeGlyphs();
+		statsDisplay.text.face()->precacheAlphaNum(renderer());
+	}
 }
 
-void EmuView::draw(Gfx::RendererCommands &__restrict__ cmds)
+void EmuView::draw(Gfx::RendererCommands&__restrict__ cmds, ViewDrawParams) const
 {
 	using namespace IG::Gfx;
 	if(layer && system().isStarted())
 	{
 		layer->draw(cmds);
 	}
-	#ifdef CONFIG_EMUFRAMEWORK_AUDIO_STATS
-	if(audioStatsText.isVisible())
-	{
-		cmds.setCommonProgram(CommonProgram::NO_TEX);
-		cmds.setBlendMode(BLEND_MODE_ALPHA);
-		cmds.setColor(0., 0., 0., .7);
-		GeomRect::draw(cmds, audioStatsRect);
-		cmds.setCommonProgram(CommonProgram::TEX_ALPHA);
-		audioStatsText.draw(cmds, audioStatsRect.x + TableView::globalXIndent,
-			audioStatsRect.yCenter(), LC2DO, ColorName::WHITE);
-	}
-	#endif
 }
 
-void EmuView::drawframeTimeStatsText(Gfx::RendererCommands &__restrict__ cmds)
+void EmuView::drawStatsText(Gfx::RendererCommands &__restrict__ cmds)
 {
-	doIfUsed(frameTimeStats, [&](auto &stats)
-	{
-		if(!stats.text.isVisible())
-			return;
-		using namespace IG::Gfx;
-		cmds.basicEffect().disableTexture(cmds);
-		cmds.set(BlendMode::ALPHA);
-		cmds.setColor({0., 0., 0., .7});
-		cmds.drawQuad(stats.bgQuads, 0);
-		cmds.basicEffect().enableAlphaTexture(cmds);
-		stats.text.draw(cmds, stats.rect.pos(LC2DO) + WPt{stats.text.spaceWidth(), 0}, LC2DO, ColorName::WHITE);
-	});
+	if(!showStats)
+		return;
+	if(!statsDisplay.text.isVisible())
+		return;
+	using namespace IG::Gfx;
+	cmds.basicEffect().disableTexture(cmds);
+	cmds.set(BlendMode::ALPHA);
+	cmds.setColor({0., 0., 0., .25});
+	cmds.drawQuad(statsDisplay.bgQuads, 0);
+	cmds.basicEffect().enableAlphaTexture(cmds);
+	statsDisplay.text.draw(cmds, statsDisplay.rect.pos(LC2DO) + WPt{statsDisplay.text.spaceWidth(), 0}, LC2DO, ColorName::WHITE);
 }
 
 void EmuView::place()
@@ -82,83 +75,100 @@ void EmuView::place()
 	{
 		layer->place(viewRect(), displayRect(), inputView, system());
 	}
-	placeFrameTimeStats();
-	#ifdef CONFIG_EMUFRAMEWORK_AUDIO_STATS
-	if(audioStatsText.compile(renderer()))
+	placeStats();
+}
+
+void EmuView::updateStatsDisplay()
+{
+	std::string fullStr;
+	if(showFrameTimingStats)
+		fullStr += frameTimingStatsStr;
+	if(showAudioStats)
 	{
-		audioStatsRect = viewRect.bounds();
-		audioStatsRect.y2 = (audioStatsRect.y + audioStatsText.nominalHeight * audioStatsText.lines)
-			+ audioStatsText.nominalHeight / 2; // adjust to bottom
+		if(fullStr.size())
+			fullStr += "\n\n";
+		fullStr += audioStatsStr;
 	}
-	#endif
+	statsDisplay.text.resetString(fullStr);
 }
 
-void EmuView::placeFrameTimeStats()
+void EmuView::placeStats()
 {
-	doIfUsed(frameTimeStats, [&](auto &stats)
+	if(!showStats)
+		return;
+	if(statsDisplay.text.compile())
 	{
-		if(stats.text.compile())
-		{
-			WRect rect = {{},
-				{stats.text.pixelSize().x + stats.text.spaceWidth() * 2, stats.text.fullHeight()}};
-			rect.setPos(viewRect().pos(LC2DO), LC2DO);
-			stats.rect = rect;
-			stats.bgQuads.write(0, {.bounds = rect.as<int16_t>()});
-		}
-	});
+		WRect rect = {{},
+			{statsDisplay.text.pixelSize().x + statsDisplay.text.spaceWidth() * 2, statsDisplay.text.fullHeight()}};
+		rect.setPos(viewRect().pos(LC2DO), LC2DO);
+		statsDisplay.rect = rect;
+		statsDisplay.bgQuads.write(0, {.bounds = rect.as<int16_t>()});
+	}
 }
 
-bool EmuView::inputEvent(const Input::Event &e)
+void EmuView::setShowFrameTimingStats(bool on)
 {
-	return false;
+	showFrameTimingStats = on;
+	updateShowStats();
 }
 
-void EmuView::updateFrameTimeStats(FrameTimeStats stats, SteadyClockTimePoint currentFrameTimestamp)
+void EmuView::setShowAudioStats(bool on)
 {
-	auto screenFrameTime = duration_cast<Milliseconds>(screen()->frameTime());
-	auto deadline = duration_cast<Milliseconds>(screen()->presentationDeadline());
-	auto timestampDiff = duration_cast<Milliseconds>(currentFrameTimestamp - stats.startOfFrame);
-	auto callbackOverhead = duration_cast<Milliseconds>(stats.startOfEmulation - stats.startOfFrame);
-	auto emulationTime = duration_cast<Milliseconds>(stats.aboutToSubmitFrame - stats.startOfEmulation);
-	auto submitFrameTime = duration_cast<Milliseconds>(stats.aboutToPostDraw - stats.aboutToSubmitFrame);
-	auto postDrawTime = duration_cast<Milliseconds>(stats.startOfDraw - stats.aboutToPostDraw);
-	auto drawTime = duration_cast<Milliseconds>(stats.aboutToPresent - stats.startOfDraw);
-	auto presentTime = duration_cast<Milliseconds>(stats.endOfDraw - stats.aboutToPresent);
-	auto frameTime = duration_cast<Milliseconds>(stats.endOfDraw - stats.startOfFrame);
-	doIfUsed(frameTimeStats, [&](auto &statsUI)
+	showFrameTimingStats = on;
+	updateShowStats();
+}
+
+void EmuView::setFrameTimingStats(FrameTimingViewStats viewStats)
+{
+	if(!showFrameTimingStats)
+		return;
+	const Screen& emuScreen = *screen();
+	auto& stats = viewStats.stats;
+	SteadyClockDuration deltaDuration{};
+	Milliseconds deltaDurationMS{};
+	if(hasTime(viewStats.lastFrameTime))
 	{
-		statsUI.text.resetString(std::format("Frame Time Stats\n\n"
-			"Screen Frame Time: {}ms\n"
-			"Deadline: {}ms\n"
-			"Timestamp Diff: {}ms\n"
-			"Frame Callback: {}ms\n"
-			"Emulate: {}ms\n"
-			"Submit Frame: {}ms\n"
-			"Draw Callback: {}ms\n"
-			"Draw: {}ms\n"
-			"Present: {}ms\n"
-			"Total: {}ms\n"
-			"Missed Callbacks: {}",
-			screenFrameTime.count(), deadline.count(), timestampDiff.count(), callbackOverhead.count(), emulationTime.count(), submitFrameTime.count(),
-			postDrawTime.count(), drawTime.count(), presentTime.count(), frameTime.count(), stats.missedFrameCallbacks));
-		placeFrameTimeStats();
-	});
+		deltaDuration = stats.startOfFrame - viewStats.lastFrameTime;
+		deltaDurationMS = duration_cast<Milliseconds>(stats.startOfFrame - viewStats.lastFrameTime);
+	}
+	auto frameDuration = duration_cast<Milliseconds>(stats.endOfFrame - stats.startOfFrame);
+	auto clockHz = emuScreen.frameTimerRate().hz();
+	frameTimingStatsStr = std::format("Frame Timing Stats\n\n"
+		"Screen: {:g}Hz\n"
+		"Clock: {:g}Hz\n"
+		"Input: {:g}Hz\n"
+		"Output: {:g}Hz\n"
+		"Delta Time: {} ({:.2f}Hz)\n"
+		"Frame Time: {}",
+		emuScreen.frameRate().hz(), clockHz,
+		viewStats.inputRate.hz(), viewStats.outputRate.hz(),
+		deltaDurationMS, toHz(deltaDuration), frameDuration);
+	if(enableFullFrameTimingStats)
+	{
+		auto callbackOverhead = duration_cast<Milliseconds>(stats.startOfEmulation - stats.startOfFrame);
+		auto emulationTime = duration_cast<Milliseconds>(stats.waitForPresent - stats.startOfEmulation);
+		auto presentTime = duration_cast<Milliseconds>(stats.endOfFrame - SteadyClockTimePoint{stats.waitForPresent});
+		frameTimingStatsStr += std::format("\nCallback/Emulate/Present: {} {} {}\n"
+			"Missed Frames: {}",
+			callbackOverhead, emulationTime, presentTime, int(stats.missedFrameCallbacks));
+	}
+	updateStatsDisplay();
+	placeStats();
 }
 
-void EmuView::updateAudioStats(int underruns, int overruns, int callbacks, double avgCallbackFrames, int frames)
+void EmuView::setAudioStats(AudioStats stats)
 {
-	#ifdef CONFIG_EMUFRAMEWORK_AUDIO_STATS
-	audioStatsText.setString(std::format("Underruns:{}\nOverruns:{}\nCallbacks per second:{}\nFrames per callback:{:g}\nTotal frames:{}",
-		underruns, overruns, callbacks, avgCallbackFrames, frames), &View::defaultFace);
-	place();
-	#endif
-}
-
-void EmuView::clearAudioStats()
-{
-	#ifdef CONFIG_EMUFRAMEWORK_AUDIO_STATS
-	audioStatsText.setString(nullptr);
-	#endif
+	if(!showAudioStats)
+		return;
+	audioStatsStr = std::format("Audio Stats\n\n"
+		"Underruns:{}\n"
+		"Overruns:{}\n"
+		"Callbacks per second:{}\n"
+		"Frames per callback:{:g}\n"
+		"Total frames:{}",
+		stats.underruns, stats.overruns, stats.callbacks, stats.avgCallbackFrames, stats.frames);
+	updateStatsDisplay();
+	placeStats();
 }
 
 }

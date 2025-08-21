@@ -25,7 +25,8 @@
 namespace IG
 {
 
-static const int POLLEV_IN = G_IO_IN, POLLEV_OUT = G_IO_OUT, POLLEV_ERR = G_IO_ERR, POLLEV_HUP = G_IO_HUP;
+constexpr int pollEventInput = G_IO_IN, pollEventOutput = G_IO_OUT,
+	pollEventError = G_IO_ERR, pollEventHangUp = G_IO_HUP;
 
 struct PollEventGSource : public GSource
 {
@@ -47,15 +48,15 @@ class GlibFDEventSource
 {
 public:
 	constexpr GlibFDEventSource() = default;
-	GlibFDEventSource(MaybeUniqueFileDescriptor fd) : GlibFDEventSource{nullptr, std::move(fd)} {}
-	GlibFDEventSource(const char *debugLabel, MaybeUniqueFileDescriptor fd);
+	GlibFDEventSource(MaybeUniqueFileDescriptor, FDEventSourceDesc, PollEventDelegate);
 
 protected:
-	ConditionalMember<Config::DEBUG_BUILD, const char *> debugLabel{};
-	UniqueGSource fdSource{};
+	UniqueGSource source{};
 	gpointer tag{};
 	MaybeUniqueFileDescriptor fd_{};
-	ConditionalMemberOr<Config::DEBUG_BUILD, bool, true> usingGlibSource{};
+
+	static PollEventDelegate& getDelegate(GSource*);
+	static UniqueGSource makeSource(PollEventDelegate);
 };
 
 using FDEventSourceImpl = GlibFDEventSource;

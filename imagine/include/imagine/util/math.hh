@@ -210,10 +210,9 @@ constexpr void setSizesWithRatioX(T &xSize, T &ySize, T2 aspectRatio, T x)
 	}
 }
 
-template <class T>
-constexpr bool valIsWithinStretch(T val, T val2, T stretch)
+constexpr bool isWithinThreshold(auto&& v1, auto&& v2, auto&& threshold)
 {
-	return val + stretch >= val2 && val - stretch <= val2;
+	return std::abs(v1 - v2) <= threshold;
 }
 
 template <class T>

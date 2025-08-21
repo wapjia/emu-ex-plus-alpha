@@ -33,6 +33,8 @@
 namespace IG
 {
 
+constexpr SystemLogger log{"Freetype"};
+
 #ifdef CONFIG_PACKAGE_FONTCONFIG
 static FS::PathString fontPathWithPattern(FcPattern *pat)
 {
@@ -370,7 +372,6 @@ FreetypeFont::GlyphRenderData FreetypeFont::makeGlyphRenderData(int idx, Freetyp
 			logErr("error activating size object");
 			return {};
 		}
-		std::errc ec;
 		auto data = makeGlyphRenderDataWithFace(library, font.face, idx, keepPixData);
 		if(!data)
 		{
@@ -485,8 +486,10 @@ void FreetypeFontSize::deinit()
 		if(s)
 		{
 			//logMsg("freeing size %p", ftSize[i]);
-			auto error = FT_Done_Size(s);
-			assert(!error);
+			if(auto error = FT_Done_Size(s); error)
+			{
+				log.error("error in FT_Done_Size()");
+			}
 		}
 	}
 }

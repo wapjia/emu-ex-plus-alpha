@@ -5,12 +5,14 @@ ifdef LINK_MAP
  LDFLAGS += -Wl,-Map=$(MAPFILE)
 endif
 
-ifdef O_RELEASE
- LDFLAGS_SYSTEM += $(OPTIMIZE_LDFLAGS)
-endif
-
 ifdef PROFILE
  LDFLAGS_SYSTEM += -pg
+else
+ OPTIMIZE_LDFLAGS = -s
+endif
+
+ifdef O_RELEASE
+ LDFLAGS_SYSTEM += $(OPTIMIZE_LDFLAGS)
 endif
 
 linkLoadableModuleAction ?= -shared

@@ -16,12 +16,14 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/util/DelegateFunc.hh>
-#include <imagine/util/container/FlatSet.hh>
 #include <imagine/util/algorithm.h>
 #include <imagine/util/concepts.hh>
+#include <flat_set>
 
 namespace IG
 {
+
+enum class DelegateFuncEqualsMode: uint8_t {normal, byFunc};
 
 template <class Delegate>
 class DelegateFuncSet
@@ -29,40 +31,48 @@ class DelegateFuncSet
 public:
 	constexpr DelegateFuncSet() = default;
 
-	bool add(Delegate del, int priority = 0)
+	bool insert(Delegate del, int priority = 0, InsertMode mode = InsertMode::normal)
 	{
-		if(contains(del))
-			return false;
-		delegate.emplace(del, priority);
-		return true;
+		if(mode == InsertMode::unique)
+		{
+			if(contains(del))
+				return false;
+			delegates.emplace(del, priority);
+			return true;
+		}
+		else
+		{
+			delegates.emplace(del, priority);
+			return true;
+		}
 	}
 
-	bool remove(Delegate del)
+	bool removeFirst(Delegate del, DelegateFuncEqualsMode mode = DelegateFuncEqualsMode::normal)
 	{
-		auto it = find(del, delegate);
-		if(it == delegate.end())
-			return false;
-		delegate.erase(it);
-		return true;
+		if(mode == DelegateFuncEqualsMode::byFunc)
+		{
+			return eraseFirst(delegates, [&](const auto& e){ return e.del.equalsByFunc(del); });
+		}
+		return eraseFirst(delegates, del);
 	}
 
 	bool contains(Delegate del) const
 	{
-		return find(del, delegate) != delegate.end();
+		return std::ranges::contains(delegates, del);
 	}
 
 	auto size() const
 	{
-		return delegate.size();
+		return delegates.size();
 	}
 
-	void runAll(Callable<bool, Delegate> auto &&exec, bool skipRemovedDelegates = false)
+	void runAll(Callable<bool, Delegate> auto&& exec, bool skipRemovedDelegates = false)
 	{
 		auto delegatesSize = size();
 		if(!delegatesSize)
 			return;
 		DelegateEntry delegateCopy[delegatesSize];
-		std::copy_n(delegate.begin(), delegatesSize, delegateCopy);
+		std::copy_n(delegates.begin(), delegatesSize, delegateCopy);
 		for(auto &d : delegateCopy)
 		{
 			if(skipRemovedDelegates && !contains(d.del))
@@ -71,7 +81,7 @@ public:
 			}
 			if(!exec(d.del))
 			{
-				eraseFirst(delegate, d);
+				eraseFirst(delegates, d);
 			}
 		}
 	}
@@ -83,20 +93,14 @@ protected:
 		int priority{};
 
 		constexpr DelegateEntry() = default;
-		constexpr DelegateEntry(Delegate del, int priority):
+		constexpr DelegateEntry(Delegate del, int priority = 0):
 			del{del}, priority{priority} {}
-		bool operator==(const DelegateEntry &rhs) const { return del == rhs.del; }
-		bool operator<(const DelegateEntry &rhs) const { return priority < rhs.priority; }
+		bool operator==(const DelegateEntry& rhs) const { return del == rhs.del; }
+		bool operator==(const Delegate& rhs) const { return del == rhs; }
+		bool operator<(const DelegateEntry& rhs) const { return priority < rhs.priority; }
 	};
 
-	template <class Container>
-	static auto find(Delegate del, Container &delegate)
-	{
-		return std::find_if(delegate.begin(), delegate.end(),
-			[&](auto &e) { return e.del == del; });
-	}
-
-	FlatMultiSet<DelegateEntry> delegate{};
+	std::flat_multiset<DelegateEntry> delegates;
 };
 
 }

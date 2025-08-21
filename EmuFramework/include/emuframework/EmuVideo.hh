@@ -19,7 +19,6 @@
 #include <emuframework/EmuSystemTask.hh>
 #include <emuframework/EmuSystemTaskContext.hh>
 #include <imagine/gfx/PixmapBufferTexture.hh>
-#include <imagine/gfx/SyncFence.hh>
 
 namespace EmuEx
 {
@@ -32,66 +31,57 @@ class [[nodiscard]] EmuVideoImage
 {
 public:
 	constexpr EmuVideoImage() = default;
-	EmuVideoImage(EmuSystemTaskContext taskCtx, EmuVideo &vid, Gfx::LockedTextureBuffer texBuff);
+	EmuVideoImage(EmuSystemTaskContext, EmuVideo&, Gfx::LockedTextureBuffer);
 	IG::MutablePixmapView pixmap() const;
 	explicit operator bool() const;
 	void endFrame();
 
 protected:
 	EmuSystemTaskContext taskCtx;
-	EmuVideo *emuVideo{};
+	EmuVideo* emuVideo{};
 	Gfx::LockedTextureBuffer texBuff;
 };
 
 class EmuVideo : public EmuAppHelper
 {
 public:
-	using FrameFinishedDelegate = DelegateFunc<void (EmuVideo &)>;
-	using FormatChangedDelegate = DelegateFunc<void (EmuVideo &)>;
-
 	constexpr EmuVideo() = default;
-	void setRendererTask(Gfx::RendererTask &);
+	void setRendererTask(Gfx::RendererTask&);
 	bool hasRendererTask() const;
-	bool setFormat(IG::PixmapDesc desc, EmuSystemTaskContext task = {});
-	void dispatchFormatChanged();
+	bool setFormat(IG::PixmapDesc, EmuSystemTaskContext _ = {});
 	void resetImage(IG::PixelFormat newFmt = {});
 	IG::PixmapDesc deleteImage();
 	EmuVideoImage startFrame(EmuSystemTaskContext);
-	void startFrame(EmuSystemTaskContext, IG::PixmapView pix);
-	EmuVideoImage startFrameWithFormat(EmuSystemTaskContext, IG::PixmapDesc desc);
-	void startFrameWithFormat(EmuSystemTaskContext, IG::PixmapView pix);
-	void startFrameWithAltFormat(EmuSystemTaskContext, IG::PixmapView pix);
+	void startFrame(EmuSystemTaskContext, IG::PixmapView);
+	EmuVideoImage startFrameWithFormat(EmuSystemTaskContext, IG::PixmapDesc);
+	void startFrameWithFormat(EmuSystemTaskContext, IG::PixmapView);
+	void startFrameWithAltFormat(EmuSystemTaskContext, IG::PixmapView);
 	void startUnchangedFrame(EmuSystemTaskContext);
-	void finishFrame(EmuSystemTaskContext, Gfx::LockedTextureBuffer texBuff);
-	void finishFrame(EmuSystemTaskContext, IG::PixmapView pix);
-	void dispatchFrameFinished();
+	void finishFrame(EmuSystemTaskContext, Gfx::LockedTextureBuffer);
+	void finishFrame(EmuSystemTaskContext, IG::PixmapView);
 	void clear();
 	void takeGameScreenshot();
     //region 爱吾：增加指定路径的截图
     void takeGameScreenshotAiWu();
     //endregion
 	bool isExternalTexture() const;
-	Gfx::PixmapBufferTexture &image();
-	Gfx::Renderer &renderer() const;
+	Gfx::PixmapBufferTexture& image();
+	Gfx::Renderer& renderer() const;
 	IG::ApplicationContext appContext() const;
 	WSize size() const;
 	bool formatIsEqual(IG::PixmapDesc desc) const;
-	void setOnFrameFinished(FrameFinishedDelegate del);
-	void setOnFormatChanged(FormatChangedDelegate del);
-	void setTextureBufferMode(EmuSystem &, Gfx::TextureBufferMode mode);
+	void setTextureBufferMode(EmuSystem&, Gfx::TextureBufferMode);
 	void setSampler(Gfx::TextureSamplerConfig);
 	constexpr auto colorSpace() const { return colSpace; }
-	bool setRenderPixelFormat(EmuSystem &, IG::PixelFormat, Gfx::ColorSpace);
+	bool setRenderPixelFormat(EmuSystem&, IG::PixelFormat, Gfx::ColorSpace);
 	IG::PixelFormat renderPixelFormat() const;
 	IG::PixelFormat internalRenderPixelFormat() const;
 	static Gfx::TextureSamplerConfig samplerConfigForLinearFilter(bool useLinearFilter);
 	static MutablePixmapView takeInterlacedFields(MutablePixmapView, bool isOddField);
 
 protected:
-	Gfx::RendererTask *rTask{};
+	Gfx::RendererTask* rTask{};
 	Gfx::PixmapBufferTexture vidImg;
-	FrameFinishedDelegate onFrameFinished;
-	FormatChangedDelegate onFormatChanged;
 	IG::PixelFormat renderFmt;
 	Gfx::TextureBufferMode bufferMode{};
 	bool screenshotNextFrame{};
@@ -100,7 +90,7 @@ protected:
     //region 爱吾：增加截图路径
     bool screenshotNextFrameAiWu{};
     //endregion
-	void doScreenshot(EmuSystemTaskContext, IG::PixmapView pix);
+	void doScreenshot(EmuSystemTaskContext, IG::PixmapView);
 	void postFrameFinished(EmuSystemTaskContext);
 	Gfx::TextureSamplerConfig samplerConfig() const { return samplerConfigForLinearFilter(useLinearFilter); }
 

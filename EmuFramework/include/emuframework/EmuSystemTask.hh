@@ -15,10 +15,13 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <emuframework/OutputTimingManager.hh>
 #include <imagine/base/MessagePort.hh>
 #include <imagine/thread/Thread.hh>
 #include <imagine/time/Time.hh>
-#include <variant>
+#include <imagine/util/variant.hh>
+#include <imagine/util/ScopeGuard.hh>
+#include <flat_map>
 
 namespace EmuEx
 {
@@ -29,47 +32,140 @@ class EmuVideo;
 class EmuAudio;
 class EmuApp;
 
+class FrameRateDetector
+{
+public:
+	constexpr FrameRateDetector() = default;
+	bool addFrame(FrameParams);
+	auto framesCounted() const { return frameDurations; }
+	bool hasConsistentRate() const { return consistentDurations >= wantedConsistentFrames; }
+	auto frameDuration() const { return frameDuration_; }
+
+	bool setFrameDuration(SteadyClockDuration duration)
+	{
+		if(duration == frameDuration_ && hasConsistentRate())
+			return false;
+		*this = {};
+		frameDuration_ = duration;
+		return true;
+	}
+
+	SteadyClockDuration estimatedFrameDuration() const
+	{
+		return hasConsistentRate() ? allFrameDurations / frameDurations : SteadyClockDuration{};
+	}
+
+private:
+	SteadyClockDuration frameDuration_{};
+	SteadyClockDuration allFrameDurations{};
+	uint16_t frameDurations{};
+	uint16_t consistentDurations{};
+	static constexpr int wantedConsistentFrames = 128;
+};
+
 class EmuSystemTask
 {
 public:
-	struct FrameParamsCommand
+	struct SuspendCommand {};
+	struct ExitCommand {};
+	struct SetWindowCommand
 	{
-		FrameParams params;
+		Window* winPtr;
 	};
 
-	struct FramePresentedCommand {};
-	struct PauseCommand {};
-	struct ExitCommand {};
-
-	using CommandVariant = std::variant<FrameParamsCommand, FramePresentedCommand, PauseCommand, ExitCommand>;
+	using CommandVariant = std::variant<SuspendCommand, ExitCommand, SetWindowCommand>;
+	class Command: public CommandVariant, public AddVisit
+	{
+	public:
+		using CommandVariant::CommandVariant;
+		using AddVisit::visit;
+	};
 
 	struct CommandMessage
 	{
-		std::binary_semaphore *semPtr{};
-		CommandVariant command{PauseCommand{}};
+		std::binary_semaphore* semPtr{};
+		Command command{SuspendCommand{}};
 
-		void setReplySemaphore(std::binary_semaphore *semPtr_) { assert(!semPtr); semPtr = semPtr_; };
+		void setReplySemaphore(std::binary_semaphore* semPtr_) { assert(!semPtr); semPtr = semPtr_; };
 	};
 
-	EmuSystemTask(EmuApp &);
-	void start();
-	void pause();
+	struct SuspendContext
+	{
+		SuspendContext() = default;
+		SuspendContext(EmuSystemTask* taskPtr):taskPtr{taskPtr} {}
+		SuspendContext(SuspendContext&& rhs) noexcept { *this = std::move(rhs); }
+		SuspendContext& operator=(SuspendContext&& rhs)
+		{
+			taskPtr = std::exchange(rhs.taskPtr, nullptr);
+			return *this;
+		}
+
+		void resume()
+		{
+			if(taskPtr)
+				std::exchange(taskPtr, nullptr)->resume();
+		}
+
+		~SuspendContext() { resume(); }
+
+	private:
+		EmuSystemTask* taskPtr{};
+	};
+
+	EmuSystemTask(EmuApp&);
+	void start(Window&);
+	[[nodiscard]]
+	SuspendContext setWindow(Window&);
+	[[nodiscard]]
+	SuspendContext suspend();
 	void stop();
-	void updateFrameParams(FrameParams);
-	void notifyFramePresented();
-	void sendVideoFormatChangedReply(EmuVideo &);
-	void sendFrameFinishedReply(EmuVideo &);
+	bool isStarted() const { return threadId_; }
+	void sendVideoFormatChangedReply(EmuVideo&);
+	void sendFrameFinishedReply(EmuVideo&);
 	void sendScreenshotReply(bool success);
 	auto threadId() const { return threadId_; }
+	Window &window(this auto&& self) { return *self.winPtr; }
+	Screen &screen(this auto&& self) { return *self.window().screen(); }
+	void updateScreenFrameRate(FrameRate);
+	void updateSystemFrameRate();
+	bool advanceFrames(FrameParams);
+	bool waitingForPresent() const { return waitingForPresent_; }
+	void notifyWindowPresented();
 
 private:
-	EmuApp &app;
+	EmuApp& app;
+	Window* winPtr{};
+	IG::OnFrameDelegate onFrameUpdate;
 	MessagePort<CommandMessage> commandPort{"EmuSystemTask Command"};
 	std::thread taskThread;
 	ThreadId threadId_{};
-	FrameParams frameParams;
+	std::binary_semaphore framePresentedSem{0};
+	std::binary_semaphore suspendSem{0};
+	FrameRateConfig frameRateConfig;
+	int savedAdvancedFrames{};
+	FrameRateDetector frameRateDetector;
+	ConditionalMember<Config::multipleScreenFrameRates, std::flat_map<SteadyClockDuration, FrameRate>> detectedFrameRateMap;
 public:
-	bool framePending{};
+	bool enableBlankFrameInsertion{};
+private:
+	bool waitingForPresent_{};
+	bool isSuspended{};
+
+	void resume();
+	void addOnFrameDelayed();
+	void addOnFrame();
+	void removeOnFrame();
+	IG::OnFrameDelegate onFrameCalibrate();
+	IG::OnFrameDelegate onFrameDelayed(uint16_t delay);
+	void addOnFrameDelegate(IG::OnFrameDelegate);
+	void setIntendedFrameRate(FrameRateConfig);
+	FrameRate remapScreenFrameRate(FrameRate) const;
+	FrameRateConfig configFrameRate(const Screen&);
+	FrameRateConfig configFrameRate(FrameRate rate) { return configFrameRate(std::span{&rate, 1}); }
+	FrameRateConfig configFrameRate(std::span<const FrameRate> supportedRates);
+	void calibrateScreenFrameRate(FrameRate);
+	void setWindowInternal(Window&);
+	void drawWindowNow();
 };
 
 }

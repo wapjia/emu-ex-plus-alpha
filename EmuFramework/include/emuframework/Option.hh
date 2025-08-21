@@ -170,7 +170,7 @@ inline void writeOptionValueIfNotDefault(Writable auto &io, uint16_t key, const 
 	writeOptionValue(io, key, val);
 }
 
-inline void writeOptionValueIfNotDefault(Writable auto &io, Unused auto const &p) {}
+inline void writeOptionValueIfNotDefault(Writable auto&, Unused auto const&) {}
 
 inline void writeOptionValueIfNotDefault(Writable auto &io, PropertyOption auto const &p)
 {
@@ -203,5 +203,31 @@ inline void writeStringOptionValueIfNotDefault(Writable auto &io, uint16_t key, 
 		return;
 	writeStringOptionValueAllowEmpty(io, key, s);
 }
+
+template<class Size>
+inline size_t sizedDataBytes(const ResizableContainer auto& c)
+{
+	size_t bytes = sizeof(Size); // store array length
+	Size size = std::min(c.size(), size_t(std::numeric_limits<Size>::max()));
+	bytes += size * sizeof(c[0]);
+	return bytes;
+}
+
+template<class Size>
+inline void writeSizedData(Writable auto& io, const ResizableContainer auto& c)
+{
+	Size size = std::min(c.size(), size_t(std::numeric_limits<Size>::max()));
+	io.put(size);
+	if(size)
+		io.write(c.data(), size);
+}
+
+template<class Size>
+inline ssize_t readSizedData(Readable auto& io, ResizableContainer auto& c)
+{
+	auto size = io.template get<Size>();
+	return io.readSized(c, size);
+}
+
 
 }

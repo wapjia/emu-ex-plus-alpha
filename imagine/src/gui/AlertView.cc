@@ -13,8 +13,6 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "BaseAlertView"
-
 #include <imagine/gui/AlertView.hh>
 #include <imagine/gui/ViewManager.hh>
 #include <imagine/gfx/RendererCommands.hh>
@@ -27,20 +25,21 @@
 namespace IG
 {
 
+constexpr SystemLogger log{"AlertView"};
+
 void BaseAlertView::init()
 {
 	menu.setAlign(C2DO);
 	menu.setScrollableIfNeeded(true);
-	menu.setOnSelectElement(
-		[this](const Input::Event &e, int i, MenuItem &item)
+	menu.setOnSelectElement([this](const Input::Event& e, int i, MenuItem& item)
+	{
+		bool shouldDismiss = item.inputEvent(e, {.parentPtr = this});
+		if(shouldDismiss)
 		{
-			bool shouldDismiss = item.select(*this, e);
-			if(shouldDismiss)
-			{
-				logMsg("dismissing");
-				dismiss();
-			}
-		});
+			log.info("dismissing via item #{}", i);
+			dismiss();
+		}
+	});
 }
 
 void BaseAlertView::place()
@@ -66,7 +65,7 @@ void BaseAlertView::place()
 	bgQuads.write(1, {.bounds = menu.viewRect().as<int16_t>()});
 }
 
-bool BaseAlertView::inputEvent(const Input::Event &e)
+bool BaseAlertView::inputEvent(const Input::Event& e, ViewInputEventParams)
 {
 	if(e.keyEvent() && e.keyEvent()->pushed(Input::DefaultKey::CANCEL))
 	{
@@ -82,7 +81,7 @@ void BaseAlertView::prepareDraw()
 	menu.prepareDraw();
 }
 
-void BaseAlertView::draw(Gfx::RendererCommands &__restrict__ cmds)
+void BaseAlertView::draw(Gfx::RendererCommands &__restrict__ cmds, ViewDrawParams) const
 {
 	using namespace IG::Gfx;
 	auto &basicEffect = cmds.basicEffect();

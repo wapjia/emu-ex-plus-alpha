@@ -33,11 +33,7 @@ ToastView::ToastView(ViewAttachParams attach): View{attach},
 	text{attach.rendererTask, &attach.viewManager.defaultFace},
 	unpostTimer
 	{
-		"ToastView::unpostTimer",
-		[this]()
-		{
-			unpost();
-		}
+		{.debugLabel = "ToastView::unpostTimer"}, [this]{ unpost(); }
 	},
 	msgFrameQuads{attach.rendererTask, {.size = 1}} {}
 
@@ -83,7 +79,7 @@ void ToastView::prepareDraw()
 	text.makeGlyphs();
 }
 
-void ToastView::draw(Gfx::RendererCommands &__restrict__ cmds)
+void ToastView::draw(Gfx::RendererCommands &__restrict__ cmds, ViewDrawParams) const
 {
 	using namespace IG::Gfx;
 	if(!text.isVisible())
@@ -99,11 +95,6 @@ void ToastView::draw(Gfx::RendererCommands &__restrict__ cmds)
 	cmds.drawQuad(msgFrameQuads, 0);
 	basicEffect.enableAlphaTexture(cmds);
 	text.draw(cmds, {msgFrame.xCenter(), msgFrame.pos(C2DO).y}, C2DO, ColorName::WHITE);
-}
-
-bool ToastView::inputEvent(const Input::Event &event)
-{
-	return false;
 }
 
 }

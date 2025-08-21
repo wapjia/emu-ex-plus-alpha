@@ -48,13 +48,12 @@ namespace EmuEx
 {
 
 constexpr SystemLogger log{"NES.emu"};
-const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2024\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nFCEUX Team\nfceux.com";
+const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2025\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nFCEUX Team\nfceux.com";
 bool EmuSystem::hasCheats = true;
 bool EmuSystem::hasPALVideoSystem = true;
 bool EmuSystem::hasResetModes = true;
 bool EmuSystem::hasRectangularPixels = true;
 bool EmuApp::needsGlobalInstance = true;
-unsigned fceuCheats = 0;
 
 NesApp::NesApp(ApplicationInitParams initParams, ApplicationContext &ctx):
 	EmuApp{initParams, ctx}, nesSystem{ctx}
@@ -214,7 +213,6 @@ WallClockTimePoint NesSystem::backupMemoryLastWriteTime(const EmuApp &app) const
 void NesSystem::closeSystem()
 {
 	FCEUI_CloseGame();
-	fceuCheats = 0;
 	fdsIsAccessing = false;
 }
 
@@ -344,13 +342,6 @@ void NesSystem::setupNESInputPorts()
 	setupNESFourScore();
 }
 
-static int cheatCallback(const char *name, uint32 a, uint8 v, int compare, int s, int type, void *data)
-{
-	log.info("cheat:{}, {}", name, s);
-	fceuCheats++;
-	return 1;
-}
-
 const char *regionToStr(int region)
 {
 	switch(region)
@@ -417,9 +408,6 @@ void NesSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDelegat
 	}
 	autoDetectedRegion = regionFromName(contentFileName());
 	setRegion(optionVideoSystem, optionDefaultVideoSystem, autoDetectedRegion);
-	FCEUI_ListCheats(cheatCallback, 0);
-	if(fceuCheats)
-		log.info("{} total cheats", fceuCheats);
 	setupNESInputPorts();
 	EMUFILE_MEMORY stateMemFile;
 	FCEUSS_SaveMS(&stateMemFile, 0);
@@ -434,9 +422,9 @@ bool NesSystem::onVideoRenderFormatChange(EmuVideo &video, PixelFormat fmt)
 	return true;
 }
 
-void NesSystem::configAudioRate(FrameTime outputFrameTime, int outputRate)
+void NesSystem::configAudioRate(FrameRate outputFrameRate, int outputRate)
 {
-	uint32 mixRate = std::round(audioMixRate(outputRate, outputFrameTime));
+	uint32 mixRate = std::round(audioMixRate(outputRate, outputFrameRate));
 	if(FSettings.SndRate == mixRate)
 		return;
 	log.info("set sound mix rate:{}", (int)mixRate);

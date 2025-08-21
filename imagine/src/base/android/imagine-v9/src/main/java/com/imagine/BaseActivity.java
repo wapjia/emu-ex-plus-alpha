@@ -434,6 +434,11 @@ public final class BaseActivity extends NativeActivity implements AudioManager.O
 			// cause the screen to flash
 			win.setFormat(PixelFormat.UNKNOWN);
 		}
+		if(android.os.Build.VERSION.SDK_INT >= 35)
+		{
+			// Disable ARR to restore usage of ANativeWindow_setFrameRate() API
+			win.setFrameRatePowerSavingsBalanced(false);
+		}
 	}
 	
 	@Override protected void onResume()
