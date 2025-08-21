@@ -97,7 +97,7 @@ Point2D<float> Window::pixelSizeAsScaledMM(Point2D<int> size)
 	return {((float)size.x / densityDPI) * 25.4f, ((float)size.y / densityDPI) * 25.4f};
 }
 
-bool Window::setValidOrientations(Orientations o)
+bool Window::setValidOrientations(Orientations)
 {
     //去掉设置屏幕方向，方向由JAVA层控制
     return false;

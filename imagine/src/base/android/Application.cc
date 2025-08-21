@@ -343,7 +343,7 @@ void ApplicationContext::showEmulationCallbackAiWu(bool showEmulation)
     jShowEmulationCallback(env, baseActivity, showEmulation);
 }
 
-void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass baseActivityClass, ANativeActivity *nActivity)
+void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject, jclass baseActivityClass, ANativeActivity *nActivity)
 {
     ApplicationContext ctx{nActivity};
     gAiWuAppContextPtr = ctx;
