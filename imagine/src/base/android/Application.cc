@@ -352,7 +352,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "onKeyPress", "(II)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz, jint keyCode, jint player)
+                                    +[](JNIEnv*, jobject, jint keyCode, jint player)
                                     {
                                         //uint playerMask = player << 28;
                                         IG::gAiWuAppContext().onKeyPressAiWu(keyCode , player);
@@ -361,7 +361,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "onKeyRelease", "(II)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz, jint keyCode, jint player)
+                                    +[](JNIEnv*, jobject, jint keyCode, jint player)
                                     {
                                         //uint playerMask = player << 28;
                                         IG::gAiWuAppContext().onKeyReleaseAiWu(keyCode , player);
@@ -370,7 +370,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "showSetting", "(Z)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz,jboolean isShow)
+                                    +[](JNIEnv*, jobject, jboolean isShow)
                                     {
                                         IG::gAiWuAppContext().showSettingAiWu(isShow);
                                     }
@@ -378,7 +378,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "changeEmulatorState", "(Z)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz,jboolean pause)
+                                    +[](JNIEnv*, jobject, jboolean pause)
                                     {
                                         IG::gAiWuAppContext().changeEmulatorStateAiWu(pause);
                                     }
@@ -386,7 +386,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "reset", "()V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz)
+                                    +[](JNIEnv*, jobject)
                                     {
                                         IG::gAiWuAppContext().resetAiWu();
                                     }
@@ -394,7 +394,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "exit", "()V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz)
+                                    +[](JNIEnv*, jobject)
                                     {
                                         IG::gAiWuAppContext().exit();
                                     }
@@ -403,7 +403,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "isSoundEnabled", "()Z",
                             (void *)
-                                    +[](JNIEnv* env, jobject thiz)
+                                    +[](JNIEnv*, jobject)
                                     {
                                         return IG::gAiWuAppContext().isSoundEnabledAiWu();
                                     }
@@ -411,7 +411,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "setSoundEnabled", "(Z)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz,jboolean enabled)
+                                    +[](JNIEnv*, jobject,jboolean enabled)
                                     {
                                         IG::gAiWuAppContext().setSoundEnabledAiWu(enabled);
                                     }
@@ -420,7 +420,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "screenshot", "(Ljava/lang/String;Lcom/imagine/OnScreenshotCompleteListener;)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz,jstring jPath,jobject listener)
+                                    +[](JNIEnv* env, jobject,jstring jPath,jobject listener)
                                     {
                                         if (IG::g_android_screenshot_complete_callback) {
                                             return;
@@ -442,7 +442,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "fastForward", "(D)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz, jdouble jSpeed)
+                                    +[](JNIEnv*, jobject, jdouble jSpeed)
                                     {
                                         IG::gAiWuAppContext().fastForwardAiWu(jSpeed);
                                     }
@@ -451,7 +451,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "saveState", "(Ljava/lang/String;)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz,jstring jPath)
+                                    +[](JNIEnv* env, jobject,jstring jPath)
                                     {
                                         std::string tempString = GetJString(env, jPath);
                                         const char *path = tempString.c_str();
@@ -461,7 +461,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "loadState", "(Ljava/lang/String;)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz,jstring jPath)
+                                    +[](JNIEnv* env, jobject,jstring jPath)
                                     {
                                         std::string tempString = GetJString(env, jPath);
                                         const char *path = tempString.c_str();
@@ -472,7 +472,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "updateCheat", "([Ljava/lang/String;)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz,jobjectArray jCheats)
+                                    +[](JNIEnv* env, jobject,jobjectArray jCheats)
                                     {
                                         std::list<std::string> internalCheats;
                                         if( jCheats == NULL || env->GetArrayLength(jCheats) == 0 ){
@@ -491,7 +491,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "setDebugEnabled", "(Z)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz,jboolean enabled)
+                                    +[](JNIEnv*, jobject,jboolean enabled)
                                     {
                                         IG::gAiWuAppContext().setDebugEnabledAiWu(enabled);
                                     }
@@ -499,7 +499,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "getGameScreenRect", "()[I",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz)
+                                    +[](JNIEnv* env, jobject)
                                     {
                                         const IG::WindowRect rect = IG::gAiWuAppContext().getGameScreenRectAiWu();
                                         jintArray jarr = env->NewIntArray(4);
@@ -517,7 +517,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "setBgColor", "(FFF)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz, jfloat red, jfloat green, jfloat blue)
+                                    +[](JNIEnv*, jobject, jfloat red, jfloat green, jfloat blue)
                                     {
                                        IG::gAiWuAppContext().setBgColorAiWu(red, green, blue);
                                     }
@@ -525,7 +525,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "setDefaultConfig", "([Ljava/lang/String;)V",
                             (void*)
-                                    +[](JNIEnv* env, jobject thiz,jobjectArray jConfigList)
+                                    +[](JNIEnv* env, jobject,jobjectArray jConfigList)
                                     {
                                         std::list<std::string> configList;
                                         //不进行配置的时候默认为空
@@ -545,7 +545,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "getFrameRate", "()D",
                             (void *)
-                                    +[](JNIEnv* env, jobject thiz)
+                                    +[](JNIEnv*, jobject)
                                     {
                                         return IG::gAiWuAppContext().getFrameRate();
                                     }
@@ -555,7 +555,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "usingLinearFilter", "()Z",
                             (void *)
-                                    +[](JNIEnv* env, jobject thiz)
+                                    +[](JNIEnv*, jobject)
                                     {
                                         return IG::gAiWuAppContext().usingLinearFilterAiWu();
                                     }
@@ -563,7 +563,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "setLinearFilter", "(Z)V",
                             (void *)
-                                    +[](JNIEnv* env, jobject thiz,jboolean isOn)
+                                    +[](JNIEnv*, jobject,jboolean isOn)
                                     {
                                         return IG::gAiWuAppContext().setLinearFilterAiWu(isOn);
                                     }
@@ -571,7 +571,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "getEffectId", "()I",
                             (void *)
-                                    +[](JNIEnv* env, jobject thiz)
+                                    +[](JNIEnv*, jobject)
                                     {
                                         return IG::gAiWuAppContext().getEffectIdAiWu();
                                     }
@@ -579,7 +579,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "setEffectId", "(I)V",
                             (void *)
-                                    +[](JNIEnv* env, jobject thiz, jint effectId)
+                                    +[](JNIEnv*, jobject, jint effectId)
                                     {
                                         return IG::gAiWuAppContext().setEffectIdAiWu(effectId);
                                     }
@@ -587,7 +587,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "getOverlayEffectId", "()I",
                             (void *)
-                                    +[](JNIEnv* env, jobject thiz)
+                                    +[](JNIEnv*, jobject)
                                     {
                                         return IG::gAiWuAppContext().getOverlayEffectIdAiWu();
                                     }
@@ -595,7 +595,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "setOverlayEffectId", "(I)V",
                             (void *)
-                                    +[](JNIEnv* env, jobject thiz, jint overlayId)
+                                    +[](JNIEnv*, jobject, jint overlayId)
                                     {
                                         return IG::gAiWuAppContext().setOverlayEffectIdAiWu(overlayId);
                                     }
@@ -606,7 +606,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "getVideoAspectRatio", "()F",
                             (void *)
-                                    +[](JNIEnv* env, jobject thiz)
+                                    +[](JNIEnv*, jobject)
                                     {
                                         return IG::gAiWuAppContext().getVideoAspectRatioAiWu();
                                     }
@@ -614,7 +614,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "setVideoAspectRatio", "(F)V",
                             (void *)
-                                    +[](JNIEnv* env, jobject thiz, jfloat ratio)
+                                    +[](JNIEnv*, jobject, jfloat ratio)
                                     {
                                         return IG::gAiWuAppContext().setVideoAspectRatioAiWu(ratio);
                                     }
@@ -625,7 +625,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "getPalette", "()Ljava/lang/String;",
                             (void *)
-                                    +[](JNIEnv* env, jobject thiz)
+                                    +[](JNIEnv* env, jobject)
                                     {
                                         return env->NewStringUTF(IG::gAiWuAppContext().getPaletteAiWu().c_str());
                                     }
@@ -633,7 +633,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                             "setPalette", "(Ljava/lang/String;)V",
                             (void *)
-                                    +[](JNIEnv* env, jobject thiz, jstring path)
+                                    +[](JNIEnv* env, jobject, jstring path)
                                     {
                                         return IG::gAiWuAppContext().setPaletteAiWu(GetJString(env,path));
                                     }
@@ -644,7 +644,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                         "getFunc", "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
                                 (void *)
-                                        +[](JNIEnv* env, jobject thiz, jstring key,jstring param)
+                                        +[](JNIEnv* env, jobject, jstring key,jstring param)
                                         {
                                             std::string str = IG::gAiWuAppContext().getFuncAiWu(GetJString(env,key),GetJString(env,param));
                                             return env->NewStringUTF(str.c_str());
@@ -653,7 +653,7 @@ void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass b
                     {
                         "setFunc", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
                                 (void *)
-                                        +[](JNIEnv* env, jobject thiz, jstring key, jstring value,jstring param)
+                                        +[](JNIEnv* env, jobject, jstring key, jstring value,jstring param)
                                         {
                                             return IG::gAiWuAppContext().setFuncAiWu(GetJString(env,key),GetJString(env,value),GetJString(env,param));
                                         }
