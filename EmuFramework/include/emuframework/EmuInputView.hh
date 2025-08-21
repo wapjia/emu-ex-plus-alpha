@@ -40,6 +40,7 @@ public:
 	bool toggleAltSpeedMode(AltSpeedMode);
 	bool setAltSpeedMode(AltSpeedMode, bool on);
 	VController *activeVController() const { return vController; }
+    EmuVideoLayer *activeEmuVideoLayer() const { return videoLayer; }
 	void setSystemGestureExclusion(bool on);
 	int uiElementHeight() const;
 
