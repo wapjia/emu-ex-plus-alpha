@@ -398,7 +398,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 	windowPixelFormat
 	{
 		"显示颜色格式", attach,
-		MenuId{pack(app().windowDrawableConfig())},
+		MenuId{pack(app().windowDrawableConfig)},
 		windowPixelFormatItem,
 		{
 			.onSetDisplayString = [this](auto idx, Gfx::Text &t)
