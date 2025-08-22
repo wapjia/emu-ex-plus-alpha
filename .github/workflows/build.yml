@@ -73,7 +73,6 @@ jobs:
 
     - name: Build GBA.emu
       if: ${{ matrix.image == 'GBA.emu' }}
-      working-directory: ${{ matrix.image }}
       run: |
         cd GBA.emu
         make -f android-release.mk android-apk V=1 -j`nproc`
@@ -81,7 +80,6 @@ jobs:
 
     - name: Build GBC.emu
       if: ${{ matrix.image == 'GBC.emu' }}
-      working-directory: ${{ matrix.image }}
       run: |
         cd GBC.emu
         make -f android-release.mk android-apk V=1 -j`nproc`
@@ -90,7 +88,6 @@ jobs:
 
     - name: Build MD.emu
       if: ${{ matrix.image == 'MD.emu' }}
-      working-directory: ${{ matrix.image }}
       run: |
         cd MD.emu
         make -f android-release.mk android-apk V=1 -j`nproc`
@@ -98,7 +95,6 @@ jobs:
 
     - name: Build NES.emu
       if: ${{ matrix.image == 'NES.emu' }}
-      working-directory: ${{ matrix.image }}
       run: |
         cd NES.emu
         make -f android-release.mk android-apk V=1 -j`nproc`
@@ -106,7 +102,6 @@ jobs:
 
     - name: Build NGP.emu
       if: ${{ matrix.image == 'NGP.emu' }}
-      working-directory: ${{ matrix.image }}
       run: |
         cd NGP.emu
         make -f android-release.mk android-apk V=1 -j`nproc`
@@ -114,7 +109,6 @@ jobs:
 
     - name: Build PCE.emu
       if: ${{ matrix.image == 'PCE.emu' }}
-      working-directory: ${{ matrix.image }}
       run: |
         cd PCE.emu
         make -f android-release.mk android-apk V=1 -j`nproc`
@@ -122,7 +116,6 @@ jobs:
 
     - name: Build Snes9x
       if: ${{ matrix.image == 'Snes9x' }}
-      working-directory: ${{ matrix.image }}
       run: |
         cd Snes9x
         make -f android-release.mk android-apk V=1 -j`nproc`
@@ -130,7 +123,6 @@ jobs:
 
     - name: Build Swan.emu
       if: ${{ matrix.image == 'Swan.emu' }}
-      working-directory: ${{ matrix.image }}
       run: |
         cd Swan.emu
         make -f android-release.mk android-apk V=1 -j`nproc`
@@ -138,7 +130,6 @@ jobs:
 
     - name: Build Saturn.emu
       if: ${{ matrix.image == 'Saturn.emu' }}
-      working-directory: ${{ matrix.image }}
       run: |
         cd Saturn.emu
         make -f android-release.mk android-apk V=1 -j`nproc`
