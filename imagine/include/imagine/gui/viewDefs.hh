@@ -24,7 +24,7 @@
 namespace IG::ViewDefs
 {
 
-constexpr bool needsBackControlDefault = !Config::envIsAndroid;
+constexpr bool needsBackControlDefault = true;//!Config::envIsAndroid;//爱吾修改：标题栏返回按钮默认显示
 constexpr bool needsBackControlIsMutable = !Config::envIsIOS;
 constexpr auto imageSamplerConfig = Gfx::SamplerConfigs::nearestMipClamp;
 

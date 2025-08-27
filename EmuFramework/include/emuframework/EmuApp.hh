@@ -277,7 +277,11 @@ public:
 	void setShowsBluetoothScanItems(bool on);
 	void setLayoutBehindSystemUI(bool);
 	bool doesLayoutBehindSystemUI() const { return layoutBehindSystemUI; };
-
+    //region 爱吾修改
+    FS::PathString getScreenshotPathAiWu();
+    void setScreenshotPathAiWu(FS::PathString path);
+    IG::WindowRect getGameScreenRectAiWu();
+    //endregion
 	void postMessage(UTF16Convertible auto &&msg)
 	{
 		postMessage(false, IG_forward(msg));
@@ -375,7 +379,7 @@ public:
 	Property<bool, CFGKEY_IDLE_DISPLAY_POWER_SAVE> idleDisplayPowerSave;
 	Property<bool, CFGKEY_SHOW_HIDDEN_FILES> showHiddenFilesInPicker;
 	Property<bool, CFGKEY_CONFIRM_OVERWRITE_STATE, {.defaultValue = true}> confirmOverwriteState;
-	Property<bool, CFGKEY_SYSTEM_ACTIONS_IS_DEFAULT_MENU, {.defaultValue = true}> systemActionsIsDefaultMenu;
+	Property<bool, CFGKEY_SYSTEM_ACTIONS_IS_DEFAULT_MENU> systemActionsIsDefaultMenu;//爱吾修改：默认菜单改为上次使用
 	ConditionalProperty<Config::windowFocus, bool, CFGKEY_PAUSE_UNFOCUSED, {.defaultValue = true}> pauseUnfocused;
 	ConditionalProperty<Config::envIsAndroid, bool, CFGKEY_SUSTAINED_PERFORMANCE_MODE> useSustainedPerformanceMode;
 	ConditionalProperty<Config::Input::BLUETOOTH && Config::BASE_CAN_BACKGROUND_APP, bool, CFGKEY_KEEP_BLUETOOTH_ACTIVE> keepBluetoothActive;
@@ -397,6 +401,7 @@ protected:
 	struct ConfigParams
 	{
 		Gfx::DrawableConfig windowDrawableConf;
+		bool isAlreadyExit;//爱吾修改：增加配置文件是否已经存在的标志
 	};
 
 	[[no_unique_address]] IG::Data::PixmapWriter pixmapWriter;
@@ -404,6 +409,9 @@ protected:
 	[[no_unique_address]] PerformanceHintSession perfHintSession;
 	ConditionalMember<MOGA_INPUT, std::unique_ptr<Input::MogaManager>> mogaManagerPtr;
 	ConditionalMember<Config::TRANSLUCENT_SYSTEM_UI, bool> layoutBehindSystemUI{};
+	//region 爱吾修改
+	FS::PathString screenshotPathAiWu{};
+	//endregion
 
 	void onMainWindowCreated(ViewAttachParams, const Input::Event &);
 	ConfigParams loadConfigFile(IG::ApplicationContext);

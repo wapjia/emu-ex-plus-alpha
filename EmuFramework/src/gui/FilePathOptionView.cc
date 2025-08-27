@@ -57,7 +57,7 @@ static auto screenshotsMenuName(IG::ApplicationContext ctx, std::string_view use
 }
 
 FilePathOptionView::FilePathOptionView(ViewAttachParams attach, bool customMenu):
-	TableView{"File Path Options", attach, item},
+	TableView{"文件路径设置", attach, item},
 	savePath
 	{
 		savesMenuName(appContext(), system().userSaveDirectory()), attach,
@@ -165,8 +165,10 @@ FilePathOptionView::FilePathOptionView(ViewAttachParams attach, bool customMenu)
 
 void FilePathOptionView::loadStockItems()
 {
+	/*爱吾修改：移除这些配置项，固定为游戏文件夹
 	item.emplace_back(&savePath);
 	item.emplace_back(&screenshotPath);
+	*/
 }
 
 void FilePathOptionView::onSavePathChange(std::string_view path)

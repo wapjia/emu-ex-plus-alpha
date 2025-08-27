@@ -27,16 +27,16 @@ namespace EmuEx
 {
 
 SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
-	TableView{"System Options", attach, item},
+	TableView{"系统设置", attach, item},
 	autosaveTimerItem
 	{
-		{"Off",    attach, {.id = 0}},
-		{"5min",  attach, {.id = 5}},
-		{"10min", attach, {.id = 10}},
-		{"15min", attach, {.id = 15}},
-		{"Custom Value", attach, [this](const Input::Event &e)
+		{"关",    attach, {.id = 0}},
+		{"5分钟",  attach, {.id = 5}},
+		{"10分钟", attach, {.id = 10}},
+		{"15分钟", attach, {.id = 15}},
+		{"自定义", attach, [this](const Input::Event &e)
 			{
-				pushAndShowNewCollectValueRangeInputView<int, 0, maxAutosaveSaveFreq.count()>(attachParams(), e, "Input 0 to 720", "",
+				pushAndShowNewCollectValueRangeInputView<int, 0, maxAutosaveSaveFreq.count()>(attachParams(), e, "输入0到720", "",
 					[this](CollectTextInputView &, auto val)
 					{
 						app().autosaveManager.saveTimer.frequency = Minutes{val};
@@ -50,7 +50,7 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	autosaveTimer
 	{
-		"Timer", attach,
+		"定时器", attach,
 		MenuId{app().autosaveManager.saveTimer.frequency.count()},
 		autosaveTimerItem,
 		{
@@ -66,14 +66,16 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	autosaveLaunchItem
 	{
-		{"Main Slot",            attach, {.id = AutosaveLaunchMode::Load}},
-		{"Main Slot (No State)", attach, {.id = AutosaveLaunchMode::LoadNoState}},
+		{"加载即时存档",            attach, {.id = AutosaveLaunchMode::Load}},
+		{"不加载即时存档", attach, {.id = AutosaveLaunchMode::LoadNoState}},
+		/* 爱吾修改：去掉这些设置项
 		{"No Save Slot",         attach, {.id = AutosaveLaunchMode::NoSave}},
 		{"Select Slot",          attach, {.id = AutosaveLaunchMode::Ask}},
+		*/
 	},
 	autosaveLaunch
 	{
-		"Launch Mode", attach,
+		"启动模式", attach,
 		MenuId{app().autosaveManager.autosaveLaunchMode},
 		autosaveLaunchItem,
 		{
@@ -82,9 +84,9 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	autosaveContent
 	{
-		"Content", attach,
+		"内容", attach,
 		app().autosaveManager.saveOnlyBackupMemory,
-		"State & Backup RAM", "Only Backup RAM",
+		"即时存档和本体存档(RAM)", "仅本体存档(RAM)",
 		[this](BoolMenuItem &item)
 		{
 			app().autosaveManager.saveOnlyBackupMemory = item.flipBoolValue(*this);
@@ -228,9 +230,9 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	performanceMode
 	{
-		"Performance Mode", attach,
+		"性能模式", attach,
 		app().useSustainedPerformanceMode,
-		"Normal", "Sustained",
+		"正常", "省电",
 		[this](BoolMenuItem &item)
 		{
 			app().useSustainedPerformanceMode = item.flipBoolValue(*this);
@@ -247,15 +249,15 @@ SystemOptionView::SystemOptionView(ViewAttachParams attach, bool customMenu):
 	},
 	cpuAffinity
 	{
-		"Configure CPU Affinity", attach,
+		"配置CPU相关性", attach,
 		[this](const Input::Event &e)
 		{
 			pushAndShow(makeView<CPUAffinityView>(appContext().cpuCount()), e);
 		}
 	},
-	autosaveHeading{"Autosave Options", attach},
+	autosaveHeading{"自动存档设置", attach},
 	rewindHeading{"Rewind Options", attach},
-	otherHeading{"Other Options", attach}
+	otherHeading{"其他设置", attach}
 {
 	if(!customMenu)
 	{
@@ -269,13 +271,17 @@ void SystemOptionView::loadStockItems()
 	item.emplace_back(&autosaveLaunch);
 	item.emplace_back(&autosaveTimer);
 	item.emplace_back(&autosaveContent);
+	/* 爱吾修改：去掉这些设置项
 	item.emplace_back(&rewindHeading);
 	item.emplace_back(&rewindStates);
 	item.emplace_back(&rewindTimeInterval);
+	*/
 	item.emplace_back(&otherHeading);
+	/* 爱吾修改：去掉这些设置项
 	item.emplace_back(&confirmOverwriteState);
 	item.emplace_back(&fastModeSpeed);
 	item.emplace_back(&slowModeSpeed);
+	*/
 	if(used(performanceMode) && appContext().hasSustainedPerformanceMode())
 		item.emplace_back(&performanceMode);
 	if(used(noopThread))

@@ -28,6 +28,7 @@
 #include <emuframework/EmuInput.hh>
 #include <string>
 #include <string_view>
+#include <list>
 
 namespace IG
 {
@@ -394,6 +395,11 @@ public:
 	static void throwFileReadError();
 	static void throwFileWriteError();
 	static void throwMissingContentDirError();
+    //region 爱吾修改
+    void setCheatListAiWu(const std::list<std::string>& cheats);
+    std::string getPaletteAiWu();
+    void setPaletteAiWu(std::string_view palette);
+    //endregion
 
 protected:
 	IG::ApplicationContext appCtx{};

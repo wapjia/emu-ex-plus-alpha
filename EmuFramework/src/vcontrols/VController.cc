@@ -370,6 +370,7 @@ void VController::draw(Gfx::RendererCommands &__restrict__ cmds, bool showHidden
 		cmds.setColor(Gfx::Color{alphaF});
 		kb.draw(cmds);
 	}
+	/* 爱吾修改:去掉原版的虚拟按键
 	else if(gamepadIsVisible || showHidden)
 	{
 		auto elementIsEnabled = [&](const VControllerElement &e)
@@ -388,6 +389,7 @@ void VController::draw(Gfx::RendererCommands &__restrict__ cmds, bool showHidden
 			}
 		}
 	}
+	*/
 	if(uiElements.size())
 	{
 		cmds.basicEffect().enableTexture(cmds, uiTex);
@@ -682,6 +684,7 @@ bool VController::readConfig(EmuApp &app, MapIO &io, unsigned key)
 		case CFGKEY_VCONTROLLER_UI_BUTTONS_V2:
 		{
 			uiElements.clear();
+			/* 爱吾修改:删除所有UI按键
 			[[maybe_unused]] auto configId = io.get<uint8_t>(); // reserved for future use
 			auto elements = io.get<uint8_t>();
 			log.info("read UI button data ({} bytes) with {} element(s)", io.size(), elements);
@@ -690,6 +693,7 @@ bool VController::readConfig(EmuApp &app, MapIO &io, unsigned key)
 				if(!readVControllerElement(app.inputManager, io, uiElements, true))
 					return false;
 			}
+			*/
 			return true;
 		}
 	}
@@ -933,11 +937,13 @@ void VController::resetUIGroups()
 std::vector<VControllerElement> VController::defaultUIGroups() const
 {
 	std::vector<VControllerElement> uiElements;
+	/* 爱吾修改:删除所有UI按键
 	add(uiElements, rightUIComponents);
 	if(Config::Input::TOUCH_DEVICES)
 		add(uiElements, leftUIComponents);
 	if(hasWindow())
 		resetUIPositions(uiElements);
+	*/
 	return uiElements;
 }
 

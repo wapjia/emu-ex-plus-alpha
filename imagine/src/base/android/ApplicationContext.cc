@@ -241,14 +241,15 @@ static jstring permissionToJString(JNIEnv *env, Permission p)
 
 bool ApplicationContext::usesPermission(Permission) const
 {
-	if(androidSDK() < 23 || androidSDK() >= 30)
+	if(androidSDK() < 23 )//|| androidSDK() >= 30)//爱吾修改：去掉SDK30的限制（target28可以正常使用File Api）
 		return false;
 	return true;
 }
 
 bool ApplicationContext::permissionIsRestricted(Permission p) const
 {
-	return p == Permission::WRITE_EXT_STORAGE ? androidSDK() >= 30 : false;
+	//return p == Permission::WRITE_EXT_STORAGE ? androidSDK() >= 30 : false;
+	return false;//爱吾修改：去掉SDK30的限制（target28可以正常使用File Api）
 }
 
 bool ApplicationContext::requestPermission(Permission p)

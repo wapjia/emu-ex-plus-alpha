@@ -37,6 +37,9 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <list>
+#include <imagine/util/rectangle2.h>
+#include <imagine/util/memory/DynArray.hh>
 
 namespace IG::Input
 {
@@ -52,7 +55,9 @@ class directory_entry;
 
 namespace IG
 {
-
+//region 爱吾修改
+extern std::function<void(const char *screenshotPath)> g_android_screenshot_complete_callback;
+//endregion
 class PixelFormat;
 class PerformanceHintManager;
 
@@ -240,6 +245,27 @@ public:
 
 	// Platform-specific
 	int32_t androidSDK() const;
+
+    //region 爱吾修改：增加一些方法
+    void onKeyPressAiWu(uint emuKey,uint8_t player);
+    void onKeyReleaseAiWu(uint emuKey,uint8_t player);
+    void showSettingAiWu(bool isShow = true);
+    void changeEmulatorStateAiWu(bool pause);
+    void resetAiWu();
+    void showEmulationCallbackAiWu(bool showEmulation);
+    void screenshotAiWu(FS::PathString filepath);
+    void fastForwardAiWu(double speed);
+    bool saveStateAiWu(const char *filepath, bool notify);
+    bool loadStateAiWu(const char *filepath);
+	DynArray<uint8_t> saveStateMemoryAiWu();
+	bool loadStateMemoryAiWu(std::span<uint8_t> buff);
+    void setCheatListAiWu(const std::list<std::string>& cheats);
+    void setBgColorAiWu(float red, float green, float blue);
+    IG::WindowRect getGameScreenRectAiWu();
+    double getFrameRate();
+	std::string getSettingValueAiWu(std::string_view key);
+	void setSettingValueAiWu(std::string_view key, std::string_view value);
+    //endregion
 };
 
 class OnExit

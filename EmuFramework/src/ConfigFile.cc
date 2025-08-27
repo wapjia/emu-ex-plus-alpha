@@ -143,6 +143,7 @@ EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
 	}
 	#endif
 	ConfigParams appConfig{};
+	appConfig.isAlreadyExit = FS::exists(configFilePath);//爱吾修改：增加配置文件是否已经存在的标志
 	Gfx::DrawableConfig pendingWindowDrawableConf{};
 	readConfigKeys(FileUtils::bufferFromPath(configFilePath, {.test = true}),
 		[&](auto key, auto &io) -> bool

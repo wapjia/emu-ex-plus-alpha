@@ -200,7 +200,13 @@ private:
 	void processInputWithHasEvents(AInputQueue *);
 	void processInputCommon(AInputQueue *inputQueue, AInputEvent* event);
 	void handleDocumentIntentResult(ApplicationContext, const char* uri, const char* name);
+    //region 爱吾修改
+    void aiWuFunInit(JNIEnv *, jobject baseActivity, jclass baseActivityClass, ANativeActivity *nActivity);
+    //endregion
 };
+//region 爱吾修改
+ApplicationContext gAiWuAppContext();
+//endregion
 
 using ApplicationImpl = AndroidApplication;
 

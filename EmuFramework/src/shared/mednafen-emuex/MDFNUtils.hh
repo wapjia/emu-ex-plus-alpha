@@ -114,9 +114,9 @@ inline std::string savePathMDFN(int id1, const char *cd1)
 
 inline BoolMenuItem saveFilenameTypeMenuItem(auto &view, auto &system)
 {
-	return {"Save Filename Type", view.attachParams(),
+	return {"存档文件名类型", view.attachParams(),
 		system.noMD5InFilenames,
-		"Default", "No MD5",
+		"默认", "不添加MD5",
 		[&](BoolMenuItem &item) { system.noMD5InFilenames = item.flipBoolValue(view); }
 	};
 }

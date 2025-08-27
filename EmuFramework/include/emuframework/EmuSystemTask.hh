@@ -131,7 +131,7 @@ public:
 	bool advanceFrames(FrameParams);
 	bool waitingForPresent() const { return waitingForPresent_; }
 	void notifyWindowPresented();
-
+	FrameRateConfig getFrameRateConfigAiWu();//爱吾修改：增加方法
 private:
 	EmuApp& app;
 	Window* winPtr{};

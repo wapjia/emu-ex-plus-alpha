@@ -99,6 +99,7 @@ Point2D<float> Window::pixelSizeAsScaledMM(Point2D<int> size)
 
 bool Window::setValidOrientations(Orientations o)
 {
+	/* 爱吾修改：去掉原版的设置屏幕方向，方向由JAVA层控制
 	log.info("requested orientation change to {}", asString(o));
 	auto asNativeOrientations = [](Orientations o)
 		{
@@ -117,6 +118,8 @@ bool Window::setValidOrientations(Orientations o)
 	int toSet = asNativeOrientations(o);
 	application().setRequestedOrientation(appContext().mainThreadJniEnv(), appContext().baseActivityObject(), toSet);
 	return true;
+	*/
+	return false;
 }
 
 bool Window::requestOrientationChange(Rotation)

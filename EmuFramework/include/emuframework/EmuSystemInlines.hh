@@ -354,4 +354,23 @@ void EmuSystem::forEachCheatCode(Cheat& c, DelegateFunc<bool(CheatCode&, std::st
 		static_cast<MainSystem*>(this)->forEachCheatCode(c, del);
 }
 
+
+//region 爱吾修改
+void EmuSystem::setCheatListAiWu(const std::list<std::string>& cheats)
+{
+	if(&MainSystem::setCheatListAiWu != &EmuSystem::setCheatListAiWu)
+		static_cast<MainSystem*>(this)->setCheatListAiWu(cheats);
+}
+std::string EmuSystem::getPaletteAiWu()
+{
+	if(&MainSystem::getPaletteAiWu != &EmuSystem::getPaletteAiWu)
+		return static_cast<MainSystem*>(this)->getPaletteAiWu();
+	return "";
+}
+void EmuSystem::setPaletteAiWu(std::string_view path)
+{
+	if(&MainSystem::setPaletteAiWu != &EmuSystem::setPaletteAiWu)
+		static_cast<MainSystem*>(this)->setPaletteAiWu(path);
+}
+//endregion
 }

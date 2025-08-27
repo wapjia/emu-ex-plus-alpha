@@ -32,7 +32,7 @@ public:
 		TableView{IG_forward(name), attach, item},
 		selectFolder
 		{
-			"Select Folder", attach,
+			"选择文件夹", attach,
 			[=](View &view, const Input::Event &e)
 			{
 				auto fPicker = view.makeView<FilePicker>(FSPicker::Mode::DIR, EmuSystem::NameFilterFunc{}, e);
@@ -51,7 +51,7 @@ public:
 		},
 		sameAsContent
 		{
-			"Same As Content", attach,
+			"游戏文件夹", attach,
 			[=](View &view)
 			{
 				onPathChange(optionUserPathContentToken);
@@ -71,7 +71,7 @@ public:
 	{
 		item.emplace_back(&selectFolder);
 		item.emplace_back(&sameAsContent);
-		item.emplace_back(&sameAsSaves);
+		//item.emplace_back(&sameAsSaves);//爱吾修改：去掉该选项
 	};
 
 	void appendItem(TextMenuItem &i) { item.emplace_back(&i); }
@@ -91,29 +91,29 @@ inline FS::FileString userPathToDisplayName(IG::ApplicationContext ctx, std::str
 	if(userPathStr.size())
 	{
 		if(userPathStr == optionUserPathContentToken)
-			return "Content Folder";
+			return "游戏文件夹";
 		else
 			return ctx.fileUriDisplayName(userPathStr);
 	}
 	else
 	{
-		return "Saves Folder";
+		return "游戏文件夹";//翻译成"游戏文件夹"的原因：爱吾版本去掉了存档文件夹的自定义设置项，改为固定为游戏文件夹。所以"存档文件夹"="游戏文件夹"
 	}
 }
 
 inline auto cheatsMenuName(IG::ApplicationContext ctx, std::string_view userPath)
 {
-	return std::format("Cheats: {}", std::string_view{userPathToDisplayName(ctx, userPath)});
+	return std::format("金手指: {}", std::string_view{userPathToDisplayName(ctx, userPath)});
 }
 
 inline auto patchesMenuName(IG::ApplicationContext ctx, std::string_view userPath)
 {
-	return std::format("Patches: {}", std::string_view{userPathToDisplayName(ctx, userPath)});
+	return std::format("补丁: {}", std::string_view{userPathToDisplayName(ctx, userPath)});
 }
 
 inline auto palettesMenuName(IG::ApplicationContext ctx, std::string_view userPath)
 {
-	return std::format("Palettes: {}", std::string_view{userPathToDisplayName(ctx, userPath)});
+	return std::format("调色板: {}", std::string_view{userPathToDisplayName(ctx, userPath)});
 }
 
 }

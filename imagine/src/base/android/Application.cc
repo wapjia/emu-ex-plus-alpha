@@ -40,7 +40,9 @@
 
 namespace IG
 {
-
+//region 爱吾修改
+static ApplicationContext gAiWuAppContextPtr{};
+//endregion
 constexpr SystemLogger log{"App"};
 static JavaVM* jVM{};
 static void *mainLibHandle{};
@@ -78,6 +80,9 @@ AndroidApplication::AndroidApplication(ApplicationInitParams initParams):
 		log.info("external storage path:{}", extPath);
 	}
 	initActivity(env, baseActivity, baseActivityClass, androidSDK);
+	//region 爱吾修改：注册爱吾的一些native方法
+	aiWuFunInit(env, baseActivity, baseActivityClass, initParams.nActivity);
+	//endregion
 	setNativeActivityCallbacks(initParams.nActivity);
 	initChoreographer(env, baseActivity, baseActivityClass, androidSDK);
 	initScreens(env, baseActivity, baseActivityClass, androidSDK, initParams.nActivity);
@@ -316,6 +321,249 @@ const char *aHardwareBufferFormatStr(uint32_t format)
 	}
 	return "Unknown";
 }
+
+//region 爱吾修改：增加一些方法
+static std::string GetJString(JNIEnv* env, jstring jstr)
+{
+    if (!jstr) {
+        return {};
+    }
+    const char *s = env->GetStringUTFChars(jstr, nullptr);
+    std::string result = s;
+    env->ReleaseStringUTFChars(jstr, s);
+    return result;
+}
+
+ApplicationContext gAiWuAppContext() { return gAiWuAppContextPtr; }
+
+void ApplicationContext::showEmulationCallbackAiWu(bool showEmulation)
+{
+    auto env = mainThreadJniEnv();
+    auto baseActivity = baseActivityObject();
+    JNI::InstMethod<void(jboolean)> jShowEmulationCallback{env, baseActivity, "showEmulationCallback", "(Z)V"};
+    jShowEmulationCallback(env, baseActivity, showEmulation);
+}
+
+void AndroidApplication::aiWuFunInit(JNIEnv *env, jobject baseActivity, jclass baseActivityClass, ANativeActivity *nActivity)
+{
+    ApplicationContext ctx{nActivity};
+    gAiWuAppContextPtr = ctx;
+    JNINativeMethod method[]
+            {
+                    {
+                            "onKeyPress", "(II)V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz, jint keyCode, jint player)
+                                    {
+                                        //uint playerMask = player << 28;
+                                        IG::gAiWuAppContext().onKeyPressAiWu(keyCode , player);
+                                    }
+                    },
+                    {
+                            "onKeyRelease", "(II)V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz, jint keyCode, jint player)
+                                    {
+                                        //uint playerMask = player << 28;
+                                        IG::gAiWuAppContext().onKeyReleaseAiWu(keyCode , player);
+                                    }
+                    },
+                    {
+                            "showSetting", "(Z)V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz,jboolean isShow)
+                                    {
+                                        IG::gAiWuAppContext().showSettingAiWu(isShow);
+                                    }
+                    },
+                    {
+                            "changeEmulatorState", "(Z)V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz,jboolean pause)
+                                    {
+                                        IG::gAiWuAppContext().changeEmulatorStateAiWu(pause);
+                                    }
+                    },
+                    {
+                            "reset", "()V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz)
+                                    {
+                                        IG::gAiWuAppContext().resetAiWu();
+                                    }
+                    },
+                    {
+                            "exit", "()V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz)
+                                    {
+                                        IG::gAiWuAppContext().exit();
+                                    }
+                    },
+                    {
+                            "screenshot", "(Ljava/lang/String;Lcom/imagine/OnScreenshotCompleteListener;)V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz,jstring jPath,jobject listener)
+                                    {
+                                        if (IG::g_android_screenshot_complete_callback) {
+                                            return;
+                                        }
+                                        if (listener != NULL){
+                                            jobject listener_ref = env->NewGlobalRef(listener);
+                                            IG::g_android_screenshot_complete_callback = [listener_ref](const char *screenshotPath) {
+                                                auto env = IG::gAiWuAppContext().thisThreadJniEnv();
+                                                jclass listenerClass = env->GetObjectClass(listener_ref);
+                                                jmethodID method = env->GetMethodID(listenerClass, "OnScreenshotComplete", "(Ljava/lang/String;)V");
+                                                env->CallVoidMethod(listener_ref, method, env->NewStringUTF(screenshotPath));
+                                                env->DeleteGlobalRef(listener_ref);
+                                            };
+                                        }
+                                        auto path = JNI::StringChars{env, jPath};
+                                        IG::gAiWuAppContext().screenshotAiWu(FS::PathString{path});
+                                    }
+                    },
+                    {
+                            "fastForward", "(D)V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz, jdouble jSpeed)
+                                    {
+                                        IG::gAiWuAppContext().fastForwardAiWu(jSpeed);
+                                    }
+                    },
+                    {
+                            "saveState", "(Ljava/lang/String;Z)V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz,jstring jPath,jboolean notify)
+                                    {
+                                        std::string tempString = GetJString(env, jPath);
+                                        const char *path = tempString.c_str();
+                                        IG::gAiWuAppContext().saveStateAiWu(path, notify);
+                                    }
+                    },
+                    {
+                            "loadState", "(Ljava/lang/String;)V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz,jstring jPath)
+                                    {
+                                        std::string tempString = GetJString(env, jPath);
+                                        const char *path = tempString.c_str();
+                                        IG::gAiWuAppContext().loadStateAiWu(path);
+                                    }
+                    },
+                    {
+                            "saveStateMemory", "()[B",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz) -> jbyteArray
+                                    {
+										DynArray<uint8_t> data = IG::gAiWuAppContext().saveStateMemoryAiWu();
+										int size = data.size();
+										if(size <= 0)
+                                            return nullptr;
+ 										jbyteArray result = env->NewByteArray(size);
+        								env->SetByteArrayRegion(result, 0, size, reinterpret_cast<const jbyte*>(data.data()));
+                                    	return result;
+									}
+                    },
+                    {
+                            "loadStateMemory", "([B)V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz, jbyteArray state)
+                                    {
+										 if (state == nullptr) {
+                							return;
+            							 }
+            							 jsize length = env->GetArrayLength(state);
+            							 if (length == 0) {
+                							return;
+            							 }
+										 jbyte* data = env->GetByteArrayElements(state, JNI_FALSE);
+										 if (data == nullptr) {
+                							return;
+            							 }
+										 std::span<uint8_t> data_span(
+                							reinterpret_cast<uint8_t*>(data),
+                							static_cast<size_t>(length)
+            							 );
+										 IG::gAiWuAppContext().loadStateMemoryAiWu(data_span);
+                                    	 env->ReleaseByteArrayElements(state, data, JNI_ABORT);
+									}
+                    },
+                    {
+                            "updateCheat", "([Ljava/lang/String;)V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz,jobjectArray jCheats)
+                                    {
+                                        std::list<std::string> internalCheats;
+                                        if( jCheats == NULL || env->GetArrayLength(jCheats) == 0 ){
+                                            IG::gAiWuAppContext().setCheatListAiWu(internalCheats);
+                                            return;
+                                        }
+                                        jsize cheatCount = env->GetArrayLength(jCheats);
+                                        for (int i = 0; i < cheatCount; ++i) {
+                                            jstring code = (jstring) (env->GetObjectArrayElement(jCheats, i));
+                                            const std::string codeString = GetJString(env,code);
+                                            internalCheats.push_back(codeString);
+                                        }
+                                        IG::gAiWuAppContext().setCheatListAiWu(internalCheats);
+                                    }
+                    },
+                    {
+                            "getGameScreenRect", "()[I",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz)
+                                    {
+                                        const IG::WindowRect rect = IG::gAiWuAppContext().getGameScreenRectAiWu();
+                                        jintArray jarr = env->NewIntArray(4);
+                                        int *carr = env->GetIntArrayElements(jarr, JNI_FALSE);
+                                        carr[0] = rect.x;
+                                        carr[1] = rect.y;
+                                        carr[2] = rect.x2;
+                                        carr[3] = rect.y2;
+                                        // 释放资源并回写
+                                        env->ReleaseIntArrayElements(jarr, carr, 0);
+                                        // 返回数组
+                                        return jarr;
+                                    }
+                    },
+                    {
+                            "setBgColor", "(FFF)V",
+                            (void*)
+                                    +[](JNIEnv* env, jobject thiz, jfloat red, jfloat green, jfloat blue)
+                                    {
+                                       IG::gAiWuAppContext().setBgColorAiWu(red, green, blue);
+                                    }
+                    },
+					{
+							"getSettingValue", "(Ljava/lang/String;)Ljava/lang/String;",// 返回值都是String，Java端自行强转
+							(void *)
+									+[](JNIEnv* env, jobject thiz, jstring key)
+									{
+										std::string str = IG::gAiWuAppContext().getSettingValueAiWu(GetJString(env,key));
+										return env->NewStringUTF(str.c_str());
+									}
+					},
+					{
+							"setSettingValue", "(Ljava/lang/String;Ljava/lang/String;)V",
+							(void*)
+									+[](JNIEnv* env, jobject thiz, jstring key, jstring value)
+									{
+										std::string keyStr = GetJString(env,key);
+										std::string valueStr = GetJString(env,value);
+										IG::gAiWuAppContext().setSettingValueAiWu(keyStr,valueStr);
+									}
+					},
+                    {
+                            "getFrameRate", "()D",
+                            (void *)
+                                    +[](JNIEnv* env, jobject thiz)
+                                    {
+                                        return IG::gAiWuAppContext().getFrameRate();
+                                    }
+                    }
+            };
+	env->RegisterNatives(baseActivityClass, method, std::size(method));
+}
+//endregion 爱吾修改：增加一些方法
 
 void AndroidApplication::initActivity(JNIEnv *env, jobject baseActivity, jclass baseActivityClass, int32_t androidSDK)
 {

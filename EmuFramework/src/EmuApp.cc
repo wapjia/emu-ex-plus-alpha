@@ -52,6 +52,11 @@
 #include <imagine/input/android/MogaManager.hh>
 #include <cmath>
 
+#include <string>
+#include <stdexcept>
+#include <iomanip>
+#include <sstream>
+
 namespace EmuEx
 {
 
@@ -105,15 +110,15 @@ public:
 		AlertView
 		{
 			attach,
-			"Really Exit? (Push Back/Escape again to confirm)",
+			"确定退出游戏吗?(再次按下返回键确认)",
 			hasEmuContent ? 3u : 2u
 		}
 	{
-		item.emplace_back("Yes", attach, [this](){ appContext().exit(); });
-		item.emplace_back("No", attach, [](){});
+		item.emplace_back("确定", attach, [this](){ appContext().exit(); });
+		item.emplace_back("取消", attach, [](){});
 		if(hasEmuContent)
 		{
-			item.emplace_back("Close Menu", attach, [this](){ app().showEmulation(); });
+			item.emplace_back("返回游戏", attach, [this](){ app().showEmulation(); });
 		}
 	}
 
@@ -204,8 +209,11 @@ void EmuApp::showLastViewFromSystem(ViewAttachParams attach, const Input::Event 
 
 void EmuApp::showExitAlert(ViewAttachParams attach, const Input::Event &e)
 {
+	/* 爱吾修改:改为返回游戏
 	viewController().pushAndShowModal(std::make_unique<ExitConfirmAlertView>(
 		attach, system().hasContent()), e, false);
+	*/
+	showEmulation();
 }
 
 static const char *parseCommandArgs(IG::CommandArgs arg)
@@ -316,9 +324,28 @@ static IG::Screen *extraWindowScreen(IG::ApplicationContext ctx)
 
 void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::ApplicationContext ctx)
 {
-	loadConfigFile(ctx);
+	ConfigParams configParams = loadConfigFile(ctx);
 	system().onOptionsLoaded();
 	loadSystemOptions();
+	//region 爱吾修改：固定的一些设置项
+	auto &vController = inputManager.vController;
+	//虚拟键盘关闭
+	vController.setGamepadControlsVisibility(VControllerVisibility::OFF);
+	//触屏显示按键 关闭
+	vController.setShowOnTouchInput(false);
+	//失去焦点暂停 关闭
+	pauseUnfocused = false;
+	//手柄等输入设备更改通知 关闭
+	notifyOnInputDeviceChange = false;
+	//隐藏导航栏和状态栏
+	setHideOSNavMode(InEmuTristate::On);
+	setHideStatusBarMode(InEmuTristate::On);
+	log.info("isConfigAlreadyExit:{}", configParams.isAlreadyExit);
+	if(!configParams.isAlreadyExit){
+		//设置一些默认项
+		videoLayer.setLinearFilter(false);//默认关闭线性过滤
+	}
+	//endregion
 	updateLegacySavePathOnStoragePath(ctx, system());
 	system().setInitialLoadPath(parseCommandArgs(initParams.commandArgs()));
 	audio.manager.setMusicVolumeControlHint();
@@ -589,7 +616,7 @@ void EmuApp::launchSystem(const Input::Event &e)
 			!autosaveManager.saveOnlyBackupMemory && stateIsOlderThanBackupMemory())
 		{
 			viewController().pushAndShowModal(std::make_unique<YesNoAlertView>(attachParams(),
-				"Autosave state timestamp is older than the contents of backup memory, really load it even though progress may be lost?",
+				"自动存档时间戳比备份内存的内容旧，游戏进度可能会丢失，确定要加载吗？",
 				YesNoAlertView::Delegates
 				{
 					.onYes = [this]{ finishLaunch(*this, LoadAutosaveMode::Normal); },
@@ -619,7 +646,7 @@ void EmuApp::handleOpenFileCommand(CStringView path)
 	auto name = appContext().fileUriDisplayName(path);
 	if(name.empty())
 	{
-		postErrorMessage(std::format("Can't access path name for:\n{}", path));
+		postErrorMessage(std::format("无法访问的路径名:\n{}", path));
 		return;
 	}
 	if(appContext().fileUriType(path) == FS::file_type::directory)
@@ -749,7 +776,7 @@ void EmuApp::onSystemCreated()
 	updateVideoContentRotation();
 	if(!rewindManager.reset(system().stateSize()))
 	{
-		postErrorMessage(4, "Not enough memory for rewind states");
+		postErrorMessage(4, "倒带存档的内存不足");
 	}
 	viewController().onSystemCreated();
 }
@@ -759,7 +786,7 @@ void EmuApp::promptSystemReloadDueToSetOption(ViewAttachParams attach, const Inp
 	if(!system().hasContent())
 		return;
 	viewController().pushAndShowModal(std::make_unique<YesNoAlertView>(attach,
-		"This option takes effect next time the system starts. Restart it now?",
+		"该选项在系统下次启动时生效。是否立即重启？",
 		YesNoAlertView::Delegates
 		{ .onYes = [this, params]
 			{
@@ -789,7 +816,7 @@ void EmuApp::createSystemWithMedia(IO io, CStringView path, std::string_view dis
 	assert(strlen(path));
 	if(!EmuApp::hasArchiveExtension(displayName) && !EmuSystem::defaultFsFilter(displayName))
 	{
-		postErrorMessage("File doesn't have a valid extension");
+		postErrorMessage("文件没有有效的扩展名");
 		return;
 	}
 	if(!EmuApp::willCreateSystem(attachParams, e))
@@ -858,7 +885,7 @@ void EmuApp::setupStaticBackupMemoryFile(FileIO &io, std::string_view ext, size_
 		return;
 	io = system().openStaticBackupMemoryFile(system().contentSaveFilePath(ext), size, initValue);
 	if(!io) [[unlikely]]
-		throw std::runtime_error(std::format("Error opening {}, please verify save path has write access", system().contentNameExt(ext)));
+		throw std::runtime_error(std::format("打开｛｝时出错，请验证存档路径是否具有写访问权限", system().contentNameExt(ext)));
 }
 
 void EmuApp::readState(std::span<uint8_t> buff)
@@ -885,7 +912,7 @@ bool EmuApp::saveState(CStringView path, bool notify)
 {
 	if(!system().hasContent())
 	{
-		postErrorMessage("System not running");
+		postErrorMessage("游戏未运行无法保存存档");
 		return false;
 	}
 	log.info("saving state {}", path);
@@ -894,12 +921,12 @@ bool EmuApp::saveState(CStringView path, bool notify)
 	{
 		system().saveState(path);
 		if(notify)
-			postMessage("State Saved");
+			postMessage("存档已保存");
 		return true;
 	}
 	catch(std::exception &err)
 	{
-		postErrorMessage(4, std::format("Can't save state:\n{}", err.what()));
+		postErrorMessage(4, std::format("无法保存存档:\n{}", err.what()));
 		return false;
 	}
 }
@@ -913,7 +940,7 @@ bool EmuApp::loadState(CStringView path)
 {
 	if(!system().hasContent()) [[unlikely]]
 	{
-		postErrorMessage("System not running");
+		postErrorMessage("游戏未运行无法加载存档");
 		return false;
 	}
 	log.info("loading state {}", path);
@@ -927,9 +954,9 @@ bool EmuApp::loadState(CStringView path)
 	catch(std::exception &err)
 	{
 		if(system().hasContent() && !hasWriteAccessToDir(system().contentSaveDirectory()))
-			postErrorMessage(8, "Save folder inaccessible, please set it in Options➔File Paths➔Saves");
+			postErrorMessage(8, "存档文件夹无法访问");
 		else
-			postErrorMessage(4, std::format("Can't load state:\n{}", err.what()));
+			postErrorMessage(4, std::format("无法加载存档:\n{}", err.what()));
 		return false;
 	}
 }
@@ -1421,4 +1448,239 @@ void postErrorMessage(ApplicationContext ctx, std::string_view s)
 	ctx.applicationAs<EmuApp>().postErrorMessage(s);
 }
 
+//region 爱吾修改：增加一些方法
+IG::WindowRect EmuApp::getGameScreenRectAiWu()
+{
+    return videoLayer.contentRect();
+}
+
+FS::PathString EmuApp::getScreenshotPathAiWu()
+{
+    return screenshotPathAiWu;
+}
+void EmuApp::setScreenshotPathAiWu(FS::PathString path)
+{
+    screenshotPathAiWu = std::move(path);
+}
+//endregion
+}
+namespace IG
+{
+    std::function<void(const char *screenshotPath)> g_android_screenshot_complete_callback;
+    //region 爱吾的方法
+    /**
+    * @param emuKey 键值
+    * @param player 多玩家id
+    */
+    void ApplicationContext::onKeyPressAiWu(uint emuKey,uint8_t player)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), EmuEx::KeyFlags{.deviceId = player}, Input::Action::PUSHED});
+    }
+    void ApplicationContext::onKeyReleaseAiWu(uint emuKey,uint8_t player)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        sys.handleInputAction(&app, { EmuEx::KeyCode(emuKey), EmuEx::KeyFlags{.deviceId = player}, Input::Action::RELEASED});
+    }
+    /**
+     * true:显示模拟器设置
+     * false:显示游戏画面
+     */
+    void ApplicationContext::showSettingAiWu(bool isShow)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        if(isShow){
+        	auto e = app.appContext().defaultInputEvent();
+            app.showLastViewFromSystem(app.attachParams(),e);
+        }else{
+            app.showEmulation();
+        }
+    }
+    /**
+     * 改变模拟器状态(暂停/启动)
+     */
+    void ApplicationContext::changeEmulatorStateAiWu(bool pause)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        if(pause){
+            app.pauseEmulation();
+        } else {
+            app.startEmulation();
+        }
+    }
+    void ApplicationContext::resetAiWu()
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        sys.reset(app, EmuEx::EmuSystem::ResetMode::SOFT);
+    }
+    void ApplicationContext::screenshotAiWu(FS::PathString filepath)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        //auto &video = app.video();
+        app.setScreenshotPathAiWu(filepath);
+        app.video.takeGameScreenshotAiWu();
+    }
+    void ApplicationContext::fastForwardAiWu(double speed)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())
+            return;
+        if(speed <= 0.){
+            //关闭加速
+            app.setRunSpeed(1.);
+        } else {
+            //开启加速
+            app.setRunSpeed(speed);
+        }
+    }
+    bool ApplicationContext::saveStateAiWu(const char *filepath, bool notify)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())//是否在游戏中
+            return false;
+        return app.saveState(FS::PathString{filepath},notify);
+    }
+    bool ApplicationContext::loadStateAiWu(const char *filepath)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())//是否在游戏中
+            return false;
+        return app.loadState(FS::PathString{filepath});
+    }
+	DynArray<uint8_t> ApplicationContext::saveStateMemoryAiWu(){
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())//是否在游戏中
+            return {};
+		try
+		{
+			return app.saveState();
+		}
+		catch(std::exception &err)
+		{
+			app.postErrorMessage(4, std::format("保存倒带存档出错:\n{}", err.what()));
+			return {};
+		}
+	}
+	bool ApplicationContext::loadStateMemoryAiWu(std::span<uint8_t> buff){
+        auto &app = EmuEx::EmuApp::get(*this);
+		auto &sys = app.system();
+        if(!sys.hasContent())//是否在游戏中
+            return false;
+		try
+		{
+			app.readState(buff);
+			return true;
+		}
+		catch(std::exception &err)
+		{
+			app.postErrorMessage(4, std::format("加载倒带存档出错:\n{}", err.what()));
+			return false;
+		}
+	}
+    void ApplicationContext::setCheatListAiWu(const std::list<std::string>& cheats)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        auto &sys = app.system();
+        if(!sys.hasContent())//是否在游戏中
+            return ;
+        sys.setCheatListAiWu(cheats);
+    }
+    IG::WindowRect ApplicationContext::getGameScreenRectAiWu()
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        return app.getGameScreenRectAiWu();
+    }
+    void ApplicationContext::setBgColorAiWu(float red, float green, float blue)
+    {
+        auto &app = EmuEx::EmuApp::get(*this);
+        app.videoLayer.setBgColorAiWu({red, green, blue});
+    }
+	double ApplicationContext::getFrameRate()
+    {
+    	auto &app = EmuEx::EmuApp::get(*this);
+    	auto &sys = app.system();
+    	if(!sys.hasContent())//是否在游戏中
+    		return 0.0;
+    	//return sys.frameRate();
+    	return app.systemTask.getFrameRateConfigAiWu().rate.hz();
+    }
+	std::string ApplicationContext::getSettingValueAiWu(std::string_view key)
+    {
+    	auto &app = EmuEx::EmuApp::get(*this);
+    	if (key == "audioEnabled") {
+			return app.audio.isEnabled() ? "true" : "false";
+    	}else if (key == "linearFilter") {
+    		return app.videoLayer.usingLinearFilter() ? "true" : "false";
+    	}else if (key == "effectId") {
+    		return std::to_string(static_cast<uint8_t>(app.videoLayer.effectId()));
+    	}else if (key == "overlayEffectId") {
+    		return std::to_string(static_cast<uint8_t>(app.videoLayer.overlayEffectId()));
+    	}else if (key == "videoAspectRatio") {
+			//最多保留两位小数
+    		std::ostringstream oss;
+			oss << std::fixed << std::setprecision(2) << app.videoAspectRatio();
+			return oss.str();
+    	}else if (key == "palette") {
+    		auto &sys = app.system();
+    		return sys.getPaletteAiWu();
+    	}
+		return "";
+    }
+	void ApplicationContext::setSettingValueAiWu(std::string_view key, std::string_view value)
+    {
+    	auto &app = EmuEx::EmuApp::get(*this);
+    	if (key == "audioEnabled") {
+    		app.audio.setEnabled(value == "true");
+    	}else if (key == "debugEnabled") {
+    		logger_setEnabled(value == "true");
+    	}else if (key == "linearFilter") {
+    		app.videoLayer.setLinearFilter(value == "true");
+    		app.viewController().postDrawToEmuWindows();
+    	}else if (key == "effectId") {
+    		int effectIdInt = std::stoi(std::string(value));
+    		if (effectIdInt >= static_cast<int>(EmuEx::ImageEffectId::DIRECT) &&
+				effectIdInt <= static_cast<int>(EmuEx::ImageEffectId::PRESCALE4X)) {
+    			uint8_t effectId = static_cast<uint8_t>(effectIdInt);
+    			auto &sys = app.system();
+    			app.videoLayer.setEffect(sys, EmuEx::ImageEffectId(effectId), app.videoEffectPixelFormat());
+    			app.viewController().postDrawToEmuWindows();
+			}
+    	}else if (key == "overlayEffectId") {
+    		int overlayEffectIdInt = std::stoi(std::string(value));
+    		if (overlayEffectIdInt >= 0 &&
+				overlayEffectIdInt <= static_cast<int>(EmuEx::ImageOverlayId::CRT_GRILLE_2)) {
+    			uint8_t overlayEffectId = static_cast<uint8_t>(overlayEffectIdInt);
+    			app.videoLayer.setOverlay(EmuEx::ImageOverlayId(overlayEffectId));
+    			app.viewController().postDrawToEmuWindows();
+			}
+    	}else if (key == "videoAspectRatio") {
+    		float ratio = std::stof(std::string(value));
+    		if (ratio >= 0 || ratio == -1.f) {
+    			app.setVideoAspectRatio(ratio);
+    		}
+    	}else if (key == "palette") {
+    		auto &sys = app.system();
+    		sys.setPaletteAiWu(value);
+    	}
+    }
+    //endregion
 }

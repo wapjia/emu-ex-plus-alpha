@@ -153,8 +153,14 @@ void EmuVideoLayer::draw(Gfx::RendererCommands &cmds)
 	using namespace IG::Gfx;
 	bool srgbOutput = srgbColorSpace();
 	auto c = srgbOutput ? brightnessSrgb : brightness;
-	cmds.setColor({c.r, c.g, c.b});
+	cmds.setColor({c.r, c.g, c.b});//设置前景色
 	cmds.set(BlendMode::OFF);
+	//region 爱吾修改：设置背景色
+	if(bgColorAiWu != NULL){
+		cmds.setClearColor(bgColorAiWu);
+		bgColorAiWu = NULL;
+	}
+	//endregion
 	if(effects.size())
 	{
 		cmds.setDither(false);
@@ -443,4 +449,9 @@ void EmuVideoLayer::writeConfig(FileIO &io) const
 	writeOptionValueIfNotDefault(io, CFGKEY_OVERLAY_EFFECT_LEVEL, int8_t(overlayIntensity() * 100.f), 75);
 }
 
+//爱吾修改：增加方法
+void EmuVideoLayer::setBgColorAiWu(IG::Gfx::Color4F bgColor)
+{
+    bgColorAiWu = bgColor;
+}
 }

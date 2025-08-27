@@ -66,6 +66,9 @@ public:
 	void setBrightness(float brightness, ImageChannel);
 	bool readConfig(MapIO &, unsigned key);
 	void writeConfig(FileIO &) const;
+	//region 修改
+	void setBgColorAiWu(IG::Gfx::Color4F bgColor);
+	//endregion
 
 	void setBrightnessScale(float s)
 	{
@@ -115,6 +118,10 @@ private:
 	Gfx::Renderer &renderer();
 	Gfx::ColorSpace videoColorSpace(IG::PixelFormat videoFmt) const;
 	Gfx::TextureSamplerConfig samplerConfig() const;
+
+	//region 背景色
+	IG::Gfx::Color4F bgColorAiWu;
+	//endregion
 };
 
 }

@@ -76,7 +76,7 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 	},
 	systemActions
 	{
-		"System Actions", attach,
+		"系统操作", attach,
 		[this](const Input::Event &e)
 		{
 			if(!system().hasContent())
@@ -105,7 +105,7 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 	},
 	options
 	{
-		"Options", attach,
+		"设置", attach,
 		[this](const Input::Event &e)
 		{
 			pushAndShow(makeView<OptionCategoryView>(), e);
@@ -220,7 +220,7 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 	},
 	about
 	{
-		"About", attach,
+		"关于", attach,
 		[this](const Input::Event &e)
 		{
 			pushAndShow(makeView<CreditsView>(EmuSystem::creditsViewStr), e);
@@ -306,20 +306,25 @@ void MainMenuView::onShow()
 
 void MainMenuView::loadFileBrowserItems()
 {
+	/* 爱吾修改：去掉这些功能
 	item.emplace_back(&loadGame);
 	item.emplace_back(&recentGames);
 	if(EmuSystem::hasBundledGames && app().showsBundledGames)
 	{
 		item.emplace_back(&bundledGames);
 	}
+	*/
 }
 
 void MainMenuView::loadStandardItems()
 {
 	item.emplace_back(&systemActions);
+	/* 爱吾修改：去掉这些功能
 	item.emplace_back(&onScreenInputManager);
 	item.emplace_back(&inputManager);
+	*/
 	item.emplace_back(&options);
+	/* 爱吾修改：去掉这些功能
 	if(used(scanWiimotes) && app().showsBluetoothScan)
 	{
 		item.emplace_back(&scanWiimotes);
@@ -328,8 +333,11 @@ void MainMenuView::loadStandardItems()
 		item.emplace_back(&bluetoothDisconnect);
 	}
 	item.emplace_back(&benchmark);
+	*/
 	item.emplace_back(&about);
+	/* 爱吾修改：去掉这些功能
 	item.emplace_back(&exitApp);
+	*/
 }
 
 void MainMenuView::reloadItems()
@@ -342,7 +350,7 @@ void MainMenuView::reloadItems()
 OptionCategoryView::OptionCategoryView(ViewAttachParams attach):
 	TableView
 	{
-		"Options",
+		"设置",
 		attach,
 		[this](ItemMessage msg) -> ItemReply
 		{
@@ -356,49 +364,49 @@ OptionCategoryView::OptionCategoryView(ViewAttachParams attach):
 	subConfig
 	{
 		{
-			"Frame Timing", attach,
+			"帧时间", attach,
 			[this](const Input::Event &e)
 			{
 				pushAndShow(makeView<FrameTimingView>(), e);
 			}
 		},
 		{
-			"Video", attach,
+			"视频", attach,
 			[this](const Input::Event &e)
 			{
 				pushAndShow(app().makeView(attachParams(), EmuApp::ViewID::VIDEO_OPTIONS), e);
 			}
 		},
 		{
-			"Audio", attach,
+			"音频", attach,
 			[this](const Input::Event &e)
 			{
 				pushAndShow(app().makeView(attachParams(), EmuApp::ViewID::AUDIO_OPTIONS), e);
 			}
 		},
 		{
-			"System", attach,
+			"系统", attach,
 			[this](const Input::Event &e)
 			{
 				pushAndShow(app().makeView(attachParams(), EmuApp::ViewID::SYSTEM_OPTIONS), e);
 			}
 		},
 		{
-			"File Paths", attach,
+			"文件路径", attach,
 			[this](const Input::Event &e)
 			{
 				pushAndShow(app().makeView(attachParams(), EmuApp::ViewID::FILE_PATH_OPTIONS), e);
 			}
 		},
 		{
-			"GUI", attach,
+			"界面", attach,
 			[this](const Input::Event &e)
 			{
 				pushAndShow(app().makeView(attachParams(), EmuApp::ViewID::GUI_OPTIONS), e);
 			}
 		},
 		{
-			"Online Documentation", attach,
+			"在线文档", attach,
 			[this]
 			{
 				appContext().openURL("https://www.explusalpha.com/contents/emuex/documentation");

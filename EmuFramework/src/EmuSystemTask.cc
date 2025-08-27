@@ -461,6 +461,12 @@ void EmuSystemTask::notifyWindowPresented()
 	}
 }
 
+//爱吾修改：增加方法
+FrameRateConfig EmuSystemTask::getFrameRateConfigAiWu()
+{
+	return frameRateConfig;
+}
+
 bool FrameRateDetector::addFrame(FrameParams params)
 {
 	if(!hasTime(params.lastTime))
