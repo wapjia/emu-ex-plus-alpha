@@ -198,6 +198,7 @@ static void AddCheatEntry(const char *name, uint32 addr, uint8 val, int compare,
 */
 void FCEU_LoadGameCheats(FILE *override, int override_existing)
 {
+	/* 爱吾修改：去掉原版的.cht文件的金手指逻辑，防止干扰爱吾的金手指系统
 	FILE *fp;
 	unsigned int addr;
 	unsigned int val;
@@ -210,14 +211,14 @@ void FCEU_LoadGameCheats(FILE *override, int override_existing)
 	char namebuf[128] = { 0 };
 	int tc = 0;
 	char *fn;
-
+	*/
 	if (override_existing)
 	{
 		numsubcheats = 0;
 		if (cheatMap)
 			FCEUI_RefreshCheatMap();
 	}
-
+	/* 爱吾修改：去掉原版的.cht文件的金手指逻辑，防止干扰爱吾的金手指系统
 	if(override)
 		fp = override;
 	else
@@ -294,6 +295,7 @@ void FCEU_LoadGameCheats(FILE *override, int override_existing)
 
 	if(!override)
 		fclose(fp);
+	*/
 }
 
 void FCEU_SaveGameCheats(FILE* fp, int release)

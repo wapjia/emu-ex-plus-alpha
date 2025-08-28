@@ -187,7 +187,11 @@ public:
 	bool removeCheat(Cheat&);
 	void forEachCheat(DelegateFunc<bool(Cheat&, std::string_view)>);
 	void forEachCheatCode(Cheat&, DelegateFunc<bool(CheatCode&, std::string_view)>);
-
+	//region 爱吾修改
+	void setCheatListAiWu(const std::list<std::string>& cheatList);
+	std::string getPaletteAiWu();
+	void setPaletteAiWu(std::string_view path);
+	//endregion
 private:
 	void cacheUsingZapper();
 	void setDefaultPalette(IO &io);

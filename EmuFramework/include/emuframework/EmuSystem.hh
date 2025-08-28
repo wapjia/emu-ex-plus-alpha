@@ -352,6 +352,7 @@ public:
 	void clearGamePaths();
 	char saveSlotChar(int slot) const;
 	char saveSlotCharUpper(int slot) const;
+	const char *saveSlotCharAiWu(int slot) const;//爱吾修改：修改即时存档插槽的名字
 	void flushBackupMemory(EmuApp &, BackupMemoryDirtyFlags flags = 0xFF);
 	void onBackupMemoryWritten(BackupMemoryDirtyFlags flags = 0xFF);
 	bool updateBackupMemoryCounter();

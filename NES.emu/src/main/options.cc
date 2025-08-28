@@ -28,7 +28,7 @@ std::span<const AspectRatioInfo> NesSystem::aspectRatioInfos()
 {
 	static constexpr AspectRatioInfo aspectRatioInfo[]
 	{
-		{"4:3 (Original)", {4, 3}},
+		{"4:3 (原画)", {4, 3}},
 		EMU_SYSTEM_DEFAULT_ASPECT_RATIO_INFO_INIT
 	};
 	return aspectRatioInfo;
@@ -39,6 +39,10 @@ void NesSystem::onOptionsLoaded()
 	FCEUI_SetSoundQuality(optionSoundQuality);
 	FCEUI_DisableSpriteLimitation(!optionSpriteLimit);
 	setDefaultPalette(appContext(), defaultPalettePath);
+	//爱吾修改：增加默认磁碟机Bios(Disk System BIOS)路径
+	if(fdsBiosPath.empty()){
+		fdsBiosPath = std::string(FS::pathString(appContext().supportPath(), "Disksys.rom"));
+	}
 }
 
 void NesSystem::onSessionOptionsLoaded(EmuApp &app)

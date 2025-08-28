@@ -534,6 +534,18 @@ char EmuSystem::saveSlotCharUpper(int slot) const
 	}
 }
 
+//爱吾修改：修改通用的即时存档插槽的名字
+const char* EmuSystem::saveSlotCharAiWu(int slot) const
+{
+	static const char* slotStrings[] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"};
+
+	if (slot >= 0 && slot <= 9) {
+		return slotStrings[slot];
+	} else {
+		return slotStrings[10];
+	}
+}
+
 void EmuSystem::sessionOptionSet()
 {
 	if(!hasContent())

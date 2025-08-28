@@ -124,9 +124,24 @@ static char saveSlotCharNES(int slot)
 	}
 }
 
+//region 爱吾修改
+std::string NesSystem::getPaletteAiWu()
+{
+	return defaultPalettePath;
+}
+void NesSystem::setPaletteAiWu(std::string_view path)
+{
+	if(!path.empty())
+		defaultPalettePath = std::string(path.data(), path.size());
+	else
+		defaultPalettePath = {};
+	setDefaultPalette(appContext(), defaultPalettePath);
+}
+//endregion
+
 FS::FileString NesSystem::stateFilename(int slot, std::string_view name) const
 {
-	return format<FS::FileString>("{}.fc{}", name, saveSlotCharNES(slot));
+	return format<FS::FileString>("{}.fc{}", name, saveSlotCharAiWu(slot));//爱吾修改：修改即时存档插槽名
 }
 
 void NesSystem::readState(EmuApp &app, std::span<uint8_t> buff)

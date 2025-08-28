@@ -24,6 +24,7 @@
 #include "MainSystem.hh"
 #include <fceu/driver.h>
 #include <fceu/cheat.h>
+#include "MainSystem.hh"
 
 void EncodeGG(char *str, int a, int v, int c);
 void RebuildSubCheats();
@@ -391,4 +392,88 @@ EditCheatsView::EditCheatsView(ViewAttachParams attach, CheatsView& cheatsView):
 		[this](const Input::Event& e) { addNewCheat("Input RAM Address Hex", e, 0); }
 	} {}
 
+//region 爱吾修改
+static std::vector<std::string> split(std::string s,char ch)
+{
+    int start=0;
+    int len=0;
+    std::vector<std::string> ret;
+    for(int i=0;i<s.length();i++){
+        if(s[i]==ch){
+            ret.push_back(s.substr(start,len));
+            start=i+1;
+            len=0;
+        }
+        else{
+            len++;
+        }
+    }
+    if(start<s.length())
+        ret.push_back(s.substr(start,len));
+    return ret;
+}
+void NesSystem::setCheatListAiWu(const std::list<std::string>& cheatList)
+{
+    if(!hasContent())
+        return;
+    //先清空金手指
+	cheats.clear();
+    //再添加新的金手指
+	for (const std::string& cheat : cheatList)
+	{
+        //先判断是不是RAM
+        const char *str = cheat.c_str();
+		bool isRam = std::string_view{str}.find('-') != std::string_view::npos;
+        if(isRam){//RAM
+            std::vector<std::string> strs = split(cheat,'-');
+        	if (strs.empty())
+        	{
+        		continue;
+        	}
+            //地址
+            unsigned address = parseHex(strs[0].c_str());
+            if(address > 0xFFFF)
+            {
+                continue;
+            }
+            //比较值（可选）
+            int compare = -1;
+            if(strs.size() == 3)
+            {
+                compare = parseHex(strs[1].c_str());
+                if(compare > 0xFF)
+                {
+                    continue;
+                }
+            }
+            //值
+            int lastIndex = strs.size()-1;
+            unsigned value = parseHex(strs[lastIndex].c_str());
+            if(value > 0xFF)
+            {
+                continue;
+            }
+        	auto cheatPtr = &static_cast<Cheat&>(cheats.emplace_back("RAM Cheat"));
+        	cheatPtr->codes.emplace_back(address, value, compare, 0);
+			cheatPtr->status = true;
+        } else {//GG
+            if(!isValidGGCodeLen(str))
+            {
+                continue;
+            }
+            uint16 address; uint8 value; int compare;
+            if(!FCEUI_DecodeGG(str, &address, &value, &compare))
+            {
+                continue;
+            }
+        	auto cheatPtr = &static_cast<Cheat&>(cheats.emplace_back("GG Cheat"));
+        	cheatPtr->codes.emplace_back(address, value, compare, 1);
+			cheatPtr->status = true;
+        }
+    }
+	log.info("new cheat count:{}", cheats.size());
+    //刷新金手指
+	RebuildSubCheats();
+}
+//endregion
 }
