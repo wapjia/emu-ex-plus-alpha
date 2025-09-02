@@ -85,7 +85,7 @@ void GbaSystem::reset(EmuApp &, ResetMode mode)
 
 FS::FileString GbaSystem::stateFilename(int slot, std::string_view name) const
 {
-	return IG::format<FS::FileString>("{}{}.sgm", name, saveSlotChar(slot));
+	return IG::format<FS::FileString>("{}{}.sgm", name, saveSlotCharAiWu(slot));//爱吾修改：修改即时存档插槽名
 }
 
 void GbaSystem::readState(EmuApp &app, std::span<uint8_t> buff)
@@ -215,7 +215,7 @@ void GbaSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDelegat
 	CPUInit(gGba, biosRom);
 	CPUReset(gGba);
 	saveStateSize = CPUWriteState(gGba, DynArray<uint8_t>{maxStateSize}.data());
-	readCheatFile();
+	//readCheatFile();//爱吾修改：去掉原版读取金手指逻辑
 }
 
 static void updateColorMap(auto &map, const PixelDesc &pxDesc)

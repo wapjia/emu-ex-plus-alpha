@@ -145,7 +145,9 @@ public:
 	bool removeCheat(Cheat&);
 	void forEachCheat(DelegateFunc<bool(Cheat&, std::string_view)>);
 	void forEachCheatCode(Cheat&, DelegateFunc<bool(CheatCode&, std::string_view)>);
-
+	//region 爱吾修改
+	void setCheatListAiWu(const std::list<std::string>& cheatList);
+	//endregion
 private:
 	void readCheatFile();
 	void writeCheatFile();

@@ -330,4 +330,34 @@ EditCheatsView::EditCheatsView(ViewAttachParams attach, CheatsView& cheatsView):
 		[this](const Input::Event& e) { addNewCheat(cheatInputString(true), e, 1); }
 	} {}
 
+//爱吾修改
+void GbaSystem::setCheatListAiWu(const std::list<std::string>& cheatList)
+{
+	if(!hasContent())
+		return;
+	//先删除所有金手指
+	cheatsDeleteAll(gGba.cpu, false);
+	//然后写入
+	for (const std::string& cheat : cheatList)
+	{
+		auto tempStr{IG::toUpperCase(cheat)};
+		int len = tempStr.size();
+		if(len == 16){//GS v12 XXXXXXXXYYYYYYYY
+			cheatsAddGSACode(gGba.cpu, tempStr.data(), "", false);
+			continue;
+		}
+		if(len == 17) {//GS v3 XXXXXXXX-YYYYYYYY
+			if (tempStr[8] == '-')
+			{
+				tempStr.erase(tempStr.begin() + 8);
+			}
+			cheatsAddGSACode(gGba.cpu, tempStr.data(), "" , true);
+			continue;
+		}
+		if(len == 13) {//AR XXXXXXXX YYYY
+			cheatsAddCBACode(gGba.cpu, tempStr.data(), "");
+		}
+	}
+}
+
 }

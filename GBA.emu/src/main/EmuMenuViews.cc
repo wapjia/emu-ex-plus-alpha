@@ -43,14 +43,14 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 {
 	TextMenuItem biosItems[3]
 	{
-		{"Auto", attachParams(), {.id = AutoTristate::Auto}},
-		{"Off",  attachParams(), {.id = AutoTristate::Off}},
-		{"On",   attachParams(), {.id = AutoTristate::On}},
+		{"自动", attachParams(), {.id = AutoTristate::Auto}},
+		{"关",  attachParams(), {.id = AutoTristate::Off}},
+		{"开",   attachParams(), {.id = AutoTristate::On}},
 	};
 
 	MultiChoiceMenuItem bios
 	{
-		"Use BIOS", attachParams(),
+		"使用BIOS", attachParams(),
 		MenuId{system().useBios.value()},
 		biosItems,
 		{
@@ -65,14 +65,14 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 
 	TextMenuItem rtcItem[3]
 	{
-		{"Auto", attachParams(), {.id = RtcMode::AUTO}},
-		{"Off",  attachParams(), {.id = RtcMode::OFF}},
-		{"On",   attachParams(), {.id = RtcMode::ON}},
+		{"自动", attachParams(), {.id = RtcMode::AUTO}},
+		{"关",  attachParams(), {.id = RtcMode::OFF}},
+		{"开",   attachParams(), {.id = RtcMode::ON}},
 	};
 
 	MultiChoiceMenuItem rtc
 	{
-		"RTC Emulation", attachParams(),
+		"RTC模拟", attachParams(),
 		MenuId{system().optionRtcEmulation.value()},
 		rtcItem,
 		{
@@ -80,7 +80,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 			{
 				if(idx == 0)
 				{
-					t.resetString(rtcIsEnabled() ? "On" : "Off");
+					t.resetString(rtcIsEnabled() ? "开" : "关");
 					return true;
 				}
 				return false;
@@ -95,18 +95,18 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 
 	TextMenuItem saveTypeItem[7]
 	{
-		{"Auto",            attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_AUTO)}},
+		{"自动",            attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_AUTO)}},
 		{"EEPROM",          attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_EEPROM)}},
 		{"SRAM",            attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_SRAM)}},
 		{"Flash (64K)",     attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_FLASH, SIZE_FLASH512)}},
 		{"Flash (128K)",    attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_FLASH, SIZE_FLASH1M)}},
 		{"EEPROM + Sensor", attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_EEPROM_SENSOR)}},
-		{"None",            attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_NONE)}},
+		{"无",            attachParams(), {.id = packSaveTypeOverride(GBA_SAVE_NONE)}},
 	};
 
 	MultiChoiceMenuItem saveType
 	{
-		"Save Type", attachParams(),
+		"存档类型", attachParams(),
 		MenuId{system().optionSaveTypeOverride},
 		saveTypeItem,
 		{
@@ -131,7 +131,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 				};
 				if(saveMemoryHasContent())
 				{
-					pushAndShowModal(makeView<YesNoAlertView>("Really change save type? Existing data in .sav file may be lost so please make a backup before proceeding.",
+					pushAndShowModal(makeView<YesNoAlertView>("确定改变存档类型？.sav文件中的现有数据可能会丢失，因此请在继续之前进行备份",
 						YesNoAlertView::Delegates
 						{
 							.onYes = [this, optVal = item.id](const Input::Event &e)
@@ -153,16 +153,16 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 	#ifdef IG_CONFIG_SENSORS
 	TextMenuItem hardwareSensorItem[5]
 	{
-		{"Auto",          attachParams(), {.id = GbaSensorType::Auto}},
-		{"None",          attachParams(), {.id = GbaSensorType::None}},
-		{"Accelerometer", attachParams(), {.id = GbaSensorType::Accelerometer}},
-		{"Gyroscope",     attachParams(), {.id = GbaSensorType::Gyroscope}},
-		{"Light",         attachParams(), {.id = GbaSensorType::Light}},
+		{"自动",          attachParams(), {.id = GbaSensorType::Auto}},
+		{"无",          attachParams(), {.id = GbaSensorType::None}},
+		{"加速度传感器", attachParams(), {.id = GbaSensorType::Accelerometer}},
+		{"陀螺仪",     attachParams(), {.id = GbaSensorType::Gyroscope}},
+		{"光线传感器",         attachParams(), {.id = GbaSensorType::Light}},
 	};
 
 	MultiChoiceMenuItem hardwareSensor
 	{
-		"Hardware Sensor", attachParams(),
+		"硬件传感器", attachParams(),
 		MenuId{system().sensorType},
 		hardwareSensorItem,
 		{
@@ -197,7 +197,7 @@ public:
 	ConsoleOptionView(ViewAttachParams attach):
 		TableView
 		{
-			"Console Options",
+			"控制台设置",
 			attach,
 			menuItem
 		} {}
@@ -207,7 +207,7 @@ class CustomSystemActionsView : public SystemActionsView
 {
 	TextMenuItem options
 	{
-		"Console Options", attachParams(),
+		"控制台设置", attachParams(),
 		[this](TextMenuItem &, View &, Input::Event e)
 		{
 			if(system().hasContent())
@@ -230,7 +230,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 	using MainAppHelper::system;
 	using MainAppHelper::app;
 
-	TextHeadingMenuItem mixer{"Mixer", attachParams()};
+	TextHeadingMenuItem mixer{"混合器", attachParams()};
 
 	using VolumeChoiceItemArr = std::array<TextMenuItem, 3>;
 
@@ -240,22 +240,22 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 		{
 			TextMenuItem
 			{
-				"Default", attachParams(),
+				"默认", attachParams(),
 				[gbVol]() { soundSetVolume(gGba, 1.f, gbVol); },
 				{.id = 100}
 			},
 			TextMenuItem
 			{
-				"Off", attachParams(),
+				"关", attachParams(),
 				[gbVol]() { soundSetVolume(gGba, 0, gbVol); },
 				{.id = 0}
 			},
 			TextMenuItem
 			{
-				"Custom Value", attachParams(),
+				"自定义", attachParams(),
 				[this, gbVol](Input::Event e)
 				{
-					pushAndShowNewCollectValueRangeInputView<int, 0, 100>(attachParams(), e, "Input 0 to 100", "",
+					pushAndShowNewCollectValueRangeInputView<int, 0, 100>(attachParams(), e, "输入0到100", "",
 						[this, gbVol](CollectTextInputView&, auto val)
 						{
 							soundSetVolume(gGba, val / 100.f, gbVol);
@@ -280,7 +280,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 	{
 		return
 		{
-			gbVol ? "GB APU Volume" : "PCM Volume", attachParams(),
+			gbVol ? "GB APU音量" : "PCM音量", attachParams(),
 			MenuId{soundVolumeAsInt(gGba, gbVol)},
 			volumeLevelItem[gbVol ? 1 : 0],
 			{
@@ -326,16 +326,16 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 	{
 		TextMenuItem
 		{
-			"Default", attachParams(),
+			"默认", attachParams(),
 			[]() { soundSetFiltering(gGba, .5f); },
 			{.id = 50}
 		},
 		TextMenuItem
 		{
-			"Custom Value", attachParams(),
+			"自定义", attachParams(),
 			[this](Input::Event e)
 			{
-				pushAndShowNewCollectValueRangeInputView<int, 0, 100>(attachParams(), e, "Input 0 to 100", "",
+				pushAndShowNewCollectValueRangeInputView<int, 0, 100>(attachParams(), e, "输入0到100", "",
 					[this](CollectTextInputView&, auto val)
 					{
 						soundSetFiltering(gGba, val / 100.f);
@@ -350,7 +350,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 
 	MultiChoiceMenuItem filteringLevel
 	{
-		"Filtering Level", attachParams(),
+		"过滤级别", attachParams(),
 		MenuId{soundFilteringAsInt(gGba)},
 		filteringLevelItem,
 		{
@@ -364,7 +364,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 
 	BoolMenuItem filtering
 	{
-		"Filtering", attachParams(),
+		"过滤", attachParams(),
 		soundGetInterpolation(gGba),
 		[this](BoolMenuItem &item)
 		{
@@ -397,7 +397,7 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper
 
 	BoolMenuItem bios
 	{
-		"Default Use BIOS", attachParams(),
+		"默认使用BIOS", attachParams(),
 		system().defaultUseBios,
 		[this](BoolMenuItem &item)
 		{
@@ -408,14 +408,14 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper
 	#ifdef IG_CONFIG_SENSORS
 	TextMenuItem lightSensorScaleItem[5]
 	{
-		{"Darkness",      attachParams(), {.id = 0}},
-		{"Indoor Light",  attachParams(), {.id = 100}},
-		{"Overcast Day",  attachParams(), {.id = 1000}},
-		{"Sunny Day",     attachParams(), {.id = 10000}},
-		{"Custom Value",  attachParams(),
+		{"黑暗",      attachParams(), {.id = 0}},
+		{"室内光",  attachParams(), {.id = 100}},
+		{"阴天",  attachParams(), {.id = 1000}},
+		{"晴天",     attachParams(), {.id = 10000}},
+		{"自定义",  attachParams(),
 			[this](Input::Event e)
 			{
-				pushAndShowNewCollectValueRangeInputView<int, 0, 50000>(attachParams(), e, "Input 0 to 50000", "",
+				pushAndShowNewCollectValueRangeInputView<int, 0, 50000>(attachParams(), e, "输入0到50000", "",
 					[this](CollectTextInputView&, auto val)
 					{
 						system().lightSensorScaleLux = val;
@@ -430,7 +430,7 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper
 
 	MultiChoiceMenuItem lightSensorScale
 	{
-		"Light Sensor Scale", attachParams(),
+		"光线传感器级别", attachParams(),
 		MenuId{system().lightSensorScaleLux},
 		lightSensorScaleItem,
 		{
@@ -483,7 +483,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		patchesMenuName(appContext(), system().patchesDir), attachParams(),
 		[this](const Input::Event &e)
 		{
-			pushAndShow(makeViewWithName<UserPathSelectView>("Patches", system().userPath(system().patchesDir),
+			pushAndShow(makeViewWithName<UserPathSelectView>("补丁", system().userPath(system().patchesDir),
 				[this](CStringView path)
 				{
 					logMsg("set patches path:%s", path.data());
@@ -524,7 +524,7 @@ public:
 	CustomFilePathOptionView(ViewAttachParams attach): FilePathOptionView{attach, true}
 	{
 		loadStockItems();
-		item.emplace_back(&cheatsPath);
+		//item.emplace_back(&cheatsPath);//爱吾修改：去掉金手指文件路径
 		item.emplace_back(&patchesPath);
 		item.emplace_back(&biosPath);
 	}
