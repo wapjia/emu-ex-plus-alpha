@@ -189,8 +189,8 @@ public:
 	void forEachCheatCode(Cheat&, DelegateFunc<bool(CheatCode&, std::string_view)>);
 	//region 爱吾修改
 	void setCheatListAiWu(const std::list<std::string>& cheatList);
-	std::string getPaletteAiWu();
-	void setPaletteAiWu(std::string_view path);
+	std::string getSystemSettingValueAiWu(std::string_view key);
+	void setSystemSettingValueAiWu(std::string_view key, std::string_view value);
 	//endregion
 private:
 	void cacheUsingZapper();

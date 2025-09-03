@@ -89,14 +89,24 @@ void GbcSystem::reset(EmuApp& app, ResetMode)
 }
 
 //region 爱吾修改
-std::string GbcSystem::getPaletteAiWu()
+std::string GbcSystem::getSystemSettingValueAiWu(std::string_view key)
 {
-	return std::to_string(optionGBPal);
+	if (key == "palette"){
+		return std::to_string(optionGBPal);
+	}else if (key == "useBuiltinGBPalette"){
+		return optionUseBuiltinGBPalette ? "true" : "false";
+	}
+	return "";
 }
-void GbcSystem::setPaletteAiWu(std::string_view path)
+void GbcSystem::setSystemSettingValueAiWu(std::string_view key, std::string_view value)
 {
-	optionGBPal = static_cast<uint8_t>(std::stoi(std::string(path)));
-	applyGBPalette();
+	if (key == "palette"){
+		optionGBPal = static_cast<uint8_t>(std::stoi(std::string(value)));
+		applyGBPalette();
+	}else if (key == "useBuiltinGBPalette"){
+		optionUseBuiltinGBPalette = value == "true";
+		applyGBPalette();
+	}
 }
 //endregion
 

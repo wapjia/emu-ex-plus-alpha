@@ -125,17 +125,21 @@ static char saveSlotCharNES(int slot)
 }
 
 //region 爱吾修改
-std::string NesSystem::getPaletteAiWu()
+std::string NesSystem::getSystemSettingValueAiWu(std::string_view key)
 {
-	return defaultPalettePath;
+	if (key == "palette")
+		return defaultPalettePath;
+	return "";
 }
-void NesSystem::setPaletteAiWu(std::string_view path)
+void NesSystem::setSystemSettingValueAiWu(std::string_view key, std::string_view value)
 {
-	if(!path.empty())
-		defaultPalettePath = std::string(path.data(), path.size());
-	else
-		defaultPalettePath = {};
-	setDefaultPalette(appContext(), defaultPalettePath);
+	if (key == "palette"){
+		if(!value.empty())
+			defaultPalettePath = std::string(value.data(), value.size());
+		else
+			defaultPalettePath = {};
+		setDefaultPalette(appContext(), defaultPalettePath);
+	}
 }
 //endregion
 

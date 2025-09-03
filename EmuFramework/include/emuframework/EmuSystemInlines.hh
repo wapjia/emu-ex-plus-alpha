@@ -361,16 +361,16 @@ void EmuSystem::setCheatListAiWu(const std::list<std::string>& cheats)
 	if(&MainSystem::setCheatListAiWu != &EmuSystem::setCheatListAiWu)
 		static_cast<MainSystem*>(this)->setCheatListAiWu(cheats);
 }
-std::string EmuSystem::getPaletteAiWu()
+std::string EmuSystem::getSystemSettingValueAiWu(std::string_view key)
 {
-	if(&MainSystem::getPaletteAiWu != &EmuSystem::getPaletteAiWu)
-		return static_cast<MainSystem*>(this)->getPaletteAiWu();
+	if(&MainSystem::getSystemSettingValueAiWu != &EmuSystem::getSystemSettingValueAiWu)
+		return static_cast<MainSystem*>(this)->getSystemSettingValueAiWu(key);
 	return "";
 }
-void EmuSystem::setPaletteAiWu(std::string_view path)
+void EmuSystem::setSystemSettingValueAiWu(std::string_view key, std::string_view value)
 {
-	if(&MainSystem::setPaletteAiWu != &EmuSystem::setPaletteAiWu)
-		static_cast<MainSystem*>(this)->setPaletteAiWu(path);
+	if(&MainSystem::setSystemSettingValueAiWu != &EmuSystem::setSystemSettingValueAiWu)
+		static_cast<MainSystem*>(this)->setSystemSettingValueAiWu(key, value);
 }
 //endregion
 }

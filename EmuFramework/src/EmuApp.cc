@@ -1639,11 +1639,10 @@ namespace IG
     		std::ostringstream oss;
 			oss << std::fixed << std::setprecision(2) << app.videoAspectRatio();
 			return oss.str();
-    	}else if (key == "palette") {
+    	}else{
     		auto &sys = app.system();
-    		return sys.getPaletteAiWu();
+    		return sys.getSystemSettingValueAiWu(key);
     	}
-		return "";
     }
 	void ApplicationContext::setSettingValueAiWu(std::string_view key, std::string_view value)
     {
@@ -1677,9 +1676,9 @@ namespace IG
     		if (ratio >= 0 || ratio == -1.f) {
     			app.setVideoAspectRatio(ratio);
     		}
-    	}else if (key == "palette") {
+    	}else{
     		auto &sys = app.system();
-    		sys.setPaletteAiWu(value);
+    		sys.setSystemSettingValueAiWu(key,value);
     	}
     }
     //endregion

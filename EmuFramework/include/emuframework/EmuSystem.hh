@@ -398,8 +398,8 @@ public:
 	static void throwMissingContentDirError();
     //region 爱吾修改
     void setCheatListAiWu(const std::list<std::string>& cheats);
-    std::string getPaletteAiWu();
-    void setPaletteAiWu(std::string_view palette);
+	std::string getSystemSettingValueAiWu(std::string_view key);
+	void setSystemSettingValueAiWu(std::string_view key, std::string_view value);
     //endregion
 
 protected:
