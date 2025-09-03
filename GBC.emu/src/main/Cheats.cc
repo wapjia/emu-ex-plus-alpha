@@ -318,4 +318,25 @@ EditCheatsView::EditCheatsView(ViewAttachParams attach, CheatsView& cheatsView):
 		[this](const Input::Event& e) { addNewCheat("Input xxxxxxxx (GS) or xxx-xxx-xxx (GG) code", e); }
 	} {}
 
+//region 爱吾修改
+void GbcSystem::setCheatListAiWu(const std::list<std::string>& cheatList)
+{
+	if(!hasContent())
+		return;
+	std::string ggCodeStr, gsCodeStr;
+	for (const std::string& cheat : cheatList)
+	{
+		std::string& codeStr = (cheat.find('-') != std::string::npos) ? ggCodeStr : gsCodeStr;
+		if(!codeStr.empty())
+			codeStr += ";";
+		codeStr += cheat;
+	}
+	gbEmu.setGameGenie(ggCodeStr);
+	gbEmu.setGameShark(gsCodeStr);
+	if(ggCodeStr.size())
+		log.info("set GG codes:{}", ggCodeStr);
+	if(gsCodeStr.size())
+		log.info("set GS codes:{}", gsCodeStr);
+}
+//endregion
 }

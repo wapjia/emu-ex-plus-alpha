@@ -88,9 +88,21 @@ void GbcSystem::reset(EmuApp& app, ResetMode)
 	loadBackupMemory(app);
 }
 
+//region 爱吾修改
+std::string GbcSystem::getPaletteAiWu()
+{
+	return std::to_string(optionGBPal);
+}
+void GbcSystem::setPaletteAiWu(std::string_view path)
+{
+	optionGBPal = static_cast<uint8_t>(std::stoi(std::string(path)));
+	applyGBPalette();
+}
+//endregion
+
 FS::FileString GbcSystem::stateFilename(int slot, std::string_view name) const
 {
-	return IG::format<FS::FileString>("{}.0{}.gqs", name, saveSlotCharUpper(slot));
+	return IG::format<FS::FileString>("{}.{}.gqs", name, saveSlotCharAiWu(slot));//爱吾修改：修改即时存档插槽名
 }
 
 void GbcSystem::readState(EmuApp&, std::span<uint8_t> buff)
@@ -184,7 +196,7 @@ void GbcSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDelegat
 			log.info("game {} has built-in palette", gbEmu.romTitle());
 		applyGBPalette();
 	}
-	readCheatFile();
+	//readCheatFile();//爱吾修改：去掉原版读取金手指逻辑
 	applyCheats();
 	saveStateSize = 0;
 	OStream<OutSizeTracker> stream{&saveStateSize};

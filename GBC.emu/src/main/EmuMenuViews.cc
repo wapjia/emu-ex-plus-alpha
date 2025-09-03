@@ -40,7 +40,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 
 	MultiChoiceMenuItem resampler
 	{
-		"Resampler", attachParams(),
+		"重采样器", attachParams(),
 		system().optionAudioResampler.value(),
 		resamplerItem
 	};
@@ -77,31 +77,31 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper
 
 	TextMenuItem gbPaletteItem[13]
 	{
-		{"Original",   attachParams(), setGbPaletteDel(), {.id = 0}},
-		{"Brown",      attachParams(), setGbPaletteDel(), {.id = 1}},
-		{"Red",        attachParams(), setGbPaletteDel(), {.id = 2}},
-		{"Dark Brown", attachParams(), setGbPaletteDel(), {.id = 3}},
-		{"Pastel",     attachParams(), setGbPaletteDel(), {.id = 4}},
-		{"Orange",     attachParams(), setGbPaletteDel(), {.id = 5}},
-		{"Yellow",     attachParams(), setGbPaletteDel(), {.id = 6}},
-		{"Blue",       attachParams(), setGbPaletteDel(), {.id = 7}},
-		{"Dark Blue",  attachParams(), setGbPaletteDel(), {.id = 8}},
-		{"Gray",       attachParams(), setGbPaletteDel(), {.id = 9}},
-		{"Green",      attachParams(), setGbPaletteDel(), {.id = 10}},
-		{"Dark Green", attachParams(), setGbPaletteDel(), {.id = 11}},
-		{"Reverse",    attachParams(), setGbPaletteDel(), {.id = 12}},
+		{"原画",   attachParams(), setGbPaletteDel(), {.id = 0}},
+		{"棕色",      attachParams(), setGbPaletteDel(), {.id = 1}},
+		{"红色",        attachParams(), setGbPaletteDel(), {.id = 2}},
+		{"深棕色", attachParams(), setGbPaletteDel(), {.id = 3}},
+		{"粉彩",     attachParams(), setGbPaletteDel(), {.id = 4}},
+		{"橙色",     attachParams(), setGbPaletteDel(), {.id = 5}},
+		{"黄色",     attachParams(), setGbPaletteDel(), {.id = 6}},
+		{"蓝色",       attachParams(), setGbPaletteDel(), {.id = 7}},
+		{"深蓝色",  attachParams(), setGbPaletteDel(), {.id = 8}},
+		{"灰色",       attachParams(), setGbPaletteDel(), {.id = 9}},
+		{"绿色",      attachParams(), setGbPaletteDel(), {.id = 10}},
+		{"深绿色", attachParams(), setGbPaletteDel(), {.id = 11}},
+		{"颜色反转",    attachParams(), setGbPaletteDel(), {.id = 12}},
 	};
 
 	MultiChoiceMenuItem gbPalette
 	{
-		"GB Palette", attachParams(),
+		"GB调色板", attachParams(),
 		MenuId{system().optionGBPal},
 		gbPaletteItem
 	};
 
 	BoolMenuItem fullSaturation
 	{
-		"Saturated GBC Colors", attachParams(),
+		"饱和GBC颜色", attachParams(),
 		(bool)system().optionFullGbcSaturation,
 		[this](BoolMenuItem &item)
 		{
@@ -127,7 +127,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 {
 	BoolMenuItem useBuiltinGBPalette
 	{
-		"Use Built-in GB Palettes", attachParams(),
+		"使用内置GB调色板", attachParams(),
 		(bool)system().optionUseBuiltinGBPalette,
 		[this](BoolMenuItem &item)
 		{
@@ -139,7 +139,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 
 	BoolMenuItem reportAsGba
 	{
-		"Report Hardware as GBA", attachParams(),
+		"将硬件报告为GBA", attachParams(),
 		system().optionReportAsGba,
 		[this](BoolMenuItem &item, View &, Input::Event e)
 		{
@@ -159,7 +159,7 @@ public:
 	ConsoleOptionView(ViewAttachParams attach):
 		TableView
 		{
-			"Console Options",
+			"控制台设置",
 			attach,
 			menuItem
 		}
@@ -170,7 +170,7 @@ class CustomSystemActionsView : public SystemActionsView
 {
 	TextMenuItem options
 	{
-		"Console Options", attachParams(),
+		"控制台设置", attachParams(),
 		[this](TextMenuItem &, View &, Input::Event e)
 		{
 			if(system().hasContent())
@@ -211,7 +211,7 @@ public:
 	CustomFilePathOptionView(ViewAttachParams attach): FilePathOptionView{attach, true}
 	{
 		loadStockItems();
-		item.emplace_back(&cheatsPath);
+		//item.emplace_back(&cheatsPath);//爱吾修改：去掉金手指文件路径
 	}
 };
 
