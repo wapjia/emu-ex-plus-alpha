@@ -134,7 +134,7 @@ void MdSystem::reset(EmuApp &, ResetMode mode)
 
 FS::FileString MdSystem::stateFilename(int slot, std::string_view name) const
 {
-	return IG::format<FS::FileString>("{}.0{}.gp", name, saveSlotChar(slot));
+	return IG::format<FS::FileString>("{}.{}.gp", name, saveSlotCharAiWu(slot));//爱吾修改：修改即时存档插槽名
 }
 
 static FS::PathString saveFilename(EmuApp &app)
@@ -447,7 +447,7 @@ void MdSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDelegate
 	}
 	#endif
 
-	readCheatFile();
+	//readCheatFile();//爱吾修改：去掉原版读取金手指逻辑
 	applyCheats();
 }
 

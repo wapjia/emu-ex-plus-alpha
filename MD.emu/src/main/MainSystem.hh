@@ -22,6 +22,7 @@
 #include "genplus-config.h"
 #include "system.h"
 #include "state.h"
+#include <list>
 
 extern t_config config;
 
@@ -54,7 +55,7 @@ public:
 
 	Property<bool, CFGKEY_BIG_ENDIAN_SRAM> optionBigEndianSram;
 	Property<bool, CFGKEY_SMS_FM, PropertyDesc<bool>{.defaultValue = true}> optionSmsFM;
-	Property<bool, CFGKEY_6_BTN_PAD> option6BtnPad;
+	Property<bool, CFGKEY_6_BTN_PAD, PropertyDesc<bool>{.defaultValue = true}> option6BtnPad;//爱吾修改：默认开启6按键模式
 	Property<bool, CFGKEY_MULTITAP> optionMultiTap;
 	Property<int8_t, CFGKEY_INPUT_PORT_1, PropertyDesc<int8_t>{.defaultValue = -1, .isValid = isValidWithMinMax<-1, 4>}> optionInputPort1;
 	Property<int8_t, CFGKEY_INPUT_PORT_2, PropertyDesc<int8_t>{.defaultValue = -1, .isValid = isValidWithMinMax<-1, 4>}> optionInputPort2;
@@ -126,7 +127,9 @@ public:
 	bool removeCheat(Cheat&);
 	void forEachCheat(DelegateFunc<bool(Cheat&, std::string_view)>);
 	void forEachCheatCode(Cheat&, DelegateFunc<bool(CheatCode&, std::string_view)>);
-
+	//region 爱吾修改
+	void setCheatListAiWu(const std::list<std::string>& cheatList);
+	//endregion
 private:
 	void setupSmsInput(EmuApp &);
 	void setupMdInput(EmuApp &);

@@ -711,6 +711,31 @@ EditCheatsView::EditCheatsView(ViewAttachParams attach, CheatsView& cheatsView):
 		[this](const Input::Event& e) { addNewCheat(codePromptString(), e); }
 	} {}
 
+//region 爱吾修改
+void MdSystem::setCheatListAiWu(const std::list<std::string>& cheats)
+{
+	if(!hasContent())
+		return;
+	//先清空原来的金手指
+	clearCheatList();
+	//再添加新的金手指
+	for (const std::string& cheat : cheats)
+	{
+		CheatCode code{toUpperCase<CheatCodeString>(cheat)};
+		if(!decodeCheat(code.text.data(), code.address, code.data, code.origData))
+		{
+			log.error("invalid code: {}", cheat);
+			continue;
+		}
+		auto& c = cheatList.emplace_back(Cheat{.name = "AiWu Cheat"});
+		c.codes.emplace_back(std::move(code));
+		c.on = true;
+	}
+	log.info("new cheat count:{}", cheatList.size());
+	//刷新金手指
+	updateCheats();
+}
+//endregion
 }
 
 void ROMCheatUpdate()

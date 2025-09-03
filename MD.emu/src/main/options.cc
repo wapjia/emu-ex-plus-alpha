@@ -27,7 +27,7 @@ std::span<const AspectRatioInfo> MdSystem::aspectRatioInfos()
 {
 	static constexpr AspectRatioInfo aspectRatioInfo[]
 	{
-		{"4:3 (Original)", {4, 3}},
+		{"4:3 (原画)", {4, 3}},
 		EMU_SYSTEM_DEFAULT_ASPECT_RATIO_INFO_INIT
 	};
 	return aspectRatioInfo;
@@ -36,6 +36,16 @@ std::span<const AspectRatioInfo> MdSystem::aspectRatioInfos()
 void MdSystem::onOptionsLoaded()
 {
 	config_ym2413_enabled = optionSmsFM;
+	//爱吾修改：增加默认CD BIOS路径
+	if(cdBiosUSAPath.empty()){
+		cdBiosUSAPath = FS::pathString(appContext().supportPath(), "bios/bios_CD_U.bin");
+	}
+	if(cdBiosJpnPath.empty()){
+		cdBiosJpnPath = FS::pathString(appContext().supportPath(), "bios/bios_CD_J.bin");
+	}
+	if(cdBiosEurPath.empty()){
+		cdBiosEurPath = FS::pathString(appContext().supportPath(), "bios/bios_CD_E.bin");
+	}
 }
 
 void MdSystem::onSessionOptionsLoaded(EmuApp &app)
