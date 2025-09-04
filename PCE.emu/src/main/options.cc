@@ -32,7 +32,7 @@ std::span<const AspectRatioInfo> PceSystem::aspectRatioInfos()
 {
 	static constexpr AspectRatioInfo aspectRatioInfo[]
 	{
-		{"4:3 (Original)", {4, 3}},
+		{"4:3 (原画)", {4, 3}},
 		EMU_SYSTEM_DEFAULT_ASPECT_RATIO_INFO_INIT
 	};
 	return aspectRatioInfo;
@@ -46,6 +46,10 @@ static bool visibleLinesAreValid(VisibleLines lines)
 void PceSystem::onSessionOptionsLoaded(EmuApp &app)
 {
 	set6ButtonPadEnabled(app, option6BtnPad);
+	//爱吾修改：增加默认System Card路径
+	if(sysCardPath.empty()){
+		sysCardPath = FS::pathString(appContext().supportPath(), "System Syscard3 (Japan).pce");
+	}
 }
 
 bool PceSystem::resetSessionOptions(EmuApp &app)

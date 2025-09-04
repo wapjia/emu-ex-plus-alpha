@@ -99,7 +99,9 @@ WallClockTimePoint PceSystem::backupMemoryLastWriteTime(const EmuApp &app) const
 
 FS::FileString PceSystem::stateFilename(int slot, std::string_view name) const
 {
-	return stateFilenameMDFN(*MDFNGameInfo, slot, name, 'q', noMD5InFilenames);
+	//爱吾修改：修改即时存档插槽名
+	//return stateFilenameMDFN(*MDFNGameInfo, slot, name, 'q', noMD5InFilenames);
+	return IG::format<FS::FileString>("{}.nc{}", name, saveSlotCharAiWu(slot));
 }
 
 void PceSystem::closeSystem()
