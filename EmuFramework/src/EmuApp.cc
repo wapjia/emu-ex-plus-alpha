@@ -718,7 +718,7 @@ void EmuApp::pauseEmulation()
 	systemTask.stop();
 	setCPUNeedsLowLatency(appContext(), false);
 	system().pause(*this);
-	setRunSpeed(1.);
+	//setRunSpeed(1.);//爱吾修改：去掉暂停模拟器时重置游戏速度的原版逻辑
 	videoLayer.setBrightnessScale(pausedVideoBrightnessScale);
 }
 
@@ -1006,7 +1006,7 @@ void EmuApp::resetInput()
 {
 	inputManager.turboModifierActive = false;
 	inputManager.turboActions = {};
-	setRunSpeed(1.);
+	//setRunSpeed(1.);//爱吾修改：去掉这里的重置游戏速度的原版逻辑
 }
 
 void EmuApp::setRunSpeed(double speed)
