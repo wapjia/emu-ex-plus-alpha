@@ -437,4 +437,24 @@ EditCheatsView::EditCheatsView(ViewAttachParams attach, CheatsView& cheatsView):
 		[this](const Input::Event& e) { addNewCheat("Input xxxx-xxxx (GG), xxxxxxxx (AR), or GF code", e); }
 	} {}
 
+//爱吾修改
+void Snes9xSystem::setCheatListAiWu(const std::list<std::string>& cheatList)
+{
+	if(!hasContent())
+		return;
+	//先清空原来的金手指
+	S9xDeleteCheats();
+	//再添加新的金手指
+	for (const std::string& cheat : cheatList)
+	{
+		auto index = S9xAddCheatGroup("", cheat);
+		if(index == -1)
+		{//金手指代码无效
+			continue;
+		}
+		//启用金手指
+		S9xEnableCheatGroup(index);
+	}
+	log.info("new cheat count:{}", ::Cheat.group.size());
+}
 }

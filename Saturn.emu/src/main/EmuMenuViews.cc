@@ -399,7 +399,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 
 	BoolMenuItem multitapItem(int idx)
 	{
-		return { std::format("端口{}上的6玩家适配", idx + 1), attachParams(),
+		return { std::format("端口{}上的6玩家模式", idx + 1), attachParams(),
 			system().inputConfig.multitaps[idx],
 			[this, idx](BoolMenuItem &item)
 			{

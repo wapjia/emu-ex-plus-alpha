@@ -12,6 +12,7 @@
 #else
 #include <apu.h>
 #endif
+#include <list>
 
 namespace EmuEx
 {
@@ -76,7 +77,7 @@ public:
 	bool dragWithButton{}; // true to start next mouse drag with a button held
 	DeinterlaceMode deinterlaceMode{DeinterlaceMode::Bob};
 
-	Property<bool, CFGKEY_MULTITAP> optionMultitap;
+	Property<bool, CFGKEY_MULTITAP, PropertyDesc<bool>{.defaultValue = true}> optionMultitap;//爱吾修改：默认启用5玩家模式
 	Property<int8_t, CFGKEY_INPUT_PORT,
 		PropertyDesc<int8_t>{.defaultValue = inputPortMinVal,
 		.isValid = isValidWithMinMax<inputPortMinVal, SNES_JUSTIFIER>}> optionInputPort;
@@ -162,7 +163,9 @@ public:
 	bool removeCheat(Cheat&);
 	void forEachCheat(DelegateFunc<bool(Cheat&, std::string_view)>);
 	void forEachCheatCode(Cheat&, DelegateFunc<bool(CheatCode&, std::string_view)>);
-
+	//region 爱吾修改
+	void setCheatListAiWu(const std::list<std::string>& cheatList);
+	//endregion
 protected:
 	void applyInputPortOption(int portVal, VController &vCtrl);
 	WPt updateAbsolutePointerPosition(WRect gameRect, WPt pos);

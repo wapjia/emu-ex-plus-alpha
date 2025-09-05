@@ -36,7 +36,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 
 	TextMenuItem dspInterpolationItem[5]
 	{
-		{"None",     attachParams(), [this](){ setDSPInterpolation(0); }},
+		{"无",     attachParams(), [this](){ setDSPInterpolation(0); }},
 		{"Linear",   attachParams(), [this](){ setDSPInterpolation(1); }},
 		{"Gaussian", attachParams(), [this](){ setDSPInterpolation(2); }},
 		{"Cubic",    attachParams(), [this](){ setDSPInterpolation(3); }},
@@ -45,7 +45,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 
 	MultiChoiceMenuItem dspInterpolation
 	{
-		"DSP Interpolation", attachParams(),
+		"DSP插值", attachParams(),
 		system().optionAudioDSPInterpolation.value(),
 		dspInterpolationItem
 	};
@@ -63,7 +63,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 {
 	BoolMenuItem multitap
 	{
-		"5-Player Adapter", attachParams(),
+		"5玩家模式", attachParams(),
 		(bool)system().optionMultitap,
 		[this](BoolMenuItem &item)
 		{
@@ -76,7 +76,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 	TextMenuItem inputPortsItem[HAS_NSRT ? 5 : 4]
 	{
 		#ifndef SNES9X_VERSION_1_4
-		{"Auto (NSRT)", attachParams(), setInputPortsDel(), {.id = SNES_AUTO_INPUT}},
+		{"自动(NSRT)", attachParams(), setInputPortsDel(), {.id = SNES_AUTO_INPUT}},
 		#endif
 		{"Gamepads",    attachParams(), setInputPortsDel(), {.id = SNES_JOYPAD}},
 		{"Superscope",  attachParams(), setInputPortsDel(), {.id = SNES_SUPERSCOPE}},
@@ -86,7 +86,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 
 	MultiChoiceMenuItem inputPorts
 	{
-		"Input Ports", attachParams(),
+		"输入端口", attachParams(),
 		MenuId{system().snesInputPort},
 		inputPortsItem
 	};
@@ -104,7 +104,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 
 	TextMenuItem videoSystemItem[4]
 	{
-		{"Auto",             attachParams(), [this](Input::Event e){ setVideoSystem(0, e); }},
+		{"自动",             attachParams(), [this](Input::Event e){ setVideoSystem(0, e); }},
 		{"NTSC",             attachParams(), [this](Input::Event e){ setVideoSystem(1, e); }},
 		{"PAL",              attachParams(), [this](Input::Event e){ setVideoSystem(2, e); }},
 		{"NTSC + PAL Spoof", attachParams(), [this](Input::Event e){ setVideoSystem(3, e); }},
@@ -112,7 +112,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 
 	MultiChoiceMenuItem videoSystem
 	{
-		"System", attachParams(),
+		"系统", attachParams(),
 		system().optionVideoSystem.value(),
 		videoSystemItem
 	};
@@ -124,11 +124,11 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 		app().promptSystemReloadDueToSetOption(attachParams(), e);
 	}
 
-	TextHeadingMenuItem videoHeading{"Video", attachParams()};
+	TextHeadingMenuItem videoHeading{"视频", attachParams()};
 
 	BoolMenuItem allowExtendedLines
 	{
-		"Allow Extended 239/478 Lines", attachParams(),
+		"允许扩展239/478视频线", attachParams(),
 		(bool)system().optionAllowExtendedVideoLines,
 		[this](BoolMenuItem &item)
 		{
@@ -145,7 +145,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 
 	MultiChoiceMenuItem deinterlaceMode
 	{
-		"Deinterlace Mode", attachParams(),
+		"去隔行扫描模式", attachParams(),
 		MenuId{system().deinterlaceMode},
 		deinterlaceModeItems,
 		{
@@ -158,11 +158,11 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 	};
 
 	#ifndef SNES9X_VERSION_1_4
-	TextHeadingMenuItem emulationHacks{"Emulation Hacks", attachParams()};
+	TextHeadingMenuItem emulationHacks{"模拟器黑科技", attachParams()};
 
 	BoolMenuItem blockInvalidVRAMAccess
 	{
-		"Allow Invalid VRAM Access", attachParams(),
+		"允许无效的VRAM访问", attachParams(),
 		(bool)!system().optionBlockInvalidVRAMAccess,
 		[this](BoolMenuItem &item)
 		{
@@ -174,7 +174,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 
 	BoolMenuItem separateEchoBuffer
 	{
-		"Separate Echo Buffer From Ram", attachParams(),
+		"将回声缓冲区与Ram分开", attachParams(),
 		(bool)system().optionSeparateEchoBuffer,
 		[this](BoolMenuItem &item)
 		{
@@ -194,10 +194,10 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 	TextMenuItem superFXClockItem[2]
 	{
 		{"100%", attachParams(), [this]() { setSuperFXClock(100); }},
-		{"Custom Value", attachParams(),
+		{"自定义", attachParams(),
 			[this](Input::Event e)
 			{
-				pushAndShowNewCollectValueInputView<int>(attachParams(), e, "Input 5 to 250", "",
+				pushAndShowNewCollectValueInputView<int>(attachParams(), e, "输入5到250", "",
 					[this](CollectTextInputView&, auto val)
 					{
 						if(system().optionSuperFXClockMultiplier.isValid(val))
@@ -209,7 +209,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 						}
 						else
 						{
-							app().postErrorMessage("Value not in range");
+							app().postErrorMessage("值不在范围内");
 							return false;
 						}
 					});
@@ -220,7 +220,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 
 	MultiChoiceMenuItem superFXClock
 	{
-		"SuperFX Clock Multiplier", attachParams(),
+		"SuperFX时钟倍率", attachParams(),
 		[this]()
 		{
 			if(system().optionSuperFXClockMultiplier == 100)
@@ -259,7 +259,7 @@ public:
 	ConsoleOptionView(ViewAttachParams attach):
 		TableView
 		{
-			"Console Options",
+			"控制台设置",
 			attach,
 			menuItem
 		}
@@ -271,7 +271,7 @@ class CustomSystemActionsView : public SystemActionsView
 private:
 	TextMenuItem options
 	{
-		"Console Options", attachParams(),
+		"控制台设置", attachParams(),
 		[this](TextMenuItem &, View &, Input::Event e)
 		{
 			if(system().hasContent())
@@ -314,7 +314,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		patchesMenuName(appContext(), system().patchesDir), attachParams(),
 		[this](const Input::Event &e)
 		{
-			pushAndShow(makeViewWithName<UserPathSelectView>("Patches", system().userPath(system().patchesDir),
+			pushAndShow(makeViewWithName<UserPathSelectView>("补丁", system().userPath(system().patchesDir),
 				[this](CStringView path)
 				{
 					logMsg("set patches path:%s", path.data());
@@ -326,7 +326,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 
 	static std::string satMenuName(IG::ApplicationContext ctx, std::string_view userPath)
 	{
-		return std::format("Satellaview Files: {}", userPathToDisplayName(ctx, userPath));
+		return std::format("Satellaview文件: {}", userPathToDisplayName(ctx, userPath));
 	}
 
 	TextMenuItem satPath
@@ -334,7 +334,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		satMenuName(appContext(), system().satDir), attachParams(),
 		[this](const Input::Event &e)
 		{
-			pushAndShow(makeViewWithName<UserPathSelectView>("Satellaview Files", system().userPath(system().satDir),
+			pushAndShow(makeViewWithName<UserPathSelectView>("Satellaview文件", system().userPath(system().satDir),
 				[this](CStringView path)
 				{
 					logMsg("set satellaview files path:%s", path.data());
@@ -353,9 +353,14 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 				app().validSearchPath(FS::dirnameUri(system().bsxBiosPath)),
 				[this](CStringView path, FS::file_type)
 				{
-					system().bsxBiosPath = path;
-					logMsg("set BS-X bios:%s", path.data());
-					bsxBios.compile(bsxMenuName(path));
+					//爱吾修改：增加默认BIOS路径
+					if(path.empty()){
+						system().bsxBiosPath = std::string(FS::pathString(appContext().supportPath(), "BS-X BIOS (English With DRM).sfc"));
+					}else{
+						system().bsxBiosPath = path;
+					}
+					logMsg("set BS-X bios:%s", system().bsxBiosPath.c_str());
+					bsxBios.compile(bsxMenuName(system().bsxBiosPath));
 					return true;
 				}, Snes9xSystem::hasBiosExtension), e);
 		}
@@ -375,9 +380,14 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 				app().validSearchPath(FS::dirnameUri(system().sufamiBiosPath)),
 				[this](CStringView path, FS::file_type)
 				{
-					system().sufamiBiosPath = path;
-					logMsg("set Sufami Turbo bios:%s", path.data());
-					sufamiBios.compile(sufamiMenuName(path));
+					//爱吾修改：增加默认BIOS路径
+					if(path.empty()){
+						system().sufamiBiosPath = std::string(FS::pathString(appContext().supportPath(), "Sufami Turbo BIOS (J).smc"));
+					}else{
+						system().sufamiBiosPath = path;
+					}
+					logMsg("set Sufami Turbo bios:%s", system().sufamiBiosPath.c_str());
+					sufamiBios.compile(sufamiMenuName(system().sufamiBiosPath));
 					return true;
 				}, Snes9xSystem::hasBiosExtension), e);
 		}
@@ -392,7 +402,7 @@ public:
 	CustomFilePathOptionView(ViewAttachParams attach): FilePathOptionView{attach, true}
 	{
 		loadStockItems();
-		item.emplace_back(&cheatsPath);
+		//item.emplace_back(&cheatsPath);//爱吾修改：去掉金手指文件路径
 		item.emplace_back(&patchesPath);
 		item.emplace_back(&satPath);
 		item.emplace_back(&bsxBios);

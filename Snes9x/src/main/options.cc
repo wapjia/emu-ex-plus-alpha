@@ -22,7 +22,7 @@ std::span<const AspectRatioInfo> Snes9xSystem::aspectRatioInfos()
 {
 	static constexpr AspectRatioInfo aspectRatioInfo[]
 	{
-		{"4:3 (Original)", {4, 3}},
+		{"4:3 (原画)", {4, 3}},
 		EMU_SYSTEM_DEFAULT_ASPECT_RATIO_INFO_INIT
 	};
 	return aspectRatioInfo;
@@ -50,6 +50,13 @@ void Snes9xSystem::onOptionsLoaded()
 	#ifndef SNES9X_VERSION_1_4
 	SNES::dsp.spc_dsp.interpolation = optionAudioDSPInterpolation;
 	#endif
+	//爱吾修改：增加默认BIOS路径
+	if(bsxBiosPath.empty()){
+		bsxBiosPath = std::string(FS::pathString(appContext().supportPath(), "BS-X BIOS (English With DRM).sfc"));
+	}
+	if(sufamiBiosPath.empty()){
+		sufamiBiosPath = std::string(FS::pathString(appContext().supportPath(), "Sufami Turbo BIOS (J).smc"));
+	}
 }
 
 bool Snes9xSystem::readConfig(ConfigType type, MapIO &io, unsigned key)

@@ -1567,7 +1567,7 @@ bool8 CMemory::LoadROMInt (int32 ROMfillSize)
 	S9xReset();
 
 	S9xDeleteCheats();
-	S9xLoadCheatFile(S9xGetFilename(".cht", CHEAT_DIR).c_str());
+	//S9xLoadCheatFile(S9xGetFilename(".cht", CHEAT_DIR).c_str());//爱吾修改：去掉原版的.cht文件的金手指逻辑，防止干扰爱吾的金手指系统
 
     return (TRUE);
 }
@@ -1702,7 +1702,7 @@ bool8 CMemory::LoadMultiCartInt ()
 	S9xReset();
 
 	S9xDeleteCheats();
-	S9xLoadCheatFile(S9xGetFilename(".cht", CHEAT_DIR).c_str());
+	//S9xLoadCheatFile(S9xGetFilename(".cht", CHEAT_DIR).c_str());//爱吾修改：去掉原版的.cht文件的金手指逻辑，防止干扰爱吾的金手指系统
 
 	return (TRUE);
 }

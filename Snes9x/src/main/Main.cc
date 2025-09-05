@@ -113,7 +113,7 @@ void Snes9xSystem::reset(EmuApp &, ResetMode mode)
 
 FS::FileString Snes9xSystem::stateFilename(int slot, std::string_view name) const
 {
-	return IG::format<FS::FileString>("{}.0{}." FREEZE_EXT, name, saveSlotCharUpper(slot));
+	return IG::format<FS::FileString>("{}.{}." FREEZE_EXT, name, saveSlotCharAiWu(slot));//爱吾修改：修改即时存档插槽名
 }
 
 std::string_view Snes9xSystem::stateFilenameExt() const { return "." FREEZE_EXT; }
