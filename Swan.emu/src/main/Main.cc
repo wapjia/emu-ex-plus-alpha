@@ -64,7 +64,9 @@ void WsSystem::reset(EmuApp &, ResetMode mode)
 
 FS::FileString WsSystem::stateFilename(int slot, std::string_view name) const
 {
-	return stateFilenameMDFN(*MDFNGameInfo, slot, name, 'a', noMD5InFilenames);
+	//爱吾修改：修改即时存档插槽名
+	//return stateFilenameMDFN(*MDFNGameInfo, slot, name, 'a', noMD5InFilenames);
+	return IG::format<FS::FileString>("{}.nc{}", name, saveSlotCharAiWu(slot));
 }
 
 size_t WsSystem::stateSize() { return stateSizeMDFN(); }
