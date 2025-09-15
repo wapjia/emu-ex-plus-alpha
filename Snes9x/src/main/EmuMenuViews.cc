@@ -355,7 +355,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 				{
 					//爱吾修改：增加默认BIOS路径
 					if(path.empty()){
-						system().bsxBiosPath = std::string(FS::pathString(appContext().supportPath(), "BS-X BIOS (English With DRM).sfc"));
+						system().bsxBiosPath = std::string(FS::pathString(appContext().supportPath(), "BS-X.bin"));
 					}else{
 						system().bsxBiosPath = path;
 					}
@@ -382,7 +382,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 				{
 					//爱吾修改：增加默认BIOS路径
 					if(path.empty()){
-						system().sufamiBiosPath = std::string(FS::pathString(appContext().supportPath(), "Sufami Turbo BIOS (J).smc"));
+						system().sufamiBiosPath = std::string(FS::pathString(appContext().supportPath(), "STBIOS.bin"));
 					}else{
 						system().sufamiBiosPath = path;
 					}

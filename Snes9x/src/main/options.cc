@@ -52,10 +52,10 @@ void Snes9xSystem::onOptionsLoaded()
 	#endif
 	//爱吾修改：增加默认BIOS路径
 	if(bsxBiosPath.empty()){
-		bsxBiosPath = std::string(FS::pathString(appContext().supportPath(), "BS-X BIOS (English With DRM).sfc"));
+		bsxBiosPath = std::string(FS::pathString(appContext().supportPath(), "BS-X.bin"));
 	}
 	if(sufamiBiosPath.empty()){
-		sufamiBiosPath = std::string(FS::pathString(appContext().supportPath(), "Sufami Turbo BIOS (J).smc"));
+		sufamiBiosPath = std::string(FS::pathString(appContext().supportPath(), "STBIOS.bin"));
 	}
 }
 
