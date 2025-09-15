@@ -39,7 +39,7 @@ constexpr SystemLogger log{"Saturn.emu"};
 
 static bool hasBIOSExtension(std::string_view name)
 {
-	return endsWithAnyCaseless(name, ".bin");
+	return endsWithAnyCaseless(name, ".bin", ".ic1");//爱吾修改：增加kof95ROMPath的文件格式
 }
 
 class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
@@ -113,9 +113,14 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 				app().validSearchPath(FS::dirnameUri(system().kof95ROMPath)),
 				[this](CStringView path, FS::file_type type)
 				{
-					system().kof95ROMPath = path;
+					//爱吾修改：增加默认拳皇95 ROM路径
+					if(path.empty()){
+						system().kof95ROMPath = std::string(FS::pathString(appContext().supportPath(), "mpr-18811-mx.ic1"));
+					}else{
+						system().kof95ROMPath = path;
+					}
 					log.info("set bios:{}", system().kof95ROMPath);
-					kof95ROMPath.compile(kof95MenuEntryStr(path));
+					kof95ROMPath.compile(kof95MenuEntryStr(system().kof95ROMPath));
 					return true;
 				}, hasBIOSExtension), e);
 		}
@@ -136,9 +141,14 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 				app().validSearchPath(FS::dirnameUri(system().ultramanROMPath)),
 				[this](CStringView path, FS::file_type type)
 				{
-					system().ultramanROMPath = path;
+					//爱吾修改：增加默认奥特曼ROM路径
+					if(path.empty()){
+						system().ultramanROMPath = std::string(FS::pathString(appContext().supportPath(), "mpr-19367-mx.ic1"));
+					}else{
+						system().ultramanROMPath = path;
+					}
 					log.info("set bios:{}", system().ultramanROMPath);
-					ultramanROMPath.compile(ultramanMenuEntryStr(path));
+					ultramanROMPath.compile(ultramanMenuEntryStr(system().ultramanROMPath));
 					return true;
 				}, hasBIOSExtension), e);
 		}

@@ -47,6 +47,12 @@ void SaturnSystem::onSessionOptionsLoaded(EmuApp &app)
 	if(jpBiosPath.empty()){
 		jpBiosPath = std::string(FS::pathString(appContext().supportPath(), "sega_101.bin"));
 	}
+	if(kof95ROMPath.empty()){
+		kof95ROMPath = std::string(FS::pathString(appContext().supportPath(), "mpr-18811-mx.ic1"));
+	}
+	if(ultramanROMPath.empty()){
+		ultramanROMPath = std::string(FS::pathString(appContext().supportPath(), "mpr-19367-mx.ic1"));
+	}
 }
 
 bool SaturnSystem::resetSessionOptions(EmuApp &app)
