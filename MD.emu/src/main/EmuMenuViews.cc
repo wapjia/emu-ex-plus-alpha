@@ -334,7 +334,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		return [this, region](const Input::Event &e)
 		{
 			pushAndShow(makeViewWithName<DataFileSelectView<>>(biosHeadingStr[regionCodeToIdx(region)],
-				app().validSearchPath(pathFromRegion(region)),
+				app().validSearchPath(FS::dirnameUri(pathFromRegion(region))),//修复原版传入值为文件路径的错误
 				[this, region](CStringView path, FS::file_type type)
 				{
 					//爱吾修改：增加默认CD BIOS路径
