@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -19,7 +19,7 @@
 #define CARTRIDGE_HXX
 
 class Properties;
-class FilesystemNode;
+class FSNode;
 class CartDebugWidget;
 class CartRamWidget;
 class GuiObject;
@@ -32,7 +32,7 @@ class Settings;
 #ifdef DEBUGGER_SUPPORT
   namespace GUI {
     class Font;
-  }
+  }  // namespace GUI
 #endif
 
 /**
@@ -63,13 +63,20 @@ class Cartridge : public Device
       @param settings  A reference to the various settings (read-only)
       @param md5       The md5sum of the cart image
     */
-    Cartridge(const Settings& settings, const string& md5);
+    Cartridge(const Settings& settings, string_view md5);
     ~Cartridge() override = default;
+
+    /**
+     * @brief Set the game properties container
+     *
+     * @param props   game properties container
+     */
+    void setProperties(const Properties* props);
 
     /**
       Set/query some information about this cartridge.
     */
-    void setAbout(const string& about, const string& type, const string& id);
+    void setAbout(string_view about, string_view type, string_view id);
     const string& about() const { return myAbout; }
     const string& detectedType() const { return myDetectedType; }
     const string& multiCartID() const  { return myMultiCartID;  }
@@ -79,7 +86,7 @@ class Cartridge : public Device
 
       @param out  The output file to save the image
     */
-    bool saveROM(const FilesystemNode& out) const;
+    bool saveROM(const FSNode& out) const;
 
     /**
       Lock/unlock bankswitching and other hotspot capabilities. The debugger
@@ -89,6 +96,8 @@ class Cartridge : public Device
     void lockHotspots()   { myHotspotsLocked = true;  }
     void unlockHotspots() { myHotspotsLocked = false; }
     bool hotspotsLocked() const { return myHotspotsLocked; }
+
+    void enableRandomHotspots(bool enable) { myRandomHotspots = enable; }
 
     /**
       Get the default startup bank for a cart.  This is the bank where
@@ -166,7 +175,7 @@ class Cartridge : public Device
       @return  Address of illegal access if one occurred, else 0
     */
     uInt16 getIllegalRAMReadAccess() const {
-      return myRamReadAccesses.size() > 0 ? myRamReadAccesses[0] : 0;
+      return !myRamReadAccesses.empty() ? myRamReadAccesses[0] : 0;
     }
 
     /**
@@ -176,7 +185,9 @@ class Cartridge : public Device
 
       @return  Address of illegal access if one occurred, else 0
     */
-    uInt16 getIllegalRAMWriteAccess() const { return myRamWriteAccess; }
+    uInt16 getIllegalRAMWriteAccess() const {
+      return myRamWriteAccess;
+    }
 
     /**
       Query the access counters
@@ -255,6 +266,13 @@ class Cartridge : public Device
     virtual uInt16 ramBankCount() const { return 0; }
 
     /**
+      Query whether the current PC allows code execution.
+
+      @return  true, if code execution is allowed
+    */
+    virtual bool canExecute(uInt16 PC) const { return true; }
+
+    /**
       Get the number of segments supported by the cartridge.
     */
     virtual uInt16 segmentCount() const { return 1; }
@@ -295,10 +313,9 @@ class Cartridge : public Device
       Informs the cartridge about the name of the nvram file it will
       use; not all carts support this.
 
-      @param nvramdir  The full path of the nvram directory
-      @param romfile   The name of the cart from ROM properties
+      @param path  The full path of the nvram file
     */
-    virtual void setNVRamFile(const string& nvramfile) { }
+    virtual void setNVRamFile(string_view path) { }
 
     /**
       Thumbulator only supports 16-bit ARM code.  Some Harmony/Melody drivers,
@@ -306,6 +323,12 @@ class Cartridge : public Device
       to pass values back to the cartridge class to emulate those subroutines.
     */
     virtual uInt32 thumbCallback(uInt8 function, uInt32 value1, uInt32 value2) { return 0; }
+
+    virtual uInt8 overdrivePeek(uInt16 address, uInt8 value) { return value; }
+
+    virtual uInt8 overdrivePoke(uInt16 address, uInt8 value) { return value; }
+
+    virtual bool doesBusStuffing() { return false; }
 
   #ifdef DEBUGGER_SUPPORT
     /**
@@ -428,6 +451,15 @@ class Cartridge : public Device
     // Callback to output messages
     messageCallback myMsgCallback{nullptr};
 
+    // Semi-random values to use when a read from write port occurs
+    std::array<uInt8, 256> myRWPRandomValues{};
+
+    // If myRandomHotspots is true, peeks to hotspots return semi-random values.
+    bool myRandomHotspots{false};
+
+    // Game properties. Set after construction when Console is created
+    const Properties* myProperties{nullptr};
+
   private:
     // The startup bank to use (where to look for the reset vector address)
     uInt16 myStartBank{0};
@@ -435,9 +467,6 @@ class Cartridge : public Device
     // If myHotspotsLocked is true, ignore attempts at bankswitching. This is used
     // by the debugger, when disassembling/dumping ROM.
     bool myHotspotsLocked{false};
-
-    // Semi-random values to use when a read from write port occurs
-    std::array<uInt8, 256> myRWPRandomValues;
 
     // Contains various info about this cartridge
     // This needs to be stored separately from child classes, since

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -25,18 +25,31 @@ class AudioChannel : public Serializable
 {
   public:
     AudioChannel() = default;
+    ~AudioChannel() override = default;
 
     void reset();
 
     void phase0();
 
-    uInt8 phase1();
+    void phase1();
 
-    void audc(uInt8 value);
+    // The actual volume of a channel is the volume register multiplied by the
+    // lowest of the pulse counter
+    uInt8 actualVolume() const {
+      return (myPulseCounter & 0x01) * myAudv;
+    }
 
-    void audf(uInt8 value);
+    void audc(uInt8 value) {
+      myAudc = value & 0x0f;
+    }
 
-    void audv(uInt8 value);
+    void audf(uInt8 value) {
+      myAudf = value & 0x1f;
+    }
+
+    void audv(uInt8 value) {
+      myAudv = value & 0x0f;
+    }
 
     /**
       Serializable methods (see that class for more information).
@@ -46,8 +59,8 @@ class AudioChannel : public Serializable
 
   private:
     uInt8 myAudc{0};
-    uInt8 myAudv{0};
     uInt8 myAudf{0};
+    uInt8 myAudv{0};
 
     bool myClockEnable{false};
     bool myNoiseFeedback{false};

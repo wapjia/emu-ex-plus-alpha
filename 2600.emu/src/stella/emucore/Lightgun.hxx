@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -43,7 +43,7 @@ class Lightgun : public Controller
 
     */
     Lightgun(Jack jack, const Event& event, const System& system,
-             const string& romMd5, const FrameBuffer& frameBuffer);
+             string_view romMd5, const FrameBuffer& frameBuffer);
     ~Lightgun() override = default;
 
   public:

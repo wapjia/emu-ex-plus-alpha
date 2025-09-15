@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -39,7 +39,6 @@
 #include "Ball.hxx"
 #include "LatchedInput.hxx"
 #include "AnalogReadout.hxx"
-#include "DelayQueueIterator.hxx"
 #include "Control.hxx"
 #include "System.hxx"
 
@@ -75,7 +74,7 @@ class TIA : public Device
     /**
      * Possible palette entries for objects in "fixed debug color mode".
      */
-    enum FixedColor {
+    enum FixedColor: uInt8 {
       NTSC_RED      = 0x42,
       NTSC_ORANGE   = 0x38,
       NTSC_YELLOW   = 0x1c,
@@ -109,6 +108,8 @@ class TIA : public Device
     friend class TIADebug;
     friend class RiotDebug;
 
+    using onPhosphorCallback = std::function<void(bool)>;
+
     /**
       Create a new TIA for the specified console
 
@@ -116,14 +117,14 @@ class TIA : public Device
       @param settings  The settings object for this TIA device
     */
     TIA(ConsoleIO& console, const ConsoleTimingProvider& timingProvider,
-        Settings& settings);
+        Settings& settings, const onPhosphorCallback& callback);
     ~TIA() override = default;
 
   public:
     /**
       Configure the frame manager.
      */
-    void setFrameManager(AbstractFrameManager* frameManager);
+    void setFrameManager(AbstractFrameManager* frameManager, bool layoutDetector = false);
 
     /**
       Set the audio queue. This needs to be dynamic as the queue is created after
@@ -222,7 +223,7 @@ class TIA : public Device
     /**
       Did we generate a new frame?
      */
-    bool newFramePending() { return myFramesSinceLastRender  > 0; }
+    bool newFramePending() const { return myFramesSinceLastRender  > 0; }
 
     /**
      * Clear any pending frames.
@@ -232,7 +233,7 @@ class TIA : public Device
     /**
       The number of frames since we did last render to the front buffer.
      */
-    uInt32 framesSinceLastRender() { return myFramesSinceLastRender; }
+    uInt32 framesSinceLastRender() const { return myFramesSinceLastRender; }
 
     /**
       Render the pending frame to the framebuffer and clear the flag.
@@ -255,7 +256,7 @@ class TIA : public Device
     /**
       Answers dimensional info about the framebuffer.
     */
-    uInt32 width() const  { return TIAConstants::H_PIXEL; }
+    uInt32 width() const { return TIAConstants::H_PIXEL; }  // NOLINT
     uInt32 height() const { return myFrameManager->height(); }
     Int32 vcenter() const { return myFrameManager->vcenter(); }
     Int32 minVcenter() const { return myFrameManager->minVcenter(); }
@@ -277,6 +278,8 @@ class TIA : public Device
       Enables/disables color-loss for PAL modes only.
 
       @param enabled  Whether to enable or disable PAL color-loss mode
+
+      @return  True if color-loss got enabled
     */
     bool enableColorLoss(bool enabled);
 
@@ -293,6 +296,19 @@ class TIA : public Device
       @return  Colour-loss is active for this frame
     */
     bool colorLossActive() const { return myColorLossActive; }
+
+    /**
+      Enables/disables auto-phosphor.
+
+      @param enabled  Whether to use auto-phosphor mode
+      @param autoOn  Whether to only ENABLE phosphor mode
+    */
+    void enableAutoPhosphor(bool enabled, bool autoOn = false)
+    {
+      myAutoPhosphorEnabled = enabled;
+      myAutoPhosphorAutoOn = autoOn;
+      myAutoPhosphorActive = false;
+    }
 
     /**
       Answers the current color clock we've gotten to on this scanline.
@@ -345,7 +361,7 @@ class TIA : public Device
       Answers the system cycles used by WSYNC from the start of the current frame.
     */
     uInt32 frameWSyncCycles() const {
-      return uInt32(myFrameWsyncCycles);
+      return static_cast<uInt32>(myFrameWsyncCycles);
     }
   #endif // DEBUGGER_SUPPORT
 
@@ -420,7 +436,7 @@ class TIA : public Device
 
       @return  True if colors were changed successfully, else false
     */
-    bool setFixedColorPalette(const string& colors);
+    bool setFixedColorPalette(string_view colors);
 
     /**
       Enable/disable/query state of 'undriven/floating TIA pins'.
@@ -447,65 +463,86 @@ class TIA : public Device
     /**
       Enables/disables delayed playfield bits values.
 
-      @param delayed   Wether to enable delayed playfield delays
+      @param delayed   Whether to enable delayed playfield delays
     */
     void setPFBitsDelay(bool delayed);
 
     /**
       Enables/disables delayed playfield colors.
 
-      @param delayed   Wether to enable delayed playfield colors
+      @param delayed   Whether to enable delayed playfield colors
     */
     void setPFColorDelay(bool delayed);
 
     /**
       Enables/disables score mode playfield color glitch
 
-      @param enable   Wether to enable color glitch
+      @param enable   Whether to enable color glitch
     */
     void setPFScoreGlitch(bool enable);
 
     /**
       Enables/disables delayed background colors.
 
-      @param delayed   Wether to enable delayed background colors
+      @param delayed   Whether to enable delayed background colors
     */
     void setBKColorDelay(bool delayed);
 
     /**
       Enables/disables delayed player swapping.
 
-      @param delayed   Wether to enable delayed player swapping
+      @param delayed   Whether to enable delayed player swapping
     */
     void setPlSwapDelay(bool delayed);
 
     /**
       Enables/disables delayed ball swapping.
 
-      @param delayed   Wether to enable delayed ball swapping
+      @param delayed   Whether to enable delayed ball swapping
     */
     void setBlSwapDelay(bool delayed);
 
     /**
       Enables/disables inverted HMOVE phase clock for players.
 
-      @param enable   Wether to enable inverted HMOVE phase clock for players
+      @param enable   Whether to enable inverted HMOVE phase clock for players
     */
     void setPlInvertedPhaseClock(bool enable);
 
     /**
       Enables/disables inverted HMOVE phase clock for missiles.
 
-      @param enable   Wether to enable inverted HMOVE phase clock for missiles
+      @param enable   Whether to enable inverted HMOVE phase clock for missiles
     */
     void setMsInvertedPhaseClock(bool enable);
 
     /**
       Enables/disables inverted HMOVE phase clock for ball.
 
-      @param enable   Wether to enable inverted HMOVE phase clock for ball
+      @param enable   Whether to enable inverted HMOVE phase clock for ball
     */
     void setBlInvertedPhaseClock(bool enable);
+
+    /**
+      Enables/disables short late HMOVE for players.
+
+      @param enable   Whether to enable short late HMOVE for players
+    */
+    void setPlShortLateHMove(bool enable);
+
+    /**
+      Enables/disables short late HMOVE for missiles.
+
+      @param enable   Whether to enable short late HMOVE for missiles
+    */
+    void setMsShortLateHMove(bool enable);
+
+    /**
+      Enables/disables short late HMOVE for ball.
+
+      @param enable   Whether to enable short late HMOVE for ball
+    */
+    void setBlShortLateHMove(bool enable);
 
     /**
       This method should be called to update the TIA with a new scanline.
@@ -582,20 +619,20 @@ class TIA : public Device
     /**
      * During each line, the TIA cycles through these two states.
      */
-    enum class HState {blank, frame};
+    enum class HState: uInt8 {blank, frame};
 
     /**
      * The three different modes of the priority encoder. Check TIA::renderPixel
      * for a precise definition.
      */
-    enum class Priority {pfp, score, normal};
+    enum class Priority: uInt8 {pfp, score, normal};
 
     /**
      * Palette and indices for fixed debug colors.
      */
-    enum FixedObject { P0, M0, P1, M1, PF, BL, BK };
-    BSPF::array2D<FixedColor, 3, 7> myFixedColorPalette;
-    std::array<string, 7> myFixedColorNames;
+    enum FixedObject: uInt8 { P0, M0, P1, M1, PF, BL, BK };
+    BSPF::array2D<FixedColor, 3, 7> myFixedColorPalette{};
+    std::array<string, 7> myFixedColorNames{};
 
   private:
     /**
@@ -795,6 +832,11 @@ class TIA : public Device
     AbstractFrameManager* myFrameManager{nullptr};
 
     /**
+     * The frame manager type.
+    */
+    bool myIsLayoutDetector{false};
+
+    /**
      * The various TIA objects.
      */
     Background myBackground;
@@ -819,12 +861,12 @@ class TIA : public Device
     LatchedInput myInput1;
 
     // Pointer to the internal color-index-based frame buffer
-    std::array<uInt8, TIAConstants::H_PIXEL * TIAConstants::frameBufferHeight> myFramebuffer;
+    std::array<uInt8, static_cast<size_t>(TIAConstants::H_PIXEL * TIAConstants::frameBufferHeight)> myFramebuffer{};
 
     // The frame is rendered to the backbuffer and only copied to the framebuffer
     // upon completion
-    std::array<uInt8, TIAConstants::H_PIXEL * TIAConstants::frameBufferHeight> myBackBuffer;
-    std::array<uInt8, TIAConstants::H_PIXEL * TIAConstants::frameBufferHeight> myFrontBuffer;
+    std::array<uInt8, static_cast<size_t>(TIAConstants::H_PIXEL * TIAConstants::frameBufferHeight)> myBackBuffer{};
+    std::array<uInt8, static_cast<size_t>(TIAConstants::H_PIXEL * TIAConstants::frameBufferHeight)> myFrontBuffer{};
 
     // We snapshot frame statistics when the back buffer is copied to the front buffer
     // and when the front buffer is copied to the frame buffer
@@ -950,7 +992,7 @@ class TIA : public Device
      * The "shadow registers" track the last written register value for the
      * debugger.
      */
-    std::array<uInt8, 64> myShadowRegisters;
+    std::array<uInt8, 64> myShadowRegisters{};
 
     /**
      * Indicates if color loss should be enabled or disabled.  Color loss
@@ -960,7 +1002,21 @@ class TIA : public Device
     bool myColorLossEnabled{false};
     bool myColorLossActive{false};
 
-    std::array<uInt32, 16> myColorCounts;
+    /**
+    * Auto-phosphor detection variables.
+    */
+    static constexpr int FLICKER_FRAMES = 1 + 4; // compare current frame with previous 4 frames
+    using ObjectPos = BSPF::array2D<uInt8, TIAConstants::frameBufferHeight, FLICKER_FRAMES>;
+    using ObjectGfx = BSPF::array2D<uInt32, TIAConstants::frameBufferHeight, FLICKER_FRAMES>;
+
+    bool myAutoPhosphorEnabled{false};
+    bool myAutoPhosphorAutoOn{false};
+    bool myAutoPhosphorActive{false};
+    ObjectPos myPosP0{}, myPosP1{}, myPosM0{}, myPosM1{}, myPosBL{};
+    ObjectGfx myPatPF{};
+    int myFlickerFrame{0}, myFlickerCount{0};
+    uInt32 myFrameEnd{0};
+    onPhosphorCallback myPhosphorCallback;
 
   #ifdef DEBUGGER_SUPPORT
     /**
@@ -989,13 +1045,13 @@ class TIA : public Device
   #ifdef DEBUGGER_SUPPORT
     // The arrays containing information about every byte of TIA
     // indicating whether and how (RW) it is used.
-    std::array<Device::AccessFlags, TIA_SIZE> myAccessBase;
+    std::array<Device::AccessFlags, TIA_SIZE> myAccessBase{};
     // The arrays containing information about every byte of TIA
     // indicating how often it is accessed (read and write).
-    std::array<Device::AccessCounter, TIA_SIZE + TIA_READ_SIZE> myAccessCounter;
+    std::array<Device::AccessCounter, TIA_SIZE + TIA_READ_SIZE> myAccessCounter{};
 
     // The array used to skip the first two TIA access trackings
-    std::array<uInt8, TIA_SIZE> myAccessDelay;
+    std::array<uInt8, TIA_SIZE> myAccessDelay{};
   #endif // DEBUGGER_SUPPORT
 
   private:

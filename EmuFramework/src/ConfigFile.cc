@@ -42,6 +42,10 @@ void EmuApp::saveConfigFile(FileIO &io)
 	}
 	writeConfigHeader(io);
 	recentContent.writeConfig(io);
+	if(!handlesRecentContent)
+	{
+		recentContent.writeContent(io);
+	}
 	writeOptionValueIfNotDefault(io, imageEffectPixelFormat);
 	writeOptionValueIfNotDefault(io, menuScale);
 	writeOptionValueIfNotDefault(io, fontSize);
@@ -110,6 +114,7 @@ void EmuApp::saveConfigFile(FileIO &io)
 	inputManager.writeCustomKeyConfigs(io);
 	inputManager.writeSavedInputDevices(appContext(), io);
 	writeOptionValueIfNotDefault(io, showFrameTimingStats);
+	writeOptionValueIfNotDefault(io, lowLatencyVideo);
 }
 
 EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
@@ -162,13 +167,15 @@ EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
 						return true;
 					if(audio.readConfig(io, key))
 						return true;
-					if(recentContent.readConfig(io, key, system()))
+					if(recentContent.readConfig(io, key))
 						return true;
 					if(videoLayer.readConfig(io, key))
 						return true;
 					log.info("skipping key:{}", key);
 					return false;
 				}
+				case CFGKEY_RECENT_CONTENT_V2:
+					return handlesRecentContent ? system().readConfig(ConfigType::MAIN, io, key) : recentContent.readContent(io, system());
 				case CFGKEY_FRAME_INTERVAL: return readOptionValue(io, frameInterval);
 				case CFGKEY_FRAME_RATE: return readOptionValue<FrameDuration>(io, [&](auto &&val){outputTimingManager.setFrameRateOption(VideoSystem::NATIVE_NTSC, val);});
 				case CFGKEY_FRAME_RATE_PAL: return readOptionValue<FrameDuration>(io, [&](auto &&val){outputTimingManager.setFrameRateOption(VideoSystem::PAL, val);});
@@ -233,6 +240,7 @@ EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
 				case CFGKEY_INPUT_KEY_CONFIGS_V2: return inputManager.readCustomKeyConfig(io);
 				case CFGKEY_INPUT_DEVICE_CONFIGS: return inputManager.readSavedInputDevices(io);
 				case CFGKEY_SHOW_FRAME_TIMING_STATS: return readOptionValue(io, showFrameTimingStats);
+				case CFGKEY_LOW_LATENCY_VIDEO: return readOptionValue(io, lowLatencyVideo);
 			}
 			return false;
 		});

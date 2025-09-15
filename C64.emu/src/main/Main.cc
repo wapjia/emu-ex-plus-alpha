@@ -74,6 +74,7 @@ bool EmuSystem::handlesGenericIO = false;
 bool EmuSystem::hasRectangularPixels = true;
 bool EmuSystem::stateSizeChangesAtRuntime = true;
 bool EmuApp::needsGlobalInstance = true;
+bool EmuApp::handlesRecentContent = true;
 
 C64App::C64App(ApplicationInitParams initParams, ApplicationContext &ctx):
 	EmuApp{initParams, ctx}, c64System{ctx}
@@ -172,7 +173,7 @@ int systemCartType(ViceSystem system)
 	{
 		case ViceSystem::CBM2:
 		case ViceSystem::CBM5X0:
-			return CARTRIDGE_CBM2_8KB_1000;
+			return CARTRIDGE_CBM2_GENERIC_C1;
 		case ViceSystem::PLUS4:
 			return CARTRIDGE_PLUS4_DETECT;
 		case ViceSystem::VIC20:
@@ -217,7 +218,7 @@ void C64System::reset(EmuApp &, ResetMode mode)
 
 FS::FileString C64System::stateFilename(int slot, std::string_view name) const
 {
-	return IG::format<FS::FileString>("{}.{}.vsf", name, saveSlotChar(slot));
+	return IG::format<FS::FileString>("{}.{}{}", name, saveSlotChar(slot), stateFilenameExt());
 }
 
 void C64System::enterCPUTrap()
@@ -352,10 +353,10 @@ static bool hasSysFilePath(ApplicationContext ctx, const auto &paths)
 	return false;
 }
 
-void C64System::initC64(EmuApp &app)
+bool C64System::initC64(EmuApp &app)
 {
 	if(c64IsInit)
-		return;
+		return false;
 	if(!hasSysFilePath(appContext(), sysFilePath))
 		throw std::runtime_error{"Missing system file path, please check Options➔File Paths➔VICE System Files"};
 	log.info("initializing C64");
@@ -366,6 +367,7 @@ void C64System::initC64(EmuApp &app)
   	throw std::runtime_error{std::format("Missing system file {}, please check Options➔File Paths➔VICE System Files", lastMissingSysFile)};
 	}
 	c64IsInit = true;
+	return true;
 }
 
 bool C64App::willCreateSystem(ViewAttachParams attach, const Input::Event &e)

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -18,7 +18,6 @@
 #include "FSNode.hxx"
 #include "Settings.hxx"
 #include "System.hxx"
-#include "MD5.hxx"
 #ifdef DEBUGGER_SUPPORT
   #include "Debugger.hxx"
   #include "Base.hxx"
@@ -27,25 +26,30 @@
 #include "Cart.hxx"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Cartridge::Cartridge(const Settings& settings, const string& md5)
+Cartridge::Cartridge(const Settings& settings, string_view md5)
   : mySettings{settings}
 {
-  const auto to_uInt32 = [](const string& s, uInt32 pos) {
-    return uInt32(std::stoul(s.substr(pos, 8), nullptr, 16));
-  };
+  const uInt32 seed =
+    BSPF::stoi<16>(md5.substr(0, 8))  ^ BSPF::stoi<16>(md5.substr(8, 8)) ^
+    BSPF::stoi<16>(md5.substr(16, 8)) ^ BSPF::stoi<16>(md5.substr(24, 8));
 
-  const uInt32 seed = to_uInt32(md5, 0)  ^ to_uInt32(md5, 8) ^
-                      to_uInt32(md5, 16) ^ to_uInt32(md5, 24);
-  Random rand(seed);
+  const Random rand(seed);
   for(uInt32 i = 0; i < 256; ++i)
     myRWPRandomValues[i] = rand.next();
 
+  const bool devSettings = mySettings.getBool("dev.settings");
+  myRandomHotspots = devSettings ? mySettings.getBool("dev.randomhs") : false;
   myRamReadAccesses.reserve(5);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Cartridge::setAbout(const string& about, const string& type,
-                         const string& id)
+void Cartridge::setProperties(const Properties* props)
+{
+  myProperties = props;
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void Cartridge::setAbout(string_view about, string_view type, string_view id)
 {
   myAbout = about;
   myDetectedType = type;
@@ -53,7 +57,7 @@ void Cartridge::setAbout(const string& about, const string& type,
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool Cartridge::saveROM(const FilesystemNode& out) const
+bool Cartridge::saveROM(const FSNode& out) const
 {
   try
   {
@@ -61,7 +65,7 @@ bool Cartridge::saveROM(const FilesystemNode& out) const
     const ByteBuffer& image = getImage(size);
     if(size == 0)
     {
-      cerr << "save not supported" << endl;
+      cerr << "save not supported\n";
       return false;
     }
     out.write(image, size);
@@ -85,7 +89,7 @@ bool Cartridge::bankChanged()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 uInt16 Cartridge::bankSize(uInt16 bank) const
 {
-  size_t size;
+  size_t size{0};
   getImage(size);
 
   return static_cast<uInt16>(
@@ -95,7 +99,7 @@ uInt16 Cartridge::bankSize(uInt16 bank) const
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 uInt8 Cartridge::peekRAM(uInt8& dest, uInt16 address)
 {
-  uInt8 value = myRWPRandomValues[address & 0xFF];
+  const uInt8 value = myRWPRandomValues[address & 0xFF];
 
   // Reading from the write port triggers an unwanted write
   // But this only happens when in normal emulation mode
@@ -187,13 +191,12 @@ uInt16 Cartridge::bankOrigin(uInt16 bank, uInt16 PC) const
   const uInt32 offset = bank * bankSize();
   //uInt16 addrMask = (4_KB - 1) & ~(bankSize(bank) - 1);
   //int addrShift = 0;
-  std::array<uInt16, intervals> count; // up to 128 256 byte interval origins
+  std::array<uInt16, intervals> count{}; // up to 128 256 byte interval origins
 
   //if(addrMask)
   //  addrShift = log(addrMask) / log(2);
   //addrMask;
 
-  count.fill(0);
   if(PC)
     count[PC >> 13]++;
   for(uInt16 addr = 0x0000; addr < bankSize(bank); ++addr)

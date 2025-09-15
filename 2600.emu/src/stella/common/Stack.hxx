@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -27,32 +27,33 @@
  */
 namespace Common {
 
-template <typename T, uInt32 CAPACITY = 50>
+template <typename T, size_t CAPACITY = 50>
 class FixedStack
 {
   private:
-    std::array<T, CAPACITY> _stack;
-    uInt32 _size{0};
+    std::array<T, CAPACITY> _stack{};
+    size_t _size{0};
 
   public:
     using StackFunction = std::function<void(T&)>;
 
-    FixedStack<T, CAPACITY>() { }
+    FixedStack() = default;
+    ~FixedStack() = default;
 
-    bool empty() const { return _size <= 0; }
+    bool empty() const { return _size == 0; }
     bool full() const  { return _size >= CAPACITY; }
 
-    T top() const { return _stack[_size - 1];    }
-    T get(uInt32 pos) const { return _stack[pos]; }
-    void push(const T& x) { _stack[_size++] = x; }
-    T pop() { return std::move(_stack[--_size]); }
-    uInt32 size() const { return _size; }
+    T top() const { return _stack[_size - 1];     }
+    T get(size_t pos) const { return _stack[pos]; }
+    void push(const T& x) { _stack[_size++] = x;  }
+    T pop() { return std::move(_stack[--_size]);  }
+    size_t size() const { return _size; }
 
     // Reverse the contents of the stack
     // This operation isn't needed very often, but it's handy to have
     void reverse() {
       if(_size > 1)
-        for(uInt32 i = 0, j = _size - 1; i < j; ++i, --j)
+        for(size_t i = 0, j = _size - 1; i < j; ++i, --j)
           std::swap(_stack[i], _stack[j]);
     }
 
@@ -61,12 +62,12 @@ class FixedStack
     // and no access to individual elements is allowed outside
     // the class.
     void applyAll(const StackFunction& func) {
-      for(uInt32 i = 0; i < _size; ++i)
+      for(size_t i = 0; i < _size; ++i)
         func(_stack[i]);
     }
 
     friend ostream& operator<<(ostream& os, const FixedStack<T>& s) {
-      for(uInt32 pos = 0; pos < s._size; ++pos)
+      for(size_t pos = 0; pos < s._size; ++pos)
         os << s._stack[pos] << " ";
       return os;
     }
@@ -79,6 +80,6 @@ class FixedStack
     FixedStack& operator=(FixedStack&&) = delete;
 };
 
-}  // Namespace Common
+} // namespace Common
 
 #endif

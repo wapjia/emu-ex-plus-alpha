@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -20,7 +20,7 @@
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void AudioChannel::reset()
 {
-  myAudc = myAudv = myAudf = 0;
+  myAudc = myAudf = myAudv = 0;
   myClockEnable = myNoiseFeedback = myNoiseCounterBit4 = myPulseCounterHold = false;
   myDivCounter = myPulseCounter = myNoiseCounter = 0;
 }
@@ -77,7 +77,7 @@ void AudioChannel::phase0()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-uInt8 AudioChannel::phase1()
+void AudioChannel::phase1()
 {
   if (myClockEnable) {
     bool pulseFeedback = false;
@@ -118,26 +118,6 @@ uInt8 AudioChannel::phase1()
       }
     }
   }
-
-  return (myPulseCounter & 0x01) * myAudv;
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void AudioChannel::audc(uInt8 value)
-{
-  myAudc = value & 0x0f;
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void AudioChannel::audv(uInt8 value)
-{
-  myAudv = value & 0x0f;
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void AudioChannel::audf(uInt8 value)
-{
-  myAudf = value & 0x1f;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -146,8 +126,8 @@ bool AudioChannel::save(Serializer& out) const
   try
   {
     out.putByte(myAudc);
-    out.putByte(myAudv);
     out.putByte(myAudf);
+    out.putByte(myAudv);
 
     out.putBool(myClockEnable);
     out.putBool(myNoiseFeedback);
@@ -160,7 +140,7 @@ bool AudioChannel::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_AudioChannel::save" << endl;
+    cerr << "ERROR: TIA_AudioChannel::save\n";
     return false;
   }
 
@@ -173,8 +153,8 @@ bool AudioChannel::load(Serializer& in)
   try
   {
     myAudc = in.getByte();
-    myAudv = in.getByte();
     myAudf = in.getByte();
+    myAudv = in.getByte();
 
     myClockEnable = in.getBool();
     myNoiseFeedback = in.getBool();
@@ -187,7 +167,7 @@ bool AudioChannel::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_AudioChannel::load" << endl;
+    cerr << "ERROR: TIA_AudioChannel::load\n";
     return false;
   }
 

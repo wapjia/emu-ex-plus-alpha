@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -34,6 +34,7 @@ class DelayQueue : public Serializable
 
   public:
     DelayQueue();
+    ~DelayQueue() override = default;
 
   public:
 
@@ -52,7 +53,7 @@ class DelayQueue : public Serializable
   private:
     std::array<DelayQueueMember<capacity>, length> myMembers;
     uInt8 myIndex{0};
-    std::array<uInt8, 0xFF> myIndices;
+    std::array<uInt8, 0xFF> myIndices{};
 
   private:
     DelayQueue(const DelayQueue&) = delete;
@@ -134,7 +135,7 @@ bool DelayQueue<length, capacity>::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_DelayQueue::save" << endl;
+    cerr << "ERROR: TIA_DelayQueue::save\n";
     return false;
   }
 
@@ -157,7 +158,7 @@ bool DelayQueue<length, capacity>::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_DelayQueue::load" << endl;
+    cerr << "ERROR: TIA_DelayQueue::load\n";
     return false;
   }
 

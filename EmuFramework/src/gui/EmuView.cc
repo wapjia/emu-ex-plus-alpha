@@ -80,16 +80,16 @@ void EmuView::place()
 
 void EmuView::updateStatsDisplay()
 {
-	std::string fullStr;
+	statsStr.clear();
 	if(showFrameTimingStats)
-		fullStr += frameTimingStatsStr;
+		statsStr += frameTimingStatsStr;
 	if(showAudioStats)
 	{
-		if(fullStr.size())
-			fullStr += "\n\n";
-		fullStr += audioStatsStr;
+		if(statsStr.size())
+			statsStr += "\n\n";
+		statsStr += audioStatsStr;
 	}
-	statsDisplay.text.resetString(fullStr);
+	statsDisplay.text.resetString(statsStr);
 }
 
 void EmuView::placeStats()
@@ -133,7 +133,8 @@ void EmuView::setFrameTimingStats(FrameTimingViewStats viewStats)
 	}
 	auto frameDuration = duration_cast<Milliseconds>(stats.endOfFrame - stats.startOfFrame);
 	auto clockHz = emuScreen.frameTimerRate().hz();
-	frameTimingStatsStr = std::format("Frame Timing Stats\n\n"
+	frameTimingStatsStr.clear();
+	std::format_to(std::back_inserter(frameTimingStatsStr), "Frame Timing Stats\n\n"
 		"Screen: {:g}Hz\n"
 		"Clock: {:g}Hz\n"
 		"Input: {:g}Hz\n"
@@ -160,7 +161,8 @@ void EmuView::setAudioStats(AudioStats stats)
 {
 	if(!showAudioStats)
 		return;
-	audioStatsStr = std::format("Audio Stats\n\n"
+	audioStatsStr.clear();
+	std::format_to(std::back_inserter(audioStatsStr), "Audio Stats\n\n"
 		"Underruns:{}\n"
 		"Overruns:{}\n"
 		"Callbacks per second:{}\n"

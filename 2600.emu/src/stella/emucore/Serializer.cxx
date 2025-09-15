@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -26,14 +26,14 @@ using std::ios;
 using std::ios_base;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Serializer::Serializer(const string& filename, Mode m)
+Serializer::Serializer(string_view filename, Mode m)
 {
   if(m == Mode::ReadOnly)
   {
-    FilesystemNode node(filename);
+    const FSNode node(filename);
     if(node.isFile() && node.isReadable())
     {
-      auto str = make_unique<IG::FStream>(EmuEx::gAppContext().openFileUri(filename), ios::in | ios::binary);
+    	auto str = make_unique<IG::FStream>(EmuEx::gAppContext().openFileUri(filename), ios::in | ios::binary);
       if(str && str->is_open())
       {
         myStream = std::move(str);
@@ -104,7 +104,7 @@ size_t Serializer::size()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 uInt8 Serializer::getByte() const
 {
-  char buf;
+  char buf{0};
   myStream->read(&buf, 1);
 
   return buf;
@@ -119,7 +119,7 @@ void Serializer::getByteArray(uInt8* array, size_t size) const
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 uInt16 Serializer::getShort() const
 {
-  uInt16 val = 0;
+  uInt16 val{0};
   myStream->read(reinterpret_cast<char*>(&val), sizeof(uInt16));
 
   return val;
@@ -134,7 +134,7 @@ void Serializer::getShortArray(uInt16* array, size_t size) const
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 uInt32 Serializer::getInt() const
 {
-  uInt32 val = 0;
+  uInt32 val{0};
   myStream->read(reinterpret_cast<char*>(&val), sizeof(uInt32));
 
   return val;
@@ -149,7 +149,7 @@ void Serializer::getIntArray(uInt32* array, size_t size) const
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 uInt64 Serializer::getLong() const
 {
-  uInt64 val = 0;
+  uInt64 val{0};
   myStream->read(reinterpret_cast<char*>(&val), sizeof(uInt64));
 
   return val;
@@ -158,7 +158,7 @@ uInt64 Serializer::getLong() const
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 double Serializer::getDouble() const
 {
-  double val = 0.0;
+  double val{0.0};
   myStream->read(reinterpret_cast<char*>(&val), sizeof(double));
 
   return val;
@@ -170,7 +170,7 @@ string Serializer::getString() const
   const int len = getInt();
   string str;
   str.resize(len);
-  myStream->read(&str[0], len);
+  myStream->read(str.data(), len);
 
   return str;
 }
@@ -230,11 +230,10 @@ void Serializer::putDouble(double value)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Serializer::putString(const string& str)
+void Serializer::putString(string_view str)
 {
-  const uInt32 len = static_cast<uInt32>(str.length());
-  putInt(len);
-  myStream->write(str.data(), len);
+  putInt(static_cast<uInt32>(str.size()));
+  myStream->write(str.data(), str.size());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

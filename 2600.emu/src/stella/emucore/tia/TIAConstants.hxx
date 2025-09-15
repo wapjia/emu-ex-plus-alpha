@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -34,9 +34,9 @@ namespace TIAConstants {
     H_PIXEL = 160, H_CYCLES = 76, CYCLE_CLOCKS = 3,
     H_CLOCKS = H_CYCLES * CYCLE_CLOCKS,   // = 228
     H_BLANK_CLOCKS = H_CLOCKS - H_PIXEL;  // = 68
-}
+} // namespace TIAConstants
 
-enum TIABit {
+enum TIABit: uInt8 {
   P0Bit       = 0x01,  // Bit for Player 0
   M0Bit       = 0x02,  // Bit for Missle 0
   P1Bit       = 0x04,  // Bit for Player 1
@@ -44,10 +44,11 @@ enum TIABit {
   BLBit       = 0x10,  // Bit for Ball
   PFBit       = 0x20,  // Bit for Playfield
   ScoreBit    = 0x40,  // Bit for Playfield score mode
-  PriorityBit = 0x80   // Bit for Playfield priority
+  PriorityBit = 0x80,  // Bit for Playfield priority
+  AllBits     = 0xff
 };
 
-enum TIAColor {
+enum TIAColor: uInt8 {
   BKColor     = 0,  // Color index for Background
   PFColor     = 1,  // Color index for Playfield
   P0Color     = 2,  // Color index for Player 0
@@ -58,7 +59,7 @@ enum TIAColor {
   HBLANKColor = 7   // Color index for HMove blank area
 };
 
-enum class CollisionBit
+enum class CollisionBit: uInt16
 {
   M0P1 = 1 << 0,   // Missle0 - Player1   collision
   M0P0 = 1 << 1,   // Missle0 - Player0   collision
@@ -78,7 +79,7 @@ enum class CollisionBit
 };
 
 // TIA Write/Read register names
-enum TIARegister {
+enum TIARegister: uInt8 {
   VSYNC   = 0x00,  // Write: vertical sync set-clear (D1)
   VBLANK  = 0x01,  // Write: vertical blank set-clear (D7-6,D1)
   WSYNC   = 0x02,  // Write: wait for leading edge of hrz. blank (strobe)

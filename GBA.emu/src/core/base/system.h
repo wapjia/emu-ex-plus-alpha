@@ -66,6 +66,7 @@ extern struct CoreOptions {
     static constexpr bool speedHack = false;
     static constexpr bool speedup = false;
     static constexpr bool speedup_throttle_frame_skip = false;
+    static constexpr bool speedup_mute = true;
     static constexpr int cheatsEnabled = 0;
     static constexpr int cpuDisableSfx = 0;
     int cpuSaveType = 0;
@@ -75,12 +76,12 @@ extern struct CoreOptions {
     static constexpr int skipSaveGameBattery = 0;
     static constexpr int skipSaveGameCheats = 0;
     int useBios = 0;
-    static constexpr int winGbPrinterEnabled = 1;
+    static constexpr int gbPrinterEnabled = 0;
     static constexpr uint32_t speedup_throttle = 100;
     static constexpr uint32_t speedup_frame_skip = 9;
     static constexpr uint32_t throttle = 100;
-    static constexpr const char *loadDotCodeFile = nullptr;
-    static constexpr const char *saveDotCodeFile = nullptr;
+    static constexpr const char *loadDotCodeFile = NULL;
+    static constexpr const char *saveDotCodeFile = NULL;
 } coreOptions;
 
 // The following functions must be implemented by the emulator.
@@ -88,15 +89,15 @@ extern void log(const char*, ...);
 extern bool systemPauseOnFrame();
 extern void systemGbPrint(uint8_t*, int, int, int, int, int);
 extern void systemScreenCapture(int);
-extern void systemSendScreen();
 extern void systemDrawScreen(EmuEx::EmuSystemTaskContext, EmuEx::EmuVideo &);
+extern void systemSendScreen();
 // updates the joystick data
 extern bool systemReadJoypads();
 // return information about the given joystick, -1 for default joystick
 extern uint32_t systemReadJoypad(int);
 extern uint32_t systemGetClock();
 extern void systemSetTitle(const char*);
-extern SoundDriver* systemSoundInit();
+extern std::unique_ptr<SoundDriver> systemSoundInit();
 extern void systemOnWriteDataToSoundBuffer(EmuEx::EmuAudio* audio, const uint16_t* finalWave, int length);
 extern void systemOnSoundShutdown();
 extern void systemScreenMessage(const char*);
@@ -115,6 +116,7 @@ extern void systemFrame();
 extern void systemGbBorderOn();
 extern void (*dbgOutput)(const char* s, uint32_t addr);
 extern void (*dbgSignal)(int sig, int number);
+extern uint8_t  systemColorMap8[0x10000];
 
 union SystemColorMap
 {
@@ -127,7 +129,9 @@ extern int systemFrameSkip;
 constexpr int systemVerbose = 0;
 extern int systemSaveUpdateCounter;
 extern int systemSpeed;
+
 #define MAX_CHEATS 16384
 #define SYSTEM_SAVE_UPDATED 30
 #define SYSTEM_SAVE_NOT_UPDATED 0
+
 #endif // VBAM_CORE_BASE_SYSTEM_H_

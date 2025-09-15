@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -45,6 +45,7 @@ void Ball::reset()
   myRenderCounter = 0;
   myInvertedPhaseClock = false;
   myUseInvertedPhaseClock = false;
+  myUseShortLateHMove = false;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -151,6 +152,12 @@ void Ball::applyColorLoss()
 void Ball::setInvertedPhaseClock(bool enable)
 {
   myUseInvertedPhaseClock = enable;
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void Ball::setShortLateHMove(bool enable)
+{
+  myUseShortLateHMove = enable;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -271,7 +278,7 @@ bool Ball::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_Ball::save" << endl;
+    cerr << "ERROR: TIA_Ball::save\n";
     return false;
   }
 
@@ -314,7 +321,7 @@ bool Ball::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_Ball::load" << endl;
+    cerr << "ERROR: TIA_Ball::load\n";
     return false;
   }
 

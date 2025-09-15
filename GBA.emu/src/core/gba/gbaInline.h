@@ -71,6 +71,10 @@ extern bool cpuEEPROMSensorEnabled;
 #define CPUReadByteQuick(addr) CPUReadByteQuick(cpu, addr)
 #define CPUReadHalfWordQuick(addr) CPUReadHalfWordQuick(cpu, addr)
 #define CPUReadMemoryQuick(addr) CPUReadMemoryQuick(cpu, addr)
+#define GBAMatrix cpu.matrix
+#define GBAMatrixReset(matrix) GBAMatrixReset(*cpu.gba, matrix)
+#define GBAMatrixWrite(matrix, address, value) GBAMatrixWrite(*cpu.gba, matrix, address, value)
+#define GBAMatrixWrite16(matrix, address, value) GBAMatrixWrite16(*cpu.gba, matrix, address, value)
 
 static inline uint16_t DowncastU16(uint32_t value) {
     return static_cast<uint16_t>(value);
@@ -556,6 +560,17 @@ static inline void CPUWriteMemory(ARM7TDMI &cpu, uint32_t address, uint32_t valu
 #endif
             WRITE32LE(((uint32_t*)&g_oam[address & 0x3fc]), value);
         break;
+    case 0x08:
+    case 0x09:
+    case 0x0A:
+    case 0x0B:
+    case 0x0C:
+        if (GBAMatrix.size && (address & 0x01FFFF00) == 0x00800100)
+        {
+            GBAMatrixWrite(&GBAMatrix, address & 0x3C, value);
+            break;
+        }
+        goto unwritable;
     case 0x0D:
         if (cpuEEPROMEnabled) {
             eepromWrite(address, DowncastU8(value));
@@ -660,12 +675,26 @@ static inline void CPUWriteHalfWord(ARM7TDMI &cpu, uint32_t address, uint16_t va
         break;
     case 8:
     case 9:
+    	  if (GBAMatrix.size && (address & 0x01FFFF00) == 0x00800100)
+    	  {
+    	      GBAMatrixWrite16(&GBAMatrix, address & 0x3C, value);
+    	      break;
+    	  }
         if (address == 0x80000c4 || address == 0x80000c6 || address == 0x80000c8) {
             if (!rtcWrite(address, value))
                 goto unwritable;
         } else if (!agbPrintWrite(address, value))
             goto unwritable;
         break;
+    case 10:
+    case 11:
+    case 12:
+        if (GBAMatrix.size && (address & 0x01FFFF00) == 0x00800100)
+        {
+            GBAMatrixWrite16(&GBAMatrix, address & 0x3C, value);
+            break;
+        }
+        goto unwritable;
     case 13:
         if (cpuEEPROMEnabled) {
             eepromWrite(address, (uint8_t)value);
@@ -892,5 +921,9 @@ static inline void CPUWriteByte(ARM7TDMI &cpu, uint32_t address, uint8_t b)
 #undef CPUReadByteQuick
 #undef CPUReadHalfWordQuick
 #undef CPUReadMemoryQuick
+#undef GBAMatrix
+#undef GBAMatrixReset
+#undef GBAMatrixWrite
+#undef GBAMatrixWrite16
 
 #endif // VBAM_CORE_GBA_GBAINLINE_H_

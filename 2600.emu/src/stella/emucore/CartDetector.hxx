@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -45,7 +45,7 @@ class CartDetector
       MVC cartridges are of arbitary large length
       Returns size of frame if stream is probably an MVC movie cartridge
     */
-    static size_t isProbablyMVC(const FilesystemNode& rom);
+    static size_t isProbablyMVC(const FSNode& rom);
 
     /**
       Returns true if the image is probably a HSC PlusROM
@@ -87,12 +87,17 @@ class CartDetector
     static bool isProbablyARM(const ByteBuffer& image, size_t size);
 
     /**
+      Returns true if the image is probably a 03E0 bankswitching cartridge
+    */
+    static bool isProbably03E0(const ByteBuffer& image, size_t size);
+
+    /**
       Returns true if the image is probably a 0840 bankswitching cartridge
     */
     static bool isProbably0840(const ByteBuffer& image, size_t size);
 
     /**
-      Returns true if the image is probably a BRazilian bankswitching cartridge
+      Returns true if the image is probably a Brazilian 0FA0 bankswitching cartridge
     */
     static bool isProbably0FA0(const ByteBuffer& image, size_t size);
 
@@ -202,6 +207,16 @@ class CartDetector
     static bool isProbablyFE(const ByteBuffer& image, size_t size);
 
     /**
+      Returns true if the image is probably a JANE cartridge (Tarzan)
+    */
+    static bool isProbablyJANE(const ByteBuffer& image, size_t size);
+
+    /**
+      Returns true if the image is probably a GameLine cartridge
+    */
+    static bool isProbablyGL(const ByteBuffer& image, size_t size);
+
+    /**
       Returns true if the image is probably a MDM bankswitching cartridge
     */
     static bool isProbablyMDM(const ByteBuffer& image, size_t size);
@@ -236,9 +251,15 @@ class CartDetector
     */
     static bool isProbablyX07(const ByteBuffer& image, size_t size);
 
+    /**
+      Returns true if the image is probably an ELF cartridge
+    */
+    static bool isProbablyELF(const ByteBuffer& image, size_t size);
+
   private:
     // Following constructors and assignment operators not supported
     CartDetector() = delete;
+    ~CartDetector() = delete;
     CartDetector(const CartDetector&) = delete;
     CartDetector(CartDetector&&) = delete;
     CartDetector& operator=(const CartDetector&) = delete;

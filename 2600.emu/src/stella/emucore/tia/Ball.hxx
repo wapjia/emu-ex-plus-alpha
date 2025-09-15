@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -27,11 +27,11 @@ class TIA;
 class Ball : public Serializable
 {
   public:
-
     /**
       The collision mask is injected at construction
      */
     explicit Ball(uInt32 collisionMask);
+    ~Ball() override = default;
 
   public:
 
@@ -108,6 +108,7 @@ class Ball : public Serializable
       Aid Man bug on some Jr. models.
      */
     void setInvertedPhaseClock(bool enable);
+    void setShortLateHMove(bool enable);
 
     /**
       Start movement --- this is triggered by strobing HMOVE.
@@ -167,12 +168,12 @@ class Ball : public Serializable
     /**
       Process a single movement tick. Inline for performance (implementation below).
      */
-    inline void movementTick(uInt32 clock, bool hblank);
+    FORCE_INLINE void movementTick(uInt32 clock, uInt32 hclock, bool hblank);
 
     /**
       Tick one color clock. Inline for performance (implementation below).
      */
-    inline void tick(bool isReceivingRegularClock = true);
+    FORCE_INLINE void tick(bool isReceivingRegularClock = true);
 
   public:
 
@@ -323,6 +324,8 @@ class Ball : public Serializable
      */
     bool myUseInvertedPhaseClock{false};
 
+    bool myUseShortLateHMove{false};
+
     /**
       TIA instance. Required for flushing the line cache and requesting collision updates.
      */
@@ -341,23 +344,24 @@ class Ball : public Serializable
 // ############################################################################
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Ball::movementTick(uInt32 clock, bool hblank)
+void Ball::movementTick(uInt32 clock, uInt32 hclock, bool hblank)
 {
   myLastMovementTick = myCounter;
 
-  // Stop movement once the number of clocks according to HMBL is reached
-  if (clock == myHmmClocks)
-    isMoving = false;
-
   if(isMoving)
   {
-    // Process the tick if we are in hblank. Otherwise, the tick is either masked
-    // by an ordinary tick or merges two consecutive ticks into a single tick (inverted
-    // movement clock phase mode).
-    if (hblank) tick(false);
-
-    // Track a tick outside hblank for later processing
-    myInvertedPhaseClock = !hblank;
+    // Stop movement once the number of clocks according to HMBL is reached
+    if (clock == myHmmClocks)
+      isMoving = false;
+    else if (!myUseShortLateHMove || hclock != 0)
+    {
+      // Process the tick if we are in hblank. Otherwise, the tick is either masked
+      // by an ordinary tick or merges two consecutive ticks into a single tick (inverted
+      // movement clock phase mode).
+      if(hblank) tick(false);
+      // Track a tick outside hblank for later processing
+      myInvertedPhaseClock = !hblank;
+    }
   }
 }
 

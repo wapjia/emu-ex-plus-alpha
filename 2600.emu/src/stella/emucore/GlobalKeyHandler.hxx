@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -29,9 +29,10 @@ class GlobalKeyHandler
 {
   public:
     explicit GlobalKeyHandler(OSystem& osystem);
+    ~GlobalKeyHandler() = default;
 
   public:
-    enum class Setting
+    enum class Setting: Int8
     {
       NONE = -1,
       // *** Audio & Video group ***
@@ -69,10 +70,12 @@ class GlobalKeyHandler
       NTSC_FRINGING,
       NTSC_BLEEDING,
       // Other TV effects adjustables
+      PHOSPHOR_MODE,
       PHOSPHOR,
       SCANLINES,
       SCANLINE_MASK,
       INTERPOLATION,
+      BEZEL,
       // *** Input group ***
       DIGITAL_DEADZONE,
       ANALOG_DEADZONE,
@@ -128,7 +131,7 @@ class GlobalKeyHandler
       // *** Ranges ***
       NUM_ADJ,
       START_AV_ADJ = VOLUME,
-      END_AV_ADJ = INTERPOLATION,
+      END_AV_ADJ = BEZEL,
       START_INPUT_ADJ = DIGITAL_DEADZONE,
       END_INPUT_ADJ = MOUSE_RANGE,
       START_DEBUG_ADJ = DEVELOPER,
@@ -136,14 +139,14 @@ class GlobalKeyHandler
     };
 
   public:
-    bool handleEvent(const Event::Type event, bool pressed, bool repeated);
-    void setSetting(const Setting setting);
-    void setDirectSetting(const Setting setting);
+    bool handleEvent(Event::Type event, bool pressed, bool repeated);
+    void setSetting(Setting setting);
+    void setDirectSetting(Setting setting);
 
   private:
     using Function = std::function<void(int)>;
 
-    enum class Group
+    enum class Group: uInt8
     {
       AV,
       INPUT,
@@ -167,17 +170,21 @@ class GlobalKeyHandler
     // Get group based on given setting
     Group getGroup() const;
     // Cycle settings using given direction (can be 0)
-    const Function cycleSetting(int direction);
+    Function cycleSetting(int direction);
     // Get adjustment function and if it is repeated
-    SettingData getSettingData(const Setting setting) const;
+    SettingData getSettingData(Setting setting) const;
 
-    PhysicalJoystickHandler& joyHandler() const { return myOSystem.eventHandler().joyHandler(); }
-    PhysicalKeyboardHandler& keyHandler() const { return myOSystem.eventHandler().keyHandler(); }
+    PhysicalJoystickHandler& joyHandler() const {
+      return myOSystem.eventHandler().joyHandler();
+    }
+    PhysicalKeyboardHandler& keyHandler() const {
+      return myOSystem.eventHandler().keyHandler();
+    }
 
     // Check if controller type is used (skips related input settings if not)
-    bool isJoystick(const Controller& controller) const;
-    bool isPaddle(const Controller& controller) const;
-    bool isTrackball(const Controller& controller) const;
+    static bool isJoystick(const Controller& controller);
+    static bool isPaddle(const Controller& controller);
+    static bool isTrackball(const Controller& controller);
 
     // Check if a currently non-relevant adjustment can be skipped
     bool skipAVSetting() const;

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -35,17 +35,16 @@ struct Point
   Int32 x{0};  //!< The horizontal part of the point
   Int32 y{0};  //!< The vertical part of the point
 
-  Point() = default;
+  constexpr Point() = default;
   explicit constexpr Point(Int32 x1, Int32 y1) : x{x1}, y{y1} { }
-  explicit Point(const string& p) {
+  explicit Point(string_view p) {
     char c = '\0';
-    istringstream buf(p);
+    istringstream buf(string{p});  // TODO: fixed in C++23
     buf >> x >> c >> y;
     if(c != 'x')
       x = y = 0;
   }
-  bool operator==(const Point& p) const { return x == p.x && y == p.y; }
-  bool operator!=(const Point& p) const { return !(*this == p);        }
+  std::strong_ordering operator<=>(const Point& p) const = default;
 
   friend ostream& operator<<(ostream& os, const Point& p) {
     os << p.x << "x" << p.y;
@@ -58,22 +57,23 @@ struct Size
   uInt32 w{0};  //!< The width part of the size
   uInt32 h{0};  //!< The height part of the size
 
-  Size() = default;
+  constexpr Size() = default;
   explicit constexpr Size(uInt32 w1, uInt32 h1) : w{w1}, h{h1} { }
-  explicit Size(const string& s) {
+  explicit Size(string_view s) {
     char c = '\0';
-    istringstream buf(s);
+    istringstream buf(string{s});  // TODO: fixed in C++23
     buf >> w >> c >> h;
     if(c != 'x')
       w = h = 0;
   }
   constexpr bool valid() const { return w > 0 && h > 0; }
 
-  void clamp(uInt32 lower_w, uInt32 upper_w, uInt32 lower_h, uInt32 upper_h) {
+  constexpr void clamp(uInt32 lower_w, uInt32 upper_w, uInt32 lower_h, uInt32 upper_h) {
     w = BSPF::clamp(w, lower_w, upper_w);
     h = BSPF::clamp(h, lower_h, upper_h);
   }
 
+  // TODO: can this be replaced by <=> operator?
   bool operator==(const Size& s) const { return w == s.w && h == s.h; }
   bool operator< (const Size& s) const { return w <  s.w && h <  s.h; }
   bool operator> (const Size& s) const { return w >  s.w || h >  s.h; }
@@ -113,7 +113,7 @@ private:
   uInt32 bottom{0}, right{0};
 
 public:
-  Rect() {}
+  constexpr Rect() = default;
   constexpr explicit Rect(const Size& s) : bottom{ s.h }, right{ s.w } { assert(valid()); }
   constexpr Rect(uInt32 w, uInt32 h) : bottom{ h }, right{ w } { assert(valid()); }
   constexpr Rect(const Point& p, uInt32 w, uInt32 h)
@@ -175,10 +175,7 @@ public:
     return r.left != x || r.top != y;
   }
 
-  bool operator==(const Rect& r) const {
-    return top == r.top && left == r.left && bottom == r.bottom && right == r.right;
-  }
-  bool operator!=(const Rect& r) const { return !(*this == r); }
+  std::strong_ordering operator<=>(const Rect& r) const = default;
 
   friend ostream& operator<<(ostream& os, const Rect& r) {
     os << r.point() << "," << r.size();
@@ -186,9 +183,6 @@ public:
   }
 };
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-static const Rect EmptyRect;
-
-}  // End of namespace Common
+} // namespace Common
 
 #endif

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -17,7 +17,6 @@
 
 #include <regex>
 #include <atomic>
-#include <sstream>
 #include <thread>
 
 #include "bspf.hxx"
@@ -25,6 +24,7 @@
 #include "Logger.hxx"
 #include "Version.hxx"
 #include "Settings.hxx"
+#include "CartDetector.hxx"
 
 #if defined(HTTP_LIB_SUPPORT)
   #include "http_lib.hxx"
@@ -39,23 +39,24 @@ namespace {
   constexpr uInt16 WRITE_SEND_BUFFER    = 0x1FF1;
   constexpr uInt16 RECEIVE_BUFFER       = 0x1FF2;
   constexpr uInt16 RECEIVE_BUFFER_SIZE  = 0x1FF3;
-}
+} // namespace
 #endif
 
 using std::chrono::milliseconds;
 
 class PlusROMRequest {
   public:
-
     struct Destination {
-      Destination(string _host, string _path) : host{_host}, path{_path} {}
+      Destination(string_view _host, string_view _path)
+        : host{_host}, path{_path} {}
 
       string host;
       string path;
     };
 
     struct PlusStoreId {
-      PlusStoreId(string _nick, string _id) : nick{_nick}, id{_id} {}
+      PlusStoreId(string_view _nick, string_view _id)
+        : nick{_nick}, id{_id} {}
 
       string nick;
       string id;
@@ -69,14 +70,16 @@ class PlusROMRequest {
     };
 
   public:
-
-    PlusROMRequest(Destination destination, PlusStoreId id, const uInt8* request,
-                   uInt8 requestSize)
-      : myState{State::created}, myDestination{destination},
-        myId{id}, myRequestSize{requestSize}
+    PlusROMRequest(const Destination& destination, const PlusStoreId& id,
+                   const uInt8* request, uInt8 requestSize)
+      : myState{State::created},
+        myDestination{destination},
+        myId{id},
+        myRequestSize{requestSize}
     {
       memcpy(myRequest.data(), request, myRequestSize);
     }
+    ~PlusROMRequest() = default;
 
   #if defined(HTTP_LIB_SUPPORT)
     void execute() {
@@ -89,8 +92,8 @@ class PlusROMRequest {
         << "nick=" << myId.nick;
 
       httplib::Client client(myDestination.host);
-      httplib::Headers headers = {
-        {"PlusROM-Info", content.str()}
+      const httplib::Headers headers = {
+        {"PlusROM-Info", content.str()}  // httplib can't accept string_view
       };
 
       client.set_connection_timeout(milliseconds(CONNECTION_TIMEOUT_MSEC));
@@ -98,7 +101,7 @@ class PlusROMRequest {
       client.set_write_timeout(milliseconds(WRITE_TIMEOUT_MSEC));
 
       auto response = client.Post(
-        myDestination.path.c_str(),
+        myDestination.path,
         headers,
         reinterpret_cast<const char*>(myRequest.data()),
         myRequestSize,
@@ -114,7 +117,7 @@ class PlusROMRequest {
           << myDestination.path
           << ": failed";
 
-        Logger::error(ss.str());
+        Logger::error(ss.view());
 
         myState = State::failed;
 
@@ -131,18 +134,18 @@ class PlusROMRequest {
           << ": failed with HTTP status "
           << response->status;
 
-        Logger::error(ss.str());
+        Logger::error(ss.view());
 
         myState = State::failed;
 
         return;
       }
 
-      if (response->body.size() < 1 || static_cast<unsigned char>(response->body[0]) != (response->body.size() - 1)) {
+      if (response->body.empty() || static_cast<unsigned char>(response->body[0]) != (response->body.size() - 1)) {
         ostringstream ss;
         ss << "PlusCart: request to " << myDestination.host << "/" << myDestination.path << ": invalid response";
 
-        Logger::error(ss.str());
+        Logger::error(ss.view());
 
         myState = State::failed;
 
@@ -153,16 +156,16 @@ class PlusROMRequest {
       myState = State::done;
     }
 
-    State getState() const {
+    [[nodiscard]] State getState() const {
       return myState;
     }
 
-    const Destination& getDestination() const
+    [[nodiscard]] const Destination& getDestination() const
     {
       return myDestination;
     }
 
-    const PlusStoreId& getPlusStoreId() const
+    [[nodiscard]] const PlusStoreId& getPlusStoreId() const
     {
       return myId;
     }
@@ -170,10 +173,10 @@ class PlusROMRequest {
     std::pair<size_t, const uInt8*> getResponse() {
       if (myState != State::done) throw runtime_error("invalid access to response");
 
-      return std::pair<size_t, const uInt8*>(
+      return {
         myResponse.size() - 1,
         myResponse.size() > 1 ? reinterpret_cast<const uInt8*>(myResponse.data() + 1) : nullptr
-      );
+      };
     }
   #endif
 
@@ -183,7 +186,7 @@ class PlusROMRequest {
     Destination myDestination;
     PlusStoreId myId;
 
-    std::array<uInt8, 256> myRequest;
+    std::array<uInt8, 256> myRequest{};
     uInt8 myRequestSize{0};
 
     string myResponse;
@@ -200,8 +203,6 @@ PlusROM::PlusROM(const Settings& settings, const Cartridge& cart)
   : mySettings{settings},
     myCart{cart}
 {
-  myRxBuffer.fill(0);
-  myTxBuffer.fill(0);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -238,7 +239,7 @@ bool PlusROM::initialize(const ByteBuffer& image, size_t size)
 
   reset();
 
-  return myIsPlusROM = true;
+  return myIsPlusROM = CartDetector::isProbablyPlusROM(image, size);
 #else
   return myIsPlusROM = false;
 #endif
@@ -331,7 +332,7 @@ bool PlusROM::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: PlusROM::save" << endl;
+    cerr << "ERROR: PlusROM::save\n";
     return false;
   }
 
@@ -353,7 +354,7 @@ bool PlusROM::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: PlusROM::load" << endl;
+    cerr << "ERROR: PlusROM::load\n";
     return false;
   }
 
@@ -368,19 +369,19 @@ void PlusROM::reset()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool PlusROM::isValidHost(const string& host) const
+bool PlusROM::isValidHost(string_view host)
 {
   // TODO: This isn't 100% either, as we're supposed to check for the length
   //       of each part between '.' in the range 1 .. 63
   //  Perhaps a better function will be included with whatever network
   //  library we decide to use
-  static std::regex rgx(R"(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)", std::regex_constants::icase);
+  static const std::regex rgx(R"(^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$)", std::regex_constants::icase);
 
-  return std::regex_match(host, rgx);
+  return std::regex_match(host.cbegin(), host.cend(), rgx);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool PlusROM::isValidPath(const string& path) const
+bool PlusROM::isValidPath(string_view path)
 {
   // TODO: This isn't 100%
   //  Perhaps a better function will be included with whatever network
@@ -432,7 +433,8 @@ void PlusROM::send()
     // as the thread is running. Thus, the request can only be destructed once
     // the thread has finished, and we can safely evict it from the deque at
     // any time.
-    std::thread thread([=]() {
+    std::thread thread([request, this]()
+    {
       request->execute();
       switch(request->getState())
       {

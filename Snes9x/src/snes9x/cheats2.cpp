@@ -628,6 +628,8 @@ static void S9xLoadCheatsFromBMLNode(bml_node &n)
             continue;
 
         auto index = S9xAddCheatGroup(name, code);
+        if (index == -1)
+            continue;
         if (enable)
             S9xEnableCheatGroup(index);
     }

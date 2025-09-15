@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -49,8 +49,8 @@ class CartridgeCV : public CartridgeEnhanced
       @param settings  A reference to the various settings (read-only)
       @param bsSize    The size specified by the bankswitching scheme
     */
-    CartridgeCV(const ByteBuffer& image, size_t size, const string& md5,
-                const Settings& settings, size_t bsSize = 2_KB);
+    CartridgeCV(const ByteBuffer& image, size_t size, string_view md5,
+                const Settings& settings, size_t bsSize = 4_KB);
     ~CartridgeCV() override = default;
 
   public:
@@ -79,16 +79,13 @@ class CartridgeCV : public CartridgeEnhanced
   #endif
 
   private:
-    bool checkSwitchBank(uInt16, uInt8 = 0) override { return false; }
+    bool checkSwitchBank(uInt16, uInt8) override { return false; }
 
   protected:
     // Initial RAM data from the cart (doesn't always exist)
     ByteBuffer myInitialRAM{nullptr};
 
   private:
-    // Calculated as: log(ROM bank segment size) / log(2)
-    static constexpr uInt16 BANK_SHIFT = 11;  // 2K
-
     // RAM size
     static constexpr uInt32 RAM_SIZE = 0x400; // 1K
 

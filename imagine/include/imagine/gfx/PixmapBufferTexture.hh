@@ -35,7 +35,7 @@ public:
 	static constexpr uint32_t MAX_ASSUME_ALIGN = Texture::MAX_ASSUME_ALIGN;
 
 	using PixmapBufferTextureImpl::PixmapBufferTextureImpl;
-	PixmapBufferTexture(RendererTask &, TextureConfig config, TextureBufferMode mode = {}, bool singleBuffer = false);
+	PixmapBufferTexture(RendererTask&, TextureConfig, TextureBufferMode = {}, TextureBufferImageMode = {});
 	bool setFormat(PixmapDesc desc, ColorSpace c = {}, TextureSamplerConfig samplerConf = {});
 	void write(PixmapView pixmap, TextureWriteFlags writeFlags = {});
 	void writeAligned(PixmapView pixmap, int assumedDataAlignment, TextureWriteFlags writeFlags = {});
@@ -50,6 +50,7 @@ public:
 	operator TextureSpan() const;
 	operator const Texture&() const;
 	bool isExternal() const;
+	int buffers() const;
 };
 
 }

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -26,7 +26,7 @@
 #include <imagine/util/DelegateFunc.hh>
 
 /**
-  This class implements a an audio queue that acts both like a ring buffer
+  This class implements an audio queue that acts both like a ring buffer
   and a pool of audio fragments. The TIA emulation core fills a fragment
   with samples and then returns it to the queue, receiving a new fragment
   in return. The sound driver removes fragments for playback from the
@@ -48,6 +48,7 @@ class AudioQueue
        @param isStereo      Whether samples are stereo or mono.
      */
     AudioQueue(uInt32 fragmentSize, uInt32 capacity, bool isStereo);
+    ~AudioQueue() = default;
 
     /**
        Capacity getter.
@@ -137,7 +138,6 @@ class AudioQueue
     StaggeredLogger myOverflowLogger{"audio buffer overflow", Logger::Level::INFO};
 
   private:
-
     AudioQueue() = delete;
     AudioQueue(const AudioQueue&) = delete;
     AudioQueue(AudioQueue&&) = delete;

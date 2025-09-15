@@ -53,16 +53,18 @@ VICE_API int init_main(void);
 VICE_API void interrupt_maincpu_trigger_trap(void (*trap_func)(uint16_t, void *data), void *data);
 
 #ifndef NDEBUG
+VICE_API int log_debug(signed int log, const char *format, ...)
+	__attribute__((format(printf, 2, 3)));
+VICE_API int log_verbose(signed int log, const char *format, ...)
+	__attribute__((format(printf, 2, 3)));
 VICE_API int log_message(signed int log, const char *format, ...)
-    __attribute__((format(printf, 2, 3)));
+	__attribute__((format(printf, 2, 3)));
 VICE_API int log_warning(signed int log, const char *format, ...)
-    __attribute__((format(printf, 2, 3)));
+	__attribute__((format(printf, 2, 3)));
 VICE_API int log_error(signed int log, const char *format, ...)
-    __attribute__((format(printf, 2, 3)));
-VICE_API int log_debug(const char *format, ...)
-    __attribute__((format(printf, 1, 2)));
-VICE_API int log_verbose(const char *format, ...)
-    __attribute__((format(printf, 1, 2)));
+	__attribute__((format(printf, 2, 3)));
+VICE_API int log_printf(const char *format, ...)
+	__attribute__((format(printf, 1, 2)));
 #endif
 
 VICE_API void machine_trigger_reset(const unsigned int reset_mode);
@@ -91,6 +93,10 @@ VICE_API void ui_display_tape_counter(int port, int counter);
 #ifndef NDEBUG
 VICE_API void ui_error(const char *format, ...);
 VICE_API int uimon_out(const char *buffer);
+VICE_API int uimon_petscii_out(const char *buffer, int len);
+VICE_API int uimon_petscii_upper_out(const char *buffer, int len);
+VICE_API int uimon_scrcode_out(const char *buffer, int len);
+VICE_API int uimon_scrcode_upper_out(const char *buffer, int len);
 #endif
 
 VICE_API int cbmimage_create_image(const char *name, unsigned int type);

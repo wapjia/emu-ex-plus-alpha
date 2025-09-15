@@ -15,50 +15,50 @@
 
 #include <FSNode.hxx>
 
-bool FilesystemNode::exists() const
+bool FSNode::exists() const
 {
 	return true;
 }
 
-const string& FilesystemNode::getName() const
+string_view FSNode::getName() const
 {
 	return path;
 }
 
-const string& FilesystemNode::getPath() const
+string_view FSNode::getPath() const
 {
 	return path;
 }
 
-bool FilesystemNode::isReadable() const
+bool FSNode::isReadable() const
 {
 	return true;
 }
 
-bool FilesystemNode::isWritable() const
+bool FSNode::isWritable() const
 {
 	return true;
 }
 
-bool FilesystemNode::isDirectory() const
+bool FSNode::isDirectory() const
 {
 	return false;
 }
 
-bool FilesystemNode::isFile() const
+bool FSNode::isFile() const
 {
 	return true;
 }
 
-string FilesystemNode::getNameWithExt(const string& ext) const
+string FSNode::getNameWithExt(string_view ext) const
 {
 	size_t pos = getName().find_last_of("/\\");
-	string s = pos == string::npos ? getName() : getName().substr(pos+1);
+	string s = pos == string::npos ? string{getName()} : string{getName().substr(pos+1)};
 	pos = s.find_last_of('.');
 	return (pos != string::npos) ? s.replace(pos, string::npos, ext) : s + ext;
 }
 
-string FilesystemNode::getPathWithExt(const string& ext) const
+string FSNode::getPathWithExt(string_view ext) const
 {
 	string s = path;
 	const size_t pos = s.find_last_of('.');

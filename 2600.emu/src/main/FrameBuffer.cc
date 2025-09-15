@@ -28,9 +28,9 @@ FrameBuffer::FrameBuffer(OSystem& osystem):
 	myPaletteHandler.loadConfig(osystem.settings());
 }
 
-void FrameBuffer::showTextMessage(const string& message, MessagePosition, bool) const
+void FrameBuffer::showTextMessage(string_view message, MessagePosition, bool) const
 {
-	appPtr->postMessage(3, false, message.c_str());
+	appPtr->postMessage(3, false, message);
 }
 
 void FrameBuffer::enablePhosphor(bool enable, int blend)

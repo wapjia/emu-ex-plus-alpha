@@ -52,7 +52,7 @@ static int loadSysFile(Readable auto &file, const char *name, uint8_t *dest, int
 	}
 	if(rsize < (minsize))
 	{
-		log.error("ROM {}: short file", name);
+		log.error("ROM {}: short file, expected minimum:{} got:{}", name, minsize, rsize);
 		return -1;
 	}
 	if(rsize == (maxsize + 2))

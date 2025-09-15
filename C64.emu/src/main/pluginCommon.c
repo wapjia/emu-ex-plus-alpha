@@ -413,6 +413,7 @@ int ui_init_finalize() { return 0; }
 int gfxoutput_cmdline_options_init() { return 0; }
 int ui_cmdline_options_init() { return 0; }
 int screenshot_init() { return 0; }
+int screenshot_resources_init() { return 0; }
 int screenshot_record() { return 0; }
 int screenshot_save(const char *drvname, const char *filename, struct video_canvas_s *canvas) { return 0; }
 void screenshot_prepare_reopen() {}
@@ -572,14 +573,19 @@ int fork_coproc(int *fd_wr, int *fd_rd, char *cmd, vice_pid_t *childpid) { retur
 void kill_coproc(vice_pid_t pid) {}
 
 #ifdef NDEBUG
-int log_message(log_t log, const char *format, ...) { return 0; }
-int log_warning(log_t log, const char *format, ...) { return 0; }
-int log_error(log_t log, const char *format, ...) { return 0; }
-int log_debug(const char *format, ...) { return 0; }
-int log_verbose(const char *format, ...) { return 0; }
+int log_message(log_t, const char *format, ...) { return 0; }
+int log_warning(log_t, const char *format, ...) { return 0; }
+int log_error(log_t, const char *format, ...) { return 0; }
+int log_debug(log_t, const char *format, ...) { return 0; }
+int log_verbose(log_t, const char *format, ...) { return 0; }
+int log_printf(const char *format, ...) { return 0; }
 void archdep_startup_log_error(const char *format, ...) {}
 void ui_error(const char *format,...) {}
 int uimon_out(const char *buffer) { return 0; }
+int uimon_petscii_out(const char *buffer, int len) { return 0; }
+int uimon_petscii_upper_out(const char *buffer, int len) { return 0; }
+int uimon_scrcode_out(const char *buffer, int len) { return 0; }
+int uimon_scrcode_upper_out(const char *buffer, int len) { return 0; }
 #endif
 
 int vice_init()

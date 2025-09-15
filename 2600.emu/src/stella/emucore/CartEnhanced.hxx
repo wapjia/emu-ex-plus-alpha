@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -47,7 +47,7 @@ class CartridgeEnhanced : public Cartridge
       @param bsSize    The size specified by the bankswitching scheme
     */
     CartridgeEnhanced(const ByteBuffer& image, size_t size,
-                      const string& md5, const Settings& settings,
+                      string_view md5, const Settings& settings,
                       size_t bsSize);
     ~CartridgeEnhanced() override = default;
 
@@ -98,6 +98,22 @@ class CartridgeEnhanced : public Cartridge
       Query the number of RAM 'banks' supported by the cartridge.
     */
     uInt16 ramBankCount() const override;
+
+    /**
+      Query whether the current PC allows code execution.
+
+      @return  true, if code execution is allowed
+    */
+    bool canExecute(uInt16 PC) const override {
+      return !(PC & 0x1000) || (PC & ROM_MASK) >= myRomOffset || executableCartRam();
+    }
+
+    /**
+      Query whether the cart RAM allows code execution.
+
+      @return  true, if code execution is allowed
+    */
+    virtual bool executableCartRam() const { return true; }
 
     /**
       Get the number of segments supported by the cartridge.
@@ -198,6 +214,9 @@ class CartridgeEnhanced : public Cartridge
     // The mask for a bank segment
     uInt16 myBankMask{ROM_MASK};
 
+    // Usually myBankShift - 1
+    uInt16 myRamBankShift{0};
+
   protected:
     // The extra RAM size
     size_t myRamSize{RAM_SIZE};                 // default 0
@@ -286,7 +305,12 @@ class CartridgeEnhanced : public Cartridge
 
       @return  True if a bank switch happened.
     */
-    virtual bool checkSwitchBank(uInt16 address, uInt8 value = 0) = 0;
+    virtual bool checkSwitchBank(uInt16 address, uInt8 value) = 0;
+
+    /**
+      Calculate the number of segments supported by the cartridge.
+    */
+    virtual uInt16 calcNumSegments() const;
 
   private:
     /**
@@ -297,7 +321,7 @@ class CartridgeEnhanced : public Cartridge
     virtual uInt16 getStartBank() const { return 0; }
 
     /**
-      Get the ROM offset of the segment of the given address
+      Get the ROM offset of the segment of the given address.
 
       @param address  The address to get the offset for
       @return  The calculated offset
@@ -307,14 +331,16 @@ class CartridgeEnhanced : public Cartridge
     }
 
     /**
-      Get the RAM offset of the segment of the given address
+      Get the RAM offset of the segment of the given address.
+      The RAM banks are half the size of a ROM bank.
 
       @param address  The address to get the offset for
       @return  The calculated offset
     */
     uInt16 ramAddressSegmentOffset(uInt16 address) const {
-      return static_cast<uInt16>((myCurrentSegOffset[
-        ((address & ROM_MASK) >> myBankShift) % myBankSegs] - mySize) >> 1);
+      return static_cast<uInt16>(
+        (myCurrentSegOffset[((address & ROM_MASK) >> myBankShift) % myBankSegs] - mySize) 
+        >> (myBankShift - myRamBankShift));
     }
 
   private:

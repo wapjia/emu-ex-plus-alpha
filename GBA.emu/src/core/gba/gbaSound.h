@@ -101,4 +101,6 @@ class Multi_Buffer;
 
 void flush_samples(Multi_Buffer * buffer, EmuEx::EmuAudio *audio);
 
+void remake_stereo_buffer(GBASys&);
+
 #endif // VBAM_CORE_GBA_GBASOUND_H_

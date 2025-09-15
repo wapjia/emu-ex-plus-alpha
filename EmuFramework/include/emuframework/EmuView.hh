@@ -72,12 +72,22 @@ private:
 	EmuSystem *sysPtr{};
 	std::string frameTimingStatsStr;
 	std::string audioStatsStr;
+	std::string statsStr;
 	StatsDisplay statsDisplay;
 	bool showStats{};
 	bool showFrameTimingStats{};
 	bool showAudioStats{};
 
-	void updateShowStats() { showStats = showFrameTimingStats || showAudioStats; }
+	void updateShowStats()
+	{
+		showStats = showFrameTimingStats || showAudioStats;
+		if(!showStats)
+		{
+			statsStr = {};
+			statsDisplay.text.resetString();
+		}
+	}
+
 	void updateStatsDisplay();
 	void placeStats();
 };

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -28,6 +28,7 @@ class Player : public Serializable
 {
   public:
     explicit Player(uInt32 collisionMask);
+    ~Player() override = default;
 
   public:
 
@@ -35,7 +36,7 @@ class Player : public Serializable
 
     void reset();
 
-    void grp(uInt8 value);
+    void grp(uInt8 pattern);
 
     void hmp(uInt8 value);
 
@@ -59,6 +60,7 @@ class Player : public Serializable
     void applyColorLoss();
 
     void setInvertedPhaseClock(bool enable);
+    void setShortLateHMove(bool enable);
 
     void startMovement();
 
@@ -87,9 +89,9 @@ class Player : public Serializable
     bool save(Serializer& out) const override;
     bool load(Serializer& in) override;
 
-    inline void movementTick(uInt32 clock, bool hblank);
+    FORCE_INLINE void movementTick(uInt32 clock, uInt32 hclock, bool hblank);
 
-    inline void tick();
+    FORCE_INLINE void tick();
 
   public:
 
@@ -115,7 +117,7 @@ class Player : public Serializable
 
     uInt8 myColor{0};
     uInt8 myObjectColor{0}, myDebugColor{0};
-    bool myDebugEnabled{0};
+    bool myDebugEnabled{false};
 
     bool myIsSuppressed{false};
 
@@ -142,6 +144,7 @@ class Player : public Serializable
     bool myIsDelaying{false};
     bool myInvertedPhaseClock{false};
     bool myUseInvertedPhaseClock{false};
+    bool myUseShortLateHMove{false};
 
     TIA* myTIA{nullptr};
 
@@ -157,21 +160,30 @@ class Player : public Serializable
 // ############################################################################
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Player::movementTick(uInt32 clock, bool hblank)
+void Player::movementTick(uInt32 clock, uInt32 hclock, bool hblank)
 {
-  if (clock == myHmmClocks)
-    isMoving = false;
-
   if(isMoving)
   {
-    if (hblank) tick();
-    myInvertedPhaseClock = !hblank;
+    // Stop movement once the number of clocks according to HMPx is reached
+    if (clock == myHmmClocks)
+      isMoving = false;
+    else if (!myUseShortLateHMove || hclock != 0)
+    {
+      // Process the tick if we are in hblank. Otherwise, the tick is either masked
+      // by an ordinary tick or merges two consecutive ticks into a single tick (inverted
+      // movement clock phase mode).
+      if(hblank) tick();
+      // Track a tick outside hblank for later processing
+      myInvertedPhaseClock = !hblank;
+    }
   }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Player::tick()
 {
+  // If we are in inverted movement clock phase mode and a movement tick occurred, it
+  // will supress the tick.
   if(myUseInvertedPhaseClock && myInvertedPhaseClock)
   {
     myInvertedPhaseClock = false;
@@ -196,7 +208,7 @@ void Player::tick()
         if (myRenderCounter > 0)
           ++mySampleCounter;
 
-        if (myRenderCounter >= 0 && myDividerChangeCounter >= 0 && myDividerChangeCounter-- == 0)
+        if (myRenderCounter >= 0 && myDividerChangeCounter >= 0 && myDividerChangeCounter-- == 0)  // NOLINT (bugprone-inc-dec-in-conditions)
           setDivider(myDividerPending);
 
         break;
@@ -205,7 +217,7 @@ void Player::tick()
         if (myRenderCounter > 1 && (((myRenderCounter - 1) % myDivider) == 0))
           ++mySampleCounter;
 
-        if (myRenderCounter > 0 && myDividerChangeCounter >= 0 && myDividerChangeCounter-- == 0)
+        if (myRenderCounter > 0 && myDividerChangeCounter >= 0 && myDividerChangeCounter-- == 0)  // NOLINT (bugprone-inc-dec-in-conditions)
           setDivider(myDividerPending);
 
         break;

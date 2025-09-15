@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -25,8 +25,9 @@
 class EmulationTiming {
   public:
 
-    EmulationTiming(FrameLayout frameLayout = FrameLayout::ntsc,
-                    ConsoleTiming consoleTiming = ConsoleTiming::ntsc);
+    explicit EmulationTiming(FrameLayout frameLayout = FrameLayout::ntsc,
+                             ConsoleTiming consoleTiming = ConsoleTiming::ntsc);
+    ~EmulationTiming() = default;
 
     EmulationTiming& updateFrameLayout(FrameLayout frameLayout);
 

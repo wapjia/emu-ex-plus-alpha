@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -20,8 +20,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 TimerManager::TimerManager()
-  : nextId{no_timer + 1},
-    queue()
+  : nextId{no_timer + 1}
 {
 }
 
@@ -66,7 +65,7 @@ TimerManager::TimerId TimerManager::addTimer(
       Duration(msPeriod), func));
 
   // Insert a reference to the Timer into ordering queue
-  const Queue::iterator place = queue.emplace(iter.first->second);
+  const auto place = queue.emplace(iter.first->second);
 
   // We need to notify the timer thread only if we inserted
   // this timer into the front of the timer queue
@@ -99,15 +98,15 @@ void TimerManager::clear()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 std::size_t TimerManager::size() const noexcept
 {
-  ScopedLock lock(sync);
+  const ScopedLock lock(sync);
   return active.size();
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool TimerManager::empty() const noexcept
 {
-  ScopedLock lock(sync);
-  return active.empty();
+  const ScopedLock lock(sync);
+  return active.empty();  // NOLINT: bugprone-standalone-empty
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -180,8 +179,11 @@ void TimerManager::timerThreadWorker()
     }
     else
     {
-      // Wait until the timer is ready or a timer creation notifies
-      wakeUp.wait_until(lock, timer.next);
+      // Wait until the timer is ready or a timer creation notifies. Note that wait until accesses
+      // time_point by reference, so we make a copy in case the current time is deleted while the
+      // thread sleeps.
+      const auto next = timer.next;
+      wakeUp.wait_until(lock, next);
     }
   }
 }
@@ -204,7 +206,7 @@ bool TimerManager::destroy_impl(ScopedLock& lock, TimerMap::iterator i,
     timer.running = false;
 
     // Assign a condition variable to this timer
-    timer.waitCond.reset(new ConditionVar);
+    timer.waitCond = std::make_unique<ConditionVar>();
 
     // Block until the callback is finished
     if (std::this_thread::get_id() != worker.get_id())
@@ -242,7 +244,7 @@ TimerManager::Timer::Timer(Timer&& r) noexcept
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 TimerManager::Timer::Timer(TimerId tid, Timestamp tnext, Duration tperiod,
                            const TFunction& func) noexcept
-  : id{tid },
+  : id{tid},
     next{tnext},
     period{tperiod},
     handler{func}

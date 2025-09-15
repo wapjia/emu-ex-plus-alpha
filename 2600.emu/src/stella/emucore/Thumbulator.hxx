@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -34,21 +34,10 @@ class Cartridge;
   #define UNSAFE_OPTIMIZATIONS
 #endif
 
-#define ROMADDMASK 0x7FFFF
-#define RAMADDMASK 0x7FFF
-
-#define ROMSIZE (ROMADDMASK+1)      // 512KB
-#define RAMSIZE (RAMADDMASK+1)      // 32KB
-
-#define CPSR_N (1u<<31)
-#define CPSR_Z (1u<<30)
-#define CPSR_C (1u<<29)
-#define CPSR_V (1u<<28)
-
 #ifdef DEBUGGER_SUPPORT
   #define THUMB_CYCLE_COUNT
   //#define COUNT_OPS
-  #define THUMB_STATS
+  //#define THUMB_STATS
 #endif
 
 #ifdef THUMB_CYCLE_COUNT
@@ -61,7 +50,7 @@ class Thumbulator
   public:
     // control cartridge specific features of the Thumbulator class,
     // such as the start location for calling custom code
-    enum class ConfigureFor {
+    enum class ConfigureFor: uInt8 {
       BUS,      // cartridges of type BUS
       CDF,      // cartridges of type CDF
       CDF1,     // cartridges of type CDF version 1
@@ -69,7 +58,7 @@ class Thumbulator
       CDFJplus, // cartridges of type CDFJ+
       DPCplus   // cartridges of type DPC+
     };
-    enum class ChipType {
+    enum class ChipType: Int8 {
       AUTO = -1,
       LPC2101,    // Harmony (includes LPC2103)
       LPC2104_OC, // Dev cart overclocked (includes LPC2105)
@@ -77,7 +66,7 @@ class Thumbulator
       LPC213x,    // future use (includes LPC2132)
       numTypes
     };
-    enum class MamModeType {
+    enum class MamModeType: uInt8 {
       mode0, mode1, mode2, modeX
     };
     struct ChipPropsType {
@@ -90,7 +79,7 @@ class Thumbulator
       uInt32 instructions{0};
     #ifdef THUMB_STATS
       uInt32 reads{0}, writes{0};
-      uInt32 nCylces{0}, sCylces{0}, iCylces{0};
+      uInt32 nCycles{0}, sCycles{0}, iCycles{0};
       uInt32 branches{0}, taken{0};
       uInt32 mamPrefetchHits{0}, mamPrefetchMisses{0};
       uInt32 mamBranchHits{0}, mamBranchMisses{0};
@@ -99,10 +88,11 @@ class Thumbulator
     };
 
     Thumbulator(const uInt16* rom_ptr, uInt16* ram_ptr, uInt32 rom_size,
-                const uInt32 c_base, const uInt32 c_start, const uInt32 c_stack,
+                uInt32 c_base, uInt32 c_start, uInt32 c_stack,
                 bool traponfatal, double cyclefactor,
                 Thumbulator::ConfigureFor configurefor,
                 Cartridge* cartridge);
+    ~Thumbulator() = default;
 
     /**
       Run the ARM code, and return when finished.  A runtime_error exception is
@@ -160,10 +150,14 @@ class Thumbulator
       add1, add2, add3, add4, add5, add6, add7,
       and_,
       asr1, asr2,
-      b1, b2,
+      // b1 variants:
+      beq, bne, bcs, bcc, bmi, bpl, bvs, bvc, bhi, bls, bge, blt, bgt, ble,
+      b2,
       bic,
       bkpt,
-      blx1, blx2,
+      // blx1 variants:
+      bl, blx_thumb, blx_arm,
+      blx2,
       bx,
       cmn,
       cmp1, cmp2, cmp3,
@@ -205,14 +199,15 @@ class Thumbulator
       numOps
     };
   #ifdef THUMB_CYCLE_COUNT
-    enum class CycleType {
+    enum class CycleType: uInt8 {
       S, N, I // Sequential, Non-sequential, Internal
     };
-    enum class AccessType {
+    enum class AccessType: uInt8 {
       prefetch, branch, data
     };
   #endif
-    const std::array<ChipPropsType, uInt32(ChipType::numTypes)> ChipProps =
+    const std::array<ChipPropsType,
+        static_cast<uInt32>(ChipType::numTypes)> ChipProps =
     {{
       { "LPC2101..3",    70.0, 4, 1 }, // LPC2101_02_03
       { "LPC2104..6 OC", 70.0, 4, 2 }, // LPC2104_05_06 Overclocked
@@ -222,37 +217,34 @@ class Thumbulator
 
   private:
     string doRun(uInt32& cycles, bool irqDrivenAudio);
+#ifndef UNSAFE_OPTIMIZATIONS
     uInt32 read_register(uInt32 reg);
     void write_register(uInt32 reg, uInt32 data, bool isFlowBreak = true);
+#endif
     uInt32 fetch16(uInt32 addr);
     uInt32 read16(uInt32 addr);
     uInt32 read32(uInt32 addr);
   #ifndef UNSAFE_OPTIMIZATIONS
-    bool isInvalidROM(uInt32 addr);
-    bool isInvalidRAM(uInt32 addr);
+    bool isInvalidROM(uInt32 addr) const;
+    bool isInvalidRAM(uInt32 addr) const;
     bool isProtectedRAM(uInt32 addr);
   #endif
     void write16(uInt32 addr, uInt32 data);
     void write32(uInt32 addr, uInt32 data);
     void updateTimer(uInt32 cycles);
 
-    static Op decodeInstructionWord(uint16_t inst);
+    Op decodeInstructionWord(uint16_t inst, uInt32 pc);
 
-    void do_zflag(uInt32 x);
-    void do_nflag(uInt32 x);
-    void do_cflag(uInt32 a, uInt32 b, uInt32 c);
-    void do_vflag(uInt32 a, uInt32 b, uInt32 c);
-    void do_cflag_bit(uInt32 x);
-    void do_vflag_bit(uInt32 x);
+    void do_cvflag(uInt32 a, uInt32 b, uInt32 c);
 
   #ifndef UNSAFE_OPTIMIZATIONS
     // Throw a runtime_error exception containing an error referencing the
     // given message and variables
     // Note that the return value is never used in these methods
-    int fatalError(const char* opcode, uInt32 v1, const char* msg);
-    int fatalError(const char* opcode, uInt32 v1, uInt32 v2, const char* msg);
+    int fatalError(string_view opcode, uInt32 v1, string_view msg);
+    int fatalError(string_view opcode, uInt32 v1, uInt32 v2, string_view msg);
 
-    void dump_counters();
+    void dump_counters() const;
     void dump_regs();
   #endif
     int execute();
@@ -274,9 +266,12 @@ class Thumbulator
     uInt32 cStart{0};
     uInt32 cStack{0};
     const unique_ptr<Op[]> decodedRom;  // NOLINT
+    const unique_ptr<uInt32[]> decodedParam;  // NOLINT
     uInt16* ram{nullptr};
-    std::array<uInt32, 16> reg_norm; // normal execution mode, do not have a thread mode
-    uInt32 cpsr{0};
+    std::array<uInt32, 16> reg_norm{}; // normal execution mode, do not have a thread mode
+    uInt32 znFlags{0};
+    uInt32 cFlag{0};
+    uInt32 vFlag{0};
     MamModeType mamcr{MamModeType::mode0};
     bool handler_mode{false};
     uInt32 systick_ctrl{0}, systick_reload{0}, systick_count{0}, systick_calibrate{0};
@@ -333,7 +328,19 @@ class Thumbulator
 
     ConfigureFor configuration;
 
-    Cartridge* myCartridge;
+    Cartridge* myCartridge{nullptr};
+
+    static constexpr uInt32
+      ROMADDMASK = 0x7FFFF,
+      RAMADDMASK = 0x7FFF,
+
+      ROMSIZE = ROMADDMASK + 1,  // 512KB
+      RAMSIZE = RAMADDMASK + 1,  // 32KB
+
+      CPSR_N = 1U << 31,
+      CPSR_Z = 1U << 30,
+      CPSR_C = 1U << 29,
+      CPSR_V = 1U << 28;
 
   private:
     // Following constructors and assignment operators not supported

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -59,7 +59,7 @@ class CartridgeFA2 : public CartridgeFA
       @param settings  A reference to the settings object
       @param bsSize    The size specified by the bankswitching scheme
     */
-    CartridgeFA2(const ByteBuffer& image, size_t size, const string& md5,
+    CartridgeFA2(const ByteBuffer& image, size_t size, string_view md5,
                  const Settings& settings, size_t bsSize = 28_KB);
     ~CartridgeFA2() override = default;
 
@@ -74,10 +74,9 @@ class CartridgeFA2 : public CartridgeFA
     /**
       Informs the cartridge about the name of the nvram file it will use.
 
-      @param nvramdir  The full path of the nvram directory
-      @param romfile   The name of the cart from ROM properties
+      @param path  The full path of the nvram file
     */
-    void setNVRamFile(const string& nvramfile) override;
+    void setNVRamFile(string_view path) override;
 
   #ifdef DEBUGGER_SUPPORT
     /**
@@ -109,7 +108,7 @@ class CartridgeFA2 : public CartridgeFA
     bool poke(uInt16 address, uInt8 value) override;
 
   private:
-    bool checkSwitchBank(uInt16 address, uInt8 value = 0) override;
+    bool checkSwitchBank(uInt16 address, uInt8 value) override;
 
     uInt16 hotspot() const override { return 0x1FF5; }
 

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -28,6 +28,7 @@ class JitterEmulation : public Serializable
 {
   public:
     JitterEmulation();
+    ~JitterEmulation() override = default;
 
   public:
     // sensitivity:
@@ -49,6 +50,8 @@ class JitterEmulation : public Serializable
 
     void frameComplete(Int32 scanlineCount, Int32 vsyncCycles);
     Int32 jitter() const { return myJitter; }
+
+    bool vsyncCorrect() const { return myVsyncCorrect; }
 
     /**
      * Save state.
@@ -101,6 +104,7 @@ class JitterEmulation : public Serializable
     Int32 myUnstableFrames{MAX_UNSTABLE_FRAMES};
     Int32 myJitterLines{MIN_JITTER_LINES};
     Int32 myVsyncLines{MIN_VSYNC_LINES};
+    bool myVsyncCorrect{true};
 
   private:
     JitterEmulation(const JitterEmulation&) = delete;

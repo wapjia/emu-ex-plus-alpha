@@ -186,15 +186,7 @@ bool InputManager::handleAppActionKeyInput(EmuApp& app, InputAction action, cons
 		{
 			if(!isPushed)
 				break;
-			if(app.rewindManager.maxStates)
-			{
-				app.rewindManager.rewindState(app);
-			}
-			else
-			{
-				auto suspendCtx = app.suspendEmulationThread();
-				app.postMessage(3, false, "Please set rewind states in Options➔System");
-			}
+			app.rewindManager.rewindState(app);
 		}
 		break;
 		case softReset:

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -20,7 +20,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CartridgeE7::CartridgeE7(const ByteBuffer& image, size_t size,
-                         const string& md5, const Settings& settings)
+                         string_view md5, const Settings& settings)
   : Cartridge(settings, md5),
     mySize{size}
 {
@@ -37,7 +37,15 @@ void CartridgeE7::initialize(const ByteBuffer& image, size_t size)
   std::copy_n(image.get(), std::min<size_t>(romSize(), size), myImage.get());
   createRomAccessArrays(romSize() + myRAM.size());
 
-  myRAMBank = romBankCount() - 1;
+  myRAM.fill(0xFF);
+  myCurrentBank.fill(0);
+
+  myRAMBank = romBankCount() - 1;  // NOLINT
+
+  myPlusROM = make_unique<PlusROM>(mySettings, *this);
+
+  // Determine whether we have a PlusROM cart
+  myPlusROM->initialize(myImage, mySize);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -54,6 +62,9 @@ void CartridgeE7::reset()
   bank(startBank());
 
   myBankChanged = true;
+
+  if (myPlusROM->isValid())
+      myPlusROM->reset();
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -98,8 +109,10 @@ void CartridgeE7::install(System& system)
             0, nullptr, 0x1fc0, System::PA_NONE, 0x1fc0);*/
 
   // Setup the second segment to always point to the last ROM bank
+  const auto offset = static_cast<uInt16>(myRAMBank * BANK_SIZE);
   setAccess(0x1A00, 0x1FE0U & (~System::PAGE_MASK - 0x1A00),
-            myRAMBank * BANK_SIZE, myImage.get(), myRAMBank * BANK_SIZE, System::PageAccessType::READ, BANK_SIZE - 1);
+            offset, myImage.get(), offset,
+            System::PageAccessType::READ, static_cast<uInt16>(BANK_SIZE - 1));
   myCurrentBank[1] = myRAMBank;
 
   // Install some default banks for the RAM and first segment
@@ -137,6 +150,15 @@ void CartridgeE7::checkSwitchBank(uInt16 address)
 uInt8 CartridgeE7::peek(uInt16 address)
 {
   const uInt16 peekAddress = address;
+
+  // Is this a PlusROM?
+  if (myPlusROM->isValid())
+  {
+      uInt8 value = 0;
+      if (myPlusROM->peekHotspot(address, value))
+          return value;
+  }
+
   address &= 0x0FFF;
 
   // Switch banks if necessary
@@ -159,6 +181,10 @@ uInt8 CartridgeE7::peek(uInt16 address)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool CartridgeE7::poke(uInt16 address, uInt8 value)
 {
+  // Is this a PlusROM?
+  if (myPlusROM->isValid() && myPlusROM->pokeHotspot(address, value))
+    return true;
+
   const uInt16 pokeAddress = address;
   address &= 0x0FFF;
 
@@ -177,7 +203,7 @@ bool CartridgeE7::poke(uInt16 address, uInt8 value)
     else
     {
       // Writing to the read port should be ignored, but trigger a break if option enabled
-      uInt8 dummy;
+      uInt8 dummy{0};
 
       pokeRAM(dummy, pokeAddress, value);
       myRamWriteAccess = pokeAddress;
@@ -197,7 +223,7 @@ bool CartridgeE7::poke(uInt16 address, uInt8 value)
       else
       {
         // Writing to the read port should be ignored, but trigger a break if option enabled
-        uInt8 dummy;
+        uInt8 dummy{0};
 
         pokeRAM(dummy, pokeAddress, value);
         myRamWriteAccess = pokeAddress;
@@ -260,6 +286,12 @@ uInt16 CartridgeE7::getBank(uInt16 address) const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+uInt16 CartridgeE7::getSegmentBank(uInt16 segment) const
+{
+  return getBank(0x800 * segment);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool CartridgeE7::patch(uInt16 address, uInt8 value)
 {
   address = address & 0x0FFF;
@@ -304,10 +336,12 @@ bool CartridgeE7::save(Serializer& out) const
     out.putShortArray(myCurrentBank.data(), myCurrentBank.size());
     out.putShort(myCurrentRAM);
     out.putByteArray(myRAM.data(), myRAM.size());
+    if (myPlusROM->isValid() && !myPlusROM->save(out))
+        return false;
   }
   catch(...)
   {
-    cerr << "ERROR: " << name() << "::save" << endl;
+    cerr << "ERROR: " << name() << "::save\n";
     return false;
   }
 
@@ -322,10 +356,12 @@ bool CartridgeE7::load(Serializer& in)
     in.getShortArray(myCurrentBank.data(), myCurrentBank.size());
     myCurrentRAM = in.getShort();
     in.getByteArray(myRAM.data(), myRAM.size());
+    if (myPlusROM->isValid() && !myPlusROM->load(in))
+        return false;
   }
   catch(...)
   {
-    cerr << "ERROR: " << name() << "::load" << endl;
+    cerr << "ERROR: " << name() << "::load\n";
     return false;
   }
 
@@ -345,5 +381,5 @@ uInt16 CartridgeE7::romBankCount() const
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 uInt16 CartridgeE7::romSize() const
 {
-  return romBankCount() * BANK_SIZE;
+  return romBankCount() * BANK_SIZE;  // NOLINT
 }

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -20,7 +20,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CartridgeMDM::CartridgeMDM(const ByteBuffer& image, size_t size,
-                           const string& md5, const Settings& settings,
+                           string_view md5, const Settings& settings,
                            size_t bsSize)
   : CartridgeEnhanced(image, size, md5, settings,
                       bsSize == 0 ? BSPF::nextPowerOfTwo(size) : bsSize)
@@ -67,7 +67,7 @@ uInt8 CartridgeMDM::peek(uInt16 address)
   // Because of the way we've set up accessing above, we can only
   // get here when the addresses are from 0x800 - 0xBFF
 
-  checkSwitchBank(address);
+  checkSwitchBank(address, 0);
 
   const int hotspot = ((address & 0x0F00) >> 8) - 8;
   return myHotSpotPageAccess[hotspot].device->peek(address);
@@ -80,7 +80,7 @@ bool CartridgeMDM::poke(uInt16 address, uInt8 value)
   // about those below $1000
   if(!(address & 0x1000))
   {
-    checkSwitchBank(address);
+    checkSwitchBank(address, 0);
 
     const int hotspot = ((address & 0x0F00) >> 8) - 8;
     myHotSpotPageAccess[hotspot].device->poke(address, value);
@@ -112,7 +112,7 @@ bool CartridgeMDM::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeMDM::save" << endl;
+    cerr << "ERROR: CartridgeMDM::save\n";
     return false;
   }
 
@@ -129,7 +129,7 @@ bool CartridgeMDM::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeMDM::load" << endl;
+    cerr << "ERROR: CartridgeMDM::load\n";
     return false;
   }
 

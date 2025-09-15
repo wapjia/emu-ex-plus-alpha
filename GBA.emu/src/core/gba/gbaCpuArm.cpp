@@ -2626,6 +2626,19 @@ static INSN_REGPARM void armE01(ARM7TDMI &cpu, uint32_t opcode, int &clockTicks)
 #define armE01 armUnknownInsn
 #endif
 
+static INSN_REGPARM void armE80(ARM7TDMI &cpu, uint32_t opcode, int &clockTicks)
+{
+    if ((opcode & 0xFFFC0000) == (0xEE800000)) {
+#ifdef GBA_LOGGING
+        if (systemVerbose & VERBOSE_UNDEFINED)
+            log("Undefined Wii U ARM instruction %08x at %08Xx\n", opcode, armNextPC - 4);
+#endif
+        return;
+    }
+
+    armUnknownInsn(opcode);
+}
+
 // SWI <comment>
 static INSN_REGPARM void armF00(ARM7TDMI &cpu, uint32_t opcode, int &clockTicks)
 {
@@ -2824,7 +2837,11 @@ constexpr insnfunc_t armInsnTable[4096] = {
     REP16(arm_UI), // E20
     REP16(arm_UI), // E30
     REP16(arm_UI), REP16(arm_UI), REP16(arm_UI), REP16(arm_UI), // E40
-    REP16(arm_UI), REP16(arm_UI), REP16(arm_UI), REP16(arm_UI), // E80
+
+		armE80, arm_UI, arm_UI, arm_UI, arm_UI, arm_UI, arm_UI, arm_UI, // E80
+		arm_UI, arm_UI, arm_UI, arm_UI, arm_UI, arm_UI, arm_UI, arm_UI, // E88
+
+		REP16(arm_UI), REP16(arm_UI), REP16(arm_UI), // E90
     REP16(arm_UI), REP16(arm_UI), REP16(arm_UI), REP16(arm_UI), // EC0
 
     REP256(armF00), // F00

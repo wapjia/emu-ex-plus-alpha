@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -23,6 +23,8 @@
 #include "Settings.hxx"
 #include "StateManager.hxx"
 #include "TIA.hxx"
+#include "Cart.hxx"
+#include "CartELF.hxx"
 
 #include "DevSettingsHandler.hxx"
 
@@ -41,12 +43,16 @@ void DevSettingsHandler::loadSettings(SettingsSet set)
 
   myFrameStats[set] = settings.getBool(prefix + "stats");
   myDetectedInfo[set] = settings.getBool(prefix + "detectedinfo");
+  // AtariVox/SaveKey/PlusROM access
+  myExternAccess[set] = settings.getBool(prefix + "extaccess");
   myConsole[set] = settings.getString(prefix + "console") == "7800" ? 1 : 0;
   // Randomization
   myRandomBank[set] = settings.getBool(prefix + "bankrandom");
   myRandomizeTIA[set] = settings.getBool(prefix + "tiarandom");
   myRandomizeRAM[set] = settings.getBool(prefix + "ramrandom");
   myRandomizeCPU[set] = settings.getString(prefix + "cpurandom");
+  // Random hotspot peeks
+  myRandomHotspots[set] = devSettings ? settings.getBool("dev.hsrandom") : false;
   // Undriven TIA pins
   myUndrivenPins[set] = devSettings ? settings.getBool("dev.tiadriven") : false;
 #ifdef DEBUGGER_SUPPORT
@@ -57,14 +63,16 @@ void DevSettingsHandler::loadSettings(SettingsSet set)
 #endif
   // Thumb ARM emulation exception
   myThumbException[set] = devSettings ? settings.getBool("dev.thumb.trapfatal") : false;
-  // AtariVox/SaveKey/PlusROM access
-  myExternAccess[set] = settings.getBool(prefix + "extaccess");
+  myArmSpeed[set] = devSettings ? settings.getInt("dev.arm.mips") : CartridgeELF::MIPS_MAX;
 
   // TIA tab
   myTIAType[set] = devSettings ? settings.getString("dev.tia.type") : "standard";
   myPlInvPhase[set] = devSettings ? settings.getBool("dev.tia.plinvphase") : false;
   myMsInvPhase[set] = devSettings ? settings.getBool("dev.tia.msinvphase") : false;
   myBlInvPhase[set] = devSettings ? settings.getBool("dev.tia.blinvphase") : false;
+  myPlLateHMove[set] = devSettings ? settings.getBool("dev.tia.pllatehmove") : false;
+  myMsLateHMove[set] = devSettings ? settings.getBool("dev.tia.mslatehmove") : false;
+  myBlLateHMove[set] = devSettings ? settings.getBool("dev.tia.bllatehmove") : false;
   myPFBits[set] = devSettings ? settings.getBool("dev.tia.delaypfbits") : false;
   myPFColor[set] = devSettings ? settings.getBool("dev.tia.delaypfcolor") : false;
   myPFScore[set] = devSettings ? settings.getBool("dev.tia.pfscoreglitch") : false;
@@ -110,6 +118,7 @@ void DevSettingsHandler::saveSettings(SettingsSet set)
 
   if(devSettings)
   {
+    settings.setValue("dev.hsrandom", myRandomHotspots[set]);
     // Undriven TIA pins
     settings.setValue("dev.tiadriven", myUndrivenPins[set]);
   #ifdef DEBUGGER_SUPPORT
@@ -120,6 +129,7 @@ void DevSettingsHandler::saveSettings(SettingsSet set)
   #endif
     // Thumb ARM emulation exception
     settings.setValue("dev.thumb.trapfatal", myThumbException[set]);
+    settings.setValue("dev.arm.mips", myArmSpeed[set]);
   }
 
   // AtariVox/SaveKey/PlusROM access
@@ -134,6 +144,9 @@ void DevSettingsHandler::saveSettings(SettingsSet set)
       settings.setValue("dev.tia.plinvphase", myPlInvPhase[set]);
       settings.setValue("dev.tia.msinvphase", myMsInvPhase[set]);
       settings.setValue("dev.tia.blinvphase", myBlInvPhase[set]);
+      settings.setValue("dev.tia.pllatehmove", myPlLateHMove[set]);
+      settings.setValue("dev.tia.mslatehmove", myMsLateHMove[set]);
+      settings.setValue("dev.tia.bllatehmove", myBlLateHMove[set]);
       settings.setValue("dev.tia.delaypfbits", myPFBits[set]);
       settings.setValue("dev.tia.delaypfcolor", myPFColor[set]);
       settings.setValue("dev.tia.pfscoreglitch", myPFScore[set]);
@@ -168,6 +181,7 @@ void DevSettingsHandler::applySettings(SettingsSet set)
 
   if(myOSystem.hasConsole())
   {
+    myOSystem.console().cartridge().enableRandomHotspots(myRandomHotspots[set]);
     myOSystem.console().tia().driveUnusedPinsRandom(myUndrivenPins[set]);
     // Notes:
     // - thumb exceptions not updated, because set in cart constructor
@@ -189,6 +203,9 @@ void DevSettingsHandler::applySettings(SettingsSet set)
     myOSystem.console().tia().setPlInvertedPhaseClock(myPlInvPhase[set]);
     myOSystem.console().tia().setMsInvertedPhaseClock(myMsInvPhase[set]);
     myOSystem.console().tia().setBlInvertedPhaseClock(myBlInvPhase[set]);
+    myOSystem.console().tia().setPlShortLateHMove(myPlLateHMove[set]);
+    myOSystem.console().tia().setMsShortLateHMove(myMsLateHMove[set]);
+    myOSystem.console().tia().setBlShortLateHMove(myBlLateHMove[set]);
     myOSystem.console().tia().setPFBitsDelay(myPFBits[set]);
     myOSystem.console().tia().setPFColorDelay(myPFColor[set]);
     myOSystem.console().tia().setPFScoreGlitch(myPFScore[set]);

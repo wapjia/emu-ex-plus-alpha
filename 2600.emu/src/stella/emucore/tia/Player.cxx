@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -37,7 +37,7 @@ void Player::reset()
   myCopy = 1;
   myPatternOld = 0;
   myPatternNew = 0;
-  myIsReflected = 0;
+  myIsReflected = false;
   myIsDelaying = false;
   myColor = myObjectColor = myDebugColor = 0;
   myDebugEnabled = false;
@@ -47,6 +47,7 @@ void Player::reset()
   myDividerChangeCounter = -1;
   myInvertedPhaseClock = false;
   myUseInvertedPhaseClock = false;
+  myUseShortLateHMove = false;
   myPattern = 0;
 
   setDivider(1);
@@ -93,6 +94,15 @@ void Player::nusiz(uInt8 value, bool hblank)
   const uInt8* oldDecodes = myDecodes;
 
   myDecodes = DrawCounterDecodes::get().playerDecodes()[myDecodesOffset];
+
+  // Changing NUSIZ can trigger a decode in the same cycle
+  // (https://github.com/stella-emu/stella/issues/1012)
+  if (!myIsRendering && myDecodes[(myCounter + TIAConstants::H_PIXEL - 1) % TIAConstants::H_PIXEL]) {
+    myIsRendering = true;
+    mySampleCounter = 0;
+    myRenderCounter = renderCounterOffset;
+    myCopy = myDecodes[myCounter - 1];
+  }
 
   if (
     myDecodes != oldDecodes &&
@@ -249,6 +259,12 @@ void Player::applyColorLoss()
 void Player::setInvertedPhaseClock(bool enable)
 {
   myUseInvertedPhaseClock = enable;
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void Player::setShortLateHMove(bool enable)
+{
+  myUseShortLateHMove = enable;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -443,7 +459,7 @@ bool Player::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_Player::save" << endl;
+    cerr << "ERROR: TIA_Player::save\n";
     return false;
   }
 
@@ -493,7 +509,7 @@ bool Player::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_Player::load" << endl;
+    cerr << "ERROR: TIA_Player::load\n";
     return false;
   }
 

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -28,26 +28,27 @@
 #include "CartBUS.hxx"
 #include "exception/FatalEmulationError.hxx"
 
-// Location of data within the RAM copy of the BUS Driver.
-static constexpr int
+namespace {
+  // Location of data within the RAM copy of the BUS Driver.
+  constexpr int
     COMMSTREAM = 0x10,
     JUMPSTREAM = 0x11;
 
-static constexpr bool BUS_STUFF_ON(uInt8 mode) { return (mode & 0x0F) == 0; }
-static constexpr bool DIGITAL_AUDIO_ON(uInt8 mode) { return (mode & 0xF0) == 0; }
+  constexpr bool BUS_STUFF_ON(uInt8 mode) { return (mode & 0x0F) == 0; }
+  constexpr bool DIGITAL_AUDIO_ON(uInt8 mode) { return (mode & 0xF0) == 0; }
 
-static constexpr uInt32 getUInt32(const uInt8* _array, size_t _address) {
-  return static_cast<uInt32>((_array)[(_address) + 0]        +
-                            ((_array)[(_address) + 1] << 8)  +
-                            ((_array)[(_address) + 2] << 16) +
-                            ((_array)[(_address) + 3] << 24));
-}
-
+  constexpr uInt32 getUInt32(const uInt8* _array, size_t _address) {
+    return static_cast<uInt32>((_array)[(_address) + 0]        +
+                              ((_array)[(_address) + 1] << 8)  +
+                              ((_array)[(_address) + 2] << 16) +
+                              ((_array)[(_address) + 3] << 24));
+  }
+} // namespace
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CartridgeBUS::CartridgeBUS(const ByteBuffer& image, size_t size,
-                           const string& md5, const Settings& settings)
-  : CartridgeARM(md5, settings),
+                           string_view md5, const Settings& settings)
+  : CartridgeARM(settings, md5),
     myImage{make_unique<uInt8[]>(32_KB)}
 {
   // Copy the ROM image into my buffer
@@ -59,7 +60,7 @@ CartridgeBUS::CartridgeBUS(const ByteBuffer& image, size_t size,
   // Pointer to BUS driver in RAM
   myDriverImage = myRAM.data();
 
-  bool devSettings = settings.getBool("dev.settings");
+  const bool devSettings = settings.getBool("dev.settings");
 
   if (myBUSSubtype == BUSSubtype::BUS0)
   {
@@ -112,7 +113,7 @@ CartridgeBUS::CartridgeBUS(const ByteBuffer& image, size_t size,
       this);
   }
 
-  this->setInitialState();
+  this->setInitialState();  // NOLINT
 
   myPlusROM = make_unique<PlusROM>(mySettings, *this);
 
@@ -190,12 +191,12 @@ void CartridgeBUS::install(System& system)
 inline void CartridgeBUS::updateMusicModeDataFetchers()
 {
   // Calculate the number of cycles since the last update
-  const uInt32 cycles = static_cast<uInt32>(mySystem->cycles() - myAudioCycles);
+  const auto cycles = static_cast<uInt32>(mySystem->cycles() - myAudioCycles);
   myAudioCycles = mySystem->cycles();
 
   // Calculate the number of BUS OSC clocks since the last update
   const double clocks = ((20000.0 * cycles) / myClockRate) + myFractionalClocks;
-  uInt32 wholeClocks = static_cast<uInt32>(clocks);
+  const auto wholeClocks = static_cast<uInt32>(clocks);
   myFractionalClocks = clocks - static_cast<double>(wholeClocks);
 
   // Let's update counters and flags of the music mode data fetchers
@@ -214,7 +215,7 @@ inline void CartridgeBUS::callFunction(uInt8 value)
               // time for Stella as ARM code "runs in zero 6507 cycles".
     case 255: // call without IRQ driven audio
       try {
-        uInt32 cycles = static_cast<uInt32>(mySystem->cycles() - myARMCycles);
+        auto cycles = static_cast<uInt32>(mySystem->cycles() - myARMCycles);
 
         myARMCycles = mySystem->cycles();
         myThumbEmulator->run(cycles, value == 254);
@@ -944,7 +945,7 @@ bool CartridgeBUS::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeBUS::save" << endl;
+    cerr << "ERROR: CartridgeBUS::save\n";
     return false;
   }
 
@@ -987,7 +988,7 @@ bool CartridgeBUS::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeBUS::load" << endl;
+    cerr << "ERROR: CartridgeBUS::load\n";
     return false;
   }
 

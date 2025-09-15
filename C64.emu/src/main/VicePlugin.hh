@@ -52,6 +52,7 @@ struct VicePlugin
 	int *warp_mode_enabled{};
 	std::span<const std::string_view> modelNames{};
 	std::string_view configName{};
+	std::string_view stateExt{};
 	const char *borderModeStr{""};
 	int (*model_get_)(){};
 	void (*model_set_)(int model){};

@@ -572,8 +572,11 @@ public:
 	void setInputPlayer(int8_t player);
 	auto inputPlayer() const { return inputPlayer_; }
 	bool keyIsEnabled(KeyInfo) const;
+	bool uiKeyIsEnabled(KeyInfo) const;
 	void setDisabledInputKeys(std::span<const KeyCode> keys);
-	void updateEnabledButtons(VControllerButtonGroup &) const;
+	void updateEnabledButtons(VControllerButtonGroup&) const;
+	void updateEnabledButtons(VControllerUIButtonGroup&) const;
+	void updateEnabledUIButtons();
 	void updateKeyboardMapping();
 	void updateTextures();
 	void resetInput();

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -31,13 +31,15 @@ namespace {
             (R_MAX + R * static_cast<double>(vMax)) / (R_MAX + R * static_cast<double>(v)))
     );
   }
-}
+} // namespace
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Audio::Audio()
 {
-  for (uInt8 i = 0; i <= 0x1e; ++i) myMixingTableSum[i] = mixingTableEntry(i, 0x1e);
-  for (uInt8 i = 0; i <= 0x0f; ++i) myMixingTableIndividual[i] = mixingTableEntry(i, 0x0f);
+  for (uInt8 i = 0; i <= 0x1e; ++i)
+    myMixingTableSum[i] = mixingTableEntry(i, 0x1e);
+  for (uInt8 i = 0; i <= 0x0f; ++i)
+    myMixingTableIndividual[i] = mixingTableEntry(i, 0x0f);
 
   reset();
 }
@@ -45,6 +47,7 @@ Audio::Audio()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Audio::reset()
 {
+  mySumChannel0 = mySumChannel1 = mySumCt = 0;
   myCounter = 0;
   mySampleIndex = 0;
 
@@ -62,32 +65,13 @@ void Audio::setAudioQueue(const shared_ptr<AudioQueue>& queue)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Audio::tick()
+void Audio::createSample()
 {
-  switch (myCounter) {
-    case 9:
-    case 81:
-      myChannel0.phase0();
-      myChannel1.phase0();
-      break;
-
-    case 37:
-    case 149:
-      phase1();
-      break;
-
-    default:
-      break;
-  }
-
-  if (++myCounter == 228) myCounter = 0;
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Audio::phase1()
-{
-  const uInt8 sample0 = myChannel0.phase1();
-  const uInt8 sample1 = myChannel1.phase1();
+  // Calculate average of all recent volume samples. the average for each
+  // channel is mixed to create a single audible value
+  const auto sample0 = static_cast<uInt8>(mySumChannel0 / mySumCt);
+  const auto sample1 = static_cast<uInt8>(mySumChannel1 / mySumCt);
+  mySumChannel0 = mySumChannel1 = mySumCt = 0;
 
   addSample(sample0, sample1);
 #ifdef GUI_SUPPORT
@@ -102,8 +86,10 @@ void Audio::addSample(uInt8 sample0, uInt8 sample1)
   if(!myAudioQueue) return;
 
   if(myAudioQueue->isStereo()) {
-    myCurrentFragment[2 * mySampleIndex] = myMixingTableIndividual[sample0];
-    myCurrentFragment[2 * mySampleIndex + 1] = myMixingTableIndividual[sample1];
+    myCurrentFragment[static_cast<size_t>(2 * mySampleIndex)] =
+      myMixingTableIndividual[sample0];
+    myCurrentFragment[static_cast<size_t>(2 * mySampleIndex + 1)] =
+      myMixingTableIndividual[sample1];
   }
   else {
     myCurrentFragment[mySampleIndex] = myMixingTableSum[sample0 + sample1];
@@ -113,18 +99,6 @@ void Audio::addSample(uInt8 sample0, uInt8 sample1)
     mySampleIndex = 0;
     myCurrentFragment = myAudioQueue->enqueue(myCurrentFragment);
   }
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-AudioChannel& Audio::channel0()
-{
-  return myChannel0;
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-AudioChannel& Audio::channel1()
-{
-  return myChannel1;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -139,6 +113,11 @@ bool Audio::save(Serializer& out) const
 
     if (!myChannel0.save(out)) return false;
     if (!myChannel1.save(out)) return false;
+
+    out.putInt(mySumChannel0);
+    out.putInt(mySumChannel1);
+    out.putInt(mySumCt);
+
   #ifdef GUI_SUPPORT
     out.putLong(static_cast<uInt64>(mySamples.size()));
     out.putByteArray(mySamples.data(), mySamples.size());
@@ -152,7 +131,7 @@ bool Audio::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_Audio::save" << endl;
+    cerr << "ERROR: TIA_Audio::save\n";
     return false;
   }
 
@@ -168,6 +147,11 @@ bool Audio::load(Serializer& in)
 
     if (!myChannel0.load(in)) return false;
     if (!myChannel1.load(in)) return false;
+
+    mySumChannel0 = in.getInt();
+    mySumChannel1 = in.getInt();
+    mySumCt = in.getInt();
+
   #ifdef GUI_SUPPORT
     const uInt64 sampleSize = in.getLong();
     ByteArray samples(sampleSize);
@@ -189,7 +173,7 @@ bool Audio::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_Audio::load" << endl;
+    cerr << "ERROR: TIA_Audio::load\n";
     return false;
   }
 

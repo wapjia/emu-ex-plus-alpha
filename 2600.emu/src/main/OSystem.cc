@@ -47,7 +47,7 @@ OSystem::OSystem(EmuEx::EmuApp &app):
 
 void OSystem::makeConsole(unique_ptr<Cartridge>& cart, const Properties& props, const char *gamePath)
 {
-	myRomFile = FilesystemNode{gamePath};
+	myRomFile = FSNode{gamePath};
 	myConsole.emplace(*this, cart, props, myAudioSettings);
 	myConsole->riot().update();
 }
@@ -57,19 +57,27 @@ void OSystem::deleteConsole()
 	myConsole.reset();
 }
 
-void OSystem::setSoundMixRate(int mixRate, AudioSettings::ResamplingQuality resampleQ)
+void OSystem::setSoundMixRate(int mixRate)
 {
-	mySound.setMixRate(mixRate, resampleQ);
+	if(!hasConsole())
+		return;
+	console().emulationTiming().updatePlaybackRate(mixRate);
+	mySound.setMixRate(mixRate);
 }
 
-FilesystemNode OSystem::stateDir() const
+FSNode OSystem::stateDir() const
 {
-	return FilesystemNode{std::string{appPtr->system().contentSaveDirectory()}};
+	return FSNode{std::string{appPtr->system().contentSaveDirectory()}};
 }
 
-FilesystemNode OSystem::nvramDir(std::string_view name) const
+FSNode OSystem::nvramDir(std::string_view name) const
 {
-	return FilesystemNode{std::string{appPtr->system().contentSaveFilePath(name)}};
+	return FSNode{std::string{appPtr->system().contentSaveFilePath(name)}};
+}
+
+FSNode OSystem::baseDir(std::string_view name) const
+{
+	return FSNode{std::string{appPtr->system().contentFilePath(name)}};
 }
 
 EmuEx::EmuApp &OSystem::app()

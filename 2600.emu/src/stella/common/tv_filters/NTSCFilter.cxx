@@ -8,14 +8,13 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
 // this file, and for a DISCLAIMER OF ALL WARRANTIES.
 //============================================================================
 
-#include "TIASurface.hxx"
 #include "Settings.hxx"
 
 #include "NTSCFilter.hxx"
@@ -91,8 +90,8 @@ void NTSCFilter::selectAdjustable(int direction,
   msg << "Custom " << ourCustomAdjustables[myCurrentAdjustable].type;
   val << value << "%";
 
-  text = msg.str();
-  valueText = val.str();
+  text = msg.view();
+  valueText = val.view();
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -122,8 +121,8 @@ void NTSCFilter::changeCurrentAdjustable(int direction,
   msg << "Custom " << ourCustomAdjustables[myCurrentAdjustable].type;
   val << newValue << "%";
 
-  text = msg.str();
-  valueText = val.str();
+  text = msg.view();
+  valueText = val.view();
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -139,7 +138,7 @@ void NTSCFilter::loadConfig(const Settings& settings)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void NTSCFilter::saveConfig(Settings& settings) const
+void NTSCFilter::saveConfig(Settings& settings)
 {
   // Save adjustables for custom mode
   settings.setValue("tv.sharpness", myCustomSetup.sharpness);
@@ -150,7 +149,7 @@ void NTSCFilter::saveConfig(Settings& settings) const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void NTSCFilter::getAdjustables(Adjustable& adjustable, Preset preset) const
+void NTSCFilter::getAdjustables(Adjustable& adjustable, Preset preset)
 {
   switch(preset)
   {
@@ -181,7 +180,7 @@ void NTSCFilter::setCustomAdjustables(const Adjustable& adjustable)
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void NTSCFilter::convertToAdjustable(Adjustable& adjustable,
-                                     const AtariNTSC::Setup& setup) const
+                                     const AtariNTSC::Setup& setup)
 {
   adjustable.sharpness   = scaleTo100(setup.sharpness);
   adjustable.resolution  = scaleTo100(setup.resolution);
@@ -192,12 +191,3 @@ void NTSCFilter::convertToAdjustable(Adjustable& adjustable,
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 AtariNTSC::Setup NTSCFilter::myCustomSetup = AtariNTSC::TV_Composite;
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-const std::array<NTSCFilter::AdjustableTag, int(NTSCFilter::Adjustables::NUM_ADJUSTABLES)> NTSCFilter::ourCustomAdjustables = { {
-  { "sharpness", &myCustomSetup.sharpness },
-  { "resolution", &myCustomSetup.resolution },
-  { "artifacts", &myCustomSetup.artifacts },
-  { "fringing", &myCustomSetup.fringing },
-  { "bleeding", &myCustomSetup.bleed }
-} };

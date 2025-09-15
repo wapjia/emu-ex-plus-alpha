@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -35,11 +35,11 @@ namespace {
   constexpr AudioSettings::ResamplingQuality normalizeResamplingQuality(int numericResamplingQuality)
   {
     return (
-      numericResamplingQuality >= static_cast<int>(AudioSettings::ResamplingQuality::nearestNeightbour) &&
+      numericResamplingQuality >= static_cast<int>(AudioSettings::ResamplingQuality::nearestNeighbour) &&
       numericResamplingQuality <= static_cast<int>(AudioSettings::ResamplingQuality::lanczos_3)
     ) ? static_cast<AudioSettings::ResamplingQuality>(numericResamplingQuality) : AudioSettings::DEFAULT_RESAMPLING_QUALITY;
   }
-}
+} // namespace
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 AudioSettings::AudioSettings(Settings& settings)
@@ -51,9 +51,10 @@ AudioSettings::AudioSettings(Settings& settings)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void AudioSettings::normalize(Settings& settings)
 {
-  int settingPreset = settings.getInt(SETTING_PRESET);
+  const int settingPreset = settings.getInt(SETTING_PRESET);
   const Preset preset = normalizedPreset(settingPreset);
-  if (static_cast<int>(preset) != settingPreset) settings.setValue(SETTING_PRESET, static_cast<int>(DEFAULT_PRESET));
+  if (static_cast<int>(preset) != settingPreset)
+    settings.setValue(SETTING_PRESET, static_cast<int>(DEFAULT_PRESET));
 
   switch (settings.getInt(SETTING_SAMPLE_RATE)) {
     case 44100:
@@ -80,18 +81,19 @@ void AudioSettings::normalize(Settings& settings)
       break;
   }
 
-  int settingBufferSize = settings.getInt(SETTING_BUFFER_SIZE);
+  const int settingBufferSize = settings.getInt(SETTING_BUFFER_SIZE);
   if (settingBufferSize < 0 || settingBufferSize > MAX_BUFFER_SIZE) settings.setValue(SETTING_BUFFER_SIZE, DEFAULT_BUFFER_SIZE);
 
-  int settingHeadroom = settings.getInt(SETTING_HEADROOM);
+  const int settingHeadroom = settings.getInt(SETTING_HEADROOM);
   if (settingHeadroom < 0 || settingHeadroom > MAX_HEADROOM) settings.setValue(SETTING_HEADROOM, DEFAULT_HEADROOM);
 
-  int settingResamplingQuality = settings.getInt(SETTING_RESAMPLING_QUALITY);
-  const ResamplingQuality resamplingQuality = normalizeResamplingQuality(settingResamplingQuality);
+  const int settingResamplingQuality = settings.getInt(SETTING_RESAMPLING_QUALITY);
+  const ResamplingQuality resamplingQuality =
+      normalizeResamplingQuality(settingResamplingQuality);
   if (static_cast<int>(resamplingQuality) != settingResamplingQuality)
     settings.setValue(SETTING_RESAMPLING_QUALITY, static_cast<int>(DEFAULT_RESAMPLING_QUALITY));
 
-  int settingVolume = settings.getInt(SETTING_VOLUME);
+  const int settingVolume = settings.getInt(SETTING_VOLUME);
   if (settingVolume < 0 || settingVolume > 100) settings.setValue(SETTING_VOLUME, DEFAULT_VOLUME);
 }
 
@@ -186,7 +188,7 @@ void AudioSettings::setPreset(AudioSettings::Preset preset)
       myPresetFragmentSize = 1024;
       myPresetBufferSize = 6;
       myPresetHeadroom = 5;
-      myPresetResamplingQuality = ResamplingQuality::nearestNeightbour;
+      myPresetResamplingQuality = ResamplingQuality::nearestNeighbour;
       break;
 
     case Preset::highQualityMediumLag:

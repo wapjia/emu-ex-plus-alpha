@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -50,7 +50,7 @@ namespace {
     return sinc(x) * sinc(x / static_cast<float>(a));
   }
 
-}
+} // namespace
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 LanczosResampler::LanczosResampler(
@@ -72,11 +72,12 @@ LanczosResampler::LanczosResampler(
   myPrecomputedKernelCount{reducedDenominator(formatFrom.sampleRate, formatTo.sampleRate)},
   myKernelSize{2 * kernelParameter},
   myKernelParameter{kernelParameter},
-  myHighPassL{HIGH_PASS_CUT_OFF, float(formatFrom.sampleRate)},
-  myHighPassR{HIGH_PASS_CUT_OFF, float(formatFrom.sampleRate)},
-  myHighPass{HIGH_PASS_CUT_OFF, float(formatFrom.sampleRate)}
+  myHighPassL{HIGH_PASS_CUT_OFF, static_cast<float>(formatFrom.sampleRate)},
+  myHighPassR{HIGH_PASS_CUT_OFF, static_cast<float>(formatFrom.sampleRate)},
+  myHighPass{HIGH_PASS_CUT_OFF, static_cast<float>(formatFrom.sampleRate)}
 {
-  myPrecomputedKernels = make_unique<float[]>(myPrecomputedKernelCount * myKernelSize);
+  myPrecomputedKernels = make_unique<float[]>(
+      static_cast<size_t>(myPrecomputedKernelCount) * myKernelSize);
 
   if (myFormatFrom.stereo)
   {
@@ -96,7 +97,8 @@ void LanczosResampler::precomputeKernels()
   uInt32 timeIndex = 0;
 
   for (uInt32 i = 0; i < myPrecomputedKernelCount; ++i) {
-    float* kernel = myPrecomputedKernels.get() + myKernelSize * i;
+    float* kernel = myPrecomputedKernels.get() +
+                    static_cast<size_t>(myKernelSize) * i;
     // The kernel is normalized such to be evaluate on time * formatFrom.sampleRate
     const float center =
       static_cast<float>(timeIndex) / static_cast<float>(myFormatTo.sampleRate);
@@ -140,10 +142,11 @@ void LanczosResampler::fillFragment(float* fragment, uInt32 length)
     return;
   }
 
-  const uInt32 outputSamples = myFormatTo.stereo ? (length >> 1) : length;
+  const size_t outputSamples = myFormatTo.stereo ? (length >> 1) : length;
 
-  for (uInt32 i = 0; i < outputSamples; ++i) {
-    const float* kernel = myPrecomputedKernels.get() + (myCurrentKernelIndex * myKernelSize);
+  for (size_t i = 0; i < outputSamples; ++i) {
+    const float* kernel = myPrecomputedKernels.get() +
+        static_cast<size_t>(myCurrentKernelIndex) * myKernelSize;
     myCurrentKernelIndex = (myCurrentKernelIndex + 1) % myPrecomputedKernelCount;
 
     if (myFormatFrom.stereo) {
@@ -176,15 +179,20 @@ void LanczosResampler::fillFragment(float* fragment, uInt32 length)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-inline void LanczosResampler::shiftSamples(uInt32 samplesToShift)
+FORCE_INLINE void LanczosResampler::shiftSamples(uInt32 samplesToShift)
 {
   while (samplesToShift-- > 0) {
     if (myFormatFrom.stereo) {
-      myBufferL->shift(myHighPassL.apply(myCurrentFragment[2*myFragmentIndex] / static_cast<float>(0x7fff)));
-      myBufferR->shift(myHighPassR.apply(myCurrentFragment[2*myFragmentIndex + 1] / static_cast<float>(0x7fff)));
+      myBufferL->shift(myHighPassL.apply(
+        myCurrentFragment[2 * static_cast<size_t>(myFragmentIndex)] /
+            static_cast<float>(0x7fff)));
+      myBufferR->shift(myHighPassR.apply(
+        myCurrentFragment[2 * static_cast<size_t>(myFragmentIndex) + 1] /
+            static_cast<float>(0x7fff)));
     }
     else
-      myBuffer->shift(myHighPass.apply(myCurrentFragment[myFragmentIndex] / static_cast<float>(0x7fff)));
+      myBuffer->shift(myHighPass.apply(myCurrentFragment[myFragmentIndex] /
+          static_cast<float>(0x7fff)));
 
     ++myFragmentIndex;
 

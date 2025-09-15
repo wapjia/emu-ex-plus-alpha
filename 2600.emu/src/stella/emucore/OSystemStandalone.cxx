@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -19,7 +19,7 @@
 #include "OSystemStandalone.hxx"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void OSystemStandalone::initPersistence(FilesystemNode& basedir)
+void OSystemStandalone::initPersistence(FSNode& basedir)
 {
   myStellaDb = make_shared<StellaDb>(basedir.getPath(), "stella");
   myStellaDb->initialize();
@@ -34,22 +34,23 @@ string OSystemStandalone::describePresistence()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 shared_ptr<KeyValueRepository> OSystemStandalone::getSettingsRepository()
 {
-  return shared_ptr<KeyValueRepository>(myStellaDb, &myStellaDb->settingsRepository());
+  return {myStellaDb, &myStellaDb->settingsRepository()};
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 shared_ptr<CompositeKeyValueRepository> OSystemStandalone::getPropertyRepository()
 {
-  return shared_ptr<CompositeKeyValueRepository>(myStellaDb, &myStellaDb->propertyRepository());
+  return {myStellaDb, &myStellaDb->propertyRepository()};
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 shared_ptr<CompositeKeyValueRepositoryAtomic> OSystemStandalone::getHighscoreRepository()
 {
-  return shared_ptr<CompositeKeyValueRepositoryAtomic>(myStellaDb, &myStellaDb->highscoreRepository());
+  return {myStellaDb, &myStellaDb->highscoreRepository()};
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void OSystemStandalone::getBaseDirectories(string& basedir, string& homedir,
-                                    bool useappdir, const string& usedir)
-{}
+void OSystemStandalone::getBaseDirectories(
+    string& basedir, string& homedir, bool useappdir, string_view usedir)
+{
+}

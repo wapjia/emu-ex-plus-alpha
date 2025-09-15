@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -18,8 +18,6 @@
 #ifndef CARTRIDGEFA_HXX
 #define CARTRIDGEFA_HXX
 
-class System;
-
 #include "bspf.hxx"
 #include "CartEnhanced.hxx"
 #ifdef DEBUGGER_SUPPORT
@@ -28,7 +26,8 @@ class System;
 
 /**
   Cartridge class used for CBS' RAM Plus cartridges.  There are three 4K
-  banks, accessible by read/write at $1FF8 - $1FFA, and 256 bytes of RAM.
+  banks, accessible by read/write at $1FF8 - $1FFA (note: D0 has to be 1
+  for switching), and 256 bytes of RAM.
   RAM read port is $1100 - $11FF, write port is $1000 - $10FF.
 
   @author  Bradford W. Mott, Thomas Jentzsch
@@ -47,7 +46,7 @@ class CartridgeFA : public CartridgeEnhanced
       @param settings  A reference to the various settings (read-only)
       @param bsSize    The size specified by the bankswitching scheme
     */
-    CartridgeFA(const ByteBuffer& image, size_t size, const string& md5,
+    CartridgeFA(const ByteBuffer& image, size_t size, string_view md5,
                 const Settings& settings, size_t bsSize = 12_KB);
     ~CartridgeFA() override = default;
 
@@ -72,7 +71,7 @@ class CartridgeFA : public CartridgeEnhanced
   #endif
 
   private:
-    bool checkSwitchBank(uInt16 address, uInt8 value = 0) override;
+    bool checkSwitchBank(uInt16 address, uInt8) override;
 
     uInt16 hotspot() const override { return 0x1FF8; }
 

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -38,9 +38,11 @@ DrawCounterDecodes& DrawCounterDecodes::DrawCounterDecodes::get()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 DrawCounterDecodes::DrawCounterDecodes()
 {
-  uInt8 *decodeTables[] = {myDecodes0, myDecodes1, myDecodes2, myDecodes3, myDecodes4, myDecodes6};
+  uInt8* decodeTables[] = {
+    myDecodes0, myDecodes1, myDecodes2, myDecodes3, myDecodes4, myDecodes6
+  };
 
-  for (auto decodes: decodeTables)
+  for (auto* decodes: decodeTables)
   {
     std::fill_n(decodes, 160, 0);         // TJ: magic number 160 = pixel/scanline
     decodes[156] = 1;                     // TJ: set for all copy pattern (first copy)

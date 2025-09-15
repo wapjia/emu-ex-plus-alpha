@@ -1,4 +1,4 @@
-libcxxVersion := 21.1.0-rc1
+libcxxVersion := 21.1.0
 libcxxSrcDir := $(tempDir)/llvm-project-$(libcxxVersion).src/libcxx
 libcxxabiSrcDir := $(tempDir)/llvm-project-$(libcxxVersion).src/libcxxabi
 libcSrcDir := $(tempDir)/llvm-project-$(libcxxVersion).src/libc

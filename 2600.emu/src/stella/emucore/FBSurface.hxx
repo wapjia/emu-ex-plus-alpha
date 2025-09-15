@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -23,10 +23,10 @@ class TIASurface;
 
 namespace GUI {
   class Font;
-}
+}  // namespace GUI
 namespace Common {
   struct Rect;
-}
+}  // namespace Common
 
 #include "FrameBufferConstants.hxx"
 #include "FrameBuffer.hxx"
@@ -55,8 +55,7 @@ class FBSurface
       This method returns the surface pixel pointer and pitch, which are
       used when one wishes to modify the surface pixels directly.
     */
-    inline void basePtr(uInt32*& pixels, uInt32& pitch) const
-    {
+    void basePtr(uInt32*& pixels, uInt32& pitch) const {
       pixels = myPixels;
       pitch = myPitch;
     }
@@ -228,10 +227,13 @@ class FBSurface
       @return       Number of lines drawn
     */
 
-    virtual int drawString(const GUI::Font& font, const string& s, int x, int y, int w, int h,
-                           ColorId color, TextAlign align = TextAlign::Left,
-                           int deltax = 0, bool useEllipsis = true, ColorId shadowColor = kNone,
-                           size_t linkStart = string::npos, size_t linkLen = string::npos,
+    virtual int drawString(const GUI::Font& font, string_view s, int x, int y,
+                           int w, int h, ColorId color,
+                           TextAlign align = TextAlign::Left,
+                           int deltax = 0, bool useEllipsis = true,
+                           ColorId shadowColor = kNone,
+                           size_t linkStart = string::npos,
+                           size_t linkLen = string::npos,
                            bool underline = false);
 
     /**
@@ -251,12 +253,16 @@ class FBSurface
       @param linkLen      The length of a link in drawn string
       @param underline    Whether to underline the link
 
+      @return    x coordinate of end of string
+
     */
-    virtual void drawString(const GUI::Font& font, const string& s, int x, int y, int w,
-                            ColorId color, TextAlign align = TextAlign::Left,
-                            int deltax = 0, bool useEllipsis = true, ColorId shadowColor = kNone,
-                            size_t linkStart = string::npos, size_t linkLen = string::npos,
-                            bool underline = false);
+    virtual int drawString(const GUI::Font& font, string_view s, int x, int y,
+                           int w, ColorId color, TextAlign align = TextAlign::Left,
+                           int deltax = 0, bool useEllipsis = true,
+                           ColorId shadowColor = kNone,
+                           size_t linkStart = string::npos,
+                           size_t linkLen = string::npos,
+                           bool underline = false);
 
     /**
       Splits a given string to a given width considering whitespaces.
@@ -267,8 +273,8 @@ class FBSurface
       @param left   The left part of the split string
       @param right  The right part of the split string
     */
-    void splitString(const GUI::Font& font, const string& s, int w,
-                     string& left, string& right) const;
+    static void splitString(const GUI::Font& font, string_view s, int w,
+                            string& left, string& right);
 
     /**
       The rendering attributes that can be modified for this texture.
@@ -396,14 +402,17 @@ class FBSurface
       @param y      The y coordinate to check
       @return       True if coordinates are in bounds
     */
-    bool checkBounds(const uInt32 x, const uInt32 y) const;
+    bool checkBounds(uInt32 x, uInt32 y) const;
 
     /**
       Check if the given character is a whitespace.
       @param c      Character to check
       @return       True if whitespace character
     */
-    bool isWhiteSpace(const char c) const;
+    static bool isWhiteSpace(char c) {
+      static constexpr string_view spaces{" ,.;:+-*/\\'([\n"};
+      return spaces.find(c) != string_view::npos;
+    }
 
   protected:
     uInt32* myPixels{nullptr};  // NOTE: MUST be set in child classes

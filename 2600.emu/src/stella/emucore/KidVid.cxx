@@ -8,37 +8,54 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
 // this file, and for a DISCLAIMER OF ALL WARRANTIES.
 //============================================================================
 
-#include <cstdlib>
-
+#include "Console.hxx"
 #include "Event.hxx"
+#include "FSNode.hxx"
+#include "OSystem.hxx"
+#include "Sound.hxx"
+#include "Switches.hxx"
+
 #include "KidVid.hxx"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-KidVid::KidVid(Jack jack, const Event& event, const System& system,
-               const string& romMd5)
+KidVid::KidVid(Jack jack, const Event& event, const OSystem& osystem,
+               const System& system, string_view romMd5,
+               const onMessageCallbackForced& callback)
   : Controller(jack, event, system, Controller::Type::KidVid),
-    myEnabled{myJack == Jack::Right}
+    myEnabled{myJack == Jack::Right},
+    myOSystem{osystem},
+    myCallback{callback}
 {
   // Right now, there are only two games that use the KidVid
   if(romMd5 == "ee6665683ebdb539e89ba620981cb0f6")
-    myGame = KVBBEARS;    // Berenstain Bears
+    myGame = Game::BBears;    // Berenstain Bears
   else if(romMd5 == "a204cd4fb1944c86e800120706512a64")
-    myGame = KVSMURFS;    // Smurfs Save the Day
+    myGame = Game::Smurfs;    // Smurfs Save the Day
   else
     myEnabled = false;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-KidVid::~KidVid()
+void KidVid::write(DigitalPin pin, bool value)
 {
-  closeSampleFile();
+  // Change the pin state based on value
+  switch(pin)
+  {
+    // Pin 1: Signal tape running or stopped
+    case DigitalPin::One:
+      setPin(DigitalPin::One, value);
+      break;
+
+    default:
+      break;
+  }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -47,234 +64,269 @@ void KidVid::update()
   if(!myEnabled)
     return;
 
-  if(myEvent.get(Event::ConsoleReset))
+  if(myContinueSong)
+  {
+    // Continue playing song after state load
+    const uInt8 temp = ourSongPositions[mySongPointer - 1] & 0x7f;
+    const uInt32 songLength = ourSongStart[temp + 1] - ourSongStart[temp] - (262 * ClickFrames);
+
+    // Play the remaining WAV file
+    auto fileName = myOSystem.baseDir(((temp < 10) ? "KVSHARED.WAV": getFileName())).getPath();
+    myOSystem.sound().playWav(fileName, ourSongStart[temp] + (songLength - mySongLength), mySongLength);
+
+    myContinueSong = false;
+  }
+
+  if(myGame == Game::Smurfs && myEvent.get(Event::ConsoleReset)) // Reset does not work with BBears!
   {
     myTape = 0; // rewind Kid Vid tape
-    closeSampleFile();
+    myFilesFound = mySongPlaying = false;
+    myOSystem.sound().stopWav();
   }
-  if(myEvent.get(Event::RightKeyboard1))
+  else if(myEvent.get(Event::RightKeyboard6) || myEvent.get(Event::ConsoleSelect) ||
+          (myOSystem.hasConsole() && !myOSystem.console().switches().tvColor()))
   {
-    myTape = 2;
-    myIdx = myGame == KVBBEARS ? KVBLOCKBITS : 0;
-    myBlockIdx = KVBLOCKBITS;
-    myBlock = 0;
-    openSampleFile();
-//cerr << "myTape = " << myTape << endl;
+    // Some first songs trigger a sequence of timed actions, they cannot be skipped
+    if(mySongPointer &&
+        ourSongPositions[mySongPointer - 1] != 0 && // First song of all BBears games
+        ourSongPositions[mySongPointer - 1] != 11)  // First song of Harmony Smurf
+      myOSystem.sound().stopWav();
   }
-  else if(myEvent.get(Event::RightKeyboard2))
+  if(!myTape)
   {
-    myTape = 3;
-    myIdx = myGame == KVBBEARS ? KVBLOCKBITS : 0;
-    myBlockIdx = KVBLOCKBITS;
-    myBlock = 0;
-    openSampleFile();
-//cerr << "myTape = " << myTape << endl;
-  }
-  else if(myEvent.get(Event::RightKeyboard3))
-  {
-    if(myGame == KVBBEARS)  /* Berenstain Bears ? */
+    if(myEvent.get(Event::RightKeyboard1))
+      myTape = 2;
+    else if(myEvent.get(Event::RightKeyboard2))
+      myTape = 3;
+    else if(myEvent.get(Event::RightKeyboard3))
+      myTape = myGame == Game::BBears ? 4 : 1; // Berenstain Bears or Smurfs Save The Day?
+    // If no Keyboard controller is available, use SELECT and the same
+    // switches settings as for playing Smurfs without a Kid Vid.
+    else if(myEvent.get(Event::ConsoleSelect) && myOSystem.hasConsole())
     {
-      myTape = 4;
-      myIdx = KVBLOCKBITS;
-//cerr << "myTape = " << myTape << endl;
+      // Harmony (2) : A B
+      // Handy (3)   : B A
+      // Greedy (1/4): B B
+      myTape = 1
+        + (myOSystem.console().switches().leftDifficultyA() ? 1 : 0)
+        + (myOSystem.console().switches().rightDifficultyA() ? 2 : 0);
+      if(myTape == 4) // ignore A A
+        myTape = 0;
+      else if(myTape == 1 && myGame == Game::BBears)
+        myTape = 4;
     }
-    else                    /* no, Smurf Save The Day */
+    if(myTape)
     {
-      myTape = 1;
-      myIdx = 0;
-//cerr << "myTape = " << myTape << endl;
-    }
-    myBlockIdx = KVBLOCKBITS;
-    myBlock = 0;
-    openSampleFile();
-  }
+      static constexpr std::array<uInt32, 4> gameNumber = { 3, 1, 2, 3 };
+      static constexpr std::array<string_view, 6> gameName = {
+        "Harmony Smurf", "Handy Smurf", "Greedy Smurf",
+        "Big Number Hunt", "Great Letter Roundup", "Spooky Spelling Bee"
+      };
 
-  // Convert separate pin states into a 'register'
-  uInt8 IOPortA = 0b11110000;
-  if(getPin(DigitalPin::One))   IOPortA |= 0b0001;
-  if(getPin(DigitalPin::Two))   IOPortA |= 0b0010;
-  if(getPin(DigitalPin::Three)) IOPortA |= 0b0100;
-  if(getPin(DigitalPin::Four))  IOPortA |= 0b1000;
+      myIdx = myGame == Game::BBears ? NumBlockBits : 0; // KVData48/KVData44
+      myBlockIdx = NumBlockBits;
+      myBlock = 0;
+      openSampleFiles();
+
+      ostringstream msg;
+      msg << "Game #" << gameNumber[myTape - 1] << " - \""
+        << gameName[gameNumber[myTape - 1] + (myGame == Game::Smurfs ? -1 : 2)] << "\"";
+      myCallback(msg.view(), true);
+    }
+  }
 
   // Is the tape running?
-  if((myTape != 0) && ((IOPortA & 0b0001) == 0b0001) && !myTapeBusy)
+  if(myTape && getPin(DigitalPin::One) && !myTapeBusy)
   {
-    IOPortA = (IOPortA & 0b11110111) | (((ourKVData[myIdx >> 3] << (myIdx & 0x07)) & 0x80) >> 4);
+    setPin(DigitalPin::Four, (ourData[myIdx >> 3] << (myIdx & 0x07)) & 0x80);
+
+  #ifdef DEBUG_BUILD
+    cerr << (DigitalPin::Four, (ourData[myIdx >> 3] << (myIdx & 0x07)) & 0x80 ? "X" : ".");
+  #endif
 
     // increase to next bit
     ++myIdx;
     --myBlockIdx;
 
     // increase to next block (byte)
-    if(myBlockIdx == 0)
+    if(!myBlockIdx)
     {
-      if(myBlock == 0)
-        myIdx = ((myTape * 6) + 12 - KVBLOCKS) * 8; //KVData00-KVData=12
+      if(!myBlock)
+        myIdx = ((myTape * 6) + 12 - NumBlocks) * 8; // KVData00 - ourData = 12 (2 * 6)
       else
       {
-        if(myGame == KVSMURFS)
-        {
-          if(myBlock >= ourKVBlocks[myTape - 1])
-            myIdx = 42 * 8; //KVData80-KVData=42
-          else
-          {
-            myIdx = 36 * 8;//KVPause-KVData=36
-            setNextSong();
-          }
-        }
+        const uInt32 lastBlock = myGame == Game::Smurfs
+          ? ourBlocks[myTape - 1]
+          : ourBlocks[myTape + 2 - 1];
+        if(myBlock >= lastBlock)
+          myIdx = 42 * 8; // KVData80 - ourData = 42 (7 * 6)
         else
         {
-          if(myBlock >= ourKVBlocks[myTape + 2 - 1])
-            myIdx = 42 * 8; //KVData80-KVData=42
-          else
-          {
-            myIdx = 36 * 8;//KVPause-KVData=36
-            setNextSong();
-          }
+          myIdx = 36 * 8; // KVPause - ourData = 36 (6 * 6)
+          setNextSong();
         }
       }
       ++myBlock;
-      myBlockIdx = KVBLOCKBITS;
+      myBlockIdx = NumBlockBits;
     }
   }
 
-  // Now convert the register back into separate boolean values
-  setPin(DigitalPin::One,   IOPortA & 0b0001);
-  setPin(DigitalPin::Two,   IOPortA & 0b0010);
-  setPin(DigitalPin::Three, IOPortA & 0b0100);
-  setPin(DigitalPin::Four,  IOPortA & 0b1000);
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void KidVid::openSampleFile()
-{
-#if 0
-  static const char* const kvNameTable[6] = {
-    "kvs3.wav", "kvs1.wav", "kvs2.wav", "kvb3.wav", "kvb1.wav", "kvb2.wav"
-  };
-  static uInt32 StartSong[6] = {
-    44+38, 0, 44, 44+38+42+62+80, 44+38+42, 44+38+42+62
-  };
-
-  if(!myEnabled)
-    return;
-
-  if(!myFileOpened)
+  if(myFilesFound)
   {
-    int i = myGame == KVSMURFS ? 0 : 3;
-    i += myTape - 1;
-    if(myTape == 4) i -= 3;
-
-    mySampleFile = fopen(kvNameTable[i], "rb");
-    if(mySampleFile != nullptr)
+    if(mySongPlaying)
     {
-cerr << "opened file: " << kvNameTable[i] << endl;
-      mySharedSampleFile = fopen("kvshared.wav", "rb");
-      if(mySharedSampleFile == nullptr)
+      mySongLength = myOSystem.sound().wavSize();
+      myTapeBusy = (mySongLength > 262 * TapeFrames) || !myBeep;
+      // Check for end of played sample
+      if(mySongLength == 0)
       {
-        fclose(mySampleFile);
-        myFileOpened = false;
-      }
-      else
-      {
-cerr << "opened file: " << "kvshared.wav" << endl;
-//         fseek(mySampleFile, 45, SEEK_SET);
-        myFileOpened = true;
+        mySongPlaying = false;
+        myTapeBusy = !myBeep;
+        if(!myBeep)
+          setNextSong();
       }
     }
-    else
-      myFileOpened = false;
-
-    mySongCounter = 0;
-    myTapeBusy = false;
-    myFilePointer = StartSong[i];
   }
-#endif
+  else
+  {
+    if(mySongLength)
+    {
+      --mySongLength;
+      myTapeBusy = (mySongLength > TapeFrames);
+    }
+  }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void KidVid::closeSampleFile()
+bool KidVid::save(Serializer& out) const
 {
-#if 0
-  if(myFileOpened)
+  // Save WAV player state
+  out.putInt(myTape);
+  out.putBool(myFilesFound);
+  out.putBool(myTapeBusy);
+  out.putBool(myBeep);
+  out.putBool(mySongPlaying);
+  out.putInt(mySongPointer);
+  out.putInt(mySongLength);
+  // Save tape input simulation state
+  out.putInt(myIdx);
+  out.putInt(myBlockIdx);
+  out.putInt(myBlock);
+
+  return Controller::save(out);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+bool KidVid::load(Serializer& in)
+{
+  // Load WAV player state
+  myTape = in.getInt();
+  myFilesFound = in.getBool();
+  myTapeBusy = in.getBool();
+  myBeep = in.getBool();
+  mySongPlaying = in.getBool();
+  mySongPointer = in.getInt();
+  mySongLength = in.getInt();
+  // Load tape input simulation state
+  myIdx = in.getInt();
+  myBlockIdx = in.getInt();
+  myBlock = in.getInt();
+
+  myContinueSong = myFilesFound && mySongPlaying;
+
+  return Controller::load(in);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+string KidVid::getFileName() const
+{
+  static constexpr std::array<string_view, 6> fileNames = {
+    "KVS3.WAV", "KVS1.WAV", "KVS2.WAV",
+    "KVB3.WAV", "KVB1.WAV", "KVB2.WAV"
+  };
+
+  int i = myGame == Game::Smurfs ? myTape - 1 : myTape + 2;
+  if(myTape == 4) i = 3;
+
+  return string{fileNames[i]};
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void KidVid::openSampleFiles()
+{
+#ifdef SOUND_SUPPORT
+  static constexpr std::array<uInt32, 6> firstSongPointer = {
+    44 + 38,
+    0,
+    44,
+    44 + 38 + 42 + 62 + 80,
+    44 + 38 + 42,
+    44 + 38 + 42 + 62
+  };
+
+  if(!myFilesFound)
   {
-    fclose(mySampleFile);
-    fclose(mySharedSampleFile);
-    myFileOpened = false;
+    int i = myGame == Game::Smurfs ? myTape - 1 : myTape + 2;
+    if(myTape == 4) i = 3;
+
+    myFilesFound = FSNode(myOSystem.baseDir(getFileName())).exists() &&
+                   FSNode(myOSystem.baseDir("KVSHARED.WAV")).exists();
+
+  #ifdef DEBUG_BUILD
+    if(myFilesFound)
+      cerr << "\nfound file: " << getFileName() << '\n'
+           << "found file: " << "KVSHARED.WAV\n";
+  #endif
+
+    mySongLength = 0;
+    mySongPointer = firstSongPointer[i];
   }
+  myTapeBusy = false;
 #endif
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void KidVid::setNextSong()
 {
-  if(myFileOpened)
+  if(myFilesFound)
   {
-    myBeep = (ourSongPositions[myFilePointer] & 0x80) ? false : true;
+    myBeep = (ourSongPositions[mySongPointer] & 0x80) == 0;
 
-    const uInt8 temp = ourSongPositions[myFilePointer] & 0x7f;
-    mySharedData = (temp < 10);
-    mySongCounter = ourSongStart[temp+1] - ourSongStart[temp];
+    const uInt8 temp = ourSongPositions[mySongPointer] & 0x7f;
+    mySongLength = ourSongStart[temp + 1] - ourSongStart[temp] - (262 * ClickFrames);
 
-#if 0
-    if(mySharedData)
-      ; // fseek(mySharedSampleFile, ourSongStart[temp], SEEK_SET);
-    else
-      ; // fseek(mySampleFile, ourSongStart[temp], SEEK_SET);
-#endif
+    // Play the WAV file
+    const string& fileName = (temp < 10) ? "KVSHARED.WAV" : getFileName();
+    myOSystem.sound().playWav(myOSystem.baseDir(fileName).getPath(),
+                              ourSongStart[temp], mySongLength);
+    ostringstream msg;
+    msg << "Read song #" << mySongPointer << " (" << fileName << ")";
+    myCallback(msg.view(), false);
 
-    ++myFilePointer;
-    myTapeBusy = true;
+  #ifdef DEBUG_BUILD
+    cerr << fileName << ": " << (ourSongPositions[mySongPointer] & 0x7f) << '\n';
+  #endif
+
+    mySongPlaying = myTapeBusy = true;
+    ++mySongPointer;
   }
   else
   {
     myBeep = true;
     myTapeBusy = true;
-    mySongCounter = 80*262;   /* delay needed for Harmony without tape */
+    mySongLength = TapeFrames + 32;   /* delay needed for Harmony without tape */
   }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void KidVid::getNextSampleByte()
-{
-//  static int oddeven = 0;
-  if(mySongCounter == 0)
-    mySampleByte = 0x80;
-#if 0
-  else
-  {
-    oddeven = oddeven^1;
-    if(oddeven & 1)
-    {
-      mySongCounter--;
-      myTapeBusy = (mySongCounter > 262*48) || !myBeep;
-
-      if(myFileOpened)
-      {
-        if(mySharedData)
-          mySampleByte = getc(mySharedSampleFile);
-        else
-          mySampleByte = getc(mySampleFile);
-      }
-      else
-        mySampleByte = 0x80;
-
-      if(!myBeep && (mySongCounter == 0))
-        setNextSong();
-    }
-  }
-#endif
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-const std::array<uInt8, KidVid::KVBLOCKS> KidVid::ourKVBlocks = {
+const std::array<uInt8, KidVid::NumBlocks> KidVid::ourBlocks = {
   2+40, 2+21, 2+35,     /* Smurfs tapes 3, 1, 2 */
   42+60, 42+78, 42+60   /* BBears tapes 1, 2, 3 (40 extra blocks for intro) */
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-const std::array<uInt8, KidVid::KVBLOCKBITS> KidVid::ourKVData = {
-/* KVData44 */
+const std::array<uInt8, KidVid::NumBlockBits> KidVid::ourData = {
+/* KVData44, Smurfs */
   0x7b,  // 0111 1011b  ; (1)0
   0x1e,  // 0001 1110b  ; 1
   0xc6,  // 1100 0110b  ; 00
@@ -282,7 +334,7 @@ const std::array<uInt8, KidVid::KVBLOCKBITS> KidVid::ourKVData = {
   0xec,  // 1110 1100b  ; 0
   0x60,  // 0110 0000b  ; 0+
 
-/* KVData48 */
+/* KVData48, BBears */
   0x7b,  // 0111 1011b  ; (1)0
   0x1e,  // 0001 1110b  ; 1
   0xc6,  // 1100 0110b  ; 00
@@ -340,7 +392,7 @@ const std::array<uInt8, KidVid::KVBLOCKBITS> KidVid::ourKVData = {
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-const std::array<uInt8, KidVid::SONG_POS_SIZE> KidVid::ourSongPositions = {
+const std::array<uInt8, KidVid::SongPosSize> KidVid::ourSongPositions = {
 /* kvs1 44 */
   11, 12+0x80, 13+0x80, 14, 15+0x80, 16, 8+0x80, 17, 18+0x80, 19, 20+0x80,
   21, 8+0x80, 22, 15+0x80, 23, 18+0x80, 14, 20+0x80, 16, 18+0x80,
@@ -376,7 +428,7 @@ const std::array<uInt8, KidVid::SONG_POS_SIZE> KidVid::ourSongPositions = {
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-const std::array<uInt32, KidVid::SONG_START_SIZE> KidVid::ourSongStart = {
+const std::array<uInt32, KidVid::SongStartSize> KidVid::ourSongStart = {
 /* kvshared */
   44,          /* Welcome + intro Berenstain Bears */
   980829,      /* boulders in the road */
@@ -391,14 +443,14 @@ const std::array<uInt32, KidVid::SONG_START_SIZE> KidVid::ourSongStart = {
   3059116,
 
 /* kvs1 */
-  44,          /* Harmony into 1 */
-  164685,      /* falling notes (into 2) */
+  44,          /* Harmony intro 1 */
+  164685,      /* falling notes (intro 2) */
   395182,      /* instructions */
   750335,      /* high notes are high */
   962016,      /* my hat's off to you */
   1204273,     /* 1 2 3 do re mi */
   1538258,     /* Harmony */
-  1801683,     /* concratulations (all of the Smurfs voted) */
+  1801683,     /* congratulations (all of the Smurfs voted) */
   2086276,     /* line or space */
   2399093,     /* hooray */
   2589606,     /* hear yeeh */
@@ -432,7 +484,7 @@ const std::array<uInt32, KidVid::SONG_START_SIZE> KidVid::ourSongStart = {
   3720920,
 
 /* kvb1 */
-  44,          /* 3 */
+  44,          /* 3 */ // can be one too late!
   592749,      /* 5 */
   936142,      /* 2 */
   1465343,     /* 4 */

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -81,7 +81,7 @@ class Console : public Serializable, public ConsoleIO
     /**
       Sets the left and right controllers for the console.
     */
-    void setControllers(const string& romMd5);
+    void setControllers(string_view romMd5);
 
     /**
       Get the controller plugged into the specified jack
@@ -185,7 +185,7 @@ class Console : public Serializable, public ConsoleIO
     /**
       Retrieve emulation timing provider.
      */
-    EmulationTiming& emulationTiming() { return myEmulationTiming; }
+    EmulationTiming& emulationTiming() { return *myEmulationTiming; }
 
     /**
       Toggle left and right controller ports swapping
@@ -214,7 +214,7 @@ class Console : public Serializable, public ConsoleIO
 
   public:
     /**
-      Toggle between NTSC/PAL/SECAM (and variants) display format.
+      Switch between NTSC/PAL/SECAM (and variants) display format.
 
       @param direction  +1 indicates increase, -1 indicates decrease.
     */
@@ -250,7 +250,12 @@ class Console : public Serializable, public ConsoleIO
     /**
       Toggles phosphor effect.
     */
-    void togglePhosphor();
+    void togglePhosphor(bool toggle = true);
+
+    /**
+      Toggles auto-phosphor.
+    */
+    void cyclePhosphorMode(int direction = +1);
 
     /**
       Change the "Display.PPBlend" variable.
@@ -368,6 +373,11 @@ class Console : public Serializable, public ConsoleIO
     void changeJitterRecovery(int direction = +1) const;
 
     /**
+      Return whether vertical sync length is according to spec.
+    */
+    bool vsyncCorrect() const { return myFrameManager->vsyncCorrect(); }
+
+    /**
      * Update vcenter
      */
     void updateVcenter(Int32 vcenter);
@@ -418,12 +428,13 @@ class Console : public Serializable, public ConsoleIO
     /**
       Selects the left or right controller depending on ROM properties
     */
-    unique_ptr<Controller> getControllerPort(const Controller::Type type,
-                                             const Controller::Jack port, const string& romMd5);
+    unique_ptr<Controller> getControllerPort(Controller::Type type,
+                                             Controller::Jack port,
+                                             string_view romMd5);
 
-    void toggleTIABit(TIABit bit, const string& bitname,
+    void toggleTIABit(TIABit bit, string_view bitname,
                       bool show = true, bool toggle = true) const;
-    void toggleTIACollision(TIABit bit, const string& bitname,
+    void toggleTIACollision(TIABit bit, string_view bitname,
                             bool show = true, bool toggle = true) const;
 
   private:
@@ -432,6 +443,9 @@ class Console : public Serializable, public ConsoleIO
 
     // Reference to the event object to use
     const Event& myEvent;
+
+    // The audio settings
+    AudioSettings& myAudioSettings;
 
     // Properties for the game
     Properties myProperties;
@@ -486,11 +500,9 @@ class Console : public Serializable, public ConsoleIO
     ConsoleTiming myConsoleTiming{ConsoleTiming::ntsc};
 
     // Emulation timing provider. This ties together the timing of the core emulation loop
-    // and the parameters that govern audio synthesis
-    EmulationTiming myEmulationTiming;
-
-    // The audio settings
-    AudioSettings& myAudioSettings;
+    // and the parameters that govern audio synthesis. It is used on the audio thread,
+    // so we make it a shared pointer.
+    shared_ptr<EmulationTiming> myEmulationTiming;
 
   private:
     // Following constructors and assignment operators not supported

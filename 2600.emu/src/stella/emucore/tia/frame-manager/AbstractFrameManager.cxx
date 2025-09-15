@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -105,7 +105,7 @@ void AbstractFrameManager::layout(FrameLayout layout)
 
   myLayout = layout;
 
-  onLayoutChange();
+  onLayoutChange();  // NOLINT
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -120,13 +120,13 @@ bool AbstractFrameManager::save(Serializer& out) const
     out.putInt(myCurrentFrameFinalLines);
     out.putInt(myPreviousFrameFinalLines);
     out.putInt(myTotalFrames);
-    out.putInt(uInt32(myLayout));
+    out.putInt(static_cast<uInt32>(myLayout));
 
     return onSave(out);
   }
   catch(...)
   {
-    cerr << "ERROR: AbstractFrameManager::save" << endl;
+    cerr << "ERROR: AbstractFrameManager::save\n";
     return false;
   }
 }
@@ -149,7 +149,7 @@ bool AbstractFrameManager::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: AbstractFrameManager::load" << endl;
+    cerr << "ERROR: AbstractFrameManager::load\n";
     return false;
   }
 }

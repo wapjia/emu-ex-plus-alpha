@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -41,7 +41,7 @@ class MT24LC256
       @param system     The system using the controller of this device
       @param callback   Called to pass messages back to the parent controller
     */
-    MT24LC256(const FilesystemNode& eepromfile, const System& system,
+    MT24LC256(const FSNode& eepromfile, const System& system,
               const Controller::onMessageCallback& callback);
     ~MT24LC256();
 
@@ -80,7 +80,7 @@ class MT24LC256
     void jpee_data_stop();
     void jpee_clock_fall();
     bool jpee_timercheck(int mode);
-    void jpee_logproc(const char* const st) { cerr << "    " << st << endl; }
+    static void jpee_logproc(string_view st) { cerr << "    " << st << '\n'; }
 
     void update();
 
@@ -96,7 +96,7 @@ class MT24LC256
     ByteBuffer myData;
 
     // Track which pages are used
-    std::array<bool, PAGE_NUM> myPageHit;
+    std::array<bool, PAGE_NUM> myPageHit{};
 
     // Cached state of the SDA and SCL pins on the last write
     bool mySDA{false}, mySCL{false};
@@ -111,7 +111,7 @@ class MT24LC256
     uInt64 myCyclesWhenSDASet{0}, myCyclesWhenSCLSet{0};
 
     // The file containing the EEPROM data
-    FilesystemNode myDataFile;
+    FSNode myDataFile;
 
     // Indicates if the EEPROM has changed since class invocation
     bool myDataChanged{false};
@@ -121,7 +121,7 @@ class MT24LC256
     Int32 jpee_sizemask{0}, jpee_pagemask{0}, jpee_smallmode{0}, jpee_logmode{0};
     Int32 jpee_pptr{0}, jpee_state{0}, jpee_nb{0};
     uInt32 jpee_address{0}, jpee_ad_known{0};
-    std::array<uInt8, 70> jpee_packet;
+    std::array<uInt8, 70> jpee_packet{};
 
   private:
     // Following constructors and assignment operators not supported

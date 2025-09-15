@@ -111,8 +111,7 @@ void AndroidApplication::initScreens(JNIEnv *env, jobject baseActivity, jclass b
 	jEnumDisplays(env, baseActivity, (jlong)nActivity);
 }
 
-AndroidScreen::AndroidScreen(ApplicationContext ctx, InitParams params):
-	reliableFrameRate{ctx.androidSDK() >= 36}
+AndroidScreen::AndroidScreen(ApplicationContext ctx, InitParams params)
 {
 	auto [env, aDisplay, metrics, id, refreshRate, presentationDeadline, rotation] = params;
 	assert(aDisplay);
@@ -209,6 +208,7 @@ void AndroidScreen::updateSupportedFrameRates(ApplicationContext ctx, JNIEnv *en
 		auto jRates = (jfloatArray)jGetSupportedRefreshRates(env, aDisplay);
 		std::span rates{env->GetFloatArrayElements(jRates, 0), size_t(env->GetArrayLength(jRates))};
 		log.debug("screen {} supports {} rate(s):{}", id_, rates.size(), rates);
+		reliableFrameRate = rates.size() > 1; // assume rate is reliable on devices with multiple rates
 		supportedRates.insert_range(rates);
 		env->ReleaseFloatArrayElements(jRates, rates.data(), 0);
 	});

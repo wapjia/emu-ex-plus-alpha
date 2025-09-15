@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -23,13 +23,13 @@ BoosterGrip::BoosterGrip(Jack jack, const Event& event, const System& system)
 {
   if(myJack == Jack::Left)
   {
-    myTriggerEvent = Event::LeftJoystickFire5;
-    myBoosterEvent = Event::LeftJoystickFire9;
+    myBoosterEvent = Event::LeftJoystickFire5;
+    myTriggerEvent = Event::LeftJoystickFire9;
   }
   else
   {
-    myTriggerEvent = Event::RightJoystickFire5;
-    myBoosterEvent = Event::RightJoystickFire9;
+    myBoosterEvent = Event::RightJoystickFire5;
+    myTriggerEvent = Event::RightJoystickFire9;
   }
 
   setPin(AnalogPin::Five, AnalogReadout::disconnect());
@@ -48,6 +48,6 @@ void BoosterGrip::updateButtons()
   updateMouseButtons(firePressed, boosterPressed);
 
   setPin(DigitalPin::Six, !getAutoFireState(firePressed));
-  setPin(AnalogPin::Five, triggerPressed ? AnalogReadout::connectToVcc() : AnalogReadout::disconnect());
-  setPin(AnalogPin::Nine, boosterPressed ? AnalogReadout::connectToVcc() : AnalogReadout::disconnect());
+  setPin(AnalogPin::Five, boosterPressed ? AnalogReadout::connectToVcc() : AnalogReadout::disconnect());
+  setPin(AnalogPin::Nine, triggerPressed ? AnalogReadout::connectToVcc() : AnalogReadout::disconnect());
 }

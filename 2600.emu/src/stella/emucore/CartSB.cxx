@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -20,7 +20,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CartridgeSB::CartridgeSB(const ByteBuffer& image, size_t size,
-                         const string& md5, const Settings& settings,
+                         string_view md5, const Settings& settings,
                          size_t bsSize)
   : CartridgeEnhanced(image, size, md5, settings,
                       bsSize == 0 ? BSPF::nextPowerOfTwo(size) : bsSize)
@@ -66,7 +66,7 @@ uInt8 CartridgeSB::peek(uInt16 address)
 {
   address &= (0x17FF + romBankCount());
 
-  checkSwitchBank(address);
+  checkSwitchBank(address, 0);
 
   if(!(address & 0x1000))
   {
@@ -84,7 +84,7 @@ bool CartridgeSB::poke(uInt16 address, uInt8 value)
 {
   address &= (0x17FF + romBankCount());
 
-  checkSwitchBank(address);
+  checkSwitchBank(address, 0);
 
   if(!(address & 0x1000))
   {

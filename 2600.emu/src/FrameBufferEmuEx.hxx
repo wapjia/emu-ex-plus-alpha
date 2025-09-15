@@ -43,7 +43,7 @@ public:
 
 		VideoMode(uInt32 iw, uInt32 ih, uInt32 sw, uInt32 sh,
 							Stretch smode, float overscan = 1.F,
-							const string& desc = "", float zoomLevel = 1, Int32 fsindex = -1);
+							string_view desc = "", float zoomLevel = 1, Int32 fsindex = -1);
 
 		friend ostream& operator<<(ostream& os, const VideoMode& vm)
 		{
@@ -66,7 +66,7 @@ public:
 	Common::Size desktopSize() const { return Common::Size{1024, 1024}; }
 
 	// no-op, EmuFramework manages window
-	FBInitStatus createDisplay(const string& title, BufferType, Common::Size, bool honourHiDPI = true)
+	FBInitStatus createDisplay(string_view title, BufferType, Common::Size, bool honourHiDPI = true)
 	{
 		myPaletteHandler.setPalette();
 		return FBInitStatus::Success;
@@ -80,11 +80,11 @@ public:
 	void setPixelFormat(IG::PixelFormatId);
 	IG::PixelFormatId pixelFormat() const;
 
-	void showTextMessage(const string& message,
+	void showTextMessage(string_view message,
 		MessagePosition position = MessagePosition::BottomCenter,
 		bool force = false) const;
 
-	void showGaugeMessage(const string& message, const string& valueText,
+	void showGaugeMessage(string_view message, string_view valueText,
 		float value, float minValue = 0.F, float maxValue = 100.F) {}
 
 	void enablePhosphor(bool enable, int blend = -1);

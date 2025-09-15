@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -30,7 +30,7 @@ PaletteHandler::PaletteHandler(OSystem& system)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-PaletteHandler::PaletteType PaletteHandler::toPaletteType(const string& name) const
+PaletteHandler::PaletteType PaletteHandler::toPaletteType(string_view name) const
 {
   if(name == SETTING_Z26)
     return PaletteType::Z26;
@@ -45,9 +45,9 @@ PaletteHandler::PaletteType PaletteHandler::toPaletteType(const string& name) co
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-string PaletteHandler::toPaletteName(PaletteType type) const
+string_view PaletteHandler::toPaletteName(PaletteType type)
 {
-  const string SETTING_NAMES[int(PaletteType::NumTypes)] = {
+  static constexpr std::array<string_view, PaletteType::NumTypes> SETTING_NAMES = {
     SETTING_STANDARD, SETTING_Z26, SETTING_USER, SETTING_CUSTOM
   };
 
@@ -57,7 +57,7 @@ string PaletteHandler::toPaletteName(PaletteType type) const
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void PaletteHandler::cyclePalette(int direction)
 {
-  const string MESSAGES[PaletteType::NumTypes] = {
+  static constexpr std::array<string_view, PaletteType::NumTypes> MESSAGES = {
     "Standard Stella", "Z26", "User-defined", "Custom"
   };
   int type = toPaletteType(myOSystem.settings().getString("palette"));
@@ -67,8 +67,8 @@ void PaletteHandler::cyclePalette(int direction)
         static_cast<int>(PaletteType::MinType), static_cast<int>(PaletteType::MaxType));
   } while(type == PaletteType::User && !myUserPaletteDefined);
 
-  const string palette = toPaletteName(static_cast<PaletteType>(type));
-  const string message = MESSAGES[type] + " palette";
+  const string_view palette = toPaletteName(static_cast<PaletteType>(type));
+  const string message = string{MESSAGES[type]} + " palette";
 
   myOSystem.frameBuffer().showTextMessage(message);
 
@@ -78,8 +78,7 @@ void PaletteHandler::cyclePalette(int direction)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool PaletteHandler::isCustomAdjustable() const
 {
-  return myCurrentAdjustable >= CUSTOM_START
-    && myCurrentAdjustable <= CUSTOM_END;
+  return myCurrentAdjustable <= CUSTOM_END;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -114,7 +113,7 @@ void PaletteHandler::showAdjustableMessage()
         myOSystem.console().timing() == ConsoleTiming::pal ? myPhasePAL : myPhaseNTSC;
     buf << std::fixed << std::setprecision(1) << value << DEGREE;
     myOSystem.frameBuffer().showGaugeMessage(
-        "Palette phase shift", buf.str(), value,
+        "Palette phase shift", buf.view(), value,
         (isNTSC ? DEF_NTSC_SHIFT : DEF_PAL_SHIFT) - MAX_PHASE_SHIFT,
         (isNTSC ? DEF_NTSC_SHIFT : DEF_PAL_SHIFT) + MAX_PHASE_SHIFT);
   }
@@ -124,7 +123,7 @@ void PaletteHandler::showAdjustableMessage()
 
     buf << std::fixed << std::setprecision(1) << value << DEGREE;
     myOSystem.frameBuffer().showGaugeMessage(
-      msg.str(), buf.str(), value, -MAX_RGB_SHIFT, +MAX_RGB_SHIFT);
+      msg.view(), buf.view(), value, -MAX_RGB_SHIFT, +MAX_RGB_SHIFT);
   }
   else
   {
@@ -133,14 +132,15 @@ void PaletteHandler::showAdjustableMessage()
       : scaleTo100(*myAdjustables[myCurrentAdjustable].value);
     buf << value << "%";
     myOSystem.frameBuffer().showGaugeMessage(
-      msg.str(), buf.str(), value);
+      msg.view(), buf.view(), value);
   }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void PaletteHandler::cycleAdjustable(int direction)
 {
-  const bool isCustomPalette = SETTING_CUSTOM == myOSystem.settings().getString("palette");
+  const bool isCustomPalette =
+      SETTING_CUSTOM == myOSystem.settings().getString("palette");
   bool isCustomAdj = false;
 
   do {
@@ -303,7 +303,7 @@ void PaletteHandler::getAdjustables(Adjustable& adjustable) const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void PaletteHandler::setPalette(const string& name)
+void PaletteHandler::setPalette(string_view name)
 {
   myOSystem.settings().setValue("palette", name);
 
@@ -323,12 +323,13 @@ void PaletteHandler::setPalette()
 
     // Look at all the palettes, since we don't know which one is
     // currently active
-    static constexpr BSPF::array2D<const PaletteArray*, PaletteType::NumTypes, int(ConsoleTiming::numTimings)> palettes = {{
+    static constexpr BSPF::array2D<const PaletteArray*, PaletteType::NumTypes,
+    static_cast<int>(ConsoleTiming::numTimings)> palettes = {{
       { &ourNTSCPalette,       &ourPALPalette,       &ourSECAMPalette     },
       { &ourNTSCPaletteZ26,    &ourPALPaletteZ26,    &ourSECAMPaletteZ26  },
       { &ourUserNTSCPalette,   &ourUserPALPalette,   &ourUserSECAMPalette },
       { &ourCustomNTSCPalette, &ourCustomPALPalette, &ourSECAMPalette     }
-      }};
+    }};
     // See which format we should be using
     const ConsoleTiming timing = myOSystem.console().timing();
     const PaletteType paletteType = toPaletteType(name);
@@ -343,7 +344,7 @@ void PaletteHandler::setPalette()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-PaletteArray PaletteHandler::adjustedPalette(const PaletteArray& palette)
+PaletteArray PaletteHandler::adjustedPalette(const PaletteArray& palette) const
 {
   PaletteArray destPalette{0};
   // Constants for saturation and gray scale calculation
@@ -391,7 +392,7 @@ PaletteArray PaletteHandler::adjustedPalette(const PaletteArray& palette)
     // Fill the odd numbered palette entries with gray values (calculated
     // using the standard RGB -> grayscale conversion formula)
     // Used for PAL color-loss data and 'greying out' the frame in the debugger.
-    const uInt8 lum = static_cast<uInt8>((r * PR) + (g * PG) + (b * PB));
+    const auto lum = static_cast<uInt8>((r * PR) + (g * PG) + (b * PB));
 
     destPalette[i + 1] = (lum << 16) + (lum << 8) + lum;
   }
@@ -445,7 +446,7 @@ void PaletteHandler::loadUserPalette()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void PaletteHandler::generateCustomPalette(ConsoleTiming timing)
+void PaletteHandler::generateCustomPalette(ConsoleTiming timing) const
 {
   constexpr int NUM_CHROMA = 16;
   constexpr int NUM_LUMA = 8;
@@ -478,7 +479,6 @@ void PaletteHandler::generateCustomPalette(ConsoleTiming timing)
         float G = Y + dotProduct(IQ[chroma], IQG);
         float B = Y + dotProduct(IQ[chroma], IQB);
 
-
         if(R < 0) R = 0;
         if(G < 0) G = 0;
         if(B < 0) B = 0;
@@ -487,9 +487,9 @@ void PaletteHandler::generateCustomPalette(ConsoleTiming timing)
         G = powf(G, 0.9F);
         B = powf(B, 0.9F);
 
-        int r = BSPF::clamp(R * 255.F, 0.F, 255.F);
-        int g = BSPF::clamp(G * 255.F, 0.F, 255.F);
-        int b = BSPF::clamp(B * 255.F, 0.F, 255.F);
+        const int r = BSPF::clamp(R * 255.F, 0.F, 255.F),
+                  g = BSPF::clamp(G * 255.F, 0.F, 255.F),
+                  b = BSPF::clamp(B * 255.F, 0.F, 255.F);
 
         ourCustomNTSCPalette[(chroma * NUM_LUMA + luma) << 1] = (r << 16) + (g << 8) + b;
       }
@@ -505,7 +505,7 @@ void PaletteHandler::generateCustomPalette(ConsoleTiming timing)
     // colors 0, 1, 14 and 15 are grayscale
     for(int chroma = 2; chroma < NUM_CHROMA - 2; chroma++)
     {
-      int idx = NUM_CHROMA - 1 - chroma;
+      const int idx = NUM_CHROMA - 1 - chroma;
 
       UV[idx].x = SATURATION * sinf(offset - fixedShift * chroma);
       if ((idx & 1) == 0)
@@ -540,9 +540,9 @@ void PaletteHandler::generateCustomPalette(ConsoleTiming timing)
         G = powf(G, 1.2F);
         B = powf(B, 1.2F);
 
-        int r = BSPF::clamp(R * 255.F, 0.F, 255.F);
-        int g = BSPF::clamp(G * 255.F, 0.F, 255.F);
-        int b = BSPF::clamp(B * 255.F, 0.F, 255.F);
+        const int r = BSPF::clamp(R * 255.F, 0.F, 255.F),
+                  g = BSPF::clamp(G * 255.F, 0.F, 255.F),
+                  b = BSPF::clamp(B * 255.F, 0.F, 255.F);
 
         ourCustomPALPalette[(chroma * NUM_LUMA + luma) << 1] = (r << 16) + (g << 8) + b;
       }
@@ -574,7 +574,8 @@ void PaletteHandler::adjustHueSaturation(int& R, int& G, int& B, float H, float 
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-PaletteHandler::vector2d PaletteHandler::rotate(const PaletteHandler::vector2d& vec, float angle) const
+PaletteHandler::vector2d
+PaletteHandler::rotate(const PaletteHandler::vector2d& vec, float angle)
 {
   const float r = angle * BSPF::PI_f / 180;
 
@@ -583,14 +584,15 @@ PaletteHandler::vector2d PaletteHandler::rotate(const PaletteHandler::vector2d& 
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-PaletteHandler::vector2d PaletteHandler::scale(const PaletteHandler::vector2d& vec, float factor) const
+PaletteHandler::vector2d
+PaletteHandler::scale(const PaletteHandler::vector2d& vec, float factor)
 {
   return PaletteHandler::vector2d(vec.x * factor, vec.y * factor);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 float PaletteHandler::dotProduct(const PaletteHandler::vector2d& vec1,
-                                 const PaletteHandler::vector2d& vec2) const
+                                 const PaletteHandler::vector2d& vec2)
 {
   return vec1.x * vec2.x + vec1.y * vec2.y;
 }
@@ -633,6 +635,7 @@ const PaletteArray PaletteHandler::ourNTSCPalette = {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 const PaletteArray PaletteHandler::ourPALPalette = {
+#if 0
   0x000000, 0, 0x121212, 0, 0x242424, 0, 0x484848, 0, // 180 0
   0x6c6c6c, 0, 0x909090, 0, 0xb4b4b4, 0, 0xd8d8d8, 0, // was 0x111111..0xcccccc
   0x000000, 0, 0x121212, 0, 0x242424, 0, 0x484848, 0, // 198 1
@@ -640,7 +643,7 @@ const PaletteArray PaletteHandler::ourPALPalette = {
   0x1d0f00, 0, 0x3f2700, 0, 0x614900, 0, 0x836b01, 0, // 1b0 2
   0xa58d23, 0, 0xc7af45, 0, 0xe9d167, 0, 0xffe789, 0, // was ..0xfff389
   0x002400, 0, 0x004600, 0, 0x216800, 0, 0x438a07, 0, // 1c8 3
-  0x65ac29, 0, 0x87ce4b, 0, 0xa9f06d, 0, 0xcbff8f, 0,
+  0x65ac29, 0, 0x87ce4b, 0, 0xa9f06d, 0, 0xc8ff91, 0,
   0x340000, 0, 0x561400, 0, 0x783602, 0, 0x9a5824, 0, // 1e0 4
   0xbc7a46, 0, 0xde9c68, 0, 0xffbe8a, 0, 0xffd0ad, 0, // was ..0xffe0ac
   0x002700, 0, 0x004900, 0, 0x0c6b0c, 0, 0x2e8d2e, 0, // 1f8 5
@@ -665,6 +668,40 @@ const PaletteArray PaletteHandler::ourPALPalette = {
   0x6c6c6c, 0, 0x909090, 0, 0xb4b4b4, 0, 0xd8d8d8, 0,
   0x000000, 0, 0x121212, 0, 0x242424, 0, 0x484848, 0, // 2e8 f
   0x6c6c6c, 0, 0x909090, 0, 0xb4b4b4, 0, 0xd8d8d8, 0,
+#else
+  0x0b0b0b, 0, 0x333333, 0, 0x595959, 0, 0x7b7b7b, 0, // 0
+  0x8b8b8b, 0, 0xaaaaaa, 0, 0xc7c7c7, 0, 0xe3e3e3, 0,
+  0x000000, 0, 0x272727, 0, 0x404040, 0, 0x696969, 0, // 1
+  0x8b8b8b, 0, 0xaaaaaa, 0, 0xc7c7c7, 0, 0xe3e3e3, 0,
+  0x3b2400, 0, 0x664700, 0, 0x8b7000, 0, 0xac9200, 0, // 2
+  0xc5ae36, 0, 0xdec85e, 0, 0xf7e27f, 0, 0xfff19e, 0,
+  0x004500, 0, 0x006f00, 0, 0x3b9200, 0, 0x65b009, 0, // 3
+  0x85ca3d, 0, 0xa3e364, 0, 0xbffc84, 0, 0xd5ffa5, 0,
+  0x590000, 0, 0x802700, 0, 0xa15700, 0, 0xbc7937, 0, // 4
+  0xd6985f, 0, 0xeeb381, 0, 0xffce9e, 0, 0xffdcbd, 0,
+  0x004900, 0, 0x007200, 0, 0x169216, 0, 0x45af45, 0, // 5
+  0x6bc96b, 0, 0x8be38b, 0, 0xa9fba9, 0, 0xc5ffc5, 0,
+  0x640012, 0, 0x890821, 0, 0xa73d4d, 0, 0xc26472, 0, // 6
+  0xdc8491, 0, 0xf4a3ae, 0, 0xffbeca, 0, 0xffdae0, 0,
+  0x003d29, 0, 0x006a48, 0, 0x048e63, 0, 0x3caa84, 0, // 7
+  0x62c5a2, 0, 0x83dfbe, 0, 0xa1f8d9, 0, 0xbeffe9, 0,
+  0x550046, 0, 0x88006e, 0, 0xa5318d, 0, 0xc159aa, 0, // 8
+  0xda7cc5, 0, 0xf39adf, 0, 0xffb9f3, 0, 0xffd4f6, 0,
+  0x003651, 0, 0x005a7d, 0, 0x117e9c, 0, 0x429cb8, 0, // 9
+  0x68b7d2, 0, 0x88d2eb, 0, 0xa6ebff, 0, 0xc3ffff, 0,
+  0x4c007c, 0, 0x75009d, 0, 0x932eb8, 0, 0xaf57d2, 0, // A
+  0xca7aeb, 0, 0xe499ff, 0, 0xecb7ff, 0, 0xf3d4ff, 0,
+  0x002d83, 0, 0x003ea4, 0, 0x2d65bf, 0, 0x5685da, 0, // B
+  0x79a2f2, 0, 0x99bfff, 0, 0xb7dbff, 0, 0xd3f5ff, 0,
+  0x220096, 0, 0x5200b6, 0, 0x7538cf, 0, 0x945fe8, 0, // C
+  0xb181ff, 0, 0xc5a0ff, 0, 0xd6bdff, 0, 0xe8daff, 0,
+  0x00009a, 0, 0x241db6, 0, 0x504ad0, 0, 0x746fe9, 0, // D
+  0x928eff, 0, 0xb1adff, 0, 0xcecaff, 0, 0xe9e5ff, 0,
+  0x0b0b0b, 0, 0x333333, 0, 0x595959, 0, 0x7b7b7b, 0, // E
+  0x999999, 0, 0xb6b6b6, 0, 0xcfcfcf, 0, 0xe6e6e6, 0,
+  0x0b0b0b, 0, 0x333333, 0, 0x595959, 0, 0x7b7b7b, 0, // F
+  0x999999, 0, 0xb6b6b6, 0, 0xcfcfcf, 0, 0xe6e6e6, 0,
+#endif
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

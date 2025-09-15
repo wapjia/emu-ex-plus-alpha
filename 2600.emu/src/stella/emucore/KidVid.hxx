@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -18,9 +18,8 @@
 #ifndef KIDVID_HXX
 #define KIDVID_HXX
 
-#include <cstdio>
-
 class Event;
+class Sound;
 
 #include "bspf.hxx"
 #include "Control.hxx"
@@ -34,7 +33,7 @@ class Event;
 
   This code was heavily borrowed from z26.
 
-  @author  Stephen Anthony & z26 team
+  @author  Thomas Jentzsch & z26 team
 */
 class KidVid : public Controller
 {
@@ -42,16 +41,29 @@ class KidVid : public Controller
     /**
       Create a new KidVid controller plugged into the specified jack
 
-      @param jack   The jack the controller is plugged into
-      @param event  The event object to use for events
-      @param system The system using this controller
-      @param romMd5 The md5 of the ROM using this controller
+      @param jack      The jack the controller is plugged into
+      @param event     The event object to use for events
+      @param osystem   The OSystem object to use
+      @param system    The system using this controller
+      @param romMd5    The md5 of the ROM using this controller
+      @param callback  Called to pass messages back to the parent controller
     */
-    KidVid(Jack jack, const Event& event, const System& system,
-           const string& romMd5);
-    ~KidVid() override;
+    KidVid(Jack jack, const Event& event, const OSystem& osystem,
+           const System& system, string_view romMd5,
+           const onMessageCallbackForced& callback);
+    ~KidVid() override = default;
 
   public:
+    /**
+      Write the given value to the specified digital pin for this
+      controller.  Writing is only allowed to the pins associated
+      with the PIA.  Therefore you cannot write to pin six.
+
+      @param pin The pin of the controller jack to write to
+      @param value The value to write to the pin
+    */
+    void write(DigitalPin pin, bool value) override;
+
     /**
       Update the entire digital and analog pin state according to the
       events currently set.
@@ -59,57 +71,82 @@ class KidVid : public Controller
     void update() override;
 
     /**
+      Saves the current state of this controller to the given Serializer.
+
+      @param out The serializer device to save to.
+      @return The result of the save.  True on success, false on failure.
+    */
+    bool save(Serializer& out) const override;
+
+    /**
+      Loads the current state of this controller from the given Serializer.
+
+      @param in The serializer device to load from.
+      @return The result of the load.  True on success, false on failure.
+    */
+    bool load(Serializer& in) override;
+
+    /**
       Returns the name of this controller.
     */
     string name() const override { return "KidVid"; }
 
   private:
+    // Get name of the current sample file
+    string getFileName() const;
+
     // Open/close a WAV sample file
-    void openSampleFile();
-    void closeSampleFile();
+    void openSampleFiles();
 
     // Jump to next song in the sequence
     void setNextSong();
 
-    // Generate next sample byte
-    // TODO - rework this, perhaps send directly to sound class
-    void getNextSampleByte();
-
   private:
+    enum class Game: uInt8 {
+      Smurfs,
+      BBears
+    };
     static constexpr uInt32
-      KVSMURFS = 0x44,
-      KVBBEARS = 0x48,
-      KVBLOCKS = 6,             // number of bytes / block
-      KVBLOCKBITS = KVBLOCKS*8, // number of bits / block
-      SONG_POS_SIZE   = 44+38+42+62+80+62,
-      SONG_START_SIZE = 104
+      NumBlocks     = 6,              // number of bytes / block
+      NumBlockBits  = NumBlocks * 8,  // number of bits / block
+      SongPosSize   = 44 + 38 + 42 + 62 + 80 + 62,
+      SongStartSize = 104,
+      TapeFrames    = 60,
+      ClickFrames   = 3               // eliminate click noise at song end
     ;
 
     // Whether the KidVid device is enabled (only for games that it
-    // supports, and if it's plugged into the right port
+    // supports, and if it's plugged into the right port)
     bool myEnabled{false};
 
-    // The file handles for the WAV files
-    // FILE *mySampleFile, *mySharedSampleFile;
+    const OSystem& myOSystem;
 
-    // Indicates if sample files have been successfully opened
-    bool myFileOpened{false};
+    // Sends messages back to the parent class
+    Controller::onMessageCallbackForced myCallback;
+
+    // Indicates if the sample files have been found
+    bool myFilesFound{false};
 
     // Is the tape currently 'busy' / in use?
     bool myTapeBusy{false};
 
-    uInt32 myFilePointer{0}, mySongCounter{0};
-    bool myBeep{false}, mySharedData{false};
-    uInt8 mySampleByte{0};
-    uInt32 myGame{0}, myTape{0};
+    bool mySongPlaying{false};
+    // Continue song after loading state?
+    bool myContinueSong{false};
+
+    uInt32 mySongPointer{0};
+    uInt32 mySongLength{0};
+    bool myBeep{false};
+    Game myGame{Game::Smurfs};
+    uInt32 myTape{0};
     uInt32 myIdx{0}, myBlock{0}, myBlockIdx{0};
 
     // Number of blocks and data on tape
-    static const std::array<uInt8, KVBLOCKS> ourKVBlocks;
-    static const std::array<uInt8, KVBLOCKBITS> ourKVData;
+    static const std::array<uInt8, NumBlocks> ourBlocks;
+    static const std::array<uInt8, NumBlockBits> ourData;
 
-    static const std::array<uInt8, SONG_POS_SIZE> ourSongPositions;
-    static const std::array<uInt32, SONG_START_SIZE> ourSongStart;
+    static const std::array<uInt8, SongPosSize> ourSongPositions;
+    static const std::array<uInt32, SongStartSize> ourSongStart;
 
   private:
     // Following constructors and assignment operators not supported

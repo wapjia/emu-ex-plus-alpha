@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -23,7 +23,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CartridgeCTY::CartridgeCTY(const ByteBuffer& image, size_t size,
-                           const string& md5, const Settings& settings)
+                           string_view md5, const Settings& settings)
   : Cartridge(settings, md5),
     myImage{make_unique<uInt8[]>(32_KB)}
 {
@@ -322,7 +322,7 @@ bool CartridgeCTY::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeCTY::save" << endl;
+    cerr << "ERROR: CartridgeCTY::save\n";
     return false;
   }
 
@@ -350,16 +350,16 @@ bool CartridgeCTY::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeCTY::load" << endl;
+    cerr << "ERROR: CartridgeCTY::load\n";
     return false;
   }
   return true;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void CartridgeCTY::setNVRamFile(const string& nvramfile)
+void CartridgeCTY::setNVRamFile(string_view path)
 {
-  myEEPROMFile = nvramfile + "_eeprom.dat";
+  myEEPROMFile = string{path} + "_eeprom.dat";
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -512,10 +512,10 @@ void CartridgeCTY::updateTune()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void CartridgeCTY::loadScore(uInt8 index)
 {
-  Serializer serializer(myEEPROMFile, Serializer::Mode::ReadOnly);
+  const Serializer serializer(myEEPROMFile, Serializer::Mode::ReadOnly);
   if(serializer)
   {
-    std::array<uInt8, 256> scoreRAM;
+    std::array<uInt8, 256> scoreRAM{};
     try
     {
       serializer.getByteArray(scoreRAM.data(), scoreRAM.size());
@@ -537,7 +537,7 @@ void CartridgeCTY::saveScore(uInt8 index)
   if(serializer)
   {
     // Load score RAM
-    std::array<uInt8, 256> scoreRAM;
+    std::array<uInt8, 256> scoreRAM{};
     try
     {
       serializer.getByteArray(scoreRAM.data(), scoreRAM.size());
@@ -559,7 +559,7 @@ void CartridgeCTY::saveScore(uInt8 index)
     catch(...)
     {
       // Maybe add logging here that save failed?
-      cerr << name() << ": ERROR saving score table " << static_cast<int>(index) << endl;
+      cerr << name() << ": ERROR saving score table " << static_cast<int>(index) << '\n';
     }
   }
 }
@@ -571,7 +571,7 @@ void CartridgeCTY::wipeAllScores()
   if(serializer)
   {
     // Erase score RAM
-    std::array<uInt8, 256> scoreRAM = {};
+    std::array<uInt8, 256> scoreRAM{};
     try
     {
       serializer.putByteArray(scoreRAM.data(), scoreRAM.size());
@@ -579,21 +579,21 @@ void CartridgeCTY::wipeAllScores()
     catch(...)
     {
       // Maybe add logging here that save failed?
-      cerr << name() << ": ERROR wiping score tables" << endl;
+      cerr << name() << ": ERROR wiping score tables\n";
     }
   }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-inline void CartridgeCTY::updateMusicModeDataFetchers()
+FORCE_INLINE void CartridgeCTY::updateMusicModeDataFetchers()
 {
   // Calculate the number of cycles since the last update
-  const uInt32 cycles = static_cast<uInt32>(mySystem->cycles() - myAudioCycles);
+  const auto cycles = static_cast<uInt32>(mySystem->cycles() - myAudioCycles);
   myAudioCycles = mySystem->cycles();
 
   // Calculate the number of CTY OSC clocks since the last update
   const double clocks = ((20000.0 * cycles) / myClockRate) + myFractionalClocks;
-  const uInt32 wholeClocks = static_cast<uInt32>(clocks);
+  const auto wholeClocks = static_cast<uInt32>(clocks);
   myFractionalClocks = clocks - static_cast<double>(wholeClocks);
 
   // Let's update counters and flags of the music mode data fetchers

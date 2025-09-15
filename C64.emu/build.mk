@@ -148,6 +148,7 @@ blackbox3.c \
 blackbox4.c \
 blackbox8.c \
 blackbox9.c \
+bmpdataturbo.c \
 c64-generic.c \
 c64-midi.c \
 c64tpi.c \
@@ -224,6 +225,8 @@ supergames.c \
 supersnapshot.c \
 supersnapshot4.c \
 turtlegraphics.c \
+uc1.c \
+uc2.c \
 warpspeed.c \
 westermann.c \
 zaxxon.c \
@@ -291,7 +294,6 @@ libc64scpu64_a_SOURCES = \
 c64bus.c \
 c64cia1.c \
 c64cia2.c \
-c64datasette.c \
 c64drive.c \
 c64export.c \
 c64fastiec.c \
@@ -471,6 +473,9 @@ debugcart.c \
 finalexpansion.c \
 ioramcart.c \
 megacart.c \
+mikroassembler.c \
+rabbit.c \
+superexpander.c \
 ultimem.c \
 vic-fp.c \
 vic20-generic.c \
@@ -501,6 +506,7 @@ cbm2cia1.c \
 cbm2cpu.c \
 cbm2datasette.c \
 cbm2drive.c \
+cbm2export.c \
 cbm2iec.c \
 cbm2io.c \
 cbm2mem.c \
@@ -513,6 +519,7 @@ cbm2sound.c \
 cbm2tpi1.c \
 cbm2tpi2.c \
 cbm2video.c \
+cart/cbm2-generic.c \
 cart/cbm2cart.c \
 cart/debugcart.c
 libcbm2_a_SOURCES := $(addprefix cbm2/,$(libcbm2_a_SOURCES))
@@ -529,6 +536,7 @@ cbm5x0cia1.c \
 cbm2cpu.c \
 cbm2datasette.c \
 cbm2drive.c \
+cbm2export.c \
 cbm2iec.c \
 cbm2io.c \
 cbm5x0mem.c \
@@ -541,6 +549,7 @@ cbm2sound.c \
 cbm2tpi1.c \
 cbm2tpi2.c \
 cbm5x0video.c \
+cart/cbm2-generic.c \
 cart/cbm2cart.c \
 cart/debugcart.c
 libcbm5x0_a_SOURCES := $(addprefix cbm2/,$(libcbm5x0_a_SOURCES))
@@ -633,6 +642,12 @@ libsamplerdrv_a_SOURCES := $(subst $(viceSrcPath)/,,$(filter %.c, $(wildcard $(v
 
 ifeq ($(SUBENV), pandora)
 libcCompatSrc = main/linuxCompat.c
+else 
+ ifeq ($(ENV), android)
+  ifneq ($(filter armv7 x86,$(SUBARCH)),)
+   libcCompatSrc = main/androidCompat.c
+  endif
+ endif
 endif
 
 pluginNoTape_src = \
@@ -710,7 +725,6 @@ $(libresid_a_SOURCES)
 
 scpu64_src = \
 $(pluginNoTape_src) \
-$(libdatasette_a_SOURCES) \
 $(libscpu64_a_SOURCES) \
 $(libc64cartsystem_a_SOURCES) \
 $(libc64cart_a_SOURCES) \
@@ -732,7 +746,8 @@ $(libraster_a_SOURCES) \
 $(libuserport_a_SOURCES) \
 $(libvideo_a_SOURCES) \
 $(libimagecontents_a_SOURCES) \
-$(libresid_a_SOURCES)
+$(libresid_a_SOURCES) \
+main/scpu64Stubs.c
 
 c64dtv_src = \
 $(plugin_src) \
@@ -756,6 +771,7 @@ $(libvideo_a_SOURCES) \
 $(libimagecontents_a_SOURCES) \
 $(libresiddtv_a_SOURCES) \
 ps2mouse.c
+c64dtv_src := $(filter-out %/rsuser.c %/ds1307.c %/rtc-58321a.c,$(c64dtv_src))
 
 c128_src = \
 $(plugin_src) \
@@ -828,6 +844,7 @@ $(libimagecontents_a_SOURCES) \
 $(libtapeport_a_SOURCES) \
 $(libresid_a_SOURCES) \
 main/iecbusStubs.c
+pet_src := $(filter-out %/rsuser.c,$(pet_src))
 
 plus4_src = \
 $(plugin_src) \
@@ -869,6 +886,7 @@ $(libimagecontents_a_SOURCES) \
 $(libtapeport_a_SOURCES) \
 $(libresid_a_SOURCES) \
 main/iecbusStubs.c
+cbm2_src := $(filter-out %/rsuser.c,$(cbm2_src))
 
 cbm5x0_src = \
 $(plugin_src) \

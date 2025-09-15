@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -36,12 +36,12 @@ class OSystemStandalone : public OSystem
 
   protected:
 
-    void initPersistence(FilesystemNode& basedir) override;
+    void initPersistence(FSNode& basedir) override;
 
     string describePresistence() override;
 
     void getBaseDirectories(string& basedir, string& homedir,
-                                    bool useappdir, const string& usedir) override;
+                            bool useappdir, string_view usedir) override;
 
   private:
 

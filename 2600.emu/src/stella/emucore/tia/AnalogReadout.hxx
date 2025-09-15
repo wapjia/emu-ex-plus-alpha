@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -43,6 +43,7 @@ class AnalogReadout : public Serializable
   public:
 
     AnalogReadout();
+    ~AnalogReadout() override = default;
 
     void reset(uInt64 timestamp);
 
@@ -87,7 +88,7 @@ class AnalogReadout : public Serializable
     Connection myConnection{ConnectionType::disconnected, 0};
     uInt64 myTimestamp{0};
 
-    ConsoleTiming myConsoleTiming;
+    ConsoleTiming myConsoleTiming{ConsoleTiming::ntsc};
     double myClockFreq{0.0};
 
     bool myIsDumped{false};

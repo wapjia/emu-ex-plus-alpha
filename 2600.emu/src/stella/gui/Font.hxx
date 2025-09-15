@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -35,7 +35,7 @@ struct BBX
 /* based on The Microwindows Project http://microwindows.org */
 struct FontDesc
 {
-  const char* const name;               /* font name */
+  string_view   name;                   /* font name */
   int           maxwidth;               /* max width in pixels */
   int           height;                 /* height in pixels */
   int           fbbw, fbbh, fbbx, fbby;	/* max bounding box */
@@ -47,7 +47,7 @@ struct FontDesc
   const uInt8*  width;                  /* character widths or nullptr if fixed */
   const BBX*    bbx;                    /* character bounding box or nullptr if fixed */
   int           defaultchar;            /* default char (not glyph index) */
-  long          bits_size;              /* # words of bitmap_t bits */
+  Int64         bits_size;              /* # words of bitmap_t bits */
 };
 
 namespace GUI {
@@ -56,6 +56,7 @@ class Font
 {
   public:
     explicit Font(const FontDesc& desc);
+    ~Font() = default;
 
     const FontDesc& desc() const { return myFontDesc; }
 
@@ -65,7 +66,7 @@ class Font
 
     int getCharWidth(uInt8 chr) const;
 
-    int getStringWidth(const string& str) const;
+    int getStringWidth(string_view str) const;
 
   private:
     FontDesc myFontDesc;
@@ -79,6 +80,6 @@ class Font
     Font& operator=(Font&&) = delete;
 };
 
-}  // namespace GUI
+} // namespace GUI
 
 #endif

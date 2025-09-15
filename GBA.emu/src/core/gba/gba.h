@@ -170,8 +170,8 @@ extern bool CPUWriteState(GBASys &gba, const char*);
 
 extern void preLoadRomSetup(GBASys &gba);
 extern void postLoadRomSetup(GBASys &gba);
-extern int CPULoadRom(GBASys &gba, const char *);
-extern int CPULoadRomWithIO(GBASys &gba, IG::IO &);
+enum class LoadDestination{rom, ram};
+extern int CPULoadRomWithIO(GBASys&, IG::IO&, LoadDestination);
 extern void doMirroring(GBASys &gba, bool);
 extern void CPUUpdateRegister(ARM7TDMI &cpu, uint32_t, uint16_t);
 extern void applyTimer(ARM7TDMI &cpu);

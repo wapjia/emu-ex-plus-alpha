@@ -8,27 +8,36 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
 // this file, and for a DISCLAIMER OF ALL WARRANTIES.
 //============================================================================
 
+#include <numeric>
+
 #include "M6502.hxx"
 #include "System.hxx"
 #include "Settings.hxx"
 #include "CartAR.hxx"
 
+namespace {
+  // Compute the sum of the array of bytes
+  uInt8 checksum(const uInt8* s, uInt16 length) {
+    return static_cast<uInt8>(std::accumulate(s, s + length, 0));
+  }
+} // namespace
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CartridgeAR::CartridgeAR(const ByteBuffer& image, size_t size,
-                         const string& md5, const Settings& settings)
+                         string_view md5, const Settings& settings)
   : Cartridge(settings, md5),
-    mySize{std::max<size_t>(size, LOAD_SIZE)}
+    mySize{std::max(size, LOAD_SIZE)},
+    myNumberOfLoadImages{static_cast<uInt8>(mySize / LOAD_SIZE)}
 {
   // Create a load image buffer and copy the given image
   myLoadImages = make_unique<uInt8[]>(mySize);
-  myNumberOfLoadImages = static_cast<uInt8>(mySize / LOAD_SIZE);
   std::copy_n(image.get(), size, myLoadImages.get());
 
   // Add header if image doesn't include it
@@ -250,7 +259,7 @@ bool CartridgeAR::bankConfiguration(uInt8 configuration)
 void CartridgeAR::initializeROM()
 {
   // Note that the following offsets depend on the 'scrom.asm' file
-  // in src/emucore/misc.  If that file is ever recompiled (and its
+  // in src/tools.  If that file is ever recompiled (and its
   // contents placed in the ourDummyROMCode array), the offsets will
   // almost definitely change
 
@@ -277,53 +286,46 @@ void CartridgeAR::initializeROM()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-uInt8 CartridgeAR::checksum(const uInt8* s, uInt16 length)
-{
-  uInt8 sum = 0;
-
-  for(uInt32 i = 0; i < length; ++i)
-    sum += s[i];
-
-  return sum;
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void CartridgeAR::loadIntoRAM(uInt8 load)
 {
   bool success = true;
-  uInt16 image;
 
   // Scan through all of the loads to see if we find the one we're looking for
-  for(image = 0; image < myNumberOfLoadImages; ++image)
+  for(uInt16 image = 0; image < myNumberOfLoadImages; ++image)
   {
+    const size_t image_off = image * LOAD_SIZE;
+
     // Is this the correct load?
-    if(myLoadImages[(image * LOAD_SIZE) + myImage.size() + 5] == load)
+    if(myLoadImages[image_off + myImage.size() + 5] == load)
     {
       // Copy the load's header
-      std::copy_n(myLoadImages.get() + (image * LOAD_SIZE) + myImage.size(), myHeader.size(), myHeader.data());
+      std::copy_n(myLoadImages.get() + image_off + myImage.size(),
+                  myHeader.size(), myHeader.data());
 
       // Verify the load's header
       if(checksum(myHeader.data(), 8) != 0x55)
       {
         cerr << "WARNING: The Supercharger header checksum is invalid...\n";
-        myMsgCallback("Supercharger load #" + std::to_string(load) + " done with hearder checksum error");
+        myMsgCallback("Supercharger load #" + std::to_string(load) +
+                      " done with hearder checksum error");
         success = false;
       }
 
       // Load all of the pages from the load
       bool invalidPageChecksumSeen = false;
-      for(uInt32 j = 0; j < myHeader[3]; ++j)
+      for(size_t j = 0; j < myHeader[3]; ++j)
       {
-        uInt32 bank = myHeader[16 + j] & 0b00011;
-        uInt32 page = (myHeader[16 + j] & 0b11100) >> 2;
-        const uInt8* const src = myLoadImages.get() + (image * LOAD_SIZE) + (j * 256);
+        const size_t bank = myHeader[16 + j] & 0b00011;
+        const size_t page = (myHeader[16 + j] & 0b11100) >> 2;
+        const uInt8* const src = myLoadImages.get() + image_off + j * 256;
         const uInt8 sum = checksum(src, 256) + myHeader[16 + j] + myHeader[64 + j];
 
         if(!invalidPageChecksumSeen && (sum != 0x55))
         {
           cerr << "WARNING: Some Supercharger page checksums are invalid...\n";
-          myMsgCallback("Supercharger load #" + std::to_string(load) + " done with page #"
-                           + std::to_string(j) + " checksum error");
+          myMsgCallback("Supercharger load #" + std::to_string(load) +
+                        " done with page #" + std::to_string(j) +
+                        " checksum error");
           invalidPageChecksumSeen = true;
         }
 
@@ -335,9 +337,9 @@ void CartridgeAR::loadIntoRAM(uInt8 load)
 
       // Copy the bank switching byte and starting address into the 2600's
       // RAM for the "dummy" SC BIOS to access it
-      mySystem->poke(0xfe, myHeader[0]);
-      mySystem->poke(0xff, myHeader[1]);
-      mySystem->poke(0x80, myHeader[2]);
+      mySystem->pokeOob(0xfe, myHeader[0]);
+      mySystem->pokeOob(0xff, myHeader[1]);
+      mySystem->pokeOob(0x80, myHeader[2]);
 
       myBankChanged = true;
       if(success)
@@ -424,7 +426,7 @@ bool CartridgeAR::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeAR::save" << endl;
+    cerr << "ERROR: CartridgeAR::save\n";
     return false;
   }
 
@@ -469,7 +471,7 @@ bool CartridgeAR::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeAR::load" << endl;
+    cerr << "ERROR: CartridgeAR::load\n";
     return false;
   }
 
@@ -515,40 +517,4 @@ std::array<uInt8, 294> CartridgeAR::ourDummyROMCode = {
   0xca, 0x10, 0xfb, 0xa6, 0x80, 0xdd, 0x00, 0xf0,
   0xa9, 0x9a, 0xa2, 0xff, 0xa0, 0x00, 0x9a, 0x4c,
   0xfa, 0x00, 0xcd, 0xf8, 0xff, 0x4c
-};
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-const std::array<uInt8, 256> CartridgeAR::ourDefaultHeader = {
-  0xac, 0xfa, 0x0f, 0x18, 0x62, 0x00, 0x24, 0x02,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0x00, 0x04, 0x08, 0x0c, 0x10, 0x14, 0x18, 0x1c,
-  0x01, 0x05, 0x09, 0x0d, 0x11, 0x15, 0x19, 0x1d,
-  0x02, 0x06, 0x0a, 0x0e, 0x12, 0x16, 0x1a, 0x1e,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00
 };

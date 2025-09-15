@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -30,6 +30,7 @@ class Missile : public Serializable
   public:
 
     explicit Missile(uInt32 collisionMask);
+    ~Missile() override = default;
 
   public:
 
@@ -59,6 +60,7 @@ class Missile : public Serializable
     void applyColorLoss();
 
     void setInvertedPhaseClock(bool enable);
+    void setShortLateHMove(bool enable);
 
     void toggleCollisions(bool enabled);
 
@@ -76,9 +78,9 @@ class Missile : public Serializable
     bool save(Serializer& out) const override;
     bool load(Serializer& in) override;
 
-    inline void movementTick(uInt8 clock, uInt8 hclock, bool hblank);
+    FORCE_INLINE void movementTick(uInt8 clock, uInt8 hclock, bool hblank);
 
-    inline void tick(uInt8 hclock, bool isReceivingMclock = true);
+    FORCE_INLINE void tick(uInt8 hclock, bool isReceivingMclock = true);
 
   public:
 
@@ -126,6 +128,7 @@ class Missile : public Serializable
 
     bool myInvertedPhaseClock{false};
     bool myUseInvertedPhaseClock{false};
+    bool myUseShortLateHMove{false};
 
     TIA *myTIA{nullptr};
 
@@ -143,18 +146,28 @@ class Missile : public Serializable
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Missile::movementTick(uInt8 clock, uInt8 hclock, bool hblank)
 {
-  if(clock == myHmmClocks) isMoving = false;
-
-  if (isMoving)
+  if(isMoving)
   {
-    if (hblank) tick(hclock, false);
-    myInvertedPhaseClock = !hblank;
+    // Stop movement once the number of clocks according to HMMx is reached
+    if(clock == myHmmClocks)
+      isMoving = false;
+    else if (!myUseShortLateHMove || hclock != 0)
+    {
+      // Process the tick if we are in hblank. Otherwise, the tick is either masked
+      // by an ordinary tick or merges two consecutive ticks into a single tick (inverted
+      // movement clock phase mode).
+      if(hblank) tick(hclock, false);
+      // Track a tick outside hblank for later processing
+      myInvertedPhaseClock = !hblank;
+    }
   }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Missile::tick(uInt8 hclock, bool isReceivingMclock)
 {
+  // If we are in inverted movement clock phase mode and a movement tick occurred, it
+  // will supress the tick.
   if(myUseInvertedPhaseClock && myInvertedPhaseClock)
   {
     myInvertedPhaseClock = false;
@@ -165,6 +178,8 @@ void Missile::tick(uInt8 hclock, bool isReceivingMclock)
     myIsRendering &&
     (myRenderCounter >= 0 || (isMoving && isReceivingMclock && myRenderCounter == -1 && myWidth < 4 && ((hclock + 1) % 4 == 3)));
 
+  // Consider enabled status and the signal to determine visibility (as represented
+  // by the collision mask)
   collision = (myIsVisible && myIsEnabled) ? myCollisionMaskEnabled : myCollisionMaskDisabled;
 
   if (myDecodes[myCounter] && !myResmp) {
@@ -174,6 +189,7 @@ void Missile::tick(uInt8 hclock, bool isReceivingMclock)
   } else if (myIsRendering) {
 
       if (myRenderCounter == -1) {
+        // Regular clock pulse during movement -> starfield mode
         if (isMoving && isReceivingMclock) {
           switch ((hclock + 1) % 4) {
             case 3:

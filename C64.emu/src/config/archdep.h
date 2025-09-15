@@ -100,9 +100,6 @@
 /* Standard line delimiter.  */
 #define ARCHDEP_LINE_DELIMITER "\n"
 
-/* Default sound fragment size */
-#define ARCHDEP_SOUND_FRAGMENT_SIZE 1
-
 /* No key symcode.  */
 #define ARCHDEP_KEYBOARD_SYM_NONE 0
 

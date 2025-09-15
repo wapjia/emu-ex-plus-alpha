@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -128,13 +128,13 @@ class EmulationWorker
     /**
       Log a fatal error to cerr and throw a runtime exception.
      */
-    [[noreturn]] void fatal(const string& message);
+    [[noreturn]] static void fatal(const string& message);
 
   private:
   /**
     Thread state.
    */
-    enum class State {
+    enum class State: uInt8 {
       // Initial state
       initializing,
       // Thread has initialized. From the point, myThreadIsRunningMutex is locked if and only if
@@ -153,7 +153,7 @@ class EmulationWorker
     /**
       Thread behavior is controlled by signals that are raised prior to waking up the thread.
      */
-    enum class Signal {
+    enum class Signal: uInt8 {
       // Resume emulation
       resume,
       // Stop emulation

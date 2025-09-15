@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -63,14 +63,14 @@ class Keyboard : public Controller
     string name() const override { return "Keyboard"; }
 
   private:
-    enum class ColumnState {
+    enum class ColumnState: uInt8 {
       vcc, gnd, notConnected
     };
 
   private:
     ColumnState processColumn(const Event::Type buttons[]);
 
-    AnalogReadout::Connection columnStateToAnalogSignal(ColumnState state) const;
+    static AnalogReadout::Connection columnStateToAnalogSignal(ColumnState state);
 
   private:
     // Pre-compute the events we care about based on given port

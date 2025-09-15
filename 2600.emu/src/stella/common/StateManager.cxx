@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -19,10 +19,7 @@
 #include "Settings.hxx"
 #include "Console.hxx"
 #include "Cart.hxx"
-#include "Control.hxx"
 #include "Switches.hxx"
-#include "System.hxx"
-#include "Serializable.hxx"
 #include "RewindManager.hxx"
 
 #include "StateManager.hxx"
@@ -38,7 +35,7 @@ StateManager::StateManager(OSystem& osystem)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-StateManager::~StateManager()
+StateManager::~StateManager()  // NOLINT (we need an empty d'tor)
 {
 }
 
@@ -139,7 +136,7 @@ void StateManager::toggleTimeMachine()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool StateManager::addExtraState(const string& message)
+bool StateManager::addExtraState(string_view message)
 {
   if(myActiveMode == Mode::TimeMachine)
   {
@@ -210,12 +207,12 @@ void StateManager::loadState(int slot)
         << ".st" << slot;
 
     // Make sure the file can be opened in read-only mode
-    Serializer in(buf.str(), Serializer::Mode::ReadOnly);
+    Serializer in(buf.view(), Serializer::Mode::ReadOnly);
     if(!in)
     {
       buf.str("");
       buf << "Can't open/load from state file " << slot;
-      myOSystem.frameBuffer().showTextMessage(buf.str());
+      myOSystem.frameBuffer().showTextMessage(buf.view());
       return;
     }
 
@@ -239,7 +236,7 @@ void StateManager::loadState(int slot)
       buf << "Invalid data in state " << slot << " file";
     }
 
-    myOSystem.frameBuffer().showTextMessage(buf.str());
+    myOSystem.frameBuffer().showTextMessage(buf.view());
   }
 }
 
@@ -256,12 +253,12 @@ void StateManager::saveState(int slot)
         << ".st" << slot;
 
     // Make sure the file can be opened for writing
-    Serializer out(buf.str(), Serializer::Mode::ReadWriteTrunc);
+    Serializer out(buf.view(), Serializer::Mode::ReadWriteTrunc);
     if(!out)
     {
       buf.str("");
       buf << "Can't open/save to state file " << slot;
-      myOSystem.frameBuffer().showTextMessage(buf.str());
+      myOSystem.frameBuffer().showTextMessage(buf.view());
       return;
     }
 
@@ -274,7 +271,7 @@ void StateManager::saveState(int slot)
     catch(...)
     {
       buf << "Error saving state " << slot;
-      myOSystem.frameBuffer().showTextMessage(buf.str());
+      myOSystem.frameBuffer().showTextMessage(buf.view());
       return;
     }
 
@@ -292,7 +289,7 @@ void StateManager::saveState(int slot)
     else
       buf << "Error saving state " << slot;
 
-    myOSystem.frameBuffer().showTextMessage(buf.str());
+    myOSystem.frameBuffer().showTextMessage(buf.view());
   }
 }
 
@@ -307,18 +304,18 @@ void StateManager::changeState(int direction)
     buf << "Changed to state slot " << myCurrentSlot;
   else
     buf << "State slot " << myCurrentSlot;
-  myOSystem.frameBuffer().showTextMessage(buf.str());
+  myOSystem.frameBuffer().showTextMessage(buf.view());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void StateManager::toggleAutoSlot()
 {
-  bool autoSlot = !myOSystem.settings().getBool("autoslot");
+  const bool autoSlot = !myOSystem.settings().getBool("autoslot");
 
   // Print appropriate message
   ostringstream buf;
   buf << "Automatic slot change " << (autoSlot ? "enabled" : "disabled");
-  myOSystem.frameBuffer().showTextMessage(buf.str());
+  myOSystem.frameBuffer().showTextMessage(buf.view());
 
   myOSystem.settings().setValue("autoslot", autoSlot);
 }
@@ -342,7 +339,7 @@ bool StateManager::loadState(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: StateManager::loadState(Serializer&)" << endl;
+    cerr << "ERROR: StateManager::loadState(Serializer&)\n";
   }
   return false;
 }
@@ -369,7 +366,7 @@ bool StateManager::saveState(Serializer& out)
   }
   catch(...)
   {
-    cerr << "ERROR: StateManager::saveState(Serializer&)" << endl;
+    cerr << "ERROR: StateManager::saveState(Serializer&)\n";
   }
   return false;
 }

@@ -5,6 +5,7 @@
 #include <core/gba/gba.h>
 #include <imagine/util/used.hh>
 #include <imagine/util/utility.h>
+#include <imagine/util/memory/Buffer.hh>
 
 using MixColorType = uint16_t;
 struct GBALCD;
@@ -190,6 +191,7 @@ struct GBAMem
 	uint8_t internalRAM[0x8000] __attribute__ ((aligned(4)));
 	uint8_t workRAM[0x40000] __attribute__ ((aligned(4)));
 	uint8_t rom[0x2000000] __attribute__ ((aligned(4)));
+	IG::ByteBuffer rom2;
 };
 
 struct GBADMA
@@ -354,6 +356,17 @@ constexpr unsigned cpuBitsSet[256] =
 
 struct GBASys;
 
+#define GBA_MATRIX_MAPPINGS_MAX 16
+
+typedef struct GBAMatrix {
+    uint32_t cmd{};
+    uint32_t paddr{};
+    uint32_t vaddr{};
+    uint32_t size{};
+
+    uint32_t mappings[GBA_MATRIX_MAPPINGS_MAX]{};
+} GBAMatrix_t;
+
 struct ARM7TDMI
 {
 	constexpr ARM7TDMI(GBASys *gba): gba(gba) {}
@@ -410,6 +423,7 @@ public:
 	unsigned memoryWaitSeq32[16] =
 	  {0, 0, 5, 0, 0, 1, 1, 0, 5, 5, 9, 9, 17, 17, 4, 0};
 	std::array<memoryMap, 256> map{};
+	GBAMatrix_t matrix;
 
 	static constexpr bool calcNFlag(auto result)
 	{

@@ -113,7 +113,7 @@ void A2600System::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDeleg
 	os.propSet().getMD5(md5, props);
 	defaultGameProps = props;
 	auto &romType = props.get(PropType::Cart_Type);
-	FilesystemNode fsNode{contentFileName().data()};
+	FSNode fsNode{contentFileName().data()};
 	auto &settings = os.settings();
 	settings.setValue("romloadcount", 0);
 	settings.setValue("plr.tv.jitter", false);
@@ -161,8 +161,7 @@ void A2600System::configAudioRate(FrameRate outputFrameRate, int outputRate)
 	if(!osystem.hasConsole())
 		return;
 	configuredInputVideoFrameRate = consoleFrameRate(osystem);
-	osystem.setSoundMixRate(std::round(audioMixRate(outputRate, configuredInputVideoFrameRate, outputFrameRate)),
-		AudioSettings::ResamplingQuality(optionAudioResampleQuality));
+	osystem.setSoundMixRate(std::round(audioMixRate(outputRate, configuredInputVideoFrameRate, outputFrameRate)));
 }
 
 static void renderVideo(EmuSystemTaskContext taskCtx, EmuVideo &video, FrameBuffer &fb, TIA &tia)
@@ -265,6 +264,11 @@ bool A2600System::onVideoRenderFormatChange(EmuVideo &, IG::PixelFormat fmt)
 		osystem.frameBuffer().paletteHandler().setPalette();
 	}
 	return false;
+}
+
+void A2600System::onOptionsLoaded()
+{
+	osystem.soundEmuEx().setResampleQuality(optionAudioResampleQuality);
 }
 
 }

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -49,16 +49,16 @@ class Settings
     explicit Settings();
     virtual ~Settings() = default;
 
-    using Options = std::map<string, Variant>;
+    using Options = std::map<string, Variant, std::less<>>;
 
     static constexpr int SETTINGS_VERSION = 1;
-    static constexpr const char* SETTINGS_VERSION_KEY = "settings.version";
+    static constexpr string_view SETTINGS_VERSION_KEY = "settings.version";
 
   public:
     /**
       This method should be called to display usage information.
     */
-    void usage() const;
+    static void usage();
 
     void setRepository(shared_ptr<KeyValueRepository> repository);
 
@@ -83,7 +83,7 @@ class Settings
       @param key  The key of the setting to lookup
       @return  The value of the setting; EmptyVariant if none exists
     */
-    const Variant& value(const string& key) const;
+    const Variant& value(string_view key) const;
 
     /**
       Set the value associated with the specified key.
@@ -91,7 +91,7 @@ class Settings
       @param key   The key of the setting
       @param value The value to assign to the key
     */
-    void setValue(const string& key, const Variant& value, bool persist = true);
+    void setValue(string_view key, const Variant& value, bool persist = true);
 
     /**
       Convenience methods to return specific types.
@@ -99,12 +99,18 @@ class Settings
       @param key  The key of the setting to lookup
       @return  The specific type value of the variant
     */
-    int getInt(const string& key) const     { return value(key).toInt();   }
-    float getFloat(const string& key) const { return value(key).toFloat(); }
-    bool getBool(const string& key) const   { return value(key).toBool();  }
-    const string& getString(const string& key) const { return value(key).toString(); }
-    const Common::Size getSize(const string& key) const { return value(key).toSize(); }
-    const Common::Point getPoint(const string& key) const { return value(key).toPoint(); }
+    int getInt(string_view key) const     { return value(key).toInt();   }
+    float getFloat(string_view key) const { return value(key).toFloat(); }
+    bool getBool(string_view key) const   { return value(key).toBool();  }
+    const string& getString(string_view key) const {
+      return value(key).toString();
+    }
+    Common::Size getSize(string_view key) const {
+      return value(key).toSize();
+    }
+    Common::Point getPoint(string_view key) const {
+      return value(key).toPoint();
+    }
 
   protected:
     /**
@@ -113,8 +119,8 @@ class Settings
       appropriate 'value'.  Elsewhere, any derived classes should call 'setValue',
       and let it decide where the key/value pair will be saved.
     */
-    void setPermanent(const string& key, const Variant& value);
-    void setTemporary(const string& key, const Variant& value);
+    void setPermanent(string_view key, const Variant& value);
+    void setTemporary(string_view key, const Variant& value);
 
   private:
     /**

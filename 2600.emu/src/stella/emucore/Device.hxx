@@ -8,7 +8,7 @@
 // MM     MM 66  66 55  55 00  00 22
 // MM     MM  6666   5555   0000  222222
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -33,7 +33,7 @@ class System;
 class Device : public Serializable
 {
   public:
-    enum AccessType {
+    enum AccessType: uInt16 {
       NONE        = 0,
       REFERENCED  = 1 << 0, /* 0x01, code somewhere in the program references it,
                                i.e. LDA $F372 referenced $F372 */
@@ -102,7 +102,7 @@ class Device : public Serializable
       @param out  The Serializer object to use
       @return  False on any errors, else true
     */
-    virtual bool save(Serializer& out) const override = 0;
+    bool save(Serializer& out) const override = 0;
 
     /**
       Load the current state of this device from the given Serializer.
@@ -110,7 +110,7 @@ class Device : public Serializable
       @param in  The Serializer object to use
       @return  False on any errors, else true
     */
-    virtual bool load(Serializer& in) override = 0;
+    bool load(Serializer& in) override = 0;
 
   public:
     /**
@@ -119,6 +119,7 @@ class Device : public Serializable
       @return The byte at the specified address
     */
     virtual uInt8 peek(uInt16 address) = 0;
+    virtual uInt8 peekOob(uInt16 address) { return peek(address); }
 
     /**
       Change the byte at the specified address to the given value
@@ -129,6 +130,7 @@ class Device : public Serializable
       @return  True if the poke changed the device address space, else false
     */
     virtual bool poke(uInt16 address, uInt8 value) { return false; }
+    virtual bool pokeOob(uInt16 address, uInt8 value) { return poke(address, value); }
 
   #ifdef DEBUGGER_SUPPORT
     /**

@@ -524,9 +524,9 @@ Texture Renderer::makeTexture(Data::PixmapSource img, TextureSamplerConfig sampl
 	return {task(), img, samplerConf, makeMipmaps};
 }
 
-PixmapBufferTexture Renderer::makePixmapBufferTexture(TextureConfig config, TextureBufferMode mode, bool singleBuffer)
+PixmapBufferTexture Renderer::makePixmapBufferTexture(TextureConfig config, TextureBufferMode mode, TextureBufferImageMode imageMode)
 {
-	return {task(), config, mode, singleBuffer};
+	return {task(), config, mode, imageMode};
 }
 
 TextureSampler Renderer::makeTextureSampler(TextureSamplerConfig config)

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -18,6 +18,7 @@
 #include "bspf.hxx"
 #include "Logger.hxx"
 
+#include "ElfParser.hxx"
 #include "CartDetector.hxx"
 #include "CartMVC.hxx"
 
@@ -27,15 +28,17 @@ Bankswitch::Type CartDetector::autodetectType(const ByteBuffer& image, size_t si
   // Guess type based on size
   Bankswitch::Type type = Bankswitch::Type::_AUTO;
 
-  if((size % 8448) == 0 || size == 6144)
-  {
-    type = Bankswitch::Type::_AR;
+  if (isProbablyELF(image, size)) {
+    type =Bankswitch::Type::_ELF;
   }
-  else if(size < 2_KB)  // Sub2K images
+  else if ((size % 8448) == 0 || size == 6_KB)
   {
-    type = Bankswitch::Type::_2K;
+    if(size == 6_KB && isProbablyGL(image, size))
+      type = Bankswitch::Type::_GL;
+    else
+      type = Bankswitch::Type::_AR;
   }
-  else if((size == 2_KB) ||
+  else if((size <= 2_KB) ||
           (size == 4_KB && std::memcmp(image.get(), image.get() + 2_KB, 2_KB) == 0))
   {
     type = isProbablyCV(image, size) ? Bankswitch::Type::_CV : Bankswitch::Type::_2K;
@@ -48,6 +51,8 @@ Bankswitch::Type CartDetector::autodetectType(const ByteBuffer& image, size_t si
       type = Bankswitch::Type::_4KSC;
     else if (isProbablyFC(image, size))
       type = Bankswitch::Type::_FC;
+    else if (isProbablyGL(image, size))
+      type = Bankswitch::Type::_GL;
     else
       type = Bankswitch::Type::_4K;
   }
@@ -87,6 +92,8 @@ Bankswitch::Type CartDetector::autodetectType(const ByteBuffer& image, size_t si
       type = Bankswitch::Type::_WD;
     else if (isProbablyFC(image, size))
       type = Bankswitch::Type::_FC;
+    else if(isProbably03E0(image, size))
+      type = Bankswitch::Type::_03E0;
     else
       type = Bankswitch::Type::_F8;
   }
@@ -107,20 +114,22 @@ Bankswitch::Type CartDetector::autodetectType(const ByteBuffer& image, size_t si
   }
   else if(size == 16_KB)
   {
-    if(isProbablySC(image, size))
+    if (isProbablySC(image, size))
       type = Bankswitch::Type::_F6SC;
-    else if(isProbablyE7(image, size))
+    else if (isProbablyE7(image, size))
       type = Bankswitch::Type::_E7;
     else if (isProbablyFC(image, size))
       type = Bankswitch::Type::_FC;
-    else if(isProbably3EX(image, size))
+    else if (isProbably3EX(image, size))
       type = Bankswitch::Type::_3EX;
-    else if(isProbably3E(image, size))
+    else if (isProbably3E(image, size))
       type = Bankswitch::Type::_3E;
   /* no known 16K 3F ROMS
     else if(isProbably3F(image, size))
       type = Bankswitch::Type::_3F;
   */
+    else if (isProbablyJANE(image, size))
+      type = Bankswitch::Type::_JANE;
     else
       type = Bankswitch::Type::_F6;
   }
@@ -169,10 +178,10 @@ Bankswitch::Type CartDetector::autodetectType(const ByteBuffer& image, size_t si
   }
   else if(size == 64_KB)
   {
-    if(isProbably3EX(image, size))
-      type = Bankswitch::Type::_3EX;
-    else if (isProbablyCDF(image, size))
+    if (isProbablyCDF(image, size))
       type = Bankswitch::Type::_CDF;
+    else if(isProbably3EX(image, size))
+      type = Bankswitch::Type::_3EX;
     else if(isProbably3E(image, size))
       type = Bankswitch::Type::_3E;
     else if(isProbably3F(image, size))
@@ -188,7 +197,9 @@ Bankswitch::Type CartDetector::autodetectType(const ByteBuffer& image, size_t si
   }
   else if(size == 128_KB)
   {
-    if(isProbably3EX(image, size))
+    if (isProbablyCDF(image, size))
+      type = Bankswitch::Type::_CDF;
+    else if(isProbably3EX(image, size))
       type = Bankswitch::Type::_3EX;
     else if(isProbably3E(image, size))
       type = Bankswitch::Type::_3E;
@@ -196,18 +207,16 @@ Bankswitch::Type CartDetector::autodetectType(const ByteBuffer& image, size_t si
       ; // type has been set directly in the function
     else if(isProbably3F(image, size))
       type = Bankswitch::Type::_3F;
-    else if (isProbablyCDF(image, size))
-      type = Bankswitch::Type::_CDF;
     else if(isProbably4A50(image, size))
       type = Bankswitch::Type::_4A50;
-    else if(isProbablyCDF(image, size))
-      type = Bankswitch::Type::_CDF;
     else /*if(isProbablySB(image, size))*/
       type = Bankswitch::Type::_SB;
   }
   else if(size == 256_KB)
   {
-    if(isProbably3EX(image, size))
+    if (isProbablyCDF(image, size))
+      type = Bankswitch::Type::_CDF;
+    else if(isProbably3EX(image, size))
       type = Bankswitch::Type::_3EX;
     else if(isProbably3E(image, size))
       type = Bankswitch::Type::_3E;
@@ -215,8 +224,6 @@ Bankswitch::Type CartDetector::autodetectType(const ByteBuffer& image, size_t si
       ; // type has been set directly in the function
     else if(isProbably3F(image, size))
       type = Bankswitch::Type::_3F;
-    else if (isProbablyCDF(image, size))
-      type = Bankswitch::Type::_CDF;
     else /*if(isProbablySB(image, size))*/
       type = Bankswitch::Type::_SB;
   }
@@ -224,14 +231,14 @@ Bankswitch::Type CartDetector::autodetectType(const ByteBuffer& image, size_t si
   {
     if(isProbablyTVBoy(image, size))
       type = Bankswitch::Type::_TVBOY;
+    else if (isProbablyCDF(image, size))
+      type = Bankswitch::Type::_CDF;
     else if(isProbably3EX(image, size))
       type = Bankswitch::Type::_3EX;
     else if(isProbably3E(image, size))
       type = Bankswitch::Type::_3E;
     else if(isProbably3F(image, size))
       type = Bankswitch::Type::_3F;
-    else if (isProbablyCDF(image, size))
-      type = Bankswitch::Type::_CDF;
   }
   else  // what else can we do?
   {
@@ -257,7 +264,7 @@ Bankswitch::Type CartDetector::autodetectType(const ByteBuffer& image, size_t si
 
   ostringstream ss;
   ss << "Bankswitching type '" << Bankswitch::typeToDesc(type) << "' detected";
-  Logger::debug(ss.str());
+  Logger::debug(ss.view());
 
   return type;
 }
@@ -267,11 +274,11 @@ bool CartDetector::searchForBytes(const uInt8* image, size_t imagesize,
                                   const uInt8* signature, uInt32 sigsize,
                                   uInt32 minhits)
 {
-  uInt32 count = 0;
+  uInt32 count{0};
 
   for(uInt32 i = 0; i < imagesize - sigsize; ++i)
   {
-    uInt32 j;
+    uInt32 j{0};
 
     for(j = 0; j < sigsize; ++j)
     {
@@ -322,6 +329,22 @@ bool CartDetector::isProbablyARM(const ByteBuffer& image, size_t size)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+bool CartDetector::isProbably03E0(const ByteBuffer& image, size_t size)
+{
+  // 03E0 cart bankswitching for Brazilian Parker Bros ROMs, switches segment
+  // 0 into bank 0 by accessing address 0x3E0 using 'LDA $3E0' or 'ORA $3E0'.
+  static constexpr uInt8 signature[2][4] = {
+    { 0x0D, 0xE0, 0x03, 0x0D },  // ORA $3E0, ORA (Popeye)
+    { 0xAD, 0xE0, 0x03, 0xAD }   // LDA $3E0, ORA (Montezuma's Revenge)
+  };
+  for(const auto* const sig: signature)
+    if(searchForBytes(image, size, sig, 4))
+      return true;
+
+  return false;
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool CartDetector::isProbably0840(const ByteBuffer& image, size_t size)
 {
   // 0840 cart bankswitching is triggered by accessing addresses 0x0800
@@ -331,16 +354,16 @@ bool CartDetector::isProbably0840(const ByteBuffer& image, size_t size)
     { 0xAD, 0x40, 0x08 },  // LDA $0840
     { 0x2C, 0x00, 0x08 }   // BIT $0800
   };
-  for(uInt32 i = 0; i < 3; ++i)
-    if(searchForBytes(image, size, signature1[i], 3, 2))
+  for(const auto* const sig: signature1)
+    if(searchForBytes(image, size, sig, 3, 2))
       return true;
 
   static constexpr uInt8 signature2[2][4] = {
     { 0x0C, 0x00, 0x08, 0x4C },  // NOP $0800; JMP ...
     { 0x0C, 0xFF, 0x0F, 0x4C }   // NOP $0FFF; JMP ...
   };
-  for(uInt32 i = 0; i < 2; ++i)
-    if(searchForBytes(image, size, signature2[i], 4, 2))
+  for(const auto* const sig: signature2)
+    if(searchForBytes(image, size, sig, 4, 2))
       return true;
 
   return false;
@@ -358,8 +381,8 @@ bool CartDetector::isProbably0FA0(const ByteBuffer& image, size_t size)
     { 0xAD, 0xC0, 0x0F },  // LDA $FC0  (Front Line, Zaxxon)
     { 0x2C, 0xC0, 0xEF }   // BIT $EFC0 (Motocross)
   };
-  for(uInt32 i = 0; i < 4; ++i)
-    if(searchForBytes(image, size, signature[i], 3))
+  for(const auto* const sig: signature)
+    if(searchForBytes(image, size, sig, 3))
       return true;
 
   return false;
@@ -430,16 +453,12 @@ bool CartDetector::isProbably4KSC(const ByteBuffer& image, size_t size)
 {
   // We check if the first 256 bytes are identical *and* if there's
   // an "SC" signature for one of our larger SC types at 1FFA.
-
   const uInt8 first = image[0];
   for(uInt32 i = 1; i < 256; ++i)
-      if(image[i] != first)
-        return false;
+    if(image[i] != first)
+      return false;
 
-  if((image[size-6]=='S') && (image[size-5]=='C'))
-      return true;
-
-  return false;
+  return (image[size-6] == 'S') && (image[size-5] == 'C');
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -499,8 +518,8 @@ bool CartDetector::isProbablyCV(const ByteBuffer& image, size_t size)
   // CV RAM access occurs at addresses $f3ff and $f400
   // These signatures are attributed to the MESS project
   static constexpr uInt8 signature[2][3] = {
-    { 0x9D, 0xFF, 0xF3 },  // STA $F3FF.X
-    { 0x99, 0x00, 0xF4 }   // STA $F400.Y
+    { 0x9D, 0xFF, 0xF3 },  // STA $F3FF,X  MagiCard
+    { 0x99, 0x00, 0xF4 }   // STA $F400,Y  Video Life
   };
   if(searchForBytes(image, size, signature[0], 3))
     return true;
@@ -560,8 +579,8 @@ bool CartDetector::isProbablyE0(const ByteBuffer& image, size_t size)
     { 0xAD, 0xED, 0xFF },  // LDA $FFED
     { 0xAD, 0xF3, 0xBF }   // LDA $BFF3
   };
-  for(uInt32 i = 0; i < 8; ++i)
-    if(searchForBytes(image, size, signature[i], 3))
+  for(const auto* const sig: signature)
+    if(searchForBytes(image, size, sig, 3))
       return true;
 
   return false;
@@ -585,8 +604,8 @@ bool CartDetector::isProbablyE7(const ByteBuffer& image, size_t size)
     { 0x8D, 0xE7, 0xFF },  // STA $FFE7
     { 0x8D, 0xE7, 0x1F }   // STA $1FE7
   };
-  for(uInt32 i = 0; i < 7; ++i)
-    if(searchForBytes(image, size, signature[i], 3))
+  for(const auto* const sig: signature)
+    if(searchForBytes(image, size, sig, 3))
       return true;
 
   return false;
@@ -604,8 +623,8 @@ bool CartDetector::isProbablyE78K(const ByteBuffer& image, size_t size)
     { 0xAD, 0xE5, 0xFF },  // LDA $FFE5
     { 0xAD, 0xE6, 0xFF },  // LDA $FFE6
   };
-  for(uInt32 i = 0; i < 3; ++i)
-    if(searchForBytes(image, size, signature[i], 3))
+  for(const auto* const sig: signature)
+    if(searchForBytes(image, size, sig, 3))
       return true;
 
   return false;
@@ -640,9 +659,9 @@ bool CartDetector::isProbablyEF(const ByteBuffer& image, size_t size,
     { 0x0C, 0xE0, 0x1F },  // NOP $1FE0
     { 0xAD, 0xE0, 0x1F }   // LDA $1FE0
   };
-  for(uInt32 i = 0; i < 4; ++i)
+  for(const auto* const sig: signature)
   {
-    if(searchForBytes(image, size, signature[i], 3))
+    if(searchForBytes(image, size, sig, 3))
     {
       isEF = true;
       break;
@@ -684,8 +703,8 @@ bool CartDetector::isProbablyFC(const ByteBuffer& image, size_t size)
     { 0x8d, 0xf8, 0xff, 0x8d, 0xfc, 0xff }, // STA $FFF8, STA $FFFC        Surf's Up (4K)
     { 0x8c, 0xf9, 0xff, 0xad, 0xfc, 0xff }  // STY $FFF9, LDA $FFFC        3-D Havoc
   };
-  for(uInt32 i = 0; i < 3; ++i)
-    if(searchForBytes(image, size, signature[i], 6))
+  for(const auto* const sig: signature)
+    if(searchForBytes(image, size, sig, 6))
       return true;
 
   return false;
@@ -696,18 +715,35 @@ bool CartDetector::isProbablyFE(const ByteBuffer& image, size_t size)
 {
   // FE bankswitching is very weird, but always seems to include a
   // 'JSR $xxxx'
-  // These signatures are attributed to the MESS project
-  static constexpr uInt8 signature[4][5] = {
-    { 0x20, 0x00, 0xD0, 0xC6, 0xC5 },  // JSR $D000; DEC $C5
-    { 0x20, 0xC3, 0xF8, 0xA5, 0x82 },  // JSR $F8C3; LDA $82
-    { 0xD0, 0xFB, 0x20, 0x73, 0xFE },  // BNE $FB; JSR $FE73
-    { 0x20, 0x00, 0xF0, 0x84, 0xD6 }   // JSR $F000; $84, $D6
+  // These signatures are (mostly) attributed to the MESS project
+  static constexpr uInt8 signature[5][5] = {
+    { 0x20, 0x00, 0xD0, 0xC6, 0xC5 },  // JSR $D000; DEC $C5  Decathlon
+    { 0x20, 0xC3, 0xF8, 0xA5, 0x82 },  // JSR $F8C3; LDA $82  Robot Tank
+    { 0xD0, 0xFB, 0x20, 0x73, 0xFE },  // BNE $FB; JSR $FE73  Space Shuttle (NTSC/PAL)
+    { 0xD0, 0xFB, 0x20, 0x68, 0xFE },  // BNE $FB; JSR $FE73  Space Shuttle (SECAM)
+    { 0x20, 0x00, 0xF0, 0x84, 0xD6 }   // JSR $F000; $84, $D6 Thwocker
   };
-  for(uInt32 i = 0; i < 4; ++i)
-    if(searchForBytes(image, size, signature[i], 5))
+  for(const auto* const sig: signature)
+    if(searchForBytes(image, size, sig, 5))
       return true;
 
   return false;
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+bool CartDetector::isProbablyJANE(const ByteBuffer& image, size_t size)
+{
+  static constexpr uInt8 signature[] = { 0xad, 0xf1, 0xff, 0x60 };  // LDA $0CB8
+
+  return searchForBytes(image, size, signature, sizeof(signature));
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+bool CartDetector::isProbablyGL(const ByteBuffer& image, size_t size)
+{
+  static constexpr uInt8 signature[] = { 0xad, 0xb8, 0x0c };  // LDA $0CB8
+
+  return searchForBytes(image, size, signature, 3);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -728,9 +764,9 @@ bool CartDetector::isProbablyMVC(const ByteBuffer& image, size_t size)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-size_t CartDetector::isProbablyMVC(const FilesystemNode& rom)
+size_t CartDetector::isProbablyMVC(const FSNode& rom)
 {
-  constexpr size_t frameSize = 2 * CartridgeMVC::MVC_FIELD_PAD_SIZE;
+  constexpr size_t frameSize = 2 * CartridgeMVC::MVC_FIELD_SIZE;
 
   if(Bankswitch::typeFromExtension(rom) == Bankswitch::Type::_MVC)
     return frameSize;
@@ -787,8 +823,8 @@ bool CartDetector::isProbablyUA(const ByteBuffer& image, size_t size)
     { 0x8D, 0xC0, 0x02 },  // STA $2C0 (Fathom, Vanguard)
     { 0xAD, 0xC0, 0x02 },  // LDA $2C0 (Mickey)
   };
-  for(uInt32 i = 0; i < 6; ++i)
-    if(searchForBytes(image, size, signature[i], 3))
+  for(const auto* const sig: signature)
+    if(searchForBytes(image, size, sig, 3))
       return true;
 
   return false;
@@ -816,18 +852,39 @@ bool CartDetector::isProbablyX07(const ByteBuffer& image, size_t size)
     { 0x0C, 0x1D, 0x08 },  // NOP $081D
     { 0x0C, 0x2D, 0x08 }   // NOP $082D
   };
-  for(uInt32 i = 0; i < 6; ++i)
-    if(searchForBytes(image, size, signature[i], 3))
+  for(const auto* const sig: signature)
+    if(searchForBytes(image, size, sig, 3))
       return true;
 
   return false;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+bool CartDetector::isProbablyELF(const ByteBuffer& image, size_t size) {
+  // Min ELF header size
+  if (size < 52) return false;
+
+  // Must start with ELF magic
+  static constexpr uInt8 signature[] = { 0x7f, 'E', 'L', 'F' };
+  if (!searchForBytes(image, 2 * sizeof(signature), signature, sizeof(signature), 1)) return false;
+
+  // We require little endian
+  if (image[0x05] != ElfParser::ENDIAN_LITTLE_ENDIAN) return false;
+
+  // Type must be ET_REL (relocatable ELF)
+  if (image[0x10] != ElfParser::ET_REL) return false;
+
+  // Arch must be ARM
+  if (image[0x12] != ElfParser::ARCH_ARM32) return false;
+
+  return true;
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool CartDetector::isProbablyPlusROM(const ByteBuffer& image, size_t size)
 {
   // PlusCart uses this pattern to detect a PlusROM
-  static constexpr uInt8 signature[3] = { 0x8d, 0xf0, 0x1f };  // STA $1FF0
+  static constexpr uInt8 signature[3] = { 0x8d, 0xf1, 0x1f };  // STA $1FF1
 
   return searchForBytes(image, size, signature, 3);
 }

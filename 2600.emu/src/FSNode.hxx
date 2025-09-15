@@ -18,21 +18,21 @@
 #include "bspf.hxx"
 #include <utility>
 
-class FilesystemNode
+class FSNode
 {
 public:
-	constexpr FilesystemNode() = default;
+	constexpr FSNode() = default;
 	template<class T>
-	FilesystemNode(T&& path): path{std::forward<T>(path)} {}
+	explicit FSNode(T&& path): path{std::forward<T>(path)} {}
 
-  friend ostream& operator<<(ostream& os, const FilesystemNode& node)
+  friend ostream& operator<<(ostream& os, const FSNode& node)
   {
     return os << node.getPath();
   }
 
 	bool exists() const;
-	const string& getName() const;
-	const string& getPath() const;
+	string_view getName() const;
+	string_view getPath() const;
 	bool isDirectory() const;
 	bool isFile() const;
 	bool isReadable() const;
@@ -41,8 +41,8 @@ public:
 	size_t read(stringstream& buffer) const { return 0; }
 	size_t write(const ByteBuffer& buffer, size_t size) const { return 0; }
 	size_t write(const stringstream& buffer) const { return 0; }
-	string getNameWithExt(const string& ext) const;
-	string getPathWithExt(const string& ext) const;
+	string getNameWithExt(string_view ext) const;
+	string getPathWithExt(string_view ext) const;
 
 protected:
 	string path;

@@ -113,7 +113,7 @@ public:
 
 	Texture makeTexture(TextureConfig);
 	Texture makeTexture(Data::PixmapSource, TextureSamplerConfig samplerConf = {}, bool makeMipmaps = true);
-	PixmapBufferTexture makePixmapBufferTexture(TextureConfig config, TextureBufferMode mode = {}, bool singleBuffer = false);
+	PixmapBufferTexture makePixmapBufferTexture(TextureConfig, TextureBufferMode = {}, TextureBufferImageMode = {});
 	std::vector<TextureBufferModeDesc> textureBufferModes();
 	TextureBufferMode evalTextureBufferMode(TextureBufferMode mode = {});
 	TextureBufferMode validateTextureBufferMode(TextureBufferMode);

@@ -181,6 +181,7 @@ void Mapper59_Init(CartInfo *info) {
 }
 
 //------------------ Map 061 ---------------------------
+
 static void M61Sync(void) {
 	if (((latche & 0x10) << 1) ^ (latche & 0x20)) {
 		setprg16(0x8000, ((latche & 0xF) << 1) | (((latche & 0x20) >> 4)));
@@ -228,32 +229,6 @@ static void M63Sync(void) {
 
 void Mapper63_Init(CartInfo *info) {
 	Latch_Init(info, M63Sync, M63Read, 0x0000, 0x8000, 0xFFFF, 0);
-}
-
-//------------------ Map 092 ---------------------------
-// Another two-in-one mapper, two Jaleco carts uses similar
-// hardware, but with different wiring.
-// Original code provided by LULU
-// Additionally, PCB contains DSP extra sound chip, used for voice samples (unemulated)
-
-static void M92Sync(void) {
-	uint8 reg = latche & 0xF0;
-	setprg16(0x8000, 0);
-	if (latche >= 0x9000) {
-		switch (reg) {
-		case 0xD0: setprg16(0xc000, latche & 15); break;
-		case 0xE0: setchr8(latche & 15); break;
-		}
-	} else {
-		switch (reg) {
-		case 0xB0: setprg16(0xc000, latche & 15); break;
-		case 0x70: setchr8(latche & 15); break;
-		}
-	}
-}
-
-void Mapper92_Init(CartInfo *info) {
-	Latch_Init(info, M92Sync, NULL, 0x80B0, 0x8000, 0xFFFF, 0);
 }
 
 //------------------ Map 174 ---------------------------
@@ -394,7 +369,6 @@ void Mapper217_Init(CartInfo *info) {
 }
 
 //------------------ Map 227 ---------------------------
-
 static void M227Sync(void) {
 	uint32 S = latche & 1;
 	uint32 p = ((latche >> 2) & 0x1F) + ((latche & 0x100) >> 3);

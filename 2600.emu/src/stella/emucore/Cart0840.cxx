@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -20,7 +20,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Cartridge0840::Cartridge0840(const ByteBuffer& image, size_t size,
-                             const string& md5, const Settings& settings,
+                             string_view md5, const Settings& settings,
                              size_t bsSize)
   : CartridgeEnhanced(image, size, md5, settings, bsSize)
 {
@@ -73,7 +73,7 @@ bool Cartridge0840::checkSwitchBank(uInt16 address, uInt8)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 uInt8 Cartridge0840::peek(uInt16 address)
 {
-  checkSwitchBank(address);
+  checkSwitchBank(address, 0);
 
   // Because of the way we've set up accessing above, we can only
   // get here when the addresses are from 0x800 - 0xFFF
@@ -84,7 +84,7 @@ uInt8 Cartridge0840::peek(uInt16 address)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool Cartridge0840::poke(uInt16 address, uInt8 value)
 {
-  checkSwitchBank(address);
+  checkSwitchBank(address, 0);
 
   // Because of the way accessing is set up, we will may get here by
   // doing a write to 0x800 - 0xFFF or cart; we ignore the cart write

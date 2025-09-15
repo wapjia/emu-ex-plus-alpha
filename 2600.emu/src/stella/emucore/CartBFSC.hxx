@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -47,7 +47,7 @@ class CartridgeBFSC : public CartridgeBF
       @param settings  A reference to the various settings (read-only)
       @param bsSize    The size specified by the bankswitching scheme
     */
-    CartridgeBFSC(const ByteBuffer& image, size_t size, const string& md5,
+    CartridgeBFSC(const ByteBuffer& image, size_t size, string_view md5,
                   const Settings& settings, size_t bsSize = 256_KB);
     ~CartridgeBFSC() override = default;
 

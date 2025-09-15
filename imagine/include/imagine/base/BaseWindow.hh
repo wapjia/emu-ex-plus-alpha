@@ -72,7 +72,7 @@ protected:
 	ConditionalMember<Config::envIsAndroid, F2Size> smmToPixelScaler{};
 	bool drawNeeded{};
 	DrawPhase drawPhase{DrawPhase::READY};
-	int8_t drawEventPriority_{};
+	bool drawEventEnabled{true};
 	// all windows need an initial onSurfaceChange call
 	WindowSurfaceChangeFlags surfaceChangeFlags{.surfaceResized = true, .contentRectResized = true};
 	ConditionalMemberOr<!Config::SYSTEM_ROTATES_WINDOWS, Rotation, Rotation::UP> softOrientation_{Rotation::UP};

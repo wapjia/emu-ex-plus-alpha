@@ -1775,7 +1775,7 @@ namespace EmuEx
 void emulateSound(EmuAudio *audio);
 }
 
-int FCEUPPU_Loop(EmuEx::EmuSystemTaskContext taskCtx, EmuEx::NesSystem &sys, EmuEx::EmuVideo *video, EmuEx::EmuAudio *audio, int skip) {
+int FCEUPPU_Loop(EmuEx::EmuSystemTaskContext taskCtx, EmuEx::NesSystem& sys, EmuEx::EmuVideo* video, EmuEx::EmuAudio* audio, int skip) {
 	if ((newppu) && (GameInfo->type != GIT_NSF)) {
 		int FCEUX_PPU_Loop(int skip);
 		return FCEUX_PPU_Loop(skip);
@@ -1930,7 +1930,7 @@ int FCEUPPU_Loop(EmuEx::EmuSystemTaskContext taskCtx, EmuEx::NesSystem &sys, Emu
 	}
 }
 
-int (*PPU_MASTER)(EmuEx::EmuSystemTaskContext, EmuEx::NesSystem &, EmuEx::EmuVideo *, EmuEx::EmuAudio *, int skip) = FCEUPPU_Loop;
+int (*PPU_MASTER)(EmuEx::EmuSystemTaskContext, EmuEx::NesSystem&, EmuEx::EmuVideo*, EmuEx::EmuAudio*, int skip) = FCEUPPU_Loop;
 
 static uint16 TempAddrT, RefreshAddrT;
 

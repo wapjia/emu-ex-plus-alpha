@@ -17,6 +17,10 @@
 #define VERBOSE_AGBPRINT           512
 #define VERBOSE_SOUNDOUTPUT       1024
 
+extern void GBAMatrixReset(GBASys&, GBAMatrix_t *matrix);
+extern void GBAMatrixWrite(GBASys&, GBAMatrix_t *matrix, uint32_t address, uint32_t value);
+extern void GBAMatrixWrite16(GBASys&, GBAMatrix_t *matrix, uint32_t address, uint16_t value);
+
 constexpr std::array<bool, 0x400> ioReadable = []
 {
 	std::array<bool, 0x400> ioReadable;

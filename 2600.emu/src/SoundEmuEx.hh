@@ -38,14 +38,14 @@ public:
 	SoundEmuEx(SoundEmuEx&&) = delete;
 	SoundEmuEx& operator=(const SoundEmuEx&) = delete;
 	SoundEmuEx& operator=(SoundEmuEx&&) = delete;
-	void open(shared_ptr<AudioQueue> audioQueue, EmulationTiming* emulationTiming);
-	void close() final;
-	void setMixRate(int mixRate, AudioSettings::ResamplingQuality);
+	void open(shared_ptr<AudioQueue> audioQueue, shared_ptr<const EmulationTiming> emulationTiming);
+	void setMixRate(int mixRate);
 	void setResampleQuality(AudioSettings::ResamplingQuality);
 	void setEmuAudio(EmuEx::EmuAudio *);
 	void setEnabled(bool enable) final;
-	bool mute(bool state) final;
-	bool toggleMute() final;
+	bool pause(bool state) final;
+	void mute(bool state) final;
+	void toggleMute() final;
 	void setVolume(uInt32 percent) final;
 	void adjustVolume(int direction) final;
 	string about() const final;
@@ -54,7 +54,7 @@ public:
 private:
 	shared_ptr<AudioQueue> audioQueue{};
 	unique_ptr<Resampler> myResampler{};
-	EmulationTiming *emulationTiming{};
+	shared_ptr<const EmulationTiming> emulationTiming{};
 	Int16 *currentFragment{};
 	int mixRate{};
 	AudioSettings::ResamplingQuality resampleQuality{AudioSettings::DEFAULT_RESAMPLING_QUALITY};

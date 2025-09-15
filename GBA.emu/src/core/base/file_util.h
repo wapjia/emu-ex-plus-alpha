@@ -23,6 +23,7 @@ uint8_t *utilLoad(const char *, bool (*)(const char *), uint8_t *, int &);
 IMAGE_TYPE utilFindType(const char *);
 bool utilIsGBAImage(const char *);
 bool utilIsGBImage(const char *);
+bool utilIsTARAchive(const char *);
 
 void utilWriteIntMem(uint8_t *&data, int);
 void utilWriteMem(uint8_t *&data, const void *in_data, unsigned size);
@@ -33,7 +34,7 @@ void utilReadMem(void *buf, const uint8_t *&data, unsigned size);
 void utilReadDataMem(const uint8_t *&data, const variable_desc *);
 
 // strip .gz or .z off end
-void utilStripDoubleExtension(const char *, char *);
+void utilStripDoubleExtension(const char *, char *, size_t);
 
 gzFile utilAutoGzOpen(const char *file, const char *mode);
 gzFile utilGzOpen(const char *file, const char *mode);

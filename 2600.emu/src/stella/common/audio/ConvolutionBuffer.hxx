@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -23,12 +23,12 @@
 class ConvolutionBuffer
 {
   public:
-
     explicit ConvolutionBuffer(uInt32 size);
+    ~ConvolutionBuffer() = default;
 
     void shift(float nextValue);
 
-    float convoluteWith(const float* const kernel) const;
+    float convoluteWith(const float* kernel) const;
 
   private:
 
@@ -39,7 +39,6 @@ class ConvolutionBuffer
     uInt32 mySize{0};
 
   private:
-
     ConvolutionBuffer() = delete;
     ConvolutionBuffer(const ConvolutionBuffer&) = delete;
     ConvolutionBuffer(ConvolutionBuffer&&) = delete;

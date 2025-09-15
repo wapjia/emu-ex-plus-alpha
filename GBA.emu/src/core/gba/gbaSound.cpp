@@ -74,6 +74,7 @@ public:
 	int writeIndex;
 	uint8_t fifo[32];
 	int dac;
+
 private:
 	int timer;
 	bool enabled;
@@ -447,32 +448,6 @@ static void reset_apu()
 	soundTicks = 0;
 }
 
-static void remake_stereo_buffer(GBASys &gba)
-{
-	// Clears pointers kept to old stereo_buffer
-	pcm[0].pcm.init();
-	pcm[1].pcm.init();
-
-	stereo_buffer.set_sample_rate(soundSampleRate, 75); // TODO: handle out of memory
-	stereo_buffer.clock_rate(gb_apu.clock_rate);
-
-	// PCM
-	pcm[0].which = 0;
-	pcm[1].which = 1;
-	apply_filtering();
-
-	// APU
-	//if ( !gb_apu )
-	{
-		//reset_apu();
-		stereo_buffer.clear();
-	}
-
-	// Volume Level
-	apply_muting(gba);
-	apply_volume(gba);
-}
-
 #if 0
 void soundShutdown()
 {
@@ -775,6 +750,32 @@ static constexpr variable_desc gba_state[] = {
 
 	{ NULL, 0 }
 };
+
+void remake_stereo_buffer(GBASys &gba)
+{
+	// Clears pointers kept to old stereo_buffer
+	pcm[0].pcm.init();
+	pcm[1].pcm.init();
+
+	stereo_buffer.set_sample_rate(soundSampleRate, 75); // TODO: handle out of memory
+	stereo_buffer.clock_rate(gb_apu.clock_rate);
+
+	// PCM
+	pcm[0].which = 0;
+	pcm[1].which = 1;
+	apply_filtering();
+
+	// APU
+	//if ( !gb_apu )
+	{
+		//reset_apu();
+		stereo_buffer.clear();
+	}
+
+	// Volume Level
+	apply_muting(gba);
+	apply_volume(gba);
+}
 
 #ifndef __LIBRETRO__
 void soundSaveGame(gzFile out)

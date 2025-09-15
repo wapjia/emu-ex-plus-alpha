@@ -75,7 +75,7 @@ protected:
 	float scaledDensityDPI_{};
 	int width_{}, height_{};
 	int id_{};
-	bool reliableFrameRate;
+	ConditionalMember<Config::multipleScreenFrameRates, bool> reliableFrameRate{};
 };
 
 using ScreenImpl = AndroidScreen;

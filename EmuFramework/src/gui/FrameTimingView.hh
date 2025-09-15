@@ -44,6 +44,7 @@ protected:
 	MultiChoiceMenuItem frameRate;
 	MultiChoiceMenuItem frameRatePAL;
 	BoolMenuItem frameTimingStats;
+	BoolMenuItem lowLatencyVideo;
 	StaticArrayList<TextMenuItem, maxFrameClockItems> frameClockItems;
 	MultiChoiceMenuItem frameClock;
 	TextMenuItem outputRateModeItems[3];
@@ -54,7 +55,7 @@ protected:
 	ConditionalMember<Config::multipleScreenFrameRates, MultiChoiceMenuItem> screenFrameRate;
 	BoolMenuItem blankFrameInsertion;
 	TextHeadingMenuItem advancedHeading;
-	StaticArrayList<MenuItem*, 10> item;
+	StaticArrayList<MenuItem*, 11> item;
 
 	bool onFrameRateChange(VideoSystem, SteadyClockDuration);
 };

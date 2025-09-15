@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -36,21 +36,20 @@ class MovieCart;
 class CartridgeMVC : public Cartridge
 {
   public:
-    static constexpr uInt32
-      MVC_FIELD_SIZE     = 2560,  // round field to nearest 512 byte boundary
-      MVC_FIELD_PAD_SIZE = 4096;  // round to nearest 4K
+    static constexpr size_t
+      MVC_FIELD_SIZE = 4_KB;
 
   public:
     /**
       Create a new cartridge using the specified image
 
       @param path      Path to the ROM image file
-      @param size      The size of the ROM image (<= 2048 bytes)
+      @param size      The size of the ROM image
       @param md5       The md5sum of the ROM image
       @param settings  A reference to the various settings (read-only)
       @param bsSize    The size specified by the bankswitching scheme
     */
-    CartridgeMVC(const string& path, size_t size, const string& md5,
+    CartridgeMVC(string_view path, size_t size, string_view md5,
                  const Settings& settings, size_t bsSize = 8_KB);
     ~CartridgeMVC() override;
 
@@ -123,10 +122,20 @@ class CartridgeMVC : public Cartridge
     */
     bool load(Serializer& in) override;
 
+  protected:
+    /**
+      Notification method invoked by the system when the console type
+      has changed.  Simply used to change titlescreen format, content
+      still plays as encoded.
+
+      @param timing  Enum representing the new console type
+    */
+    void consoleChanged(ConsoleTiming timing) override;
+
   private:
     // Currently not used:
     // Pointer to a dynamically allocated ROM image of the cartridge
-    ByteBuffer myImage{nullptr};
+    ByteBuffer myImage;
     size_t mySize{0};
 
     unique_ptr<MovieCart> myMovie;

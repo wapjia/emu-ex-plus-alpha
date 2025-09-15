@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -20,6 +20,7 @@
 
 class Controller;
 class Event;
+class Cartridge;
 
 /**
   The QuadTari controller.
@@ -45,7 +46,8 @@ class QuadTari : public Controller
       @param system     The system using this controller
       @param properties The properties to use for the current ROM
     */
-    QuadTari(Jack jack, const OSystem& osystem, const System& system, const Properties& properties);
+    QuadTari(Jack jack, const OSystem& osystem, const System& system,
+      const Properties& properties, Cartridge& cart);
     ~QuadTari() override = default;
 
   public:
@@ -119,7 +121,7 @@ class QuadTari : public Controller
     // determine which controller is active
     bool isFirst() const;
 
-    unique_ptr<Controller> addController(const Controller::Type type, bool second);
+    unique_ptr<Controller> addController(Controller::Type type, bool second);
 
     const OSystem& myOSystem;
     const Properties& myProperties;

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -28,6 +28,7 @@ class Audio : public Serializable
 {
   public:
     Audio();
+    ~Audio() override = default;
 
     void reset();
 
@@ -44,11 +45,11 @@ class Audio : public Serializable
     #endif
     }
 
-    void tick();
+    FORCE_INLINE void tick();
 
-    AudioChannel& channel0();
+    AudioChannel& channel0() { return myChannel0; }
 
-    AudioChannel& channel1();
+    AudioChannel& channel1() { return myChannel1; }
 
     /**
       Serializable methods (see that class for more information).
@@ -57,7 +58,7 @@ class Audio : public Serializable
     bool load(Serializer& in) override;
 
   private:
-    void phase1();
+    void createSample();
     void addSample(uInt8 sample0, uInt8 sample1);
 
   private:
@@ -68,8 +69,12 @@ class Audio : public Serializable
     AudioChannel myChannel0;
     AudioChannel myChannel1;
 
-    std::array<Int16, 0x1e + 1> myMixingTableSum;
-    std::array<Int16, 0x0f + 1> myMixingTableIndividual;
+    uInt32 mySumChannel0{0};
+    uInt32 mySumChannel1{0};
+    uInt32 mySumCt{0};
+
+    std::array<Int16, 0x1e + 1> myMixingTableSum{};
+    std::array<Int16, 0x0f + 1> myMixingTableIndividual{};
 
     Int16* myCurrentFragment{nullptr};
     uInt32 mySampleIndex{0};
@@ -84,5 +89,39 @@ class Audio : public Serializable
     Audio& operator=(const Audio&) = delete;
     Audio& operator=(Audio&&) = delete;
 };
+
+// ############################################################################
+// Implementation
+// ############################################################################
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void Audio::tick()
+{
+  // Volume for each channel is sampled every color clock. the average of
+  // these samples will be taken twice a scanline in the phase1() function
+  mySumChannel0 += static_cast<uInt32>(myChannel0.actualVolume());
+  mySumChannel1 += static_cast<uInt32>(myChannel1.actualVolume());
+  mySumCt++;
+
+  switch (myCounter) {
+    case 9:
+    case 81:
+      myChannel0.phase0();
+      myChannel1.phase0();
+      break;
+
+    case 37:
+    case 149:
+      myChannel0.phase1();
+      myChannel1.phase1();
+	  createSample();
+      break;
+
+    default:
+      break;
+  }
+
+  if (++myCounter == 228) myCounter = 0;
+}
 
 #endif // TIA_AUDIO_HXX

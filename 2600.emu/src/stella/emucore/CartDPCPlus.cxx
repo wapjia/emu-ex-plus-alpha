@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -19,15 +19,15 @@
   #include "Debugger.hxx"
 #endif
 #include "MD5.hxx"
+#include "Settings.hxx"
 #include "System.hxx"
 #include "CartDPCPlus.hxx"
-#include "TIA.hxx"
 #include "exception/FatalEmulationError.hxx"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CartridgeDPCPlus::CartridgeDPCPlus(const ByteBuffer& image, size_t size,
-                                   const string& md5, const Settings& settings)
-  : CartridgeARM(md5, settings),
+                                   string_view md5, const Settings& settings)
+  : CartridgeARM(settings, md5),
     myImage{make_unique<uInt8[]>(32_KB)},
     mySize{std::min(size, 32_KB)}
 {
@@ -48,7 +48,7 @@ CartridgeDPCPlus::CartridgeDPCPlus(const ByteBuffer& image, size_t size,
   myFrequencyImage = myDisplayImage + 4_KB;
 
   // Create Thumbulator ARM emulator
-  bool devSettings = settings.getBool("dev.settings");
+  const bool devSettings = settings.getBool("dev.settings");
   myThumbEmulator = make_unique<Thumbulator>
       (reinterpret_cast<uInt16*>(myImage.get()),
        reinterpret_cast<uInt16*>(myDPCRAM.data()),
@@ -78,7 +78,7 @@ CartridgeDPCPlus::CartridgeDPCPlus(const ByteBuffer& image, size_t size,
      myDriverMD5 == "8dd73b44fd11c488326ce507cbeb19d1" )
     myFractionalLowMask = 0x0F0000;
 
-  this->setInitialState();
+  this->setInitialState();  // NOLINT
 
   myPlusROM = make_unique<PlusROM>(mySettings, *this);
 
@@ -145,7 +145,7 @@ void CartridgeDPCPlus::install(System& system)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-inline void CartridgeDPCPlus::clockRandomNumberGenerator()
+FORCE_INLINE void CartridgeDPCPlus::clockRandomNumberGenerator()
 {
   // Update random number generator (32-bit LFSR)
   myRandomNumber = ((myRandomNumber & (1<<10)) ? 0x10adab1e: 0x00) ^
@@ -153,7 +153,7 @@ inline void CartridgeDPCPlus::clockRandomNumberGenerator()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-inline void CartridgeDPCPlus::priorClockRandomNumberGenerator()
+FORCE_INLINE void CartridgeDPCPlus::priorClockRandomNumberGenerator()
 {
   // Update random number generator (32-bit LFSR, reversed)
   myRandomNumber = ((myRandomNumber & (1U<<31)) ?
@@ -162,15 +162,15 @@ inline void CartridgeDPCPlus::priorClockRandomNumberGenerator()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-inline void CartridgeDPCPlus::updateMusicModeDataFetchers()
+FORCE_INLINE void CartridgeDPCPlus::updateMusicModeDataFetchers()
 {
   // Calculate the number of cycles since the last update
-  const uInt32 cycles = static_cast<uInt32>(mySystem->cycles() - myAudioCycles);
+  const auto cycles = static_cast<uInt32>(mySystem->cycles() - myAudioCycles);
   myAudioCycles = mySystem->cycles();
 
   // Calculate the number of DPC+ OSC clocks since the last update
   const double clocks = ((20000.0 * cycles) / myClockRate) + myFractionalClocks;
-  const uInt32 wholeClocks = static_cast<uInt32>(clocks);
+  const auto wholeClocks = static_cast<uInt32>(clocks);
   myFractionalClocks = clocks - static_cast<double>(wholeClocks);
 
   // Let's update counters and flags of the music mode data fetchers
@@ -204,7 +204,7 @@ inline void CartridgeDPCPlus::callFunction(uInt8 value)
               // time for Stella as ARM code "runs in zero 6507 cycles".
     case 255: // call without IRQ driven audio
       try {
-        uInt32 cycles = static_cast<uInt32>(mySystem->cycles() - myARMCycles);
+        auto cycles = static_cast<uInt32>(mySystem->cycles() - myARMCycles);
 
         myARMCycles = mySystem->cycles();
         myThumbEmulator->run(cycles, value == 254);
@@ -733,7 +733,7 @@ bool CartridgeDPCPlus::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeDPCPlus::save" << endl;
+    cerr << "ERROR: CartridgeDPCPlus::save\n";
     return false;
   }
 
@@ -796,7 +796,7 @@ bool CartridgeDPCPlus::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeDPCPlus::load" << endl;
+    cerr << "ERROR: CartridgeDPCPlus::load\n";
     return false;
   }
 

@@ -13,7 +13,6 @@
 	You should have received a copy of the GNU General Public License
 	along with C64.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "video"
 #include <emuframework/EmuSystem.hh>
 #include <emuframework/EmuApp.hh>
 #include "MainSystem.hh"
@@ -30,6 +29,8 @@ extern "C"
 	#include "vsyncapi.h"
 	#include "viewport.h"
 }
+
+namespace EmuEx{ constexpr SystemLogger log{"video"}; }
 
 using namespace EmuEx;
 
@@ -50,12 +51,17 @@ void vsync_do_vsync2(struct video_canvas_s *c)
 	auto &sys = c64Sys(c);
 	if(!sys.signalEmuTaskThreadAndWait())
 	{
-		logMsg("spurious vsync_do_vsync()");
+		EmuEx::log.info("spurious vsync_do_vsync()");
 	}
 }
 
 void vsyncarch_refresh_frequency_changed(double rate)
 {
+	if(rate < 45 || rate > 65)
+	{
+		EmuEx::log.warn("ignoring {}Hz refresh freqency", rate);
+		return;
+	}
 	auto &system = static_cast<C64System&>(EmuEx::gSystem());
 	system.systemFrameRate = rate;
 	if(system.hasContent())
@@ -88,7 +94,7 @@ static void updateInternalPixelFormat(struct video_canvas_s *c, IG::PixelFormat 
 
 void video_arch_canvas_init(struct video_canvas_s *c)
 {
-	logMsg("init canvas:%p with size %d,%d", c, c->draw_buffer->canvas_width, c->draw_buffer->canvas_height);
+	EmuEx::log.info("init canvas:{} with size {},{}", (void*)c, c->draw_buffer->canvas_width, c->draw_buffer->canvas_height);
 	c->systemPtr = (void*)&EmuEx::gSystem();
 	if(!c64Sys(c).activeCanvas)
 		c64Sys(c).activeCanvas = c;
@@ -112,7 +118,7 @@ int video_canvas_set_palette(video_canvas_t *c, struct palette_s *palette)
 		for(auto i : iotaCount(palette->num_entries))
 		{
 			auto col = pDesc.build(palette->entries[i].red/255., palette->entries[i].green/255., palette->entries[i].blue/255., 0.);
-			logMsg("set color %d to %X", i, col);
+			EmuEx::log.info("set color {} to {}", i, col);
 			plugin.video_render_setphysicalcolor(c->videoconfig, i, col, 32);
 		}
 	}
@@ -143,7 +149,7 @@ void C64System::resetCanvasSourcePixmap(struct video_canvas_s *c)
 	unsigned canvasH = c->h;
 	if(optionCropNormalBorders && (canvasH == 247 || canvasH == 272))
 	{
-		logMsg("cropping borders");
+		EmuEx::log.info("cropping borders");
 		// Crop all vertical borders on NTSC, leaving leftover side borders
 		int xBorderSize = 32, yBorderSize = 23;
 		int height = 200;
@@ -172,7 +178,7 @@ static void updateCanvasMemPixmap(struct video_canvas_s *c, int x, int y)
 	c->w = x;
 	c->h = y;
 	delete[] c->pixmapData;
-	logMsg("allocating pixmap:%dx%d format:%s bytes:%d", x, y, fmt.name(), (int)desc.bytes());
+	EmuEx::log.info("allocating pixmap:{}x{} format:{} bytes:{}", x, y, fmt.name(), desc.bytes());
 	c->pixmapData = new uint8_t[desc.bytes()];
 	c64Sys(c).resetCanvasSourcePixmap(c);
 }
@@ -210,14 +216,14 @@ void video_canvas_resize(struct video_canvas_s *c, char resize_canvas)
 	int y = c->draw_buffer->canvas_height;
 	x *= c->videoconfig->scalex;
 	y *= c->videoconfig->scaley;
-	logMsg("resized canvas to %d,%d, renderer %d", x, y, c->videoconfig->rendermode);
+	EmuEx::log.info("resized canvas to:{},{} renderer:{}", x, y, c->videoconfig->rendermode);
 	updateInternalPixelFormat(c, c64Sys(c).pixFmt);
 	updateCanvasMemPixmap(c, x, y);
 }
 
 video_canvas_t *video_canvas_create(video_canvas_t *c, unsigned int *width, unsigned int *height, int mapped)
 {
-	logMsg("create canvas:0x%p renderer %d", c, c->videoconfig->rendermode);
+	EmuEx::log.info("create canvas:{} renderer:{}", (void*)c, c->videoconfig->rendermode);
 	c->created = true;
 	updateInternalPixelFormat(c, c64Sys(c).pixFmt);
 	return c;
@@ -225,7 +231,7 @@ video_canvas_t *video_canvas_create(video_canvas_t *c, unsigned int *width, unsi
 
 void video_canvas_destroy(struct video_canvas_s *c)
 {
-	logMsg("canvas destroy:0x%p", c);
+	EmuEx::log.info("canvas destroy:{}", (void*)c);
 	c->created = false;
 	delete[] c->pixmapData;
 	c->pixmapData = {};

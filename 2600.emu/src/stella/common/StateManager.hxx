@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -18,7 +18,7 @@
 #ifndef STATE_MANAGER_HXX
 #define STATE_MANAGER_HXX
 
-#define STATE_HEADER "06070000state"
+#define STATE_HEADER "07000000state"
 
 class OSystem;
 class RewindManager;
@@ -35,7 +35,7 @@ class RewindManager;
 class StateManager
 {
   public:
-    enum class Mode {
+    enum class Mode: uInt8 {
       Off,
       TimeMachine,
       MovieRecord,
@@ -77,7 +77,7 @@ class StateManager
       Optionally adds one extra state when entering the Time Machine dialog;
       this uses the RewindManager for its functionality.
     */
-    bool addExtraState(const string& message);
+    bool addExtraState(string_view message);
 
     /**
       Rewinds states; this uses the RewindManager for its functionality.

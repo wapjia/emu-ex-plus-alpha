@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -33,6 +33,7 @@ class AbstractFrameManager : public Serializable
   public:
 
     AbstractFrameManager();
+    ~AbstractFrameManager() override = default;
 
   public:
 
@@ -68,6 +69,11 @@ class AbstractFrameManager : public Serializable
      * Called by TIA on VSYNC writes.
      */
     void setVsync(bool vsync, uInt64 cycles);
+
+    /**
+     * Called when a pixel is rendered.
+    */
+    virtual void pixelColor(uInt8 color) {}
 
     /**
      * Should the TIA render its frame? This is buffered in a flag for
@@ -142,6 +148,11 @@ class AbstractFrameManager : public Serializable
      * Enable jitter simulation
      */
     virtual void enableJitter(bool enabled) {}
+
+    /**
+     * Is vsync according to spec?
+     */
+    virtual bool vsyncCorrect() const { return true; }
 
     /**
      * The scanline difference between the last two frames. Used in the TIA to

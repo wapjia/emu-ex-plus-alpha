@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -16,7 +16,6 @@
 //============================================================================
 
 #include <chrono>
-#include <cmath>
 
 #include "ProfilingRunner.hxx"
 #include "FSNode.hxx"
@@ -31,7 +30,6 @@
 #include "FrameManager.hxx"
 #include "FrameLayoutDetector.hxx"
 #include "EmulationTiming.hxx"
-#include "ConsoleTiming.hxx"
 #include "System.hxx"
 #include "Joystick.hxx"
 #include "Random.hxx"
@@ -40,7 +38,7 @@
 using namespace std::chrono;
 
 namespace {
-  static constexpr uInt32 RUNTIME_DEFAULT = 60;
+  constexpr uInt32 RUNTIME_DEFAULT = 60;
 
   void updateProgress(uInt32 from, uInt32 to) {
     while (from < to) {
@@ -52,7 +50,7 @@ namespace {
       from++;
     }
   }
-}
+} // namespace
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ProfilingRunner::ProfilingRunner(int argc, char* argv[])
@@ -61,14 +59,14 @@ ProfilingRunner::ProfilingRunner(int argc, char* argv[])
   for (int i = 2; i < argc; i++) {
     ProfilingRun& run(profilingRuns[i-2]);
 
-    string arg = argv[i];
+    const string arg = argv[i];
     const size_t splitPoint = arg.find_first_of(':');
 
     run.romFile = splitPoint == string::npos ? arg : arg.substr(0, splitPoint);
 
     if (splitPoint == string::npos) run.runtime = RUNTIME_DEFAULT;
     else  {
-      int runtime = BSPF::stringToInt(arg.substr(splitPoint+1, string::npos));
+      const int runtime = BSPF::stoi(arg.substr(splitPoint+1, string::npos));
       run.runtime = runtime > 0 ? runtime : RUNTIME_DEFAULT;
     }
   }
@@ -79,10 +77,11 @@ ProfilingRunner::ProfilingRunner(int argc, char* argv[])
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool ProfilingRunner::run()
 {
-  cout << "Profiling Stella..." << endl;
+  cout << "Profiling Stella...\n";
 
   for (const ProfilingRun& run : profilingRuns) {
-    cout << endl << "running " << run.romFile << " for " << run.runtime << " seconds..." << endl;
+    cout << "\nrunning " << run.romFile << " for " << run.runtime
+         << " seconds...\n";
 
     if (!runOne(run)) return false;
   }
@@ -96,37 +95,40 @@ bool ProfilingRunner::run()
 //                stacksize '16384'.  Consider moving some data to heap.
 bool ProfilingRunner::runOne(const ProfilingRun& run)
 {
-  FilesystemNode imageFile(run.romFile);
+  const FSNode imageFile(run.romFile);
 
   if (!imageFile.isFile()) {
-    cout << "ERROR: " << run.romFile << " is not a ROM image" << endl;
+    cout << "ERROR: " << run.romFile << " is not a ROM image\n";
     return false;
   }
 
   ByteBuffer image;
   const size_t size = imageFile.read(image);
   if (size == 0) {
-    cout << "ERROR: unable to read " << run.romFile << endl;
+    cout << "ERROR: unable to read " << run.romFile << '\n';
     return false;
   }
 
   string md5 = MD5::hash(image, size);
-  string type = "";
+  const string type;
   unique_ptr<Cartridge> cartridge = CartCreator::create(
       imageFile, image, size, md5, type, mySettings);
 
   if (!cartridge) {
-    cout << "ERROR: unable to determine cartridge type" << endl;
+    cout << "ERROR: unable to determine cartridge type\n";
     return false;
   }
 
   IO consoleIO;
   Random rng(0);
-  Event event;
+  const Event event;
 
   M6502 cpu(mySettings);
   M6532 riot(consoleIO, mySettings);
-  TIA tia(consoleIO, []() { return ConsoleTiming::ntsc; }, mySettings);
+
+  const TIA::onPhosphorCallback callback = [] (bool enable) {};
+
+  TIA tia(consoleIO, []() { return ConsoleTiming::ntsc; }, mySettings, callback);
   System system(rng, cpu, riot, tia, *cartridge);
 
   consoleIO.myLeftControl = make_unique<Joystick>(Controller::Jack::Left, event, system);
@@ -157,9 +159,12 @@ bool ProfilingRunner::runOne(const ProfilingRun& run)
       cout << "PAL";
       consoleTiming = ConsoleTiming::pal;
       break;
+
+    default:  // TODO: add other layouts here
+      break;
   }
 
-  (cout << endl).flush();
+  (cout << '\n').flush();
 
   FrameManager frameManager;
   tia.setFrameManager(&frameManager);
@@ -185,7 +190,8 @@ bool ProfilingRunner::runOne(const ProfilingRun& run)
 
     if (tia.newFramePending()) tia.renderToFrameBuffer();
 
-    const uInt32 percentNow = uInt32(std::min((100 * cycles) / cyclesTarget, static_cast<uInt64>(100)));
+    const uInt32 percentNow = static_cast<uInt32>(std::min((100 * cycles) /
+      cyclesTarget, static_cast<uInt64>(100)));
     updateProgress(percent, percentNow);
 
     percent = percentNow;
@@ -194,12 +200,12 @@ bool ProfilingRunner::runOne(const ProfilingRun& run)
   const double realtimeUsed = duration_cast<duration<double>>(high_resolution_clock::now () - tp).count();
 
   if (dispatchResult.getStatus() != DispatchResult::Status::ok) {
-    cout << endl << "ERROR: emulation failed after " << cycles << " cycles";
+    cout << "\nERROR: emulation failed after " << cycles << " cycles";
     return false;
   }
 
-  (cout << "100%" << endl).flush();
-  cout << "real time: " << realtimeUsed << " seconds" << endl;
+  (cout << "100%" << '\n').flush();
+  cout << "real time: " << realtimeUsed << " seconds\n";
 
   return true;
 }

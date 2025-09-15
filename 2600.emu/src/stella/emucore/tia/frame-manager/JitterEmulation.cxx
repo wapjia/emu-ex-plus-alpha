@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -56,10 +56,10 @@ void JitterEmulation::setSensitivity(Int32 sensitivity)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void JitterEmulation::frameComplete(Int32 scanlineCount, Int32 vsyncCycles)
 {
-#ifdef DEBUG_BUILD
-  const int  vsyncLines = round((vsyncCycles - 2) / 76.0);
-  cerr << "TV jitter " << myJitter << " - " << scanlineCount << ", " << vsyncCycles << ", " << vsyncLines << endl;
-#endif
+//#ifdef DEBUG_BUILD
+//  const int  vsyncLines = round((vsyncCycles - 2) / 76.0);
+//  cerr << "TV jitter " << myJitter << " - " << scanlineCount << ", " << vsyncCycles << ", " << vsyncLines << '\n';
+//#endif
 
   // Check if current frame size is stable compared to previous frame
   const bool scanlinesStable = scanlineCount == myLastFrameScanlines;
@@ -76,6 +76,8 @@ void JitterEmulation::frameComplete(Int32 scanlineCount, Int32 vsyncCycles)
   const bool vsyncLinesStable = abs(vsyncCycles - myLastFrameVsyncCycles) < myVsyncDelta1;
 #endif
 
+  myVsyncCorrect = abs(vsyncCycles - 76 * 3) <= 3; // 3 cycles tolerance
+
   if(!scanlinesStable || !vsyncCyclesStable || !vsyncLinesStable)
   {
     if(++myUnstableCount >= myUnstableFrames)
@@ -84,7 +86,7 @@ void JitterEmulation::frameComplete(Int32 scanlineCount, Int32 vsyncCycles)
       {
         const Int32 scanlineDifference = scanlineCount - myLastFrameScanlines;
 
-        if(abs(scanlineDifference) < myScanlineDelta
+        if(abs(scanlineDifference) >= myScanlineDelta
           && abs(myJitter) < static_cast<Int32>(myRandom.next() % myJitterLines))
         {
           // Repeated invalid frames cause randomly repeated jitter
@@ -145,7 +147,7 @@ bool JitterEmulation::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: JitterEmulation::save" << endl;
+    cerr << "ERROR: JitterEmulation::save\n";
 
     return false;
   }
@@ -168,7 +170,7 @@ bool JitterEmulation::load(Serializer& in)
   }
   catch (...)
   {
-    cerr << "ERROR: JitterEmulation::load" << endl;
+    cerr << "ERROR: JitterEmulation::load\n";
 
     return false;
   }

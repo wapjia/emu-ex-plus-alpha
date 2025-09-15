@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -224,6 +224,9 @@ void Playfield::applyColors()
           myColorRight = myColorP1 &= 0xfe;
         }
         break;
+
+      default:
+        break;  // Not supposed to get here
     }
   }
 }
@@ -290,7 +293,7 @@ bool Playfield::save(Serializer& out) const
     out.putByte(myDebugColor);
     out.putBool(myDebugEnabled);
 
-    out.putByte(uInt8(myColorMode));
+    out.putByte(static_cast<uInt8>(myColorMode));
     out.putBool(myScoreGlitch);
 
     out.putInt(myPattern);
@@ -306,7 +309,7 @@ bool Playfield::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_Playfield::save" << endl;
+    cerr << "ERROR: TIA_Playfield::save\n";
     return false;
   }
 
@@ -352,7 +355,7 @@ bool Playfield::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_Playfield::load" << endl;
+    cerr << "ERROR: TIA_Playfield::load\n";
     return false;
   }
 

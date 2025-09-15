@@ -33,6 +33,7 @@ public:
 	bool setFormat(PixmapDesc, ColorSpace, TextureSamplerConfig);
 	LockedTextureBuffer lock(TextureBufferFlags bufferFlags);
 	void unlock(LockedTextureBuffer lockBuff, TextureWriteFlags writeFlags);
+	int buffers() const { return 1; }
 
 protected:
 	Buffer buffer{};
@@ -47,6 +48,7 @@ public:
 	bool setFormat(PixmapDesc, ColorSpace, TextureSamplerConfig);
 	LockedTextureBuffer lock(TextureBufferFlags bufferFlags);
 	void unlock(LockedTextureBuffer lockBuff, TextureWriteFlags writeFlags);
+	int buffers() const { return 2; }
 
 protected:
 	struct EGLImageDeleter

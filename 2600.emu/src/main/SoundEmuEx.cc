@@ -31,27 +31,20 @@ using namespace EmuEx;
 
 SoundEmuEx::SoundEmuEx(OSystem& osystem): Sound(osystem) {}
 
-void SoundEmuEx::open(shared_ptr<AudioQueue> audioQueue, EmulationTiming* emulationTiming)
+void SoundEmuEx::open(shared_ptr<AudioQueue> audioQueue, shared_ptr<const EmulationTiming> emulationTiming)
 {
 	audioQueue->ignoreOverflows(true);
 	this->audioQueue = audioQueue;
 	this->emulationTiming = emulationTiming;
 	currentFragment = nullptr;
-}
-
-void SoundEmuEx::close()
-{
-	if(!audioQueue)
-		return;
-	audioQueue->closeSink(currentFragment);
-  audioQueue.reset();
-  myResampler.reset();
-  mixRate = {};
+	if(mixRate)
+	{
+		updateResampler();
+	}
 }
 
 void SoundEmuEx::updateResampler()
 {
-	emulationTiming->updatePlaybackRate(mixRate);
 	Resampler::Format formatFrom =
 		Resampler::Format(emulationTiming->audioSampleRate(), audioQueue->fragmentSize(), audioQueue->isStereo());
 	Resampler::Format formatTo =
@@ -66,7 +59,7 @@ void SoundEmuEx::updateResampler()
 		};
 	switch(resampleQuality)
 	{
-		case AudioSettings::ResamplingQuality::nearestNeightbour:
+		case AudioSettings::ResamplingQuality::nearestNeighbour:
 			myResampler = make_unique<SimpleResampler>(formatFrom, formatTo, fragCallback);
 		break;
 		case AudioSettings::ResamplingQuality::lanczos_2:
@@ -79,29 +72,26 @@ void SoundEmuEx::updateResampler()
 	logMsg("set sound mix rate:%d resampler type:%d", mixRate, (int)resampleQuality);
 }
 
-void SoundEmuEx::setMixRate(int mixRate_, AudioSettings::ResamplingQuality resampleQ)
+void SoundEmuEx::setMixRate(int mixRate_)
 {
-	resampleQuality = resampleQ;
+	if(mixRate_ == mixRate)
+		return;
+	mixRate = mixRate_;
 	if(!audioQueue)
 	{
 		logWarn("called setRate() without audio queue");
 		return;
 	}
-	if(mixRate_ == mixRate)
-		return;
-	mixRate = mixRate_;
 	updateResampler();
 }
 
 void SoundEmuEx::setResampleQuality(AudioSettings::ResamplingQuality quality)
 {
-	if(!audioQueue)
+	resampleQuality = quality;
+	if(!audioQueue || !mixRate)
 	{
 		return;
 	}
-	resampleQuality = quality;
-	if(!mixRate)
-		return;
 	updateResampler();
 }
 
@@ -131,9 +121,11 @@ void SoundEmuEx::setEmuAudio(EmuEx::EmuAudio *audio)
 
 void SoundEmuEx::setEnabled(bool enable) {}
 
-bool SoundEmuEx::mute(bool state) { return false; }
+bool SoundEmuEx::pause(bool state) { return true; }
 
-bool SoundEmuEx::toggleMute() { return false; }
+void SoundEmuEx::mute(bool state) {}
+
+void SoundEmuEx::toggleMute() {}
 
 void SoundEmuEx::setVolume(uInt32 percent) {}
 

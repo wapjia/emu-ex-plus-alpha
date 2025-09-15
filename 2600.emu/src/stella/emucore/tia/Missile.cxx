@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -46,6 +46,7 @@ void Missile::reset()
   collision = myCollisionMaskDisabled;
   myInvertedPhaseClock = false;
   myUseInvertedPhaseClock = false;
+  myUseShortLateHMove = false;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -200,6 +201,12 @@ void Missile::setInvertedPhaseClock(bool enable)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void Missile::setShortLateHMove(bool enable)
+{
+  myUseShortLateHMove = enable;
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Missile::updateEnabled()
 {
   myIsEnabled = !myIsSuppressed && myEnam && !myResmp;
@@ -296,7 +303,7 @@ bool Missile::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_Missile::save" << endl;
+    cerr << "ERROR: TIA_Missile::save\n";
     return false;
   }
 
@@ -340,7 +347,7 @@ bool Missile::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_Missile::load" << endl;
+    cerr << "ERROR: TIA_Missile::load\n";
     return false;
   }
 

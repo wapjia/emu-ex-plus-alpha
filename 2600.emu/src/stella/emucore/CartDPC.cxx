@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -22,7 +22,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CartridgeDPC::CartridgeDPC(const ByteBuffer& image, size_t size,
-                           const string& md5, const Settings& settings,
+                           string_view md5, const Settings& settings,
                            size_t bsSize)
   : CartridgeF8(image, size, md5, settings, bsSize)
 {
@@ -73,7 +73,7 @@ void CartridgeDPC::install(System& system)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-inline void CartridgeDPC::clockRandomNumberGenerator()
+FORCE_INLINE void CartridgeDPC::clockRandomNumberGenerator()
 {
   // Table for computing the input bit of the random number generator's
   // shift register (it's the NOT of the EOR of four bits)
@@ -91,15 +91,15 @@ inline void CartridgeDPC::clockRandomNumberGenerator()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-inline void CartridgeDPC::updateMusicModeDataFetchers()
+FORCE_INLINE void CartridgeDPC::updateMusicModeDataFetchers()
 {
   // Calculate the number of cycles since the last update
-  const uInt32 cycles = static_cast<uInt32>(mySystem->cycles() - myAudioCycles);
+  const auto cycles = static_cast<uInt32>(mySystem->cycles() - myAudioCycles);
   myAudioCycles = mySystem->cycles();
 
   // Calculate the number of DPC OSC clocks since the last update
   const double clocks = ((myDpcPitch * cycles) / myClockRate) + myFractionalClocks;
-  const uInt32 wholeClocks = static_cast<uInt32>(clocks);
+  const auto wholeClocks = static_cast<uInt32>(clocks);
   myFractionalClocks = clocks - static_cast<double>(wholeClocks);
 
   if(wholeClocks == 0)
@@ -112,7 +112,7 @@ inline void CartridgeDPC::updateMusicModeDataFetchers()
     if(myMusicMode[x - 5])
     {
       const Int32 top = myTops[x] + 1;
-      Int32 newLow = static_cast<Int32>(myCounters[x] & 0x00ff);
+      auto newLow = static_cast<Int32>(myCounters[x] & 0x00ff);
 
       if(myTops[x] != 0)
       {
@@ -380,7 +380,7 @@ bool CartridgeDPC::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeDPC::save" << endl;
+    cerr << "ERROR: CartridgeDPC::save\n";
     return false;
   }
 
@@ -420,7 +420,7 @@ bool CartridgeDPC::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeDPC::load" << endl;
+    cerr << "ERROR: CartridgeDPC::load\n";
     return false;
   }
   return true;

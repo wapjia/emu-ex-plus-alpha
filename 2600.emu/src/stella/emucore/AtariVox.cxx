@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -17,12 +17,11 @@
 
 #include "MediaFactory.hxx"
 #include "System.hxx"
-#include "OSystem.hxx"
 #include "AtariVox.hxx"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 AtariVox::AtariVox(Jack jack, const Event& event, const System& system,
-                   const string& portname, const FilesystemNode& eepromfile,
+                   const string& portname, const FSNode& eepromfile,
                    const onMessageCallback& callback)
   : SaveKey(jack, event, system, eepromfile, callback, Controller::Type::AtariVox),
     mySerialPort{MediaFactory::createSerialPort()}
@@ -43,7 +42,7 @@ AtariVox::AtariVox(Jack jack, const Event& event, const System& system,
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-AtariVox::~AtariVox()
+AtariVox::~AtariVox()  // NOLINT (we need an empty d'tor)
 {
 }
 
@@ -127,9 +126,9 @@ void AtariVox::clockDataIn(bool value)
       myShiftCount = 0;
       myShiftRegister >>= 6;
       if(!(myShiftRegister & (1<<9)))
-        cerr << "AtariVox: bad start bit" << endl;
+        cerr << "AtariVox: bad start bit\n";
       else if((myShiftRegister & 1))
-        cerr << "AtariVox: bad stop bit" << endl;
+        cerr << "AtariVox: bad stop bit\n";
       else
       {
         const uInt8 data = ((myShiftRegister >> 1) & 0xff);

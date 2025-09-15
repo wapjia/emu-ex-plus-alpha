@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -66,7 +66,7 @@ class CartridgeCDF : public CartridgeARM
 
   public:
 
-    enum class CDFSubtype {
+    enum class CDFSubtype: uInt8 {
       CDF0,
       CDF1,
       CDFJ,
@@ -82,7 +82,7 @@ class CartridgeCDF : public CartridgeARM
       @param md5       The md5sum of the ROM image
       @param settings  A reference to the various settings (read-only)
     */
-    CartridgeCDF(const ByteBuffer& image, size_t size, const string& md5,
+    CartridgeCDF(const ByteBuffer& image, size_t size, string_view md5,
                  const Settings& settings);
     ~CartridgeCDF() override = default;
 
@@ -202,9 +202,11 @@ class CartridgeCDF : public CartridgeARM
       of the cart.
     */
     CartDebugWidget* debugWidget(GuiObject* boss, const GUI::Font& lfont,
-                                 const GUI::Font& nfont, int x, int y, int w, int h) override;
+                                 const GUI::Font& nfont, int x, int y,
+                                 int w, int h) override;
     CartDebugWidget* infoWidget(GuiObject* boss, const GUI::Font& lfont,
-                                const GUI::Font& nfont, int x, int y, int w, int h) override;
+                                const GUI::Font& nfont, int x, int y,
+                                int w, int h) override;
 #endif
 
   public:
@@ -296,7 +298,7 @@ class CartridgeCDF : public CartridgeARM
     // For CDFJ+, used as:
     //   $0000 - 2K Driver
     //   $0800 - Display Data, C Variables & Stack
-    std::array<uInt8, 32_KB> myRAM;
+    std::array<uInt8, 32_KB> myRAM{};
 
     // Indicates the offset into the ROM image (aligns to current bank)
     uInt16 myBankOffset{0};

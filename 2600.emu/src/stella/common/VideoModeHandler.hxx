@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -22,6 +22,7 @@ class Settings;
 
 #include "Rect.hxx"
 #include "bspf.hxx"
+#include "Bezel.hxx"
 
 class VideoModeHandler
 {
@@ -33,7 +34,7 @@ class VideoModeHandler
     //   'screen' are the dimensions of the screen itself
     struct Mode
     {
-      enum class Stretch {
+      enum class Stretch: uInt8 {
         Preserve,   // Stretch to fill all available space; preserve aspect ratio
         Fill,       // Stretch to fill all available space
         None        // No stretching (1x zoom)
@@ -44,15 +45,17 @@ class VideoModeHandler
       Common::Size screenS;
       Stretch stretch{Mode::Stretch::None};
       string description;
-      float zoom{1.F};
+      double zoom{1.};
       Int32 fsIndex{-1};  // -1 indicates windowed mode
 
       Mode() = default;
       Mode(uInt32 iw, uInt32 ih, uInt32 sw, uInt32 sh, Stretch smode,
-           Int32 fsindex = -1, const string& desc = "",
-           float zoomLevel = 1.F, float overscan = 1.F);
+           Int32 fsindex = -1, string_view desc = "",
+           double zoomLevel = 1., double overscan = 1.,
+           Bezel::Info bezelInfo = Bezel::Info());
       Mode(uInt32 iw, uInt32 ih, Stretch smode, Int32 fsindex = -1,
-           const string& desc = "", float zoomLevel = 1.F);
+           string_view desc = "", double zoomLevel = 1.,
+           Bezel::Info bezelInfo = Bezel::Info());
 
       friend ostream& operator<<(ostream& os, const Mode& vm)
       {
@@ -67,6 +70,7 @@ class VideoModeHandler
 
   public:
     VideoModeHandler() = default;
+    ~VideoModeHandler() = default;
 
     /**
       Set the base size of the image. Scaling can be applied to this,
@@ -94,8 +98,8 @@ class VideoModeHandler
 
       @return  A video mode based on the given criteria
     */
-    const VideoModeHandler::Mode& buildMode(const Settings& settings,
-                                            bool inTIAMode);
+    const VideoModeHandler::Mode& buildMode(const Settings& settings, bool inTIAMode,
+                                            Bezel::Info bezelInfo = Bezel::Info());
 
   private:
     Common::Size myImage, myDisplay;

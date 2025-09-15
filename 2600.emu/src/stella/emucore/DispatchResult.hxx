@@ -8,7 +8,7 @@
 // MM     MM 66  66 55  55 00  00 22
 // MM     MM  6666   5555   0000  222222
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -23,7 +23,7 @@
 class DispatchResult
 {
   public:
-    enum class Status { invalid, ok, debugger, fatal };
+    enum class Status: uInt8 { invalid, ok, debugger, fatal };
 
   public:
 
@@ -31,34 +31,45 @@ class DispatchResult
 
     uInt64 getCycles() const { return myCycles; }
 
-    const string& getMessage() const { assertStatus(Status::debugger, Status::fatal); return myMessage; }
+    const string& getMessage() const {
+      assertStatus(Status::debugger, Status::fatal);
+      return myMessage;
+    }
 
-    int getAddress() const { assertStatus(Status::debugger); return myAddress; }
+    int getAddress() const {
+      assertStatus(Status::debugger);
+      return myAddress;
+    }
 
-    bool wasReadTrap() const { assertStatus(Status::debugger); return myWasReadTrap; }
+    bool wasReadTrap() const {
+      assertStatus(Status::debugger);
+      return myWasReadTrap;
+    }
 
-    const string& getToolTip() const { assertStatus(Status::debugger, Status::fatal); return myToolTip; }
+    const string& getToolTip() const {
+      assertStatus(Status::debugger, Status::fatal);
+      return myToolTip;
+    }
 
     bool isSuccess() const;
 
     void setOk(uInt64 cycles);
 
-    void setDebugger(uInt64 cycles, const string& message = "",
-                     const string& tooltip = "", int address = -1, bool wasReadTrap = true);
+    void setDebugger(uInt64 cycles, string_view message = "",
+                     string_view tooltip = "", int address = -1,
+                     bool wasReadTrap = true);
 
     void setFatal(uInt64 cycles);
 
-    void setMessage(const string& message);
+    void setMessage(string_view message);
 
   private:
 
-    void assertStatus(Status status) const
-    {
+    void assertStatus(Status status) const {
       if (myStatus != status) throw runtime_error("invalid status for operation");
     }
 
-    template<typename ...Ts> void assertStatus(Status status, Ts... more) const
-    {
+    template<typename ...Ts> void assertStatus(Status status, Ts... more) const {
       if (myStatus == status) return;
 
       assertStatus(more...);

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -27,7 +27,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Lightgun::Lightgun(Jack jack, const Event& event, const System& system,
-                   const string& romMd5, const FrameBuffer& frameBuffer)
+                   string_view romMd5, const FrameBuffer& frameBuffer)
   : Controller(jack, event, system, Controller::Type::Lightgun),
     myFrameBuffer{frameBuffer}
 {
@@ -103,9 +103,8 @@ bool Lightgun::read(DigitalPin pin)
       if (xTia < 0)
         xTia += TIAConstants::H_CLOCKS;
 
-      const bool enable = !((xTia - xMouse) >= 0 && (xTia - xMouse) < 15 && (yTia - yMouse) >= 0);
-
-      return enable;
+      return (xTia - xMouse) < 0 || (xTia - xMouse) >= 15 ||
+             (yTia - yMouse) < 0;
     }
     default:
       return Controller::read(pin);

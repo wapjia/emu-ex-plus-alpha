@@ -47,6 +47,7 @@ public:
 	void setFormat(EmuSystem &, IG::PixelFormat videoFmt, IG::PixelFormat effectFmt, Gfx::ColorSpace);
 	void setOverlay(ImageOverlayId id);
 	ImageOverlayId overlayEffectId() const { return userOverlayEffectId; }
+	void updateOverlay() { setOverlay(userOverlayEffectId); }
 	void setOverlayIntensity(float intensity);
 	float overlayIntensity() const { return vidImgOverlay.intensityLevel(); }
 	void setEffect(EmuSystem &, ImageEffectId, IG::PixelFormat);

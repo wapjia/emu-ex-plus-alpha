@@ -41,16 +41,15 @@ public:
 	void setTitle(const char *name);
 	bool setNeedsDraw(bool needsDraw);
 	bool needsDraw() const;
-	void postDraw(int8_t priority = 0);
+	void postDraw();
 	void unpostDraw();
 	void postFrameReady();
-	void postDrawToMainThread(int8_t priority = 0);
+	void postDrawToMainThread();
 	void postFrameReadyToMainThread();
 	void setFrameEventsOnThisThread();
 	void removeFrameEvents();
-	static constexpr int8_t drawEventPriorityLocked = 127; // max value passed to setDrawEventPriority() also blocks implicit drawing
-	int8_t setDrawEventPriority(int8_t = 0);
-	int8_t drawEventPriority() const;
+	bool setDrawEventEnabled(bool);
+	bool drawEventIsEnabled() const;
 	bool isReady() const { return drawPhase == DrawPhase::READY; }
 	DrawPhase activeDrawPhase() const { return drawPhase; }
 	void drawNow(bool needsSync = false);

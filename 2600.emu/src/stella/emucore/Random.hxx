@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -39,6 +39,7 @@ class Random : public Serializable
     explicit Random() {
       initSeed(static_cast<uInt32>(std::chrono::system_clock::now().time_since_epoch().count()));
     }
+    ~Random() override = default;
 
     /**
       Create a new random number generator with given seed.
@@ -78,7 +79,7 @@ class Random : public Serializable
       }
       catch(...)
       {
-        cerr << "ERROR: Random::save" << endl;
+        cerr << "ERROR: Random::save\n";
         return false;
       }
 
@@ -99,7 +100,7 @@ class Random : public Serializable
       }
       catch(...)
       {
-        cerr << "ERROR: Random::load" << endl;
+        cerr << "ERROR: Random::load\n";
         return false;
       }
 

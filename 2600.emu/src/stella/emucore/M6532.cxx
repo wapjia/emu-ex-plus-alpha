@@ -8,14 +8,12 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
 // this file, and for a DISCLAIMER OF ALL WARRANTIES.
 //============================================================================
-
-#include <cassert>
 
 #include "Console.hxx"
 #include "Settings.hxx"
@@ -47,12 +45,12 @@ void M6532::reset()
   };
 
   // Initialize the 128 bytes of memory
-  bool devSettings = mySettings.getBool("dev.settings");
+  const bool devSettings = mySettings.getBool("dev.settings");
   if(mySettings.getString(devSettings ? "dev.console" : "plr.console") == "7800")
     std::copy_n(RAM_7800.begin(), RAM_7800.size(), myRAM.begin());
   else if(mySettings.getBool(devSettings ? "dev.ramrandom" : "plr.ramrandom"))
-    for(size_t t = 0; t < myRAM.size(); ++t)
-      myRAM[t] = mySystem->randGenerator().next();
+    for(auto& ram: myRAM)
+      ram = mySystem->randGenerator().next();
   else
     myRAM.fill(0);
 
@@ -110,7 +108,7 @@ void M6532::update()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void M6532::updateEmulation()
 {
-  uInt32 cycles = static_cast<uInt32>(mySystem->cycles() - myLastCycle);
+  auto cycles = static_cast<uInt32>(mySystem->cycles() - myLastCycle);
   const uInt32 subTimer = mySubTimer;
 
   // Guard against further state changes if the debugger alread forwarded emulation
@@ -246,7 +244,7 @@ uInt8 M6532::peek(uInt16 addr)
     default:
     {
 #ifdef DEBUG_ACCESSES
-      cerr << "BAD M6532 Peek: " << hex << addr << endl;
+      cerr << "BAD M6532 Peek: " << hex << addr << '\n';
 #endif
       return 0;
     }
@@ -398,7 +396,7 @@ bool M6532::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: M6532::save" << endl;
+    cerr << "ERROR: M6532::save\n";
     return false;
   }
 
@@ -433,7 +431,7 @@ bool M6532::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: M6532::load" << endl;
+    cerr << "ERROR: M6532::load\n";
     return false;
   }
 

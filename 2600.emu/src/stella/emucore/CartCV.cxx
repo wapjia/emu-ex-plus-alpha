@@ -8,27 +8,32 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
 // this file, and for a DISCLAIMER OF ALL WARRANTIES.
 //============================================================================
 
-#include "System.hxx"
 #include "CartCV.hxx"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CartridgeCV::CartridgeCV(const ByteBuffer& image, size_t size,
-                         const string& md5, const Settings& settings,
+                         string_view md5, const Settings& settings,
                          size_t bsSize)
   : CartridgeEnhanced(image, size, md5, settings, bsSize)
 {
-  myBankShift = BANK_SHIFT;
   myRamSize = RAM_SIZE;
   myRamWpHigh = RAM_HIGH_WP;
 
-  if(size == 4_KB)
+  if(size <= 2_KB)
+  {
+    for(size_t i = 0; i < 2_KB; i += size)
+      // Copy the ROM of <=2K files to the 2nd half of the 4K ROM
+      // The 1st half is used for RAM
+      std::copy_n(image.get(), size, myImage.get() + 2_KB + i);
+  }
+  else if(size == 4_KB)
   {
     // The game has something saved in the RAM
     // Useful for MagiCard program listings

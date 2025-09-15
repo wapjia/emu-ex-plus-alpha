@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -88,7 +88,7 @@ class FBBackend
 
       @param title   The title of the application / window
     */
-    virtual void setTitle(const string& title) = 0;
+    virtual void setTitle(string_view title) = 0;
 
     /**
       Shows or hides the cursor based on the given boolean value.
@@ -129,6 +129,17 @@ class FBBackend
     virtual void getRGB(uInt32 pixel, uInt8* r, uInt8* g, uInt8* b) const = 0;
 
     /**
+      This method is called to retrieve the R/G/B/A data from the given pixel.
+
+      @param pixel  The pixel containing R/G/B data
+      @param r      The red component of the color
+      @param g      The green component of the color
+      @param b      The blue component of the color
+      @param a      The alpha component of the color.
+    */
+    virtual void getRGBA(uInt32 pixel, uInt8* r, uInt8* g, uInt8* b, uInt8* a) const = 0;
+
+    /**
       This method is called to map a given R/G/B triple to the screen palette.
 
       @param r  The red component of the color.
@@ -136,6 +147,16 @@ class FBBackend
       @param b  The blue component of the color.
     */
     virtual uInt32 mapRGB(uInt8 r, uInt8 g, uInt8 b) const = 0;
+
+    /**
+      This method is called to map a given R/G/B triple to the screen palette.
+
+      @param r  The red component of the color.
+      @param g  The green component of the color.
+      @param b  The blue component of the color.
+      @param a  The alpha component of the color.
+    */
+    virtual uInt32 mapRGBA(uInt8 r, uInt8 g, uInt8 b, uInt8 a) const = 0;
 
     /**
       This method is called to get the specified ARGB data from the viewable
@@ -147,7 +168,7 @@ class FBBackend
       @param pitch   The pitch (in bytes) for the pixel data
       @param rect    The bounding rectangle for the buffer
     */
-    virtual void readPixels(uInt8* buffer, uInt32 pitch,
+    virtual void readPixels(uInt8* buffer, size_t pitch,
                             const Common::Rect& rect) const = 0;
 
     /**

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -24,11 +24,34 @@
 class PhosphorHandler
 {
   public:
+    // Phosphor settings names
+    static constexpr string_view SETTING_MODE = "tv.phosphor";
+    static constexpr string_view SETTING_BLEND = "tv.phosblend";
+    // Setting values of phosphor modes
+    static constexpr string_view VALUE_BYROM = "byrom";
+    static constexpr string_view VALUE_ALWAYS = "always";
+    static constexpr string_view VALUE_AUTO_ON = "autoon";
+    static constexpr string_view VALUE_AUTO = "auto";
+
+    enum PhosphorMode: uInt8 {
+      ByRom,
+      Always,
+      Auto_on,
+      Auto,
+      NumTypes
+    };
+
+    static constexpr string_view DEFAULT_BLEND = "50"; // align with myPhosphorPercent!
+
     PhosphorHandler() = default;
+    ~PhosphorHandler() = default;
 
     bool initialize(bool enable, int blend);
 
     bool phosphorEnabled() const { return myUsePhosphor; }
+
+    static PhosphorMode toPhosphorMode(string_view name);
+    static string_view toPhosphorName(PhosphorMode type);
 
     /**
       Used to calculate an averaged color pixel for the 'phosphor' effect.
@@ -41,12 +64,12 @@ class PhosphorHandler
     static constexpr uInt32 getPixel(const uInt32 c, const uInt32 p)
     {
       // Mix current calculated frame with previous displayed frame
-      const uInt8 rc = static_cast<uInt8>(c >> 16),
-                  gc = static_cast<uInt8>(c >> 8),
-                  bc = static_cast<uInt8>(c),
-                  rp = static_cast<uInt8>(p >> 16),
-                  gp = static_cast<uInt8>(p >> 8),
-                  bp = static_cast<uInt8>(p);
+      const auto rc = static_cast<uInt8>(c >> 16),
+                 gc = static_cast<uInt8>(c >> 8),
+                 bc = static_cast<uInt8>(c),
+                 rp = static_cast<uInt8>(p >> 16),
+                 gp = static_cast<uInt8>(p >> 8),
+                 bp = static_cast<uInt8>(p);
 
       return (ourPhosphorLUT[rc][rp] << 16) | (ourPhosphorLUT[gc][gp] << 8) |
               ourPhosphorLUT[bc][bp];
@@ -58,6 +81,7 @@ class PhosphorHandler
 
     // Amount to blend when using phosphor effect
     float myPhosphorPercent{0.50F};
+    bool myLUTInitialized{false};
 
     // Precalculated averaged phosphor colors
     using PhosphorLUT = BSPF::array2D<uInt8, kColor, kColor>;

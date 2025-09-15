@@ -56,6 +56,7 @@ char oldbuffer[10];
 //int customBackdropColor = -1;
 
 extern int romSize;
+extern int pristineRomSize;
 int systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
 SystemColorMap systemColorMap;
 int emulating{};
@@ -66,11 +67,11 @@ CoreOptions coreOptions
 
 void CPUUpdateRenderBuffers(GBASys &gba, bool force);
 
-using namespace EmuEx;
+namespace EmuEx { constexpr SystemLogger log{"GBA.emu"}; }
 
 static void debuggerOutput(const char *s, uint32_t addr)
 {
-	logMsg("called dbgOutput");
+	EmuEx::log.debug("called dbgOutput");
 }
 void (*dbgOutput)(const char *, uint32_t) = debuggerOutput;
 
@@ -101,10 +102,10 @@ void log(const char *msg, ...) {}
 #endif
 
 void systemUpdateMotionSensor() {}
-int systemGetSensorX() { return static_cast<EmuEx::GbaSystem&>(gSystem()).sensorX; }
-int systemGetSensorY() { return static_cast<EmuEx::GbaSystem&>(gSystem()).sensorY; }
-int systemGetSensorZ() { return static_cast<EmuEx::GbaSystem&>(gSystem()).sensorZ; }
-uint8_t systemGetSensorDarkness() { return static_cast<EmuEx::GbaSystem&>(gSystem()).darknessLevel; }
+int systemGetSensorX() { return static_cast<EmuEx::GbaSystem&>(EmuEx::gSystem()).sensorX; }
+int systemGetSensorY() { return static_cast<EmuEx::GbaSystem&>(EmuEx::gSystem()).sensorY; }
+int systemGetSensorZ() { return static_cast<EmuEx::GbaSystem&>(EmuEx::gSystem()).sensorZ; }
+uint8_t systemGetSensorDarkness() { return static_cast<EmuEx::GbaSystem&>(EmuEx::gSystem()).darknessLevel; }
 
 void systemCartridgeRumble(bool e) {}
 
@@ -209,20 +210,20 @@ static GbaSensorType detectSensorType(std::string_view gameId)
 	static constexpr std::string_view tiltIds[]{"KHPJ", "KYGJ", "KYGE", "KYGP"};
 	if(std::ranges::contains(tiltIds, gameId))
 	{
-		logMsg("detected accelerometer sensor");
+		log.info("detected accelerometer sensor");
 		return GbaSensorType::Accelerometer;
 	}
 	static constexpr std::string_view gyroIds[]{"RZWJ", "RZWE", "RZWP"};
 	if(std::ranges::contains(gyroIds, gameId))
 	{
-		logMsg("detected gyroscope sensor");
+		log.info("detected gyroscope sensor");
 		return GbaSensorType::Gyroscope;
 	}
 	static constexpr std::string_view lightIds[]{"U3IJ", "U3IE", "U3IP",
 		"U32J", "U32E", "U32P", "U33J"};
 	if(std::ranges::contains(lightIds, gameId))
 	{
-		logMsg("detected light sensor");
+		log.info("detected light sensor");
 		return GbaSensorType::Light;
 	}
 	return GbaSensorType::None;
@@ -232,15 +233,15 @@ void GbaSystem::setGameSpecificSettings(GBASys &gba, int romSize)
 {
 	using namespace EmuEx;
 	resetGameSettings();
-	logMsg("game id:%c%c%c%c", gba.mem.rom[0xac], gba.mem.rom[0xad], gba.mem.rom[0xae], gba.mem.rom[0xaf]);
+	log.info("game id:{}{}{}{}", gba.mem.rom[0xac], gba.mem.rom[0xad], gba.mem.rom[0xae], gba.mem.rom[0xaf]);
 	GameSettings foundSettings{};
 	std::string_view gameId{(char*)&gba.mem.rom[0xac], 4};
 	if(auto it = std::ranges::find_if(settings, [&](const auto &s){return s.gameId == gameId;});
 		it != std::end(settings))
 	{
 		foundSettings = *it;
-		logMsg("found settings for:%s save type:%s save size:%d rtc:%d mirroring:%d",
-			it->gameName.data(), saveTypeStr(it->saveType, it->saveSize), it->saveSize, it->rtcEnabled, it->mirroringEnabled);
+		log.info("found settings for:{} save type:{} save size:{} rtc:{} mirroring:{}",
+			it->gameName, saveTypeStr(it->saveType, it->saveSize), it->saveSize, it->rtcEnabled, it->mirroringEnabled);
 	}
 	detectedRtcGame = foundSettings.rtcEnabled;
 	detectedSaveType = foundSettings.saveType;
@@ -252,13 +253,13 @@ void GbaSystem::setGameSpecificSettings(GBASys &gba, int romSize)
 		flashDetectSaveType(gba.mem.rom, romSize);
 		detectedSaveType = coreOptions.saveType;
 		detectedSaveSize = coreOptions.saveType == GBA_SAVE_FLASH ? g_flashSize : 0;
-		logMsg("save type found from rom scan:%s", saveTypeStr(detectedSaveType, detectedSaveSize));
+		log.info("save type found from rom scan:{}", saveTypeStr(detectedSaveType, detectedSaveSize));
 	}
 	if(auto [type, size] = saveTypeOverride();
 		type != GBA_SAVE_AUTO)
 	{
 		setSaveType(type, size);
-		logMsg("save type override:%s", saveTypeStr(type, size));
+		log.info("save type override:{}", saveTypeStr(type, size));
 	}
 	else
 	{
@@ -284,7 +285,7 @@ void GbaSystem::setSensorActive(bool on)
 			vals = ctx.remapSensorValuesForDeviceRotation(vals);
 			sensorX = IG::remap(vals[0], -9.807f, 9.807f, 1897, 2197);
 			sensorY = IG::remap(vals[1], -9.807f, 9.807f, 2197, 1897);
-			//logDMsg("updated accel: %d,%d", sensorX, sensorY);
+			//log.debug("updated accel:{},{}", sensorX, sensorY);
 		}};
 	}
 	else if(typeToSet == GbaSensorType::Gyroscope)
@@ -293,7 +294,7 @@ void GbaSystem::setSensorActive(bool on)
 		{
 			vals = ctx.remapSensorValuesForDeviceRotation(vals);
 			sensorZ = IG::remap(vals[2], -20.f, 20.f, 1800, -1800);
-			//logDMsg("updated gyro: %d", sensorZ);
+			//log.debug("updated gyro:{}", sensorZ);
 		}};
 	}
 	else if(typeToSet == GbaSensorType::Light)
@@ -304,7 +305,7 @@ void GbaSystem::setSensorActive(bool on)
 				darknessLevel = 0;
 			else
 				darknessLevel = IG::remapClamp(vals[0], lightSensorScaleLux, 0.f, std::numeric_limits<decltype(darknessLevel)>{});
-			//logDMsg("updated light: %u", darknessLevel);
+			//log.debug("updated light:{}", darknessLevel);
 		}};
 	}
 }
@@ -318,70 +319,94 @@ void GbaSystem::clearSensorValues()
 
 void preLoadRomSetup(GBASys &gba)
 {
-  romSize = SIZE_ROM;
-  /*if (rom != NULL) {
-    CPUCleanUp();
-  }*/
-
-  systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
-
-  memset(gba.mem.workRAM, 0, sizeof(gba.mem.workRAM));
+	systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
+	memset(gba.mem.workRAM, 0, sizeof(gba.mem.workRAM));
+	memset(gba.mem.rom, 0, sizeof(gba.mem.rom));
 }
 
 void postLoadRomSetup(GBASys &gba)
 {
-  uint16_t *temp = (uint16_t *)(gba.mem.rom+((romSize+1)&~1));
-  int i;
-  for (i = (romSize+1)&~1; i < 0x2000000; i+=2) {
-    WRITE16LE(temp, (i >> 1) & 0xFFFF);
-    temp++;
-  }
-
-  memset(gba.mem.bios, 0, sizeof(gba.mem.bios));
-
-  memset(gba.mem.internalRAM, 0, sizeof(gba.mem.internalRAM));
-
-  memset(gba.mem.ioMem.b, 0, sizeof(gba.mem.ioMem));
-
-  gba.lcd.reset();
-
-  flashInit();
-  eepromInit();
-
-  CPUUpdateRenderBuffers(gba, true);
+	uint16_t* temp = (uint16_t*)(gba.mem.rom + ((romSize + 1) & ~1));
+	for(int i = (romSize + 1) & ~1; i < romSize; i += 2)
+	{
+		WRITE16LE(temp, (i >> 1) & 0xFFFF);
+		temp++;
+	}
+	memset(gba.mem.bios, 0, sizeof(gba.mem.bios));
+	memset(gba.mem.internalRAM, 0, sizeof(gba.mem.internalRAM));
+	memset(gba.mem.ioMem.b, 0, sizeof(gba.mem.ioMem));
+	gba.lcd.reset();
+	flashInit();
+	eepromInit();
+	CPUUpdateRenderBuffers(gba, true);
 }
 
-int CPULoadRomWithIO(GBASys &gba, IG::IO &io)
+int CPULoadRomWithIO(GBASys &gba, IG::IO &io, LoadDestination dest)
 {
 	preLoadRomSetup(gba);
-	romSize = io.read(gba.mem.rom, romSize);
-  postLoadRomSetup(gba);
-  return romSize;
+	if(dest == LoadDestination::rom)
+	{
+		auto buff = io.buffer(IG::IOBufferMode::Release);
+		romSize = buff.size();
+		if(romSize < 72 * 1024)
+			throw std::runtime_error("ROM size is too small");
+		pristineRomSize = romSize;
+		IG::copy_n(buff.data(), std::min(int(SIZE_ROM), romSize), gba.mem.rom);
+		if(romSize > SIZE_ROM)
+		{
+			char ident = buff[0xAC];
+			if (ident == 'M')
+			{
+				if(romSize > SIZE_ROM * 4)
+					throw std::runtime_error("ROM size exceeds 128MB");
+				gba.mem.rom2 = std::move(buff);
+				romSize = 0x01000000;
+				EmuEx::log.info("GBA Matrix detected");
+			}
+			else
+			{
+				throw std::runtime_error("ROM size exceeds 32MB");
+			}
+		}
+	}
+	else
+	{
+		romSize = io.read(gba.mem.workRAM, SIZE_WRAM);
+		pristineRomSize = romSize;
+	}
+	postLoadRomSetup(gba);
+	return romSize;
 }
 
 size_t saveMemorySize()
 {
 	if(!coreOptions.saveType || coreOptions.saveType == GBA_SAVE_NONE)
 		return 0;
-  if (coreOptions.saveType == GBA_SAVE_FLASH) {
-  	return g_flashSize;
-  } else if (coreOptions.saveType == GBA_SAVE_SRAM) {
-  	return 0x8000;
-  }
-  // eeprom case
-  return eepromSize;
+	if(coreOptions.saveType == GBA_SAVE_FLASH)
+	{
+		return g_flashSize;
+	}
+	else if (coreOptions.saveType == GBA_SAVE_SRAM)
+	{
+		return 0x8000;
+	}
+	// eeprom case
+	return eepromSize;
 }
 
 void setSaveMemory(IG::ByteBuffer buff)
 {
-  if(!coreOptions.saveType || coreOptions.saveType == GBA_SAVE_NONE)
-    return;
+	if(!coreOptions.saveType || coreOptions.saveType == GBA_SAVE_NONE)
+		return;
 	assert(buff.size() == saveMemorySize());
-  if (coreOptions.saveType == GBA_SAVE_FLASH || coreOptions.saveType == GBA_SAVE_SRAM) {
-  	flashSaveMemory = std::move(buff);
-  } else { // eeprom case
-  	eepromData = std::move(buff);
-  }
+	if(coreOptions.saveType == GBA_SAVE_FLASH || coreOptions.saveType == GBA_SAVE_SRAM)
+	{
+		flashSaveMemory = std::move(buff);
+	}
+	else
+	{ // eeprom case
+		eepromData = std::move(buff);
+	}
 }
 
 void utilWriteIntMem(uint8_t*& data, int val)
@@ -432,7 +457,7 @@ void cheatsSaveGame(uint8_t*& data)
 {
 	utilWriteIntMem(data, 0);
 	CheatsData cheat{};
-	for([[maybe_unused]] auto i: iotaCount(100))
+	for([[maybe_unused]] auto i: IG::iotaCount(100))
 	{
 		utilWriteMem(data, &cheat, sizeof(cheat));
 	}
@@ -442,7 +467,7 @@ void cheatsReadGame(const uint8_t*& data)
 {
   utilReadIntMem(data);
   CheatsData cheat{};
-	for([[maybe_unused]] auto i: iotaCount(100))
+	for([[maybe_unused]] auto i: IG::iotaCount(100))
 	{
 		utilReadMem(&cheat, data, sizeof(cheat));
 	}

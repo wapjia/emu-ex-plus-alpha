@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -47,7 +47,7 @@ class Cartridge0FA0 : public CartridgeEnhanced
       @param md5           The md5sum of the ROM image
       @param settings      A reference to the various settings (read-only)
     */
-    Cartridge0FA0(const ByteBuffer& image, size_t size, const string& md5,
+    Cartridge0FA0(const ByteBuffer& image, size_t size, string_view md5,
       const Settings& settings);
     ~Cartridge0FA0() override = default;
 
@@ -105,7 +105,7 @@ class Cartridge0FA0 : public CartridgeEnhanced
     */
     bool randomStartBank() const override { return false; }
 
-    bool checkSwitchBank(uInt16 address, uInt8 value = 0) override;
+    bool checkSwitchBank(uInt16 address, uInt8) override;
 
     uInt16 hotspot() const override { return 0x06a0; }
 

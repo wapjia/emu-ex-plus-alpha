@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -23,47 +23,39 @@
   #include "CartCDFInfoWidget.hxx"
 #endif
 
+#include "Settings.hxx"
 #include "System.hxx"
 #include "CartCDF.hxx"
-#include "TIA.hxx"
 #include "exception/FatalEmulationError.hxx"
 
-static constexpr bool FAST_FETCH_ON(uInt8 mode)    { return (mode & 0x0F) == 0; }
-static constexpr bool DIGITAL_AUDIO_ON(uInt8 mode) { return (mode & 0xF0) == 0; }
-
-static constexpr uInt32 getUInt32(const uInt8* _array, size_t _address) {
-  return static_cast<uInt32>((_array)[(_address) + 0]        +
-                            ((_array)[(_address) + 1] << 8)  +
-                            ((_array)[(_address) + 2] << 16) +
-                            ((_array)[(_address) + 3] << 24));
-}
-
 namespace {
+  constexpr bool FAST_FETCH_ON(uInt8 mode)    { return (mode & 0x0F) == 0; }
+  constexpr bool DIGITAL_AUDIO_ON(uInt8 mode) { return (mode & 0xF0) == 0; }
+
+  constexpr uInt32 getUInt32(const uInt8* _array, size_t _address) {
+    return static_cast<uInt32>((_array)[(_address) + 0]        +
+                              ((_array)[(_address) + 1] << 8)  +
+                              ((_array)[(_address) + 2] << 16) +
+                              ((_array)[(_address) + 3] << 24));
+  }
+
   Thumbulator::ConfigureFor thumulatorConfiguration(CartridgeCDF::CDFSubtype subtype)
   {
     switch (subtype) {
-      case CartridgeCDF::CDFSubtype::CDF0:
-        return Thumbulator::ConfigureFor::CDF;
-
-      case CartridgeCDF::CDFSubtype::CDF1:
-        return Thumbulator::ConfigureFor::CDF1;
-
-      case CartridgeCDF::CDFSubtype::CDFJ:
-        return Thumbulator::ConfigureFor::CDFJ;
-
-      case CartridgeCDF::CDFSubtype::CDFJplus:
-        return Thumbulator::ConfigureFor::CDFJplus;
-
-      default:
-        throw runtime_error("unreachable");
+      using enum CartridgeCDF::CDFSubtype;
+      case CDF0:      return Thumbulator::ConfigureFor::CDF;
+      case CDF1:      return Thumbulator::ConfigureFor::CDF1;
+      case CDFJ:      return Thumbulator::ConfigureFor::CDFJ;
+      case CDFJplus:  return Thumbulator::ConfigureFor::CDFJplus;
+      default:        throw runtime_error("unreachable");
     }
   }
-}
+} // namespace
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CartridgeCDF::CartridgeCDF(const ByteBuffer& image, size_t size,
-                           const string& md5, const Settings& settings)
-  : CartridgeARM(md5, settings)
+                           string_view md5, const Settings& settings)
+  : CartridgeARM(settings, md5)
 {
   // Copy the ROM image into my buffer
   mySize = std::min(size, 512_KB);
@@ -78,6 +70,7 @@ CartridgeCDF::CartridgeCDF(const ByteBuffer& image, size_t size,
 
   // Pointer to the program ROM
   // which starts after the 2K driver (and 2K C Code for CDF)
+  // NOLINTNEXTLINE: we want to initialize here, not in the member list
   myProgramImage = myImage.get() + (isCDFJplus() ? 2_KB : 4_KB);
 
   // Pointer to CDF driver in RAM
@@ -99,7 +92,7 @@ CartridgeCDF::CartridgeCDF(const ByteBuffer& image, size_t size,
   }
 
   // Create Thumbulator ARM emulator
-  bool devSettings = settings.getBool("dev.settings");
+  const bool devSettings = settings.getBool("dev.settings");
   myThumbEmulator = make_unique<Thumbulator>(
     reinterpret_cast<uInt16*>(myImage.get()),
     reinterpret_cast<uInt16*>(myRAM.data()),
@@ -111,7 +104,7 @@ CartridgeCDF::CartridgeCDF(const ByteBuffer& image, size_t size,
     thumulatorConfiguration(myCDFSubtype),
     this);
 
-  this->setInitialState();
+  this->setInitialState();  // NOLINT
 
   myPlusROM = make_unique<PlusROM>(mySettings, *this);
 
@@ -172,15 +165,15 @@ void CartridgeCDF::install(System& system)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-inline void CartridgeCDF::updateMusicModeDataFetchers()
+FORCE_INLINE void CartridgeCDF::updateMusicModeDataFetchers()
 {
   // Calculate the number of cycles since the last update
-  const uInt32 cycles = static_cast<uInt32>(mySystem->cycles() - myAudioCycles);
+  const auto cycles = static_cast<uInt32>(mySystem->cycles() - myAudioCycles);
   myAudioCycles = mySystem->cycles();
 
   // Calculate the number of CDF OSC clocks since the last update
   const double clocks = ((20000.0 * cycles) / myClockRate) + myFractionalClocks;
-  uInt32 wholeClocks = static_cast<uInt32>(clocks);
+  const auto wholeClocks = static_cast<uInt32>(clocks);
   myFractionalClocks = clocks - static_cast<double>(wholeClocks);
 
   // Let's update counters and flags of the music mode data fetchers
@@ -199,7 +192,7 @@ inline void CartridgeCDF::callFunction(uInt8 value)
               // time for Stella as ARM code "runs in zero 6507 cycles".
     case 255: // call without IRQ driven audio
       try {
-        uInt32 cycles = static_cast<uInt32>(mySystem->cycles() - myARMCycles);
+        auto cycles = static_cast<uInt32>(mySystem->cycles() - myARMCycles);
 
         myARMCycles = mySystem->cycles();
         myThumbEmulator->run(cycles, value == 254);
@@ -593,7 +586,7 @@ bool CartridgeCDF::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeCDF::save" << endl;
+    cerr << "ERROR: CartridgeCDF::save\n";
     return false;
   }
 
@@ -635,7 +628,7 @@ bool CartridgeCDF::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeCDF::load" << endl;
+    cerr << "ERROR: CartridgeCDF::load\n";
     return false;
   }
 
@@ -886,14 +879,14 @@ uInt32 CartridgeCDF::romSize() const
 
 #ifdef DEBUGGER_SUPPORT
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  CartDebugWidget* CartridgeCDF::debugWidget(GuiObject* boss, const GUI::Font& lfont,
-                               const GUI::Font& nfont, int x, int y, int w, int h)
+  CartDebugWidget* CartridgeCDF::debugWidget(GuiObject* boss,
+      const GUI::Font& lfont, const GUI::Font& nfont, int x, int y, int w, int h)
   {
     return new CartridgeCDFWidget(boss, lfont, nfont, x, y, w, h, *this);
   }
 
-  CartDebugWidget* CartridgeCDF::infoWidget(GuiObject* boss, const GUI::Font& lfont,
-                                             const GUI::Font& nfont, int x, int y, int w, int h)
+  CartDebugWidget* CartridgeCDF::infoWidget(GuiObject* boss,
+      const GUI::Font& lfont, const GUI::Font& nfont, int x, int y, int w, int h)
   {
     return new CartridgeCDFInfoWidget(boss, lfont, nfont, x, y, w, h, *this);
   }

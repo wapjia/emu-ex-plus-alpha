@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -56,7 +56,7 @@ class CartridgeX07 : public CartridgeEnhanced
       @param settings  A reference to the various settings (read-only)
       @param bsSize    The size specified by the bankswitching scheme
     */
-    CartridgeX07(const ByteBuffer& image, size_t size, const string& md5,
+    CartridgeX07(const ByteBuffer& image, size_t size, string_view md5,
                  const Settings& settings, size_t bsSize = 64_KB);
     ~CartridgeX07() override = default;
 
@@ -106,7 +106,7 @@ class CartridgeX07 : public CartridgeEnhanced
     bool poke(uInt16 address, uInt8 value) override;
 
   private:
-    bool checkSwitchBank(uInt16 address, uInt8 value = 0) override;
+    bool checkSwitchBank(uInt16 address, uInt8) override;
 
   private:
     // Following constructors and assignment operators not supported

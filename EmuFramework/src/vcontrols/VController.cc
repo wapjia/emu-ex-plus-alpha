@@ -431,6 +431,15 @@ bool VController::keyIsEnabled(KeyInfo k) const
 		&& !std::ranges::contains(disabledKeys, k.codes[2]);
 }
 
+bool VController::uiKeyIsEnabled(KeyInfo k) const
+{
+	if(AppKeyCode(k.codes[0]) == AppKeyCode::rewind && !app().rewindManager.maxStates)
+	{
+		return false;
+	}
+	return true;
+}
+
 void VController::setDisabledInputKeys(std::span<const KeyCode> disabledKeys_)
 {
 	disabledKeys = disabledKeys_;
@@ -438,7 +447,7 @@ void VController::setDisabledInputKeys(std::span<const KeyCode> disabledKeys_)
 	{
 		e.visit(overloaded
 		{
-			[&](VControllerButtonGroup &grp) { updateEnabledButtons(grp); },
+			[&](VControllerButtonGroup& grp) { updateEnabledButtons(grp); },
 			[](auto&){}
 		});
 	}
@@ -449,6 +458,25 @@ void VController::updateEnabledButtons(VControllerButtonGroup &grp) const
 {
 	for(auto &btn : grp.buttons)
 		btn.enabled = keyIsEnabled(btn.key);
+}
+
+void VController::updateEnabledButtons(VControllerUIButtonGroup &grp) const
+{
+	for(auto &btn : grp.buttons)
+		btn.enabled = uiKeyIsEnabled(btn.key);
+}
+
+void VController::updateEnabledUIButtons()
+{
+	for(auto &e : uiElements)
+	{
+		e.visit(overloaded
+		{
+			[&](VControllerUIButtonGroup& grp) { updateEnabledButtons(grp); },
+			[](auto&){}
+		});
+	}
+	place();
 }
 
 void VController::updateKeyboardMapping()
@@ -1015,7 +1043,6 @@ VControllerElement &VController::add(std::vector<VControllerElement> &elems, Inp
 			{
 				auto &e = elems.emplace_back(std::in_place_type<VControllerButtonGroup>, c.keyCodes, c.layoutOrigin, rowSize(c));
 				auto &grp = *e.buttonGroup();
-				updateEnabledButtons(grp);
 				if(c.flags.staggeredLayout)
 					grp.setStaggerType(5);
 				return e;
@@ -1044,6 +1071,12 @@ void VController::update(VControllerElement &elem) const
 	updateTexture(app(), elem, renderer_->mainTask, fanQuadIdxs);
 	setSize(elem, elem.uiButtonGroup() ? uiButtonPixelSize() : emulatedDeviceButtonPixelSize(), *renderer_);
 	elem.updateMeasurements(window());
+	elem.visit(overloaded
+	{
+		[&](VControllerButtonGroup& grp) { updateEnabledButtons(grp); },
+		[&](VControllerUIButtonGroup& grp) { updateEnabledButtons(grp); },
+		[](auto&){}
+	});
 }
 
 bool VController::remove(VControllerElement &elemToErase)

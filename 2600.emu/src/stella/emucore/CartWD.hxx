@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -67,7 +67,7 @@ class CartridgeWD : public CartridgeEnhanced
       @param settings  A reference to the various settings (read-only)
       @param bsSize    The size specified by the bankswitching scheme
     */
-    CartridgeWD(const ByteBuffer& image, size_t size, const string& md5,
+    CartridgeWD(const ByteBuffer& image, size_t size, string_view md5,
                 const Settings& settings, size_t bsSize = 8_KB);
     ~CartridgeWD() override = default;
 
@@ -158,7 +158,7 @@ class CartridgeWD : public CartridgeEnhanced
     */
     bool randomStartBank() const override { return false; }
 
-    bool checkSwitchBank(uInt16, uInt8 = 0) override { return false; }
+    bool checkSwitchBank(uInt16, uInt8) override { return false; }
 
     uInt16 hotspot() const override { return 0x0030; }
 

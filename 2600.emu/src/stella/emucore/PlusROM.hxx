@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -157,8 +157,8 @@ class PlusROM : public Serializable
     }
 
   private:
-    bool isValidHost(const string& host) const;
-    bool isValidPath(const string& path) const;
+    static bool isValidHost(string_view host);
+    static bool isValidPath(string_view path);
 
     /**
       Receive data from all requests that have completed.
@@ -178,7 +178,7 @@ class PlusROM : public Serializable
     string myHost;
     string myPath;
 
-    std::array<uInt8, 256> myRxBuffer, myTxBuffer;
+    std::array<uInt8, 256> myRxBuffer{}, myTxBuffer{};
     uInt8 myRxReadPos{0}, myRxWritePos{0}, myTxPos{0};
 
     std::deque<shared_ptr<PlusROMRequest>> myPendingRequests;

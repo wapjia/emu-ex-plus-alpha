@@ -122,6 +122,7 @@ class Blip_Buffer
                 return t * factor_ + offset_;
         }
         blip_resampled_time_t clock_rate_factor(long clock_rate) const;
+
         public:
         Blip_Buffer();
         ~Blip_Buffer();
@@ -551,9 +552,9 @@ inline void Blip_Synth<quality, range>::offset_resampled(blip_resampled_time_t t
 
         blip_long i0 = *imp;
         BLIP_FWD(0)
-        if (quality > 8)
+        if constexpr (quality > 8)
                 BLIP_FWD(2)
-        if (quality > 12)
+        if constexpr (quality > 12)
                 BLIP_FWD(4)
                 {
                         blip_long t0 = i0 * delta + buf[fwd + mid - 1];
@@ -563,9 +564,9 @@ inline void Blip_Synth<quality, range>::offset_resampled(blip_resampled_time_t t
                         buf[fwd + mid - 1] = t0;
                         buf[fwd + mid] = t1;
                 }
-        if (quality > 12)
+        if constexpr (quality > 12)
                 BLIP_REV(6)
-        if (quality > 8)
+        if constexpr (quality > 8)
                 BLIP_REV(4)
         BLIP_REV(2)
 

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -16,13 +16,12 @@
 //============================================================================
 
 #include "MT24LC256.hxx"
-#include "OSystem.hxx"
 #include "System.hxx"
 #include "SaveKey.hxx"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 SaveKey::SaveKey(Jack jack, const Event& event, const System& system,
-                 const FilesystemNode& eepromfile, const onMessageCallback& callback,
+                 const FSNode& eepromfile, const onMessageCallback& callback,
                  Type type)
   : Controller(jack, event, system, type),
     myEEPROM{make_unique<MT24LC256>(eepromfile, system, callback)}
@@ -33,13 +32,13 @@ SaveKey::SaveKey(Jack jack, const Event& event, const System& system,
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 SaveKey::SaveKey(Jack jack, const Event& event, const System& system,
-                 const FilesystemNode& eepromfile, const onMessageCallback& callback)
+                 const FSNode& eepromfile, const onMessageCallback& callback)
   : SaveKey(jack, event, system, eepromfile, callback, Controller::Type::SaveKey)
 {
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-SaveKey::~SaveKey()
+SaveKey::~SaveKey()  // NOLINT (we need an empty d'tor)
 {
 }
 
@@ -111,7 +110,7 @@ void SaveKey::eraseCurrent()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool SaveKey::isPageUsed(const uInt32 page) const
+bool SaveKey::isPageUsed(uInt32 page) const
 {
   return myEEPROM->isPageUsed(page);
 }

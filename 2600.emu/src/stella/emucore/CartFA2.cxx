@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -20,7 +20,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CartridgeFA2::CartridgeFA2(const ByteBuffer& image, size_t size,
-                           const string& md5, const Settings& settings,
+                           string_view md5, const Settings& settings,
                            size_t bsSize)
   : CartridgeFA(image, size, md5, settings, bsSize)
 {
@@ -79,9 +79,9 @@ bool CartridgeFA2::poke(uInt16 address, uInt8 value)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void CartridgeFA2::setNVRamFile(const string& nvramfile)
+void CartridgeFA2::setNVRamFile(string_view path)
 {
-  myFlashFile = nvramfile + "_flash.dat";
+  myFlashFile = string{path} + "_flash.dat";
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -137,7 +137,7 @@ uInt8 CartridgeFA2::ramReadWrite()
         catch(...)
         {
           // Maybe add logging here that save failed?
-          cerr << name() << ": ERROR saving score table" << endl;
+          cerr << name() << ": ERROR saving score table\n";
         }
         myRamAccessTimeout += 101000;  // Add 101 ms delay for write
       }
@@ -177,6 +177,8 @@ void CartridgeFA2::flash(uInt8 operation)
       }
       catch(...)
       {
+        // Maybe add logging here that erase failed?
+        cerr << name() << ": ERROR erasing score table\n";
       }
     }
     else if(operation == 1)  // read
@@ -199,7 +201,7 @@ void CartridgeFA2::flash(uInt8 operation)
       catch(...)
       {
         // Maybe add logging here that save failed?
-        cerr << name() << ": ERROR saving score table" << endl;
+        cerr << name() << ": ERROR saving score table\n";
       }
     }
   }

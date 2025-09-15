@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -23,16 +23,16 @@
 class FatalEmulationError : public std::exception
 {
   public:
-    explicit FatalEmulationError(const string& message) : myMessage{message} { }
+    explicit FatalEmulationError(string_view message) : myMessage{message} { }
 
     const char* what() const noexcept override { return myMessage.c_str(); }
 
-    [[noreturn]] static void raise(const string& message) {
+    [[noreturn]] static void raise(string_view message) {
       throw FatalEmulationError(message);
     }
 
   private:
-    const string myMessage;
+    string myMessage;
 };
 
 #endif // FATAL_EMULATION_ERROR_HXX

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -44,7 +44,7 @@ void MindLink::update()
     myMindlinkPos = myMindlinkPos | TRIGGER_VALUE; // starts game, calibration and reverse
 
 //#ifdef DEBUG_BUILD
-//  cerr << std::hex << myMindlinkPos << endl;
+//  cerr << std::hex << myMindlinkPos << '\n';
 //#endif
 
   myMindlinkShift = 1; // start transfer with least significant bit

@@ -50,7 +50,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 
 	TextMenuItem resampleQualityItem[3]
 	{
-		{"Low",   attachParams(), setResampleQualityDel(), {.id = AudioSettings::ResamplingQuality::nearestNeightbour}},
+		{"Low",   attachParams(), setResampleQualityDel(), {.id = AudioSettings::ResamplingQuality::nearestNeighbour}},
 		{"High",  attachParams(), setResampleQualityDel(), {.id = AudioSettings::ResamplingQuality::lanczos_2}},
 		{"Ultra", attachParams(), setResampleQualityDel(), {.id = AudioSettings::ResamplingQuality::lanczos_3}},
 	};

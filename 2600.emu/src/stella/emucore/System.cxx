@@ -8,14 +8,13 @@
 // MM     MM 66  66 55  55 00  00 22
 // MM     MM  6666   5555   0000  222222
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
 // this file, and for a DISCLAIMER OF ALL WARRANTIES.
 //============================================================================
 
-#include <cassert>
 #include <iostream>
 
 #include "Device.hxx"
@@ -23,7 +22,6 @@
 #include "M6532.hxx"
 #include "TIA.hxx"
 #include "Cart.hxx"
-#include "TimerManager.hxx"
 #include "System.hxx"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -33,15 +31,12 @@ System::System(Random& random, M6502& m6502, M6532& m6532,
     myM6502{m6502},
     myM6532{m6532},
     myTIA{mTIA},
-    myCart{mCart}
+    myCart{mCart},
+    myCartridgeDoesBusStuffing{myCart.doesBusStuffing()}
 {
   // Initialize page access table
   const PageAccess access(&myNullDevice, System::PageAccessType::READ);
   myPageAccessTable.fill(access);
-  myPageIsDirtyTable.fill(false);
-
-  // Bus starts out unlocked (in other words, peek() changes myDataBusState)
-  myDataBusLocked = false;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -99,7 +94,8 @@ void System::clearDirtyPages()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-uInt8 System::peek(uInt16 addr, Device::AccessFlags flags)
+template<bool oob>
+uInt8 System::peekImpl(uInt16 addr, Device::AccessFlags flags)
 {
   const PageAccess& access = getPageAccess(addr);
 
@@ -120,9 +116,11 @@ uInt8 System::peek(uInt16 addr, Device::AccessFlags flags)
 #endif
 
   // See if this page uses direct accessing or not
-  const uInt8 result = access.directPeekBase
+  uInt8 result = access.directPeekBase
       ? *(access.directPeekBase + (addr & PAGE_MASK))
-      : access.device->peek(addr);
+      : (oob ? access.device->peekOob(addr) : access.device->peek(addr));
+
+  if (!oob && myCartridgeDoesBusStuffing) result = myCart.overdrivePeek(addr, result);
 
 #ifdef DEBUGGER_SUPPORT
   if(!myDataBusLocked)
@@ -132,9 +130,18 @@ uInt8 System::peek(uInt16 addr, Device::AccessFlags flags)
   return result;
 }
 
+template
+uInt8 System::peekImpl<true>(uInt16 addr, Device::AccessFlags flags);
+
+template
+uInt8 System::peekImpl<false>(uInt16 addr, Device::AccessFlags flags);
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void System::poke(uInt16 addr, uInt8 value, Device::AccessFlags flags)
+template<bool oob>
+void System::pokeImpl(uInt16 addr, uInt8 value, Device::AccessFlags flags)
 {
+  if (!oob && myCartridgeDoesBusStuffing) value = myCart.overdrivePoke(addr, value);
+
   const uInt16 page = (addr & ADDRESS_MASK) >> PAGE_SHIFT;
   const PageAccess& access = myPageAccessTable[page];
 
@@ -164,7 +171,7 @@ void System::poke(uInt16 addr, uInt8 value, Device::AccessFlags flags)
   else
   {
     // The specific device informs us if the poke succeeded
-    myPageIsDirtyTable[page] = access.device->poke(addr, value);
+    myPageIsDirtyTable[page] = oob ? access.device->pokeOob(addr, value) : access.device->poke(addr, value);
   }
 
 #ifdef DEBUGGER_SUPPORT
@@ -172,6 +179,12 @@ void System::poke(uInt16 addr, uInt8 value, Device::AccessFlags flags)
 #endif
     myDataBusState = value;
 }
+
+template
+void System::pokeImpl<true>(uInt16 addr, uInt8 value, Device::AccessFlags flags);
+
+template
+void System::pokeImpl<false>(uInt16 addr, uInt8 value, Device::AccessFlags flags);
 
 #ifdef DEBUGGER_SUPPORT
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -186,7 +199,7 @@ Device::AccessFlags System::getAccessFlags(uInt16 addr) const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void System::setAccessFlags(uInt16 addr, Device::AccessFlags flags)
+void System::setAccessFlags(uInt16 addr, Device::AccessFlags flags) const
 {
   const PageAccess& access = getPageAccess(addr);
 
@@ -197,10 +210,9 @@ void System::setAccessFlags(uInt16 addr, Device::AccessFlags flags)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void System::increaseAccessCounter(uInt16 addr, bool isWrite)
+void System::increaseAccessCounter(uInt16 addr, bool isWrite) const
 {
   const PageAccess& access = getPageAccess(addr);
-
 
   if(isWrite)
   {
@@ -244,7 +256,7 @@ bool System::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: System::save" << endl;
+    cerr << "ERROR: System::save\n";
     return false;
   }
 
@@ -273,7 +285,7 @@ bool System::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: System::load" << endl;
+    cerr << "ERROR: System::load\n";
     return false;
   }
 

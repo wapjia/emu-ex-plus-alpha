@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -34,7 +34,7 @@ GlobalKeyHandler::GlobalKeyHandler(OSystem& osystem)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool GlobalKeyHandler::handleEvent(const Event::Type event, bool pressed, bool repeated)
+bool GlobalKeyHandler::handleEvent(Event::Type event, bool pressed, bool repeated)
 {
   // The global settings keys change settings or values as long as the setting
   //  message from the previous settings event is still displayed.
@@ -67,7 +67,7 @@ bool GlobalKeyHandler::handleEvent(const Event::Type event, bool pressed, bool r
       if(pressed && !repeated)
       {
         const int direction = (event == Event::PreviousSettingGroup ? -1 : +1);
-        const Group group = static_cast<Group>(
+        const auto group = static_cast<Group>(
             BSPF::clampw(static_cast<int>(getGroup()) + direction,
             0, static_cast<int>(Group::NUM_GROUPS) - 1));
         const std::map<Group, GroupData> GroupMap = {
@@ -136,7 +136,7 @@ bool GlobalKeyHandler::handleEvent(const Event::Type event, bool pressed, bool r
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void GlobalKeyHandler::setSetting(const Setting setting)
+void GlobalKeyHandler::setSetting(Setting setting)
 {
   if(setting == Setting::ZOOM && myOSystem.frameBuffer().fullScreen())
     mySetting = Setting::FS_ASPECT;
@@ -146,7 +146,7 @@ void GlobalKeyHandler::setSetting(const Setting setting)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void GlobalKeyHandler::setDirectSetting(const Setting setting)
+void GlobalKeyHandler::setDirectSetting(Setting setting)
 {
   myDirectSetting = setting;
 }
@@ -164,18 +164,19 @@ GlobalKeyHandler::Group GlobalKeyHandler::getGroup() const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool GlobalKeyHandler::isJoystick(const Controller& controller) const
+bool GlobalKeyHandler::isJoystick(const Controller& controller)
 {
   return controller.type() == Controller::Type::Joystick
     || controller.type() == Controller::Type::BoosterGrip
     || controller.type() == Controller::Type::Genesis
+    || controller.type() == Controller::Type::Joy2BPlus
     || (controller.type() == Controller::Type::QuadTari
       && (isJoystick(static_cast<const QuadTari*>(&controller)->firstController())
       || isJoystick(static_cast<const QuadTari*>(&controller)->secondController())));
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool GlobalKeyHandler::isPaddle(const Controller& controller) const
+bool GlobalKeyHandler::isPaddle(const Controller& controller)
 {
   return controller.type() == Controller::Type::Paddles
     || controller.type() == Controller::Type::PaddlesIAxDr
@@ -186,7 +187,7 @@ bool GlobalKeyHandler::isPaddle(const Controller& controller) const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool GlobalKeyHandler::isTrackball(const Controller& controller) const
+bool GlobalKeyHandler::isTrackball(const Controller& controller)
 {
   return controller.type() == Controller::Type::AmigaMouse
     || controller.type() == Controller::Type::AtariMouse
@@ -207,6 +208,8 @@ bool GlobalKeyHandler::skipAVSetting() const
     myOSystem.settings().getInt("tv.scanlines") > 0;
   const bool isSoftwareRenderer =
     myOSystem.settings().getString("video") == "software";
+  const bool allowBezel =
+    myOSystem.settings().getBool("bezel.windowed") || isFullScreen;
 
   return (mySetting == Setting::OVERSCAN && !isFullScreen)
     || (mySetting == Setting::ZOOM && isFullScreen)
@@ -222,7 +225,8 @@ bool GlobalKeyHandler::skipAVSetting() const
       && mySetting <= Setting::NTSC_BLEEDING
       && !isCustomFilter)
     || (mySetting == Setting::SCANLINE_MASK && !hasScanlines)
-    || (mySetting == Setting::INTERPOLATION && isSoftwareRenderer);
+    || (mySetting == Setting::INTERPOLATION && isSoftwareRenderer)
+    || (mySetting == Setting::BEZEL && !allowBezel);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -283,7 +287,7 @@ bool GlobalKeyHandler::skipDebugSetting() const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-const GlobalKeyHandler::Function GlobalKeyHandler::cycleSetting(int direction)
+GlobalKeyHandler::Function GlobalKeyHandler::cycleSetting(int direction)
 {
   bool skip = false;
 
@@ -327,7 +331,7 @@ const GlobalKeyHandler::Function GlobalKeyHandler::cycleSetting(int direction)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-GlobalKeyHandler::SettingData GlobalKeyHandler::getSettingData(const Setting setting) const
+GlobalKeyHandler::SettingData GlobalKeyHandler::getSettingData(Setting setting) const
 {
   // Notes:
   // - all setting methods MUST always display a message
@@ -386,10 +390,12 @@ GlobalKeyHandler::SettingData GlobalKeyHandler::getSettingData(const Setting set
     {Setting::NTSC_BLEEDING,          {true,  std::bind(&TIASurface::changeNTSCAdjustable, &myOSystem.frameBuffer().tiaSurface(),
                                               static_cast<int>(NTSCFilter::Adjustables::BLEEDING), _1)}},
     // Other TV effects adjustables
+    {Setting::PHOSPHOR_MODE,          {true,  std::bind(&Console::cyclePhosphorMode, &myOSystem.console(), _1)}},
     {Setting::PHOSPHOR,               {true,  std::bind(&Console::changePhosphor, &myOSystem.console(), _1)}},
     {Setting::SCANLINES,              {true,  std::bind(&TIASurface::changeScanlineIntensity, &myOSystem.frameBuffer().tiaSurface(), _1)}},
     {Setting::SCANLINE_MASK,          {false, std::bind(&TIASurface::cycleScanlineMask, &myOSystem.frameBuffer().tiaSurface(), _1)}},
     {Setting::INTERPOLATION,          {false, std::bind(&Console::toggleInter, &myOSystem.console(), _1)}},
+    {Setting::BEZEL,                  {false, std::bind(&FrameBuffer::toggleBezel, &myOSystem.frameBuffer(), _1)}},
     // *** Input group ***
     {Setting::DIGITAL_DEADZONE,       {true,  std::bind(&PhysicalJoystickHandler::changeDigitalDeadZone, &joyHandler(), _1)}},
     {Setting::ANALOG_DEADZONE,        {true,  std::bind(&PhysicalJoystickHandler::changeAnalogPaddleDeadZone, &joyHandler(), _1)}},
@@ -450,7 +456,8 @@ GlobalKeyHandler::SettingData GlobalKeyHandler::getSettingData(const Setting set
     return result->second;
   else
   {
-    cerr << "Error: setting " << static_cast<int>(setting) << " missing in SettingMap!" << endl;
+    cerr << "Error: setting " << static_cast<int>(setting)
+         << " missing in SettingMap!\n";
     return SettingMap.find(Setting::VOLUME)->second; // default function!
   }
 }

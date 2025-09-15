@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -22,7 +22,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Cartridge4A50::Cartridge4A50(const ByteBuffer& image, size_t size,
-                             const string& md5, const Settings& settings)
+                             string_view md5, const Settings& settings)
   : Cartridge(settings, md5),
     myImage{make_unique<uInt8[]>(128_KB)},
     mySize{size}
@@ -381,7 +381,7 @@ bool Cartridge4A50::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: Cartridge4A40::save" << endl;
+    cerr << "ERROR: Cartridge4A40::save\n";
     return false;
   }
 
@@ -411,7 +411,7 @@ bool Cartridge4A50::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: Cartridge4A50::load" << endl;
+    cerr << "ERROR: Cartridge4A50::load\n";
     return false;
   }
 

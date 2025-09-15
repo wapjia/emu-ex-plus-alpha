@@ -128,9 +128,9 @@ int eepromRead(uint32_t /* address */)
         return data;
     }
     default:
-        return 0;
+        break;
     }
-    return 1;
+    return 0;
 }
 
 void eepromWrite(uint32_t /* address */, uint8_t value, int cpuDmaCount)
@@ -142,7 +142,7 @@ void eepromWrite(uint32_t /* address */, uint8_t value, int cpuDmaCount)
     case EEPROM_IDLE:
         eepromByte = 0;
         eepromBits = 1;
-        eepromBuffer[eepromByte] = bit;
+        eepromBuffer[eepromByte] = (uint8_t)bit;
         eepromMode = EEPROM_READADDRESS;
         break;
     case EEPROM_READADDRESS:
@@ -158,7 +158,7 @@ void eepromWrite(uint32_t /* address */, uint8_t value, int cpuDmaCount)
                 eepromSize = SIZE_EEPROM_8K;
                 eepromAddress = ((eepromBuffer[0] & 0x3F) << 8) | ((eepromBuffer[1] & 0xFF));
                 if (!(eepromBuffer[0] & 0x40)) {
-                    eepromBuffer[0] = bit;
+                    eepromBuffer[0] = (uint8_t)bit;
                     eepromBits = 1;
                     eepromByte = 0;
                     eepromMode = EEPROM_WRITEDATA;
@@ -173,7 +173,7 @@ void eepromWrite(uint32_t /* address */, uint8_t value, int cpuDmaCount)
                 eepromInUse = true;
                 eepromAddress = (eepromBuffer[0] & 0x3F);
                 if (!(eepromBuffer[0] & 0x40)) {
-                    eepromBuffer[0] = bit;
+                    eepromBuffer[0] = (uint8_t)bit;
                     eepromBits = 1;
                     eepromByte = 0;
                     eepromMode = EEPROM_WRITEDATA;

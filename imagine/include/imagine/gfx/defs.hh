@@ -113,6 +113,11 @@ enum class TextureBufferMode : uint8_t
 	PBO,
 };
 
+enum class TextureBufferImageMode : uint8_t
+{
+	Single, Double
+};
+
 enum class DrawAsyncMode : uint8_t
 {
 	AUTO, NONE, PRESENT, FULL

@@ -8,20 +8,19 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
 // this file, and for a DISCLAIMER OF ALL WARRANTIES.
 //============================================================================
 
-#include "System.hxx"
 #include "CartTVBoy.hxx"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CartridgeTVBoy::CartridgeTVBoy(const ByteBuffer& image, size_t size,
-                         const string& md5, const Settings& settings,
-                         size_t bsSize)
+                               string_view md5, const Settings& settings,
+                               size_t bsSize)
   : CartridgeEnhanced(image, size, md5, settings, bsSize)
 {
 }
@@ -63,7 +62,7 @@ bool CartridgeTVBoy::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeTVBoy::save" << endl;
+    cerr << "ERROR: CartridgeTVBoy::save\n";
     return false;
   }
 
@@ -80,7 +79,7 @@ bool CartridgeTVBoy::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeTVBoy::load" << endl;
+    cerr << "ERROR: CartridgeTVBoy::load\n";
     return false;
   }
 

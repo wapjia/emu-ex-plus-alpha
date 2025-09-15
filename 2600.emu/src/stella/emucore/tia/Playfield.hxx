@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -31,6 +31,7 @@ class Playfield : public Serializable
       The collision mask is injected at construction
      */
     explicit Playfield(uInt32 collisionMask);
+    ~Playfield() override = default;
 
   public:
 
@@ -134,7 +135,7 @@ class Playfield : public Serializable
     /**
       Tick one color clock. Inline for performance (implementation below).
      */
-    inline void tick(uInt32 x);
+    FORCE_INLINE void tick(uInt32 x);
 
   public:
 
@@ -275,7 +276,7 @@ void Playfield::tick(uInt32 x)
 
   if (x & 0x03) return;
 
-  uInt32 currentPixel;
+  uInt32 currentPixel;  // NOLINT (cppcoreguidelines-init-variables)
 
   if (myEffectivePattern == 0) {
       currentPixel = 0;

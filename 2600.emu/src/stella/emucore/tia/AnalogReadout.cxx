@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -127,14 +127,14 @@ bool AnalogReadout::save(Serializer& out) const
     myConnection.save(out);
     out.putLong(myTimestamp);
 
-    out.putInt(int(myConsoleTiming));
+    out.putInt(static_cast<int>(myConsoleTiming));
     out.putDouble(myClockFreq);
 
     out.putBool(myIsDumped);
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_AnalogReadout::save" << endl;
+    cerr << "ERROR: TIA_AnalogReadout::save\n";
     return false;
   }
 
@@ -159,7 +159,7 @@ bool AnalogReadout::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_AnalogReadout::load" << endl;
+    cerr << "ERROR: TIA_AnalogReadout::load\n";
     return false;
   }
 
@@ -176,7 +176,7 @@ bool AnalogReadout::Connection::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: AnalogReadout::Connection::save" << endl;
+    cerr << "ERROR: AnalogReadout::Connection::save\n";
     return false;
   }
 
@@ -193,7 +193,7 @@ bool AnalogReadout::Connection::load(const Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: AnalogReadout::Connection::load" << endl;
+    cerr << "ERROR: AnalogReadout::Connection::load\n";
     return false;
   }
 

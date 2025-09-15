@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -32,6 +32,7 @@ class DelayQueueMember : public Serializable {
 
   public:
     DelayQueueMember();
+    ~DelayQueueMember() override = default;
 
   public:
     void push(uInt8 address, uInt8 value);
@@ -64,9 +65,7 @@ class DelayQueueMember : public Serializable {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 template<unsigned capacity>
-DelayQueueMember<capacity>::DelayQueueMember()
-{
-}
+DelayQueueMember<capacity>::DelayQueueMember() = default;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 template<unsigned capacity>
@@ -82,7 +81,7 @@ void DelayQueueMember<capacity>::push(uInt8 address, uInt8 value)
 template<unsigned capacity>
 void DelayQueueMember<capacity>::remove(uInt8 address)
 {
-  uInt8 index;
+  uInt8 index = 0;
 
   for (index = 0; index < mySize; ++index) {
     if (myEntries[index].address == address) break;
@@ -120,7 +119,7 @@ bool DelayQueueMember<capacity>::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_DelayQueueMember::save" << endl;
+    cerr << "ERROR: TIA_DelayQueueMember::save\n";
     return false;
   }
 
@@ -144,7 +143,7 @@ bool DelayQueueMember<capacity>::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: TIA_DelayQueueMember::load" << endl;
+    cerr << "ERROR: TIA_DelayQueueMember::load\n";
     return false;
   }
 

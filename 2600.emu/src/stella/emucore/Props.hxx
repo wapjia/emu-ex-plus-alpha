@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -51,6 +51,7 @@ enum class PropType : uInt8 {
   Display_VCenter,
   Display_Phosphor,
   Display_PPBlend,
+  Bezel_Name,
   NumTypes
 };
 
@@ -96,7 +97,7 @@ class Properties
       @return     The value of the property
     */
     const string& get(PropType key) const {
-      const uInt8 pos = static_cast<uInt8>(key);
+      const auto pos = static_cast<uInt8>(key);
       return pos < static_cast<uInt8>(PropType::NumTypes) ? myProperties[pos] : EmptyString;
     }
 
@@ -106,7 +107,7 @@ class Properties
       @param key      The key of the property to set
       @param value    The value to assign to the property
     */
-    void set(PropType key, const string& value);
+    void set(PropType key, string_view value);
 
     /**
       Print the attributes of this properties object
@@ -148,7 +149,7 @@ class Properties
       @param key      The key of the property to set
       @param value    The value to assign to the property
     */
-    static void setDefault(PropType key, const string& value);
+    static void setDefault(PropType key, string_view value);
 
   private:
     /**
@@ -165,7 +166,7 @@ class Properties
 
       @param name  The PropType key associated with the given string
     */
-    static PropType getPropType(const string& name);
+    static PropType getPropType(string_view name);
 
     /**
       When printing each collection of ROM properties, it is useful to

@@ -35,15 +35,15 @@ BaseWindow::BaseWindow(ApplicationContext ctx, WindowConfig config):
 		[this](ApplicationContext ctx, bool backgrounded)
 		{
 			auto &win = *static_cast<Window*>(this);
-			auto savedDrawEventPriority = win.setDrawEventPriority(Window::drawEventPriorityLocked);
+			auto savedDrawEventEnabled = win.setDrawEventEnabled(false);
 			drawEvent.detach();
 			if(backgrounded)
 			{
 				ctx.addOnResume(
-					[this, savedDrawEventPriority](ApplicationContext, bool)
+					[this, savedDrawEventEnabled](ApplicationContext, bool)
 					{
 						auto &win = *static_cast<Window*>(this);
-						win.setDrawEventPriority(savedDrawEventPriority);
+						win.setDrawEventEnabled(savedDrawEventEnabled);
 						drawEvent.attach();
 						return false;
 					}, WINDOW_ON_RESUME_PRIORITY
@@ -169,7 +169,7 @@ Screen *Window::screen() const
 
 bool Window::setNeedsDraw(bool needsDraw)
 {
-	if(needsDraw && (!hasSurface() || drawEventPriority() == drawEventPriorityLocked))
+	if(needsDraw && (!hasSurface() || !drawEventIsEnabled()))
 	{
 		needsDraw = false;
 	}
@@ -182,11 +182,11 @@ bool Window::needsDraw() const
 	return drawNeeded;
 }
 
-void Window::postDraw(int8_t priority)
+void Window::postDraw()
 {
-	if(priority < drawEventPriority())
+	if(!drawEventIsEnabled()) [[unlikely]]
 	{
-		log.debug("skipped posting draw with priority:{} < {}", priority, drawEventPriority());
+		log.debug("skipped posting draw");
 		return;
 	}
 	if(!setNeedsDraw(true))
@@ -211,12 +211,12 @@ void Window::postFrameReady()
 		drawEvent.notify();
 }
 
-void Window::postDrawToMainThread(int8_t priority)
+void Window::postDrawToMainThread()
 {
 	appContext().runOnMainThread(
-		[this, priority](ApplicationContext)
+		[this](ApplicationContext)
 		{
-			postDraw(priority);
+			postDraw();
 		});
 }
 
@@ -238,19 +238,16 @@ void Window::removeFrameEvents()
 	drawEvent.detach();
 }
 
-int8_t Window::setDrawEventPriority(int8_t priority)
+bool Window::setDrawEventEnabled(bool on)
 {
-	if(priority == drawEventPriorityLocked)
+	if(!on)
 	{
 		setNeedsDraw(false);
 	}
-	return std::exchange(drawEventPriority_, priority);
+	return std::exchange(drawEventEnabled, on);
 }
 
-int8_t Window::drawEventPriority() const
-{
-	return drawEventPriority_;
-}
+bool Window::drawEventIsEnabled() const { return drawEventEnabled; }
 
 void Window::drawNow(bool needsSync)
 {

@@ -114,6 +114,7 @@ public:
 	// Static app configuration
 	static bool hasIcon;
 	static bool needsGlobalInstance;
+	static bool handlesRecentContent;
 
 	EmuApp(IG::ApplicationInitParams, IG::ApplicationContext &);
 
@@ -277,6 +278,8 @@ public:
 	void setShowsBluetoothScanItems(bool on);
 	void setLayoutBehindSystemUI(bool);
 	bool doesLayoutBehindSystemUI() const { return layoutBehindSystemUI; };
+	void setLowLatencyVideo(bool);
+
     //region 爱吾修改
     FS::PathString getScreenshotPathAiWu();
     void setScreenshotPathAiWu(FS::PathString path);
@@ -395,8 +398,8 @@ public:
 	Property<bool, CFGKEY_BLANK_FRAME_INSERTION> allowBlankFrameInsertion;
 	Property<bool, CFGKEY_SHOW_FRAME_TIMING_STATS> showFrameTimingStats;
 	Property<OutputFrameRateMode, CFGKEY_OUTPUT_FRAME_RATE_MODE,
-		{.defaultValue = OutputFrameRateMode::Screen, .isValid = enumIsValidUpToLast}> outputFrameRateMode;
-		//todo 爱吾修改：暂时修改默认值为屏幕报告的帧率。因为有些系统120HZ时会根据手机是否触摸屏幕，动态改变帧率，导致很频繁的音频爆音。
+		{.defaultValue = OutputFrameRateMode::Auto, .isValid = enumIsValidUpToLast}> outputFrameRateMode;
+	Property<bool, CFGKEY_LOW_LATENCY_VIDEO, {.defaultValue = true}> lowLatencyVideo;
 
 protected:
 	struct ConfigParams

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -26,7 +26,7 @@ class AudioSettings
 {
   public:
 
-    enum class Preset {
+    enum class Preset: uInt8 {
       custom                 = 1,
       lowQualityMediumLag    = 2,
       highQualityMediumLag   = 3,
@@ -34,23 +34,23 @@ class AudioSettings
       ultraQualityMinimalLag = 5
     };
 
-    enum class ResamplingQuality {
-      nearestNeightbour   = 1,
-      lanczos_2           = 2,
-      lanczos_3           = 3
+    enum class ResamplingQuality: uInt8 {
+      nearestNeighbour   = 1,
+      lanczos_2          = 2,
+      lanczos_3          = 3
     };
 
-    static constexpr const char* SETTING_PRESET              = "audio.preset";
-    static constexpr const char* SETTING_SAMPLE_RATE         = "audio.sample_rate";
-    static constexpr const char* SETTING_FRAGMENT_SIZE       = "audio.fragment_size";
-    static constexpr const char* SETTING_BUFFER_SIZE         = "audio.buffer_size";
-    static constexpr const char* SETTING_HEADROOM            = "audio.headroom";
-    static constexpr const char* SETTING_RESAMPLING_QUALITY  = "audio.resampling_quality";
-    static constexpr const char* SETTING_STEREO              = "audio.stereo";
-    static constexpr const char* SETTING_VOLUME              = "audio.volume";
-    static constexpr const char* SETTING_DEVICE              = "audio.device";
-    static constexpr const char* SETTING_ENABLED             = "audio.enabled";
-    static constexpr const char* SETTING_DPC_PITCH           = "audio.dpc_pitch";
+    static constexpr string_view SETTING_PRESET              = "audio.preset";
+    static constexpr string_view SETTING_SAMPLE_RATE         = "audio.sample_rate";
+    static constexpr string_view SETTING_FRAGMENT_SIZE       = "audio.fragment_size";
+    static constexpr string_view SETTING_BUFFER_SIZE         = "audio.buffer_size";
+    static constexpr string_view SETTING_HEADROOM            = "audio.headroom";
+    static constexpr string_view SETTING_RESAMPLING_QUALITY  = "audio.resampling_quality";
+    static constexpr string_view SETTING_STEREO              = "audio.stereo";
+    static constexpr string_view SETTING_VOLUME              = "audio.volume";
+    static constexpr string_view SETTING_DEVICE              = "audio.device";
+    static constexpr string_view SETTING_ENABLED             = "audio.enabled";
+    static constexpr string_view SETTING_DPC_PITCH           = "audio.dpc_pitch";
 
     static constexpr Preset DEFAULT_PRESET                          = Preset::highQualityMediumLag;
     static constexpr uInt32 DEFAULT_SAMPLE_RATE                     = 44100;
@@ -127,7 +127,7 @@ class AudioSettings
 
   private:
 
-    Settings& mySettings;
+    Settings& mySettings;  // NOLINT: we want a reference here
 
     Preset myPreset{Preset::custom};
 
@@ -135,7 +135,7 @@ class AudioSettings
     uInt32 myPresetFragmentSize{0};
     uInt32 myPresetBufferSize{0};
     uInt32 myPresetHeadroom{0};
-    ResamplingQuality myPresetResamplingQuality{ResamplingQuality::nearestNeightbour};
+    ResamplingQuality myPresetResamplingQuality{ResamplingQuality::nearestNeighbour};
 
     bool myIsPersistent{true};
 };

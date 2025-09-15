@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -17,6 +17,9 @@
 
 #ifndef TIA_FRAME_LAYOUT_DETECTOR
 #define TIA_FRAME_LAYOUT_DETECTOR
+
+class M6532;
+class EventHandler;
 
 #include "FrameLayout.hxx"
 #include "AbstractFrameManager.hxx"
@@ -31,16 +34,24 @@ class FrameLayoutDetector: public AbstractFrameManager
   public:
 
     FrameLayoutDetector();
+    ~FrameLayoutDetector() override = default;
 
   public:
 
     /**
      * Return the detected frame layout.
      */
-    FrameLayout detectedLayout() const;
+    FrameLayout detectedLayout(bool detectPal60 = false,
+                               bool detectNtsc50 = false,
+                               string_view name = EmptyString) const;
+
+    /**
+     * Simulate some input to pass a potential title screen.
+    */
+    static void simulateInput(M6532& riot, EventHandler& eventHandler,
+                              bool pressed);
 
   protected:
-
     /**
      * Hook into vsync changes.
      */
@@ -56,12 +67,16 @@ class FrameLayoutDetector: public AbstractFrameManager
      */
     void onNextLine() override;
 
-  private:
+    /**
+     * Called when a pixel is rendered.
+    */
+    void pixelColor(uInt8 color) override;
 
+  private:
     /**
      * This frame manager only tracks frame boundaries, so we have only two states.
      */
-    enum class State {
+    enum class State: uInt8 {
       // Wait for VSYNC to be enabled.
       waitForVsyncStart,
 
@@ -72,7 +87,7 @@ class FrameLayoutDetector: public AbstractFrameManager
     /**
      * Misc. numeric constants used in the algorithm.
      */
-    enum Metrics: uInt32 {
+    enum Metrics: uInt32 {  // NOLINT: use 32-bit, even though 16-bit is sufficient
       // ideal frame heights
       frameLinesNTSC            = 262,
       frameLinesPAL             = 312,
@@ -81,15 +96,11 @@ class FrameLayoutDetector: public AbstractFrameManager
       // (exceeding ideal frame height)
       waitForVsync              = 100,
 
-      // tolerance window around ideal frame size for TV mode detection
-      tvModeDetectionTolerance  = 20,
-
       // these frames will not be considered for detection
       initialGarbageFrames      = TIAConstants::initialGarbageFrames
     };
 
   private:
-
     /**
      * Change state and change internal state accordingly.
      */
@@ -101,16 +112,13 @@ class FrameLayoutDetector: public AbstractFrameManager
     void finalizeFrame();
 
   private:
-
     /**
      * The current state.
      */
     State myState{State::waitForVsyncStart};
 
-    /**
-     * The total number of frames detected as the respective frame layout.
-     */
-    uInt32 myNtscFrames{0}, myPalFrames{0};
+    // The aggregated likelynesses of respective two frame layouts.
+    double myNtscFrameSum{0}, myPalFrameSum{0};
 
     /**
      * We count the number of scanlines we spend waiting for vsync to be
@@ -118,8 +126,16 @@ class FrameLayoutDetector: public AbstractFrameManager
      */
     uInt32 myLinesWaitingForVsyncToStart{0};
 
-  private:
+    /**
+     * We count the number of pixels for each colors used. These are
+     * evaluated against statistical color distributions and, if
+     * decisive, allow overruling the scanline results.
+    */
+    static constexpr int NUM_HUES = 16;
+    static constexpr int NUM_LUMS = 8;
+    std::array<uInt64, static_cast<size_t>(NUM_HUES * NUM_LUMS)> myColorCount{0};
 
+  private:
     FrameLayoutDetector(const FrameLayoutDetector&) = delete;
     FrameLayoutDetector(FrameLayoutDetector&&) = delete;
     FrameLayoutDetector& operator=(const FrameLayoutDetector&) = delete;

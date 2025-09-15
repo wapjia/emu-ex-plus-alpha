@@ -8,14 +8,13 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
 // this file, and for a DISCLAIMER OF ALL WARRANTIES.
 //============================================================================
 
-#include <cassert>
 #include <cmath>
 
 #include "System.hxx"
@@ -105,43 +104,42 @@ bool Controller::load(Serializer& in)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 string Controller::getName(const Type type)
 {
-  static constexpr std::array<const char*, static_cast<int>(Controller::Type::LastType)> NAMES =
+  static constexpr std::array<string_view,
+    static_cast<int>(Controller::Type::LastType)> NAMES =
   {
     "Unknown",
     "Amiga mouse", "Atari mouse", "AtariVox", "Booster Grip", "CompuMate",
     "Driving", "Sega Genesis", "Joystick", "Keyboard", "Kid Vid", "MindLink",
     "Paddles", "Paddles_IAxis", "Paddles_IAxDr", "SaveKey", "Trak-Ball",
-    "Light Gun", "QuadTari"
+    "Light Gun", "QuadTari", "Joy 2B+"
   };
 
-  return NAMES[static_cast<int>(type)];
+  return string{NAMES[static_cast<int>(type)]};
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 string Controller::getPropName(const Type type)
 {
-  static constexpr std::array<const char*, int(Controller::Type::LastType)> PROP_NAMES =
+  static constexpr std::array<string_view,
+    static_cast<int>(Controller::Type::LastType)> PROP_NAMES =
   {
     "AUTO",
     "AMIGAMOUSE", "ATARIMOUSE", "ATARIVOX", "BOOSTERGRIP", "COMPUMATE",
     "DRIVING", "GENESIS", "JOYSTICK", "KEYBOARD", "KIDVID", "MINDLINK",
     "PADDLES", "PADDLES_IAXIS", "PADDLES_IAXDR", "SAVEKEY", "TRAKBALL",
-    "LIGHTGUN", "QUADTARI"
+    "LIGHTGUN", "QUADTARI", "JOY_2B+"
   };
 
-  return PROP_NAMES[static_cast<int>(type)];
+  return string{PROP_NAMES[static_cast<int>(type)]};
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Controller::Type Controller::getType(const string& propName)
+Controller::Type Controller::getType(string_view propName)
 {
-  for(int i = 0; i < static_cast<int>(Type::LastType); ++i)
-  {
+  for(uInt8 i = 0; i < static_cast<uInt8>(Type::LastType); ++i)
     if (BSPF::equalsIgnoreCase(propName, getPropName(Type{i})))
-    {
       return Type{i};
-    }
-  }
+
   // special case
   if(BSPF::equalsIgnoreCase(propName, "KEYPAD"))
     return Type::Keyboard;

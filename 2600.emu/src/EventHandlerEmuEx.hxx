@@ -5,6 +5,7 @@
 #include <stella/emucore/Event.hxx>
 #include <stella/emucore/EventHandlerConstants.hxx>
 #include <stella/emucore/Control.hxx>
+#include <cmath>
 
 class OSystem;
 class Properties;
@@ -26,16 +27,22 @@ public:
 	EventHandler(OSystem& osystem) {}
 	Event& event() { return myEvent; }
 	const Event& event() const { return myEvent; }
+	void handleEvent(Event::Type event, Int32 value = 1, bool repeated = false) {}
 	void allowAllDirections(bool allow) {}
 	EventHandlerState state() const { return EventHandlerState::EMULATION; }
 	bool inTIAMode() const { return true; }
-	void defineKeyControllerMappings(const Controller::Type type, Controller::Jack port) {}
 	void enableEmulationKeyMappings() {}
-	void defineJoyControllerMappings(const Controller::Type type, Controller::Jack port) {}
 	void enableEmulationJoyMappings() {}
-	void setMouseControllerMode(const string& enable) {}
-	void defineKeyControllerMappings(const Controller::Type, Controller::Jack, const Properties&) {}
+	void setMouseControllerMode(string_view enable) {}
 	void set7800Mode() {}
+	void defineKeyControllerMappings(const Controller::Type type, Controller::Jack port,
+		const Properties& properties,
+		Controller::Type qtType1 = Controller::Type::Unknown,
+		Controller::Type qtType2 = Controller::Type::Unknown)  {}
+	void defineJoyControllerMappings(const Controller::Type type, Controller::Jack port,
+		const Properties& properties,
+		Controller::Type qtType1 = Controller::Type::Unknown,
+		Controller::Type qtType2 = Controller::Type::Unknown) {}
 
 private:
 	Event myEvent{};

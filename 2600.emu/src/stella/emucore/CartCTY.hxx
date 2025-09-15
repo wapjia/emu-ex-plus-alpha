@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -118,7 +118,7 @@ class CartridgeCTY : public Cartridge
       @param md5       The md5sum of the ROM image
       @param settings  A reference to the settings object
     */
-    CartridgeCTY(const ByteBuffer& image, size_t size, const string& md5,
+    CartridgeCTY(const ByteBuffer& image, size_t size, string_view md5,
                  const Settings& settings);
     ~CartridgeCTY() override = default;
 
@@ -210,10 +210,9 @@ class CartridgeCTY : public Cartridge
     /**
       Informs the cartridge about the name of the nvram file it will use.
 
-      @param nvramdir  The full path of the nvram directory
-      @param romfile   The name of the cart from ROM properties
+      @param path  The full path of the nvram file
     */
-    void setNVRamFile(const string& nvramfile) override;
+    void setNVRamFile(string_view path) override;
 
   #ifdef DEBUGGER_SUPPORT
     /**
@@ -275,10 +274,10 @@ class CartridgeCTY : public Cartridge
     ByteBuffer myImage;
 
     // The 28K ROM image of the music
-    std::array<uInt8, 28_KB> myTuneData;
+    std::array<uInt8, 28_KB> myTuneData{};
 
     // The 64 bytes of RAM accessible at $1000 - $1080
-    std::array<uInt8, 64> myRAM;
+    std::array<uInt8, 64> myRAM{};
 
     // Console clock rate
     double myClockRate{1193191.66666667};
@@ -294,10 +293,10 @@ class CartridgeCTY : public Cartridge
     uInt16 myTunePosition{0};
 
     // The music mode counters
-    std::array<uInt32, 3> myMusicCounters{0};
+    std::array<uInt32, 3> myMusicCounters{};
 
     // The music frequency
-    std::array<uInt32, 3> myMusicFrequencies{0};
+    std::array<uInt32, 3> myMusicFrequencies{};
 
     // Flags that last byte peeked was A9 (LDA #)
     bool myLDAimmediate{false};

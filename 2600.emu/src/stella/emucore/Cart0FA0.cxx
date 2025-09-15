@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -20,7 +20,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Cartridge0FA0::Cartridge0FA0(const ByteBuffer& image, size_t size,
-    const string& md5, const Settings& settings)
+    string_view md5, const Settings& settings)
   : CartridgeEnhanced(image, size, md5, settings, 8_KB)
 {
 }
@@ -81,7 +81,7 @@ uInt8 Cartridge0FA0::peek(uInt16 address)
 {
   address &= myBankMask;
 
-  checkSwitchBank(address);
+  checkSwitchBank(address, 0);
 
   // Because of the way accessing is set up, we will only get here
   // when doing a TIA read
@@ -93,7 +93,7 @@ bool Cartridge0FA0::poke(uInt16 address, uInt8 value)
 {
   address &= myBankMask;
 
-  checkSwitchBank(address);
+  checkSwitchBank(address, 0);
 
   // Because of the way accessing is set up, we will may get here by
   // doing a write to TIA or cart; we ignore the cart write

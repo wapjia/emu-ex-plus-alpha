@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -20,7 +20,7 @@
 
 #include <map>
 
-class FilesystemNode;
+class FSNode;
 class OSystem;
 
 #include "bspf.hxx"
@@ -40,8 +40,8 @@ class OSystem;
 class PropertiesSet
 {
   public:
-
     PropertiesSet();
+    ~PropertiesSet() = default;
 
     void setRepository(shared_ptr<CompositeKeyValueRepository> repository);
 
@@ -56,7 +56,7 @@ class PropertiesSet
 
       @return  True if the set with the specified md5 was found, else false
     */
-    bool getMD5(const string& md5, Properties& properties,
+    bool getMD5(string_view md5, Properties& properties,
                 bool useDefaults = false) const;
 
     /**
@@ -82,7 +82,7 @@ class PropertiesSet
       @param rom  The node representing the rom file
       @param md5  The md5 of the property to get
     */
-    void loadPerROM(const FilesystemNode& rom, const string& md5);
+    void loadPerROM(const FSNode& rom, string_view md5);
 
     /**
       Prints the contents of the PropertiesSet as a flat file.
@@ -90,7 +90,7 @@ class PropertiesSet
     void print() const;
 
   private:
-    using PropsList = std::map<string, Properties>;
+    using PropsList = std::map<string, Properties, std::less<>>;
 
     // The properties read from an external 'stella.pro' file
     PropsList myExternalProps;

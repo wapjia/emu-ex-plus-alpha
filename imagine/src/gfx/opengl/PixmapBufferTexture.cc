@@ -13,7 +13,6 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "GLPixmapBufferTexture"
 #include <imagine/gfx/Renderer.hh>
 #include <imagine/gfx/PixmapBufferTexture.hh>
 #include <imagine/util/ScopeGuard.hh>
@@ -62,19 +61,21 @@
 namespace IG::Gfx
 {
 
-PixmapBufferTexture::PixmapBufferTexture(RendererTask &r, TextureConfig config, TextureBufferMode mode, bool singleBuffer)
+constexpr SystemLogger log{"GLPixmapBufferTexture"};
+
+PixmapBufferTexture::PixmapBufferTexture(RendererTask& r, TextureConfig config, TextureBufferMode mode, TextureBufferImageMode imageMode)
 {
 	mode = r.renderer().evalTextureBufferMode(mode);
 	try
 	{
 		if(mode == TextureBufferMode::SYSTEM_MEMORY)
-			initWithSystemMemory(r, config, singleBuffer);
+			initWithSystemMemory(r, config, imageMode);
 		else if(mode == TextureBufferMode::PBO)
-			initWithPixelBuffer(r, config, singleBuffer);
+			initWithPixelBuffer(r, config, imageMode);
 		else if(Config::envIsAndroid && mode == TextureBufferMode::ANDROID_HARDWARE_BUFFER)
-			initWithHardwareBuffer(r, config, singleBuffer);
+			initWithHardwareBuffer(r, config, imageMode);
 		else if(Config::Gfx::OPENGL_TEXTURE_TARGET_EXTERNAL && mode == TextureBufferMode::ANDROID_SURFACE_TEXTURE)
-			initWithSurfaceTexture(r, config, singleBuffer);
+			initWithSurfaceTexture(r, config, imageMode);
 		else
 			bug_unreachable("mode == %d", std::to_underlying(mode));
 	}
@@ -82,12 +83,17 @@ PixmapBufferTexture::PixmapBufferTexture(RendererTask &r, TextureConfig config, 
 	{
 		if(mode != TextureBufferMode::SYSTEM_MEMORY)
 		{
-			logErr("falling back to system memory");
-			initWithSystemMemory(r, config, singleBuffer);
+			log.error("falling back to system memory");
+			initWithSystemMemory(r, config, imageMode);
 		}
 		else
 			throw;
 	}
+}
+
+static size_t bufferCount(TextureBufferImageMode mode)
+{
+	return mode == TextureBufferImageMode::Single ? 1 : 2;
 }
 
 static bool hasPersistentBufferMapping(const Renderer &r)
@@ -95,30 +101,30 @@ static bool hasPersistentBufferMapping(const Renderer &r)
 	return r.support.hasImmutableBufferStorage();
 }
 
-void GLPixmapBufferTexture::initWithSystemMemory(RendererTask &r, TextureConfig config, bool singleBuffer)
+void GLPixmapBufferTexture::initWithSystemMemory(RendererTask& r, TextureConfig config, TextureBufferImageMode imageMode)
 {
-	directTex.emplace<GLSystemMemoryStorage>(r, config, singleBuffer);
+	directTex.emplace<GLSystemMemoryStorage>(r, config, imageMode);
 }
 
-void GLPixmapBufferTexture::initWithPixelBuffer(RendererTask &r, TextureConfig config, bool singleBuffer)
+void GLPixmapBufferTexture::initWithPixelBuffer(RendererTask& r, TextureConfig config, TextureBufferImageMode imageMode)
 {
-	directTex.emplace<GLPixelBufferStorage>(r, config, singleBuffer);
+	directTex.emplace<GLPixelBufferStorage>(r, config, imageMode);
 }
 
 #ifdef __ANDROID__
-void GLPixmapBufferTexture::initWithHardwareBuffer(RendererTask &r, TextureConfig config, bool singleBuffer)
+void GLPixmapBufferTexture::initWithHardwareBuffer(RendererTask& r, TextureConfig config, TextureBufferImageMode imageMode)
 {
 	auto androidSDK = r.appContext().androidSDK();
 	if(androidSDK >= 26)
 	{
-		if(singleBuffer)
+		if(bufferCount(imageMode) == 1)
 			directTex.emplace<AHardwareSingleBufferStorage>(r, config);
 		else
 			directTex.emplace<AHardwareBufferStorage>(r, config);
 	}
 	else
 	{
-		if(singleBuffer)
+		if(bufferCount(imageMode) == 1)
 			directTex.emplace<GraphicSingleBufferStorage>(r, config);
 		else
 			directTex.emplace<GraphicBufferStorage>(r, config);
@@ -127,17 +133,17 @@ void GLPixmapBufferTexture::initWithHardwareBuffer(RendererTask &r, TextureConfi
 #endif
 
 #ifdef CONFIG_GFX_OPENGL_TEXTURE_TARGET_EXTERNAL
-void GLPixmapBufferTexture::initWithSurfaceTexture(RendererTask &r, TextureConfig config, bool singleBuffer)
+void GLPixmapBufferTexture::initWithSurfaceTexture(RendererTask& r, TextureConfig config, TextureBufferImageMode imageMode)
 {
 	assert(Config::Gfx::OPENGL_TEXTURE_TARGET_EXTERNAL);
-	directTex.emplace<SurfaceTextureStorage>(r, config, singleBuffer);
+	directTex.emplace<SurfaceTextureStorage>(r, config, imageMode);
 }
 #endif
 
 bool PixmapBufferTexture::setFormat(PixmapDesc desc, ColorSpace colorSpace, TextureSamplerConfig samplerConf)
 {
 	if(Config::DEBUG_BUILD && pixmapDesc() == desc)
-		logWarn("resizing with same dimensions %dx%d, should optimize caller code", desc.w(), desc.h());
+		log.warn("resizing with same dimensions:{}x{}, should optimize caller code", desc.w(), desc.h());
 	return visit([&](auto &t){ return t.setFormat(desc, colorSpace, samplerConf); }, directTex);
 }
 
@@ -172,7 +178,7 @@ void PixmapBufferTexture::clear()
 	auto lockBuff = lock({.clear = true});
 	if(!lockBuff) [[unlikely]]
 	{
-		logErr("error getting buffer for clear()");
+		log.error("error getting buffer for clear()");
 		return;
 	}
 	unlock(lockBuff);
@@ -229,10 +235,15 @@ bool PixmapBufferTexture::isExternal() const
 		visit([&](auto &t){ return t.target() == GL_TEXTURE_EXTERNAL_OES; }, directTex);
 }
 
+int PixmapBufferTexture::buffers() const
+{
+	return visit([&](auto& t){ return t.buffers(); }, directTex);
+}
+
 template<class Impl, class BufferInfo>
 bool GLTextureStorage<Impl, BufferInfo>::setFormat(PixmapDesc desc, ColorSpace colorSpace, TextureSamplerConfig samplerConf)
 {
-	static_cast<Impl*>(this)->initBuffer(desc, isSingleBuffered());
+	static_cast<Impl*>(this)->initBuffer(desc, imageMode());
 	return Texture::setFormat(desc, 1, colorSpace, samplerConf);
 }
 
@@ -241,7 +252,7 @@ LockedTextureBuffer GLTextureStorage<Impl, BufferInfo>::lock(TextureBufferFlags 
 {
 	if(!texName()) [[unlikely]]
 	{
-		logErr("called lock when uninitialized");
+		log.error("called lock when uninitialized");
 		return {};
 	}
 	auto bufferInfo = currentBuffer();
@@ -283,37 +294,37 @@ void GLTextureStorage<Impl, BufferInfo>::writeAligned(PixmapView pixmap, int ass
 	}
 }
 
-GLSystemMemoryStorage::GLSystemMemoryStorage(RendererTask &rTask, TextureConfig config, bool singleBuffer):
-	GLTextureStorage{rTask, config, singleBuffer}
+GLSystemMemoryStorage::GLSystemMemoryStorage(RendererTask &rTask, TextureConfig config, TextureBufferImageMode imageMode):
+	GLTextureStorage{rTask, config, imageMode}
 {
-	initBuffer(config.pixmapDesc, singleBuffer);
+	initBuffer(config.pixmapDesc, imageMode);
 }
 
-void GLSystemMemoryStorage::initBuffer(PixmapDesc desc, bool singleBuffer)
+void GLSystemMemoryStorage::initBuffer(PixmapDesc desc, TextureBufferImageMode imageMode)
 {
 	task().awaitPending();
 	auto bytes = desc.bytes();
-	auto fullBytes = singleBuffer ? bytes : bytes * 2;
+	auto fullBytes = bytes * bufferCount(imageMode);
 	storage = std::make_unique<char[]>(fullBytes);
-	logMsg("allocated system memory with buffers:%d size:%d data:%p", singleBuffer ? 1 : 2, bytes, storage.get());
+	log.info("allocated system memory with buffers:{} size:{} data:{}", bufferCount(imageMode), bytes, storage.get());
 	info[0] = {storage.get()};
-	info[1] = {singleBuffer ? nullptr : storage.get() + bytes};
+	info[1] = {bufferCount(imageMode) == 1 ? nullptr : storage.get() + bytes};
 }
 
-GLPixelBufferStorage::GLPixelBufferStorage(RendererTask &rTask, TextureConfig config, bool singleBuffer):
-	GLTextureStorage{rTask, config, singleBuffer},
+GLPixelBufferStorage::GLPixelBufferStorage(RendererTask &rTask, TextureConfig config, TextureBufferImageMode imageMode):
+	GLTextureStorage{rTask, config, imageMode},
 	pixelBuff{GLBufferDeleter{&rTask}}
 {
-	initBuffer(config.pixmapDesc, singleBuffer);
+	initBuffer(config.pixmapDesc, imageMode);
 }
 
-void GLPixelBufferStorage::initBuffer(PixmapDesc desc, bool singleBuffer)
+void GLPixelBufferStorage::initBuffer(PixmapDesc desc, TextureBufferImageMode imageMode)
 {
 	const auto bufferBytes = desc.bytes();
 	auto &r = renderer();
 	assert(hasPersistentBufferMapping(r));
 	char *bufferPtr{};
-	const auto fullBufferBytes = singleBuffer ? bufferBytes : bufferBytes * 2;
+	const auto fullBufferBytes = bufferBytes * bufferCount(imageMode);
 	task().runSync(
 		[=, &r, &bufferPtr, &pbo = pixelBuff.get()](GLTask::TaskContext ctx)
 		{
@@ -331,7 +342,7 @@ void GLPixelBufferStorage::initBuffer(PixmapDesc desc, bool singleBuffer)
 				GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT);
 			if(!bufferPtr) [[unlikely]]
 			{
-				logErr("PBO:%u mapping failed", newPbo);
+				log.error("PBO:{} mapping failed", newPbo);
 				ctx.notifySemaphore();
 				glDeleteBuffers(1, &newPbo);
 			}
@@ -344,9 +355,9 @@ void GLPixelBufferStorage::initBuffer(PixmapDesc desc, bool singleBuffer)
 		});
 	if(bufferPtr)
 	{
-		logMsg("allocated PBO:%u with buffers:%u size:%u data:%p", pixelBuff.get(), singleBuffer ? 1 : 2, bufferBytes, bufferPtr);
+		log.info("allocated PBO:{} with buffers:{} size:{} data:{}", pixelBuff.get(), bufferCount(imageMode), bufferBytes, bufferPtr);
 		info[0] = {bufferPtr, nullptr};
-		if(singleBuffer)
+		if(bufferCount(imageMode) == 1)
 			info[1] = {nullptr};
 		else
 		{
@@ -382,7 +393,7 @@ static bool hasSurfaceTexture(Renderer &r)
 		return false;
 	if(!r.support.hasExternalEGLImages)
 	{
-		logErr("can't use SurfaceTexture without OES_EGL_image_external");
+		log.error("can't use SurfaceTexture without OES_EGL_image_external");
 		return false;
 	}
 	return true;
@@ -395,7 +406,7 @@ static bool hasHardwareBuffer(Renderer &r)
 		return true;
 	if(!r.support.hasEGLImages)
 	{
-		logErr("Can't use GraphicBuffer without OES_EGL_image extension");
+		log.error("Can't use GraphicBuffer without OES_EGL_image extension");
 		return false;
 	}
 	if(GraphicBuffer::isSupported())

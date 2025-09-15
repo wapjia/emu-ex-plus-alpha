@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -23,6 +23,7 @@ class OSystem;
 class EventHandler;
 
 #include "EventHandlerConstants.hxx"
+#include "Event.hxx"
 #include "StellaKeys.hxx"
 #include "Stack.hxx"
 #include "bspf.hxx"
@@ -120,6 +121,13 @@ class DialogContainer
     void handleJoyHatEvent(int stick, int hat, JoyHatDir hdir, int button);
 
     /**
+      Handle an arbitray dialog event.
+
+      @param event  The send event
+    */
+    void handleEvent(Event::Type event);
+
+    /**
       Tick the dialog and all its widgets.
     */
     void tick();
@@ -214,7 +222,7 @@ class DialogContainer
     } myCurrentButtonDown;
     uInt64 myButtonRepeatTime{0};
     uInt64 myButtonLongPressTime{0};
-    bool myButtonLongPress{false};
+    bool myIgnoreButtonUp{false};
 
     // For continuous 'joy axis down' events
     struct {

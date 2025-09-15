@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -47,7 +47,7 @@ void Properties::load(KeyValueRepository& repo)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool Properties::save(KeyValueRepository& repo) const
 {
-  std::map<string, Variant> props;
+  KVRMap props;
 
   for (size_t i = 0; i < static_cast<size_t>(PropType::NumTypes); i++) {
     if (myProperties[i] == ourDefaultProperties[i]) {
@@ -61,9 +61,9 @@ bool Properties::save(KeyValueRepository& repo) const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Properties::set(PropType key, const string& value)
+void Properties::set(PropType key, string_view value)
 {
-  const size_t pos = static_cast<size_t>(key);
+  const auto pos = static_cast<size_t>(key);
   if(pos < myProperties.size())
   {
     myProperties[pos] = value;
@@ -95,7 +95,7 @@ void Properties::set(PropType key, const string& value)
 
       case PropType::Display_PPBlend:
       {
-        const int blend = BSPF::stringToInt(myProperties[pos]);
+        const int blend = BSPF::stoi(myProperties[pos]);
         if(blend < 0 || blend > 100)
           myProperties[pos] = ourDefaultProperties[pos];
         break;
@@ -137,7 +137,7 @@ Properties& Properties::operator=(const Properties& properties)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Properties::setDefault(PropType key, const string& value)
+void Properties::setDefault(PropType key, string_view value)
 {
   ourDefaultProperties[static_cast<size_t>(key)] = value;
 }
@@ -153,43 +153,43 @@ void Properties::copy(const Properties& properties)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Properties::print() const
 {
-  cout << get(PropType::Cart_MD5)               << "|"
-       << get(PropType::Cart_Name)              << "|"
-       << get(PropType::Cart_Manufacturer)      << "|"
-       << get(PropType::Cart_ModelNo)           << "|"
-       << get(PropType::Cart_Note)              << "|"
-       << get(PropType::Cart_Rarity)            << "|"
-       << get(PropType::Cart_Sound)             << "|"
-       << get(PropType::Cart_StartBank)         << "|"
-       << get(PropType::Cart_Type)              << "|"
-       << get(PropType::Cart_Highscore)         << "|"
-       << get(PropType::Cart_Url)               << "|"
-       << get(PropType::Console_LeftDiff)       << "|"
-       << get(PropType::Console_RightDiff)      << "|"
-       << get(PropType::Console_TVType)         << "|"
-       << get(PropType::Console_SwapPorts)      << "|"
-       << get(PropType::Controller_Left)        << "|"
-       << get(PropType::Controller_Left1)       << "|"
-       << get(PropType::Controller_Left2)       << "|"
-       << get(PropType::Controller_Right)       << "|"
-       << get(PropType::Controller_Right1)      << "|"
-       << get(PropType::Controller_Right2)      << "|"
-       << get(PropType::Controller_SwapPaddles) << "|"
+  cout << get(PropType::Cart_MD5)                  << "|"
+       << get(PropType::Cart_Name)                 << "|"
+       << get(PropType::Cart_Manufacturer)         << "|"
+       << get(PropType::Cart_ModelNo)              << "|"
+       << get(PropType::Cart_Note)                 << "|"
+       << get(PropType::Cart_Rarity)               << "|"
+       << get(PropType::Cart_Sound)                << "|"
+       << get(PropType::Cart_StartBank)            << "|"
+       << get(PropType::Cart_Type)                 << "|"
+       << get(PropType::Cart_Highscore)            << "|"
+       << get(PropType::Cart_Url)                  << "|"
+       << get(PropType::Console_LeftDiff)          << "|"
+       << get(PropType::Console_RightDiff)         << "|"
+       << get(PropType::Console_TVType)            << "|"
+       << get(PropType::Console_SwapPorts)         << "|"
+       << get(PropType::Controller_Left)           << "|"
+       << get(PropType::Controller_Left1)          << "|"
+       << get(PropType::Controller_Left2)          << "|"
+       << get(PropType::Controller_Right)          << "|"
+       << get(PropType::Controller_Right1)         << "|"
+       << get(PropType::Controller_Right2)         << "|"
+       << get(PropType::Controller_SwapPaddles)    << "|"
        << get(PropType::Controller_PaddlesXCenter) << "|"
        << get(PropType::Controller_PaddlesYCenter) << "|"
-       << get(PropType::Controller_MouseAxis)   << "|"
-       << get(PropType::Display_Format)         << "|"
-       << get(PropType::Display_VCenter)        << "|"
-       << get(PropType::Display_Phosphor)       << "|"
-       << get(PropType::Display_PPBlend)
-       << endl;
+       << get(PropType::Controller_MouseAxis)      << "|"
+       << get(PropType::Display_Format)            << "|"
+       << get(PropType::Display_VCenter)           << "|"
+       << get(PropType::Display_Phosphor)          << "|"
+       << get(PropType::Display_PPBlend)           << "|"
+       << get(PropType::Bezel_Name)
+       << '\n';
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Properties::reset(PropType key)
 {
-  const size_t pos = static_cast<size_t>(key);
-
+  const auto pos = static_cast<size_t>(key);
   myProperties[pos] = ourDefaultProperties[pos];
 }
 
@@ -201,7 +201,7 @@ void Properties::setDefaults()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-PropType Properties::getPropType(const string& name)
+PropType Properties::getPropType(string_view name)
 {
   for(size_t i = 0; i < NUM_PROPS; ++i)
     if(ourPropertyNames[i] == name)
@@ -242,8 +242,9 @@ void Properties::printHeader()
        << "Display_Format|"
        << "Display_VCenter|"
        << "Display_Phosphor|"
-       << "Display_PPBlend"
-       << endl;
+       << "Display_PPBlend|"
+       << "Bezel_Name"
+       << '\n';
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -265,11 +266,11 @@ std::array<string, Properties::NUM_PROPS> Properties::ourDefaultProperties =
   "COLOR",  // Console.TVType
   "NO",     // Console.SwapPorts
   "AUTO",   // Controller.Left
-  "",       // Controller.Left1
-  "",       // Controller.Left2
+  "AUTO",   // Controller.Left1
+  "AUTO",   // Controller.Left2
   "AUTO",   // Controller.Right
-  "",       // Controller.Right1
-  "",       // Controller.Right2
+  "AUTO",   // Controller.Right1
+  "AUTO",   // Controller.Right2
   "NO",     // Controller.SwapPaddles
   "12",     // Controller.PaddlesXCenter
   "12",     // Controller.PaddlesYCenter
@@ -277,7 +278,8 @@ std::array<string, Properties::NUM_PROPS> Properties::ourDefaultProperties =
   "AUTO",   // Display.Format
   "0",      // Display.VCenter
   "NO",     // Display.Phosphor
-  "0"       // Display.PPBlend
+  "0",      // Display.PPBlend
+  ""        // Bezel.Name
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -311,5 +313,6 @@ std::array<string, Properties::NUM_PROPS> Properties::ourPropertyNames =
   "Display.Format",
   "Display.VCenter",
   "Display.Phosphor",
-  "Display.PPBlend"
+  "Display.PPBlend",
+  "Bezel.Name"
 };

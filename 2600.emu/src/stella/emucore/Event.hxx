@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -34,7 +34,7 @@ class Event
       console and controller event types as well as events that aren't
       technically part of the emulation core.
     */
-    enum Type
+    enum Type: uInt16
     {
       NoType = 0,
       ConsoleColor, ConsoleBlackWhite, ConsoleColorToggle, Console7800Pause,
@@ -84,7 +84,7 @@ class Event
 
       UIUp, UIDown, UILeft, UIRight, UIHome, UIEnd, UIPgUp, UIPgDown,
       UISelect, UINavPrev, UINavNext, UIOK, UICancel, UIPrevDir,
-      UITabPrev, UITabNext,
+      UITabPrev, UITabNext, UIReload,
 
       NextMouseControl, ToggleGrabMouse,
       MouseAxisXMove, MouseAxisYMove, MouseAxisXValue, MouseAxisYValue,
@@ -115,7 +115,8 @@ class Event
       PreviousAttribute, NextAttribute, DecreaseAttribute, IncreaseAttribute,
       ScanlinesDecrease, ScanlinesIncrease,
       PreviousScanlineMask, NextScanlineMask,
-      PhosphorDecrease, PhosphorIncrease, TogglePhosphor, ToggleInter,
+      PhosphorDecrease, PhosphorIncrease, TogglePhosphor,
+      PhosphorModeDecrease, PhosphorModeIncrease, ToggleInter,
       ToggleDeveloperSet, JitterRecDecrease, JitterRecIncrease,
       JitterSenseDecrease, JitterSenseIncrease, ToggleJitter,
 
@@ -126,7 +127,7 @@ class Event
       ToggleBLCollision, ToggleBLBit, TogglePFCollision, TogglePFBit,
       ToggleCollisions, ToggleBits, ToggleFixedColors,
 
-      ToggleFrameStats, ToggleSAPortOrder, ExitGame,
+      ToggleFrameStats, ToggleBezel, ToggleSAPortOrder, ExitGame,
       SettingDecrease, SettingIncrease, PreviousSetting, NextSetting,
       ToggleAdaptRefresh, PreviousMultiCartRom,
       // add new (after Version 4) events from here to avoid that user remapped events get overwritten
@@ -148,7 +149,7 @@ class Event
       SelectHome, SelectEnd, SelectAll,
       Delete, DeleteLeftWord, DeleteRightWord, DeleteHome, DeleteEnd, Backspace,
       Cut, Copy, Paste, Undo, Redo,
-      AbortEdit, EndEdit,
+      AbortEdit, EndEdit, ToggleUIPalette,
 
       HighScoresMenuMode,
       // Input settings
@@ -181,7 +182,7 @@ class Event
     };
 
     // Event categorizing groups
-    enum Group
+    enum Group: uInt8
     {
       Menu, Emulation,
       Misc, AudioVideo, States, Console, Joystick, Paddles, Driving, Keyboard,
@@ -199,14 +200,15 @@ class Event
     /**
       Create a new event object.
     */
-    Event() { clear(); }
+    Event() { clear(); }  // NOLINT: myValues is initialized in clear()
+    ~Event() = default;
 
   public:
     /**
       Get the value associated with the event of the specified type.
     */
     Int32 get(Type type) const {
-      //std::lock_guard<std::mutex> lock(myMutex);
+      //const std::lock_guard<std::mutex> lock(myMutex);
 
       return myValues[type];
     }
@@ -215,7 +217,7 @@ class Event
       Set the value associated with the event of the specified type.
     */
     void set(Type type, Int32 value) {
-      //std::lock_guard<std::mutex> lock(myMutex);
+      //const std::lock_guard<std::mutex> lock(myMutex);
 
       myValues[type] = value;
     }
@@ -225,7 +227,7 @@ class Event
     */
     void clear()
     {
-      //std::lock_guard<std::mutex> lock(myMutex);
+      //const std::lock_guard<std::mutex> lock(myMutex);
 
       myValues.fill(Event::NoType);
     }

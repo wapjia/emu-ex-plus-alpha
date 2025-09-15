@@ -39,28 +39,19 @@ class OSystem
 
 public:
 	OSystem(EmuEx::EmuApp &);
-	EventHandler& eventHandler() { return myEventHandler; }
-	const EventHandler& eventHandler() const { return myEventHandler; }
-	Random& random() { return myRandom; }
-	const Random& random() const { return myRandom; }
-	FrameBuffer& frameBuffer() { return myFrameBuffer; }
-	const FrameBuffer& frameBuffer() const { return myFrameBuffer; }
-	Sound& sound() { return mySound; }
-	const Sound& sound() const { return mySound; }
-	Settings& settings() { return mySettings; }
-	const Settings& settings() const { return mySettings; }
-	PropertiesSet& propSet() { return myPropSet; }
-	const PropertiesSet& propSet() const { return myPropSet; }
-	StateManager& state() { return myStateManager; }
-	const StateManager& state() const { return myStateManager; }
-	SoundEmuEx &soundEmuEx() { return mySound; }
-	const SoundEmuEx &soundEmuEx() const { return mySound; }
-	Console& console() { return *myConsole; }
-	const Console& console() const { return *myConsole; }
+	auto& eventHandler(this auto&& self) { return self.myEventHandler; }
+	auto& random(this auto&& self) { return self.myRandom; }
+	auto& frameBuffer(this auto&& self) { return self.myFrameBuffer; }
+	auto& sound(this auto&& self) { return self.mySound; }
+	auto& settings(this auto&& self) { return self.mySettings; }
+	auto& propSet(this auto&& self) { return self.myPropSet; }
+	auto& state(this auto&& self) { return self.myStateManager; }
+	auto& soundEmuEx(this auto&& self) { return self.mySound; }
+	auto& console(this auto&& self) { return *self.myConsole; }
 	bool hasConsole() const { return (bool)myConsole; }
 	void makeConsole(unique_ptr<Cartridge>& cart, const Properties& props, const char *gamePath);
 	void deleteConsole();
-	void setSoundMixRate(int mixRate, AudioSettings::ResamplingQuality);
+	void setSoundMixRate(int mixRate);
 
 	#ifdef DEBUGGER_SUPPORT
 	void createDebugger(Console& console);
@@ -71,13 +62,14 @@ public:
 	CheatManager& cheat() const { return *myCheatManager; }
 	#endif
 
-	FilesystemNode stateDir() const;
-	FilesystemNode nvramDir(std::string_view name) const;
+	FSNode stateDir() const;
+	FSNode nvramDir(std::string_view name) const;
+	FSNode baseDir(std::string_view name) const;
 
 	bool checkUserPalette(bool outputError = false) const { return false; }
-	FilesystemNode paletteFile() const { return FilesystemNode{""}; }
+	FSNode paletteFile() const { return FSNode{""}; }
 
-	const FilesystemNode& romFile() const { return myRomFile; };
+	const FSNode& romFile() const { return myRomFile; };
 
 	void resetFps() {}
 
@@ -94,5 +86,5 @@ protected:
 	PropertiesSet myPropSet{};
 	StateManager myStateManager{*this};
 	SoundEmuEx mySound{*this};
-	FilesystemNode myRomFile{};
+	FSNode myRomFile{};
 };

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -21,7 +21,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 CartridgeFE::CartridgeFE(const ByteBuffer& image, size_t size,
-                         const string& md5, const Settings& settings,
+                         string_view md5, const Settings& settings,
                          size_t bsSize)
   : CartridgeEnhanced(image, size, md5, settings, bsSize)
 {
@@ -42,9 +42,7 @@ void CartridgeFE::install(System& system)
 
   // The hotspot $01FE is in a mirror of zero-page RAM
   // We need to claim access to it here, and deal with it in peek/poke below
-  const System::PageAccess access(this, System::PageAccessType::READWRITE);
-  for(uInt16 addr = 0x180; addr < 0x200; addr += System::PAGE_SIZE)
-    mySystem->setPageAccess(addr, access);
+  mySystem->setPageAccess(0x1c0, System::PageAccess(this, System::PageAccessType::READWRITE));
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -52,7 +50,7 @@ bool CartridgeFE::checkSwitchBank(uInt16 address, uInt8 value)
 {
   if(myLastAccessWasFE)
   {
-    bank((value & 0x20) ? 0 : 1);
+    bank((value >> 5) ^ 0b111);
     myLastAccessWasFE = false; // was: address == 0x01FE;
     return true;
   }
@@ -94,7 +92,7 @@ bool CartridgeFE::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeFE::save" << endl;
+    cerr << "ERROR: CartridgeFE::save\n";
     return false;
   }
 
@@ -111,7 +109,7 @@ bool CartridgeFE::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: CartridgeFE::load" << endl;
+    cerr << "ERROR: CartridgeFE::load\n";
     return false;
   }
 

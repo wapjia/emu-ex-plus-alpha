@@ -62,29 +62,30 @@ extern int emulating;
 bool debugger = false;
 
 static uint8_t dummyArr[4]{};
-constexpr std::array<memoryMap, 256> gbaMap = []
+
+std::array<memoryMap, 256> gbaMap(GBASys& gba)
 {
-	std::array<memoryMap, 256> gbaMap
+	std::array<memoryMap, 256> map
 	{
-		memoryMap{gGba.mem.bios, 0x3FFF , biosRead8, biosRead16, biosRead32 },
+		memoryMap{gba.mem.bios, 0x3FFF , biosRead8, biosRead16, biosRead32 },
 		memoryMap{dummyArr, 0, nullptr, nullptr, nullptr},
-		memoryMap{gGba.mem.workRAM, 0x3FFFF, nullptr, nullptr, nullptr},
-		memoryMap{gGba.mem.internalRAM, 0x7FFF, nullptr, nullptr, nullptr},
-		memoryMap{gGba.mem.ioMem, 0x3FF , ioMemRead8, ioMemRead16, ioMemRead32},
-		memoryMap{gGba.lcd.paletteRAM, 0x3FF, nullptr, nullptr, nullptr},
-		memoryMap{gGba.lcd.vram, 0x1FFFF , vramRead8, vramRead16, vramRead32},
-		memoryMap{gGba.lcd.oam, 0x3FF, nullptr, nullptr, nullptr},
-		memoryMap{gGba.mem.rom, 0x1FFFFFF , nullptr, rtcRead16, nullptr},
-		memoryMap{gGba.mem.rom, 0x1FFFFFF, nullptr, nullptr, nullptr},
-		memoryMap{gGba.mem.rom, 0x1FFFFFF, nullptr, nullptr, nullptr},
+		memoryMap{gba.mem.workRAM, 0x3FFFF, nullptr, nullptr, nullptr},
+		memoryMap{gba.mem.internalRAM, 0x7FFF, nullptr, nullptr, nullptr},
+		memoryMap{gba.mem.ioMem, 0x3FF , ioMemRead8, ioMemRead16, ioMemRead32},
+		memoryMap{gba.lcd.paletteRAM, 0x3FF, nullptr, nullptr, nullptr},
+		memoryMap{gba.lcd.vram, 0x1FFFF , vramRead8, vramRead16, vramRead32},
+		memoryMap{gba.lcd.oam, 0x3FF, nullptr, nullptr, nullptr},
+		memoryMap{gba.mem.rom, 0x1FFFFFF , nullptr, rtcRead16, nullptr},
+		memoryMap{gba.mem.rom, 0x1FFFFFF, nullptr, nullptr, nullptr},
+		memoryMap{gba.mem.rom, 0x1FFFFFF, nullptr, nullptr, nullptr},
 		memoryMap{dummyArr, 0, nullptr, nullptr, nullptr},
-		memoryMap{gGba.mem.rom, 0x1FFFFFF, nullptr, nullptr, nullptr},
+		memoryMap{gba.mem.rom, 0x1FFFFFF, nullptr, nullptr, nullptr},
 		memoryMap{dummyArr, 0 , eepromRead32, eepromRead32, eepromRead32},
 		memoryMap{dummyArr, 0xFFFF , flashRead32, flashRead32, flashRead32}
 	};
-	for(auto &m : gbaMap | std::views::drop(15)) { m = {dummyArr, 0, nullptr, nullptr, nullptr}; };
-	return gbaMap;
-}();
+	for(auto &m : map | std::views::drop(15)) { m = {dummyArr, 0, nullptr, nullptr, nullptr}; };
+	return map;
+}
 
 GBASys gGba;
 
@@ -140,6 +141,8 @@ constexpr uint8_t gamepakWaitState2[2] = { 8, 1 };
 constexpr bool isInRom [16]=
   { false, false, false, false, false, false, false, false,
     true, true, true, true, true, true, false, false };
+
+GBAMatrix_t stateMatrix;
 
 // The videoMemoryWait constants are used to add some waitstates
 // if the opcode access video memory data outside of vblank/hblank
@@ -450,6 +453,7 @@ static const variable_desc saveGameStruct[] = {
 };
 
 int romSize = SIZE_ROM;
+int pristineRomSize = 0;
 
 #define SWITicks cpu.SWITicks
 #define IRQTicks cpu.IRQTicks
@@ -555,11 +559,45 @@ int romSize = SIZE_ROM;
 #define g_paletteRAM gba.lcd.paletteRAM
 #define g_workRAM gba.mem.workRAM
 #define g_rom gba.mem.rom
+#define g_rom2 gba.mem.rom2.data()
 #define g_vram gba.lcd.vram
 #define g_oam gba.lcd.oam
 #define biosProtected gba.biosProtected
 
 static void UPDATE_REG(auto, auto) {} // dummy function
+
+#define MAPPING_MASK (GBA_MATRIX_MAPPINGS_MAX - 1)
+
+static void _remapMatrix(GBASys& gba, GBAMatrix_t *matrix)
+{
+    if (matrix == NULL) {
+        log("Matrix is NULL");
+        return;
+    }
+
+    if (matrix->vaddr & 0xFFFFE1FF) {
+        log("Invalid Matrix mapping: %08X", matrix->vaddr);
+        return;
+    }
+    if (matrix->size & 0xFFFFE1FF) {
+        log("Invalid Matrix size: %08X", matrix->size);
+        return;
+    }
+    if ((matrix->vaddr + matrix->size - 1) & 0xFFFFE000) {
+        log("Invalid Matrix mapping end: %08X", matrix->vaddr + matrix->size);
+        return;
+    }
+    int start = matrix->vaddr >> 9;
+    int size = (matrix->size >> 9) & MAPPING_MASK;
+    int i;
+    for (i = 0; i < size; ++i) {
+        matrix->mappings[(start + i) & MAPPING_MASK] = matrix->paddr + (i << 9);
+    }
+
+    if ((g_rom2 != NULL) && (g_rom != NULL)) {
+        memcpy(&g_rom[matrix->vaddr], &g_rom2[matrix->paddr], matrix->size);
+    }
+}
 
 #if 0
 void gbaUpdateRomSize(int size)
@@ -568,11 +606,11 @@ void gbaUpdateRomSize(int size)
     if (size > romSize) {
         romSize = size;
 
-        uint8_t* tmp = (uint8_t*)realloc(g_rom, SIZE_ROM);
+        uint8_t* tmp = (uint8_t*)realloc(g_rom, romSize);
         g_rom = tmp;
 
         uint16_t* temp = (uint16_t*)(g_rom + ((romSize + 1) & ~1));
-        for (int i = (romSize + 1) & ~1; i < SIZE_ROM; i += 2) {
+        for (int i = (romSize + 1) & ~1; i < romSize; i += 2) {
             WRITE16LE(temp, (i >> 1) & 0xFFFF);
             temp++;
         }
@@ -697,6 +735,7 @@ static void CPUUpdateWindow1(GBASys &gba)
 #define timer3Value gba.timers.timer3Value
 #define timer3ClockReload gba.timers.timer3ClockReload
 #define timer3Reload gba.timers.timer3Reload
+#define GBAMatrix gba.cpu.matrix
 
 void CPUUpdateRenderBuffers(GBASys &gba, bool force)
 {
@@ -741,8 +780,10 @@ unsigned int CPUWriteState(GBASys &gba, uint8_t* data)
     utilWriteMem(data, g_workRAM, SIZE_WRAM);
     utilWriteMem(data, g_vram, SIZE_VRAM);
     utilWriteMem(data, g_oam, SIZE_OAM);
-    uint32_t dummyPix[241*162]{};
-    utilWriteMem(data, dummyPix, SIZE_PIX);
+    uint32_t tmpPix[241*162];
+    static_assert(sizeof(tmpPix) == SIZE_PIX);
+    memcpy(tmpPix, gba.lcd.pix, sizeof(gba.lcd.pix));
+    utilWriteMem(data, tmpPix, SIZE_PIX);
     utilWriteMem(data, g_ioMem, SIZE_IOMEM);
 
     eepromSaveGame(data);
@@ -750,6 +791,15 @@ unsigned int CPUWriteState(GBASys &gba, uint8_t* data)
     soundSaveGame(data);
     cheatsSaveGame(data);
     rtcSaveGame(data);
+
+    if (pristineRomSize > SIZE_ROM) {
+        uint8_t ident = 0;
+        memcpy(&ident, &g_rom[0xAC], 1);
+
+        if (ident == 'M') {
+            utilWriteMem(data, &GBAMatrix, sizeof(GBAMatrix));
+        }
+    }
 
     return (ptrdiff_t)data - (ptrdiff_t)orig;
 }
@@ -797,6 +847,7 @@ bool CPUReadState(GBASys &gba, const uint8_t* data)
     utilReadMem(g_vram, data, SIZE_VRAM);
     utilReadMem(g_oam, data, SIZE_OAM);
     uint32_t dummyPix[241*162];
+    static_assert(sizeof(dummyPix) == SIZE_PIX);
     utilReadMem(dummyPix, data, SIZE_PIX);
     utilReadMem(g_ioMem, data, SIZE_IOMEM);
 
@@ -805,6 +856,15 @@ bool CPUReadState(GBASys &gba, const uint8_t* data)
     soundReadGame(gba, data);
     cheatsReadGame(data);
     rtcReadGame(data);
+
+    if (pristineRomSize > SIZE_ROM) {
+        uint8_t ident = 0;
+        memcpy(&ident, &g_rom[0xAC], 1);
+
+        if (ident == 'M') {
+            utilReadMem(&stateMatrix, data, sizeof(stateMatrix));
+        }
+    }
 
     //// Copypasta stuff ...
     // set pointers!
@@ -832,6 +892,27 @@ bool CPUReadState(GBASys &gba, const uint8_t* data)
     }
 
     CPUUpdateRegister(gba.cpu, 0x204, CPUReadHalfWordQuick(gba.cpu, 0x4000204));
+
+    if (pristineRomSize > SIZE_ROM) {
+        uint8_t ident = 0;
+        memcpy(&ident, &g_rom[0xAC], 1);
+
+        if (ident == 'M') {
+            GBAMatrix.size = 0x200;
+
+            for (int i = 0; i < 16; ++i) {
+                GBAMatrix.mappings[i] = stateMatrix.mappings[i];
+                GBAMatrix.paddr = GBAMatrix.mappings[i];
+                GBAMatrix.vaddr = i << 9;
+                _remapMatrix(gba, &GBAMatrix);
+            }
+
+            GBAMatrix.cmd = stateMatrix.cmd;
+            GBAMatrix.paddr = stateMatrix.paddr;
+            GBAMatrix.vaddr = stateMatrix.vaddr;
+            GBAMatrix.size = stateMatrix.size;
+        }
+    }
 
     return true;
 }
@@ -870,6 +951,15 @@ static bool CPUWriteState(gzFile gzFile)
 
     // version 1.5
     rtcSaveGame(gzFile);
+
+    if (pristineRomSize > SIZE_ROM) {
+        uint8_t ident = 0;
+        memcpy(&ident, &g_rom[0xAC], 1);
+
+        if (ident == 'M') {
+            utilGzWrite(gzFile, &GBAMatrix, sizeof(GBAMatrix));
+        }
+    }
 
     return true;
 }
@@ -1002,6 +1092,15 @@ static bool CPUReadState(gzFile gzFile)
         rtcReadGame(gzFile);
     }
 
+    if (pristineRomSize > SIZE_ROM) {
+        uint8_t ident = 0;
+        memcpy(&ident, &g_rom[0xAC], 1);
+
+        if (ident == 'M') {
+            utilGzRead(gzFile, &stateMatrix, sizeof(stateMatrix));
+        }
+    }
+
     if (version <= SAVE_GAME_VERSION_7) {
         uint32_t temp;
 #define SWAP(a, b, c)      \
@@ -1052,6 +1151,27 @@ static bool CPUReadState(gzFile gzFile)
 
     CPUUpdateRegister(0x204, CPUReadHalfWordQuick(0x4000204));
 
+    if (pristineRomSize > SIZE_ROM) {
+        uint8_t ident = 0;
+        memcpy(&ident, &g_rom[0xAC], 1);
+
+        if (ident == 'M') {
+            GBAMatrix.size = 0x200;
+
+            for (int i = 0; i < 16; ++i) {
+                GBAMatrix.mappings[i] = stateMatrix.mappings[i];
+                GBAMatrix.paddr = GBAMatrix.mappings[i];
+                GBAMatrix.vaddr = i << 9;
+                _remapMatrix(&GBAMatrix);
+            }
+
+            GBAMatrix.cmd = stateMatrix.cmd;
+            GBAMatrix.paddr = stateMatrix.paddr;
+            GBAMatrix.vaddr = stateMatrix.vaddr;
+            GBAMatrix.size = stateMatrix.size;
+        }
+    }
+
     return true;
 }
 
@@ -1059,7 +1179,7 @@ bool CPUReadMemState(char* memory, int available)
 {
   gzFile gzFile = utilMemGzOpen(memory, available, "r");
 
-  bool res = CPUReadState(gba, gzFile);
+  bool res = CPUReadState(gzFile);
 
   utilGzClose(gzFile);
 
@@ -1084,7 +1204,7 @@ bool CPUReadState(const char* file)
 bool CPUExportEepromFile(const char* fileName)
 {
   if (eepromInUse) {
-    FILE* file = fopen(fileName, "wb");
+    FILE* file = utilOpenFile(fileName, "wb");
 
     if (!file) {
       systemMessage(MSG_ERROR_CREATING_FILE, N_("Error creating file %s"),
@@ -1141,9 +1261,8 @@ bool CPUWriteBatteryFile(const char* fileName)
     }
     return true;
 }
-#endif
 
-bool CPUReadGSASnapshot(GBASys &gba, const char* fileName)
+bool CPUReadGSASnapshot(const char* fileName)
 {
   int i;
   FILE* file = utilOpenFile(fileName, "rb");
@@ -1192,7 +1311,7 @@ bool CPUReadGSASnapshot(GBASys &gba, const char* fileName)
   }
   fseek(file, 12, SEEK_CUR); // skip some flags
   if (saveSize >= 65536) {
-    if (fread(flashSaveMemory.data(), 1, saveSize, file) != (size_t)saveSize) {
+    if (fread(flashSaveMemory, 1, saveSize, file) != (size_t)saveSize) {
       fclose(file);
       return false;
     }
@@ -1204,17 +1323,18 @@ bool CPUReadGSASnapshot(GBASys &gba, const char* fileName)
     return false;
   }
   fclose(file);
-  CPUReset(gba);
+  CPUReset();
   return true;
 }
 
-bool CPUReadGSASPSnapshot(GBASys &gba, const char* fileName)
+bool CPUReadGSASPSnapshot(const char* fileName)
 {
   const char gsvfooter[] = "xV4\x12";
   const size_t namepos = 0x0c, namesz = 12;
   const size_t footerpos = 0x42c, footersz = 4;
 
   char footer[footersz + 1], romname[namesz + 1], savename[namesz + 1];
+
   FILE* file = utilOpenFile(fileName, "rb");
 
   if (!file) {
@@ -1256,15 +1376,14 @@ bool CPUReadGSASPSnapshot(GBASys &gba, const char* fileName)
   }
 
   // Read up to 128k save
-  FREAD_UNCHECKED(flashSaveMemory.data(), 1, FLASH_128K_SZ, file);
+  FREAD_UNCHECKED(flashSaveMemory, 1, FLASH_128K_SZ, file);
 
   fclose(file);
-  CPUReset(gba);
+  CPUReset();
   return true;
 }
 
-
-bool CPUWriteGSASnapshot(GBASys &gba, const char* fileName,
+bool CPUWriteGSASnapshot(const char* fileName,
                          const char* title,
                          const char* desc,
                          const char* notes)
@@ -1308,7 +1427,7 @@ bool CPUWriteGSASnapshot(GBASys &gba, const char* fileName,
   temp[0x12] = g_rom[0xbd]; // complement check
   temp[0x13] = g_rom[0xb0]; // maker
   temp[0x14] = 1; // 1 save ?
-  memcpy(&temp[0x1c], flashSaveMemory.data(), saveSize); // copy save
+  memcpy(&temp[0x1c], flashSaveMemory, saveSize); // copy save
   fwrite(temp, 1, totalSize, file); // write save + header
   uint32_t crc = 0;
 
@@ -1324,7 +1443,7 @@ bool CPUWriteGSASnapshot(GBASys &gba, const char* fileName,
   return true;
 }
 
-bool CPUImportEepromFile(GBASys &gba, const char* fileName)
+bool CPUImportEepromFile(const char* fileName)
 {
   FILE* file = utilOpenFile(fileName, "rb");
 
@@ -1337,7 +1456,7 @@ bool CPUImportEepromFile(GBASys &gba, const char* fileName)
   long size = ftell(file);
   fseek(file, 0, SEEK_SET);
   if (size == 512 || size == 0x2000) {
-    if (fread(eepromData.data(), 1, size, file) != (size_t)size) {
+    if (fread(eepromData, 1, size, file) != (size_t)size) {
       fclose(file);
       return false;
     }
@@ -1368,7 +1487,6 @@ bool CPUImportEepromFile(GBASys &gba, const char* fileName)
   return true;
 }
 
-#if 0
 bool CPUReadBatteryFile(const char* fileName)
 {
   FILE* file = utilOpenFile(fileName, "rb");
@@ -1513,6 +1631,11 @@ void CPUCleanUp()
       g_rom = NULL;
   }
 
+  if (g_rom2 != NULL) {
+      free(g_rom2);
+      g_rom2 = NULL;
+  }
+
   if (g_vram != NULL) {
       free(g_vram);
       g_vram = NULL;
@@ -1609,52 +1732,261 @@ void SetMapMasks()
 }
 #endif
 
-int CPULoadRom(GBASys &gba, const char *szFile)
+void GBAMatrixReset(GBASys& gba, GBAMatrix_t *matrix) {
+    if (matrix == NULL) {
+        log("Matrix is NULL");
+        return;
+    }
+
+    memset(matrix->mappings, 0, sizeof(matrix->mappings));
+    matrix->size = 0x1000;
+
+    matrix->paddr = 0;
+    matrix->vaddr = 0;
+    _remapMatrix(gba, matrix);
+    matrix->paddr = 0x200;
+    matrix->vaddr = 0x1000;
+    _remapMatrix(gba, matrix);
+}
+
+void GBAMatrixWrite(GBASys& gba, GBAMatrix_t *matrix, uint32_t address, uint32_t value)
 {
-	preLoadRomSetup(gba);
-
-  uint8_t* whereToLoad = coreOptions.cpuIsMultiBoot ? g_workRAM : g_rom;
-
-#if defined(VBAM_ENABLE_DEBUGGER)
-  if (CPUIsELF(szFile)) {
-    FILE* f = utilOpenFile(szFile, "rb");
-    if (!f) {
-      systemMessage(MSG_ERROR_OPENING_IMAGE, N_("Error opening image %s"),
-                    szFile);
-      return 0;
+    if (matrix == NULL) {
+        log("Matrix is NULL");
+        return;
     }
-    bool res = elfRead(szFile, romSize, f);
-    if (!res || romSize == 0) {
-      elfCleanUp();
-      return 0;
+
+    switch (address) {
+    case 0x0:
+        matrix->cmd = value;
+        switch (value) {
+        case 0x01:
+        case 0x11:
+            _remapMatrix(gba, matrix);
+            break;
+        default:
+            log("Unknown Matrix command: %08X", value);
+            break;
+        }
+        return;
+    case 0x4:
+        matrix->paddr = value & 0x03FFFFFF;
+        return;
+    case 0x8:
+        matrix->vaddr = value & 0x007FFFFF;
+        return;
+    case 0xC:
+        if (value == 0) {
+            log("Rejecting Matrix write for size 0");
+            return;
+        }
+        matrix->size = value << 9;
+        return;
     }
-  } else
-#endif // defined(VBAM_ENABLE_DEBUGGER)
-  if (szFile != NULL) {
-	  if (!utilLoad(szFile,
-						  utilIsGBAImage,
-						  whereToLoad,
-						  romSize)) {
-		return 0;
-	  }
-  }
+    log("Unknown Matrix write: %08X:%04X", address, value);
+}
 
-  postLoadRomSetup(gba);
+void GBAMatrixWrite16(GBASys& gba, GBAMatrix_t *matrix, uint32_t address, uint16_t value)
+{
+    if (matrix == NULL) {
+        log("Matrix is NULL");
+        return;
+    }
 
-  return romSize;
+    switch (address) {
+    case 0x0:
+        GBAMatrixWrite(gba, matrix, address, value | (matrix->cmd & 0xFFFF0000));
+        break;
+    case 0x4:
+        GBAMatrixWrite(gba, matrix, address, value | (matrix->paddr & 0xFFFF0000));
+        break;
+    case 0x8:
+        GBAMatrixWrite(gba, matrix, address, value | (matrix->vaddr & 0xFFFF0000));
+        break;
+    case 0xC:
+        GBAMatrixWrite(gba, matrix, address, value | (matrix->size & 0xFFFF0000));
+        break;
+    }
 }
 
 #if 0
-int CPULoadRomData(const char* data, int size)
+static size_t get_gba_rom_size(const char* szFile)
 {
-    romSize = SIZE_ROM;
+    size_t size = 0;
+    FILE *f = fopen(szFile, "rb");
+
+    if (f == NULL)
+        return 0;
+
+    fseek(f, 0, SEEK_END);
+    size = ftell(f);
+    fclose(f);
+
+    return size;
+}
+
+int CPULoadRom(const char* szFile)
+{
+    romSize = get_gba_rom_size(szFile);
     if (g_rom != NULL) {
         CPUCleanUp();
     }
 
     systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
 
-    g_rom = (uint8_t*)malloc(SIZE_ROM);
+    g_rom = (uint8_t*)malloc(romSize);
+    if (g_rom == NULL) {
+        systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
+            "ROM");
+        return 0;
+    }
+    g_workRAM = (uint8_t*)calloc(1, SIZE_WRAM);
+    if (g_workRAM == NULL) {
+        systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
+            "WRAM");
+        return 0;
+    }
+
+    uint8_t* whereToLoad = coreOptions.cpuIsMultiBoot ? g_workRAM : g_rom;
+
+#if defined(VBAM_ENABLE_DEBUGGER)
+    if (CPUIsELF(szFile)) {
+        FILE* f = utilOpenFile(szFile, "rb");
+        if (!f) {
+            systemMessage(MSG_ERROR_OPENING_IMAGE, N_("Error opening image %s"),
+                szFile);
+            free(g_rom);
+            g_rom = NULL;
+            free(g_workRAM);
+            g_workRAM = NULL;
+            return 0;
+        }
+        bool res = elfRead(szFile, romSize, f);
+        if (!res || romSize == 0) {
+            free(g_rom);
+            g_rom = NULL;
+            free(g_workRAM);
+            g_workRAM = NULL;
+            elfCleanUp();
+            return 0;
+        }
+    } else
+#endif  // defined(VBAM_ENABLE_DEBUGGER)
+        if (szFile != NULL) {
+        if (!utilLoad(szFile,
+                utilIsGBAImage,
+                whereToLoad,
+                romSize)) {
+            free(g_rom);
+            g_rom = NULL;
+            free(g_workRAM);
+            g_workRAM = NULL;
+            return 0;
+        }
+    }
+
+    memset(&GBAMatrix, 0, sizeof(GBAMatrix));
+    pristineRomSize = romSize;
+
+    uint16_t* temp = (uint16_t*)(g_rom + ((romSize + 1) & ~1));
+    int i;
+    for (i = (romSize + 1) & ~1; i < romSize; i += 2) {
+        WRITE16LE(temp, (i >> 1) & 0xFFFF);
+        temp++;
+    }
+
+    char ident = 0;
+
+    if (romSize > SIZE_ROM) {
+        memcpy(&ident, &g_rom[0xAC], 1);
+
+        if (ident == 'M') {
+            g_rom2 = (uint8_t*)malloc(SIZE_ROM * 4);
+            if (!utilLoad(szFile,
+                    utilIsGBAImage,
+                    g_rom2,
+                    romSize)) {
+                free(g_rom2);
+                g_rom2 = NULL;
+            }
+
+            romSize = 0x01000000;
+
+            log("GBA Matrix detected");
+        } else {
+            romSize = SIZE_ROM;
+        }
+    }
+
+    g_bios = (uint8_t*)calloc(1, SIZE_BIOS);
+    if (g_bios == NULL) {
+        systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
+            "BIOS");
+        CPUCleanUp();
+        return 0;
+    }
+    g_internalRAM = (uint8_t*)calloc(1, SIZE_IRAM);
+    if (g_internalRAM == NULL) {
+        systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
+            "IRAM");
+        CPUCleanUp();
+        return 0;
+    }
+    g_paletteRAM = (uint8_t*)calloc(1, SIZE_PRAM);
+    if (g_paletteRAM == NULL) {
+        systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
+            "PRAM");
+        CPUCleanUp();
+        return 0;
+    }
+    g_vram = (uint8_t*)calloc(1, SIZE_VRAM);
+    if (g_vram == NULL) {
+        systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
+            "VRAM");
+        CPUCleanUp();
+        return 0;
+    }
+    g_oam = (uint8_t*)calloc(1, SIZE_OAM);
+    if (g_oam == NULL) {
+        systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
+            "OAM");
+        CPUCleanUp();
+        return 0;
+    }
+
+    g_pix = (uint8_t*)calloc(1, 4 * 241 * 162);
+    if (g_pix == NULL) {
+        systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
+            "PIX");
+        CPUCleanUp();
+        return 0;
+    }
+    g_ioMem = (uint8_t*)calloc(1, SIZE_IOMEM);
+    if (g_ioMem == NULL) {
+        systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
+            "IO");
+        CPUCleanUp();
+        return 0;
+    }
+
+    flashInit();
+    eepromInit();
+
+    CPUUpdateRenderBuffers(true);
+
+    return romSize;
+}
+
+int CPULoadRomData(const char* data, int size)
+{
+    romSize = size % 2 == 0 ? size : size + 1;
+    if (g_rom != NULL) {
+        CPUCleanUp();
+    }
+
+    systemSaveUpdateCounter = SYSTEM_SAVE_NOT_UPDATED;
+
+    g_rom = (uint8_t*)malloc(romSize);
     if (g_rom == NULL) {
         systemMessage(MSG_OUT_OF_MEMORY, N_("Failed to allocate memory for %s"),
             "ROM");
@@ -1672,11 +2004,29 @@ int CPULoadRomData(const char* data, int size)
     romSize = size % 2 == 0 ? size : size + 1;
     memcpy(whereToLoad, data, size);
 
+    memset(&GBAMatrix, 0, sizeof(GBAMatrix));
+    pristineRomSize = romSize;
+
     uint16_t* temp = (uint16_t*)(g_rom + ((romSize + 1) & ~1));
     int i;
-    for (i = (romSize + 1) & ~1; i < SIZE_ROM; i += 2) {
+    for (i = (romSize + 1) & ~1; i < romSize; i += 2) {
         WRITE16LE(temp, (i >> 1) & 0xFFFF);
         temp++;
+    }
+
+    if (romSize > SIZE_ROM) {
+        char ident = 0;
+        memcpy(&ident, &g_rom[0xAC], 1);
+
+        if (ident == 'M') {
+            g_rom2 = (uint8_t *)malloc(romSize);
+            memcpy(g_rom2, data, size);
+            romSize = 0x01000000;
+
+            log("GBA Matrix detected");
+        } else {
+            romSize = SIZE_ROM;
+        }
     }
 
     g_bios = (uint8_t*)calloc(1, SIZE_BIOS);
@@ -3317,12 +3667,12 @@ void CPUInit(GBASys &gba, std::span<uint8_t> biosRom)
     for (j = 0; j < 8; j++)
       if (i & (1 << j))
         count++;
-    cpuBitsSet[i] = count;
+    cpuBitsSet[i] = DowncastU8(count);
 
     for (j = 0; j < 8; j++)
       if (i & (1 << j))
         break;
-    cpuLowestBitSet[i] = j;
+    cpuLowestBitSet[i] = DowncastU8(j);
   }
 
   for (i = 0; i < 0x400; i++)
@@ -3360,7 +3710,7 @@ void CPUInit(GBASys &gba, std::span<uint8_t> biosRom)
   for (i = 0x304; i < 0x400; i++)
     ioReadable[i] = false;*/
 
-  gba.cpu.map = gbaMap;
+  gba.cpu.map = gbaMap(gba);
 
   if (romSize < 0x1fe2000) {
   	*((uint16_t*)&g_rom[0x1fe209c]) = 0xdffa; // SWI 0xFA
@@ -3639,6 +3989,15 @@ void CPUReset(GBASys &gba)
   lastTime = systemGetClock();
 
   SWITicks = 0;
+
+  if (pristineRomSize > SIZE_ROM) {
+      char ident = 0;
+      memcpy(&ident, &g_rom[0xAC], 1);
+
+      if (ident == 'M') {
+          GBAMatrixReset(gba, &GBAMatrix);
+      }
+  }
 }
 
 void ARM7TDMI::interrupt(const GBAMem::IoMem &ioMem)
@@ -3827,26 +4186,41 @@ void CPULoop(GBASys &gba, EmuEx::EmuSystemTaskContext taskCtx, EmuEx::EmuVideo *
 					static bool speedup_throttle_set = false;
           bool turbo_button_pressed        = (joy >> 10) & 1;
 #if 0
-					static uint32_t last_throttle;
+          static uint32_t last_throttle;
+          static bool current_volume_saved = false;
+          static float current_volume;
 
-					if (turbo_button_pressed) {
-							if (coreOptions.speedup_frame_skip)
-									framesToSkip = coreOptions.speedup_frame_skip;
-							else {
-									if (!speedup_throttle_set && coreOptions.throttle != coreOptions.speedup_throttle) {
-											last_throttle = coreOptions.throttle;
-											soundSetThrottle(DowncastU16(coreOptions.speedup_throttle));
-											speedup_throttle_set = true;
-									}
+          if (turbo_button_pressed) {
+              if (coreOptions.speedup_frame_skip)
+                  framesToSkip = coreOptions.speedup_frame_skip;
+              else {
+                  if (!speedup_throttle_set && coreOptions.throttle != coreOptions.speedup_throttle) {
+                      last_throttle = coreOptions.throttle;
+                      soundSetThrottle(DowncastU16(coreOptions.speedup_throttle));
+                      speedup_throttle_set = true;
+                  }
 
-									if (coreOptions.speedup_throttle_frame_skip)
-											framesToSkip += static_cast<int>(std::ceil(double(coreOptions.speedup_throttle) / 100.0) - 1);
-							}
-					}
-					else if (speedup_throttle_set) {
-							soundSetThrottle(DowncastU16(last_throttle));
-							speedup_throttle_set = false;
-					}
+                  if (coreOptions.speedup_throttle_frame_skip)
+                      framesToSkip += static_cast<int>(std::ceil(double(coreOptions.speedup_throttle) / 100.0) - 1);
+              }
+
+              if (coreOptions.speedup_mute && !current_volume_saved) {
+                  current_volume = soundGetVolume();
+                  current_volume_saved = true;
+                  soundSetVolume(0);
+              }
+          }
+          else {
+              if (current_volume_saved) {
+                  soundSetVolume(current_volume);
+                  current_volume_saved = false;
+              }
+
+              if (speedup_throttle_set) {
+                  soundSetThrottle(DowncastU16(last_throttle));
+                  speedup_throttle_set = false;
+              }
+          }
 #else
 					if (turbo_button_pressed)
 							framesToSkip = 9;
@@ -3934,6 +4308,38 @@ void CPULoop(GBASys &gba, EmuEx::EmuSystemTaskContext taskCtx, EmuEx::EmuVideo *
             if (frameCount >= framesToSkip) {
                 (*renderLine)();
                 switch (systemColorDepth) {
+                case 8: {
+#ifdef __LIBRETRO__
+                	  uint8_t* dest = (uint8_t*)g_pix + 240 * VCOUNT;
+#else
+                	  uint8_t* dest = (uint8_t*)g_pix + 244 * (VCOUNT + 1);
+#endif
+                	  for (int x = 0; x < 240;) {
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+                	      *dest++ = systemColorMap8[g_lineMix[x++] & 0xFFFF];
+                	  }
+                	  // for filters that read past the screen
+#ifndef __LIBRETRO__
+                	  * dest++ = 0;
+#endif
+                } break;
                 case 16: {
 #ifdef __LIBRETRO__
                     uint16_t* dest = (uint16_t*)g_pix + 240 * VCOUNT;
@@ -3967,43 +4373,58 @@ void CPULoop(GBASys &gba, EmuEx::EmuSystemTaskContext taskCtx, EmuEx::EmuVideo *
 #endif
                 } break;
                 case 24: {
-                    uint8_t* dest = (uint8_t*)g_pix + 240 * VCOUNT * 3;
+                    uint8_t* dest = (uint8_t*)g_pix + (240 * 3) * (VCOUNT + 1);
                     for (int x = 0; x < 240;) {
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
+                    	  uint32_t color = systemColorMap32[g_lineMix[x++] & 0xFFFF];
+                    	  *dest++ = (uint8_t)(color & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 8) & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 16) & 0xFF);
+                    	  color = systemColorMap32[g_lineMix[x++] & 0xFFFF];
+                    	  *dest++ = (uint8_t)(color & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 8) & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 16) & 0xFF);
+                    	  color = systemColorMap32[g_lineMix[x++] & 0xFFFF];
+                    	  *dest++ = (uint8_t)(color & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 8) & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 16) & 0xFF);
+                    	  color = systemColorMap32[g_lineMix[x++] & 0xFFFF];
+                    	  *dest++ = (uint8_t)(color & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 8) & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 16) & 0xFF);
 
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
+                    	  color = systemColorMap32[g_lineMix[x++] & 0xFFFF];
+                    	  *dest++ = (uint8_t)(color & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 8) & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 16) & 0xFF);
+                    	  color = systemColorMap32[g_lineMix[x++] & 0xFFFF];
+                    	  *dest++ = (uint8_t)(color & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 8) & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 16) & 0xFF);
+                    	  color = systemColorMap32[g_lineMix[x++] & 0xFFFF];
+                    	  *dest++ = (uint8_t)(color & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 8) & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 16) & 0xFF);
+                    	  color = systemColorMap32[g_lineMix[x++] & 0xFFFF];
+                    	  *dest++ = (uint8_t)(color & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 8) & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 16) & 0xFF);
 
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
-
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
-                        *((uint32_t*)dest) = systemColorMap32[g_lineMix[x++] & 0xFFFF];
-                        dest += 3;
+                    	  color = systemColorMap32[g_lineMix[x++] & 0xFFFF];
+                    	  *dest++ = (uint8_t)(color & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 8) & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 16) & 0xFF);
+                    	  color = systemColorMap32[g_lineMix[x++] & 0xFFFF];
+                    	  *dest++ = (uint8_t)(color & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 8) & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 16) & 0xFF);
+                    	  color = systemColorMap32[g_lineMix[x++] & 0xFFFF];
+                    	  *dest++ = (uint8_t)(color & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 8) & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 16) & 0xFF);
+                    	  color = systemColorMap32[g_lineMix[x++] & 0xFFFF];
+                    	  *dest++ = (uint8_t)(color & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 8) & 0xFF);
+                    	  *dest++ = (uint8_t)((color >> 16) & 0xFF);
                     }
                 } break;
                 case 32: {
@@ -4079,6 +4500,7 @@ void CPULoop(GBASys &gba, EmuEx::EmuSystemTaskContext taskCtx, EmuEx::EmuVideo *
 	    // we shouldn't be doing sound in stop state, but we loose synchronization
       // if sound is disabled, so in stop state, soundTick will just produce
       // mute sound
+
       //soundTicks -= clockTicks;
       //if (soundTicks <= 0) {
         //psoundTickfn();

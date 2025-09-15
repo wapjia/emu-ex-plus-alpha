@@ -129,6 +129,7 @@ public:
 	void updateScreenFrameRate(FrameRate);
 	void updateSystemFrameRate();
 	bool advanceFrames(FrameParams);
+	bool setWaitForPresent() { return waitingForPresent_ = shouldWaitForPresent; }
 	bool waitingForPresent() const { return waitingForPresent_; }
 	void notifyWindowPresented();
 	FrameRateConfig getFrameRateConfigAiWu();//爱吾修改：增加方法
@@ -149,6 +150,7 @@ public:
 	bool enableBlankFrameInsertion{};
 private:
 	bool waitingForPresent_{};
+	bool shouldWaitForPresent{};
 	bool isSuspended{};
 
 	void resume();

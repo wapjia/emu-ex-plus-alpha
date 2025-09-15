@@ -124,7 +124,11 @@ void C64System::onSessionOptionsLoaded(EmuApp &)
 
 bool C64System::resetSessionOptions(EmuApp &)
 {
-	initC64(EmuApp::get(appContext()));
+	if(initC64(EmuApp::get(appContext())))
+	{
+		// wait for initial machine reset
+		signalViceThreadAndWait();
+	}
 	enterCPUTrap();
 	setModel(defaultModel);
 	setJoystickMode(JoystickMode::Auto);
@@ -163,6 +167,7 @@ bool C64System::readConfig(ConfigType type, MapIO &io, unsigned key)
 			case CFGKEY_VICE_SYSTEM: return readOptionValue(io, optionViceSystem, [](auto v){return int(v) < VicePlugin::SYSTEMS;});
 			case CFGKEY_SYSTEM_FILE_PATH:
 				return readStringOptionValue<FS::PathString>(io, [&](auto &&path){sysFilePath[0] = IG_forward(path);});
+			case CFGKEY_RECENT_CONTENT_V2: return gApp().recentContent.readContent(io, *this);
 		}
 	}
 	else if(type == ConfigType::CORE)
@@ -182,6 +187,7 @@ bool C64System::readConfig(ConfigType type, MapIO &io, unsigned key)
 			case CFGKEY_COLOR_GAMMA: return readOptionValue<int16_t>(io, [&](auto v){ setColorSetting(ColorSetting::Gamma, v); });
 			case CFGKEY_COLOR_TINT: return readOptionValue<int16_t>(io, [&](auto v){ setColorSetting(ColorSetting::Tint, v); });
 			case CFGKEY_DEFAULT_JOYSTICK_MODE: return readOptionValue(io, defaultJoystickMode);
+			case CFGKEY_RECENT_CONTENT_V2: return gApp().recentContent.readContent(io, *this);
 		}
 	}
 	else if(type == ConfigType::SESSION)
@@ -256,6 +262,7 @@ void C64System::writeConfig(ConfigType type, FileIO &io)
 		writeOptionValueIfNotDefault(io, CFGKEY_COLOR_GAMMA, int16_t(colorSetting(ColorSetting::Gamma)), 1000);
 		writeOptionValueIfNotDefault(io, CFGKEY_COLOR_TINT, int16_t(colorSetting(ColorSetting::Tint)), 1000);
 		writeOptionValueIfNotDefault(io, defaultJoystickMode);
+		gApp().recentContent.writeContent(io);
 	}
 	else if(type == ConfigType::SESSION)
 	{

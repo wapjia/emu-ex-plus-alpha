@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -44,7 +44,7 @@ class DelayQueueIteratorImpl : public DelayQueueIterator
     uInt8 currentIndex() const;
 
   private:
-    const DelayQueue<length, capacity>& myDelayQueue;
+    const DelayQueue<length, capacity>& myDelayQueue;  // NOLINT: we want a reference here
     uInt8 myDelayCycle{0};
     uInt8 myIndex{0};
 };
@@ -60,7 +60,7 @@ DelayQueueIteratorImpl<length, capacity>::DelayQueueIteratorImpl(
 )
   : myDelayQueue(delayQueue)
 {
-  while (myDelayQueue.myMembers[currentIndex()].mySize == 0 && isValid())
+  while (myDelayQueue.myMembers[currentIndex()].mySize == 0 && isValid()) // NOLINT
     myDelayCycle++;
 }
 

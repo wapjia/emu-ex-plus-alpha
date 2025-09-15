@@ -8,7 +8,7 @@
 // MM     MM 66  66 55  55 00  00 22
 // MM     MM  6666   5555   0000  222222
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -31,8 +31,9 @@ void DispatchResult::setOk(uInt64 cycles)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void DispatchResult::setDebugger(uInt64 cycles, const string& message,
-                                 const string& tooltip, int address, bool wasReadTrap)
+void DispatchResult::setDebugger(uInt64 cycles, string_view message,
+                                 string_view tooltip, int address,
+                                 bool wasReadTrap)
 {
   myStatus = Status::debugger;
   myCycles = cycles;
@@ -51,7 +52,7 @@ void DispatchResult::setFatal(uInt64 cycles)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void DispatchResult::setMessage(const string& message)
+void DispatchResult::setMessage(string_view message)
 {
   myMessage = message;
 }

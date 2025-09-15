@@ -51,7 +51,7 @@ constexpr WSize lcdSize{240, 160};
 EmuSystem::NameFilterFunc EmuSystem::defaultFsFilter =
 	[](std::string_view name)
 	{
-		return IG::endsWithAnyCaseless(name, ".gba");
+		return IG::endsWithAnyCaseless(name, ".gba", ".mb");
 	};
 
 GbaApp::GbaApp(ApplicationInitParams initParams, ApplicationContext &ctx):
@@ -161,6 +161,8 @@ void GbaSystem::closeSystem()
 	sensorListener = {};
 	darknessLevel = darknessLevelDefault;
 	cheatsList.clear();
+  gGba.cpu.matrix = {};
+  gGba.mem.rom2.reset();
 }
 
 void GbaSystem::applyGamePatches(uint8_t *rom, int &romSize)
@@ -198,7 +200,8 @@ void GbaSystem::applyGamePatches(uint8_t *rom, int &romSize)
 
 void GbaSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDelegate)
 {
-	int size = CPULoadRomWithIO(gGba, io);
+	coreOptions.cpuIsMultiBoot = endsWithAnyCaseless(contentFileName(), ".mb");
+	int size = CPULoadRomWithIO(gGba, io, coreOptions.cpuIsMultiBoot ? LoadDestination::ram : LoadDestination::rom);
 	if(!size)
 	{
 		throwFileReadError();

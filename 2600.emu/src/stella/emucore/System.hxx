@@ -8,7 +8,7 @@
 // MM     MM 66  66 55  55 00  00 22
 // MM     MM  6666   5555   0000  222222
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -169,32 +169,36 @@ class System : public Serializable
     uInt8 getDataBusState() const { return myDataBusState; }
 
     /**
-      Get the byte at the specified address.  No masking of the
-      address occurs before it's sent to the device mapped at
-      the address.
-
-      @param address  The address from which the value should be loaded
-      @param flags    Indicates that this address has the given flags
-                      for type of access (CODE, DATA, GFX, etc)
-
-      @return The byte at the specified address
-    */
-    uInt8 peek(uInt16 address, Device::AccessFlags flags = Device::NONE);
+     * See peekImpl below.
+     */
+    uInt8 peek(uInt16 address, Device::AccessFlags flags = Device::NONE)
+    {
+      return peekImpl<false>(address, flags);
+    }
 
     /**
-      Change the byte at the specified address to the given value.
-      No masking of the address occurs before it's sent to the device
-      mapped at the address.
+     * See peekImpl below.
+     */
+    uInt8 peekOob(uInt16 address, Device::AccessFlags flags = Device::NONE)
+    {
+      return peekImpl<true>(address, flags);
+    }
 
-      This method sets the 'page dirty' if the write succeeds.  In the
-      case of direct-access pokes, the write always succeeds.  Otherwise,
-      if the device is handling the poke, we depend on its return value
-      for this information.
+    /**
+     * See pokeImpl below.
+     */
+    void poke(uInt16 address, uInt8 value, Device::AccessFlags flags = Device::NONE)
+    {
+      pokeImpl<false>(address, value, flags);
+    }
 
-      @param address  The address where the value should be stored
-      @param value    The value to be stored at the address
-    */
-    void poke(uInt16 address, uInt8 value, Device::AccessFlags flags = Device::NONE);
+    /**
+     * See pokeImpl below.
+     */
+    void pokeOob(uInt16 address, uInt8 value, Device::AccessFlags flags = Device::NONE)
+    {
+      pokeImpl<true>(address, value, flags);
+    }
 
     /**
       Lock/unlock the data bus. When the bus is locked, peek() and
@@ -215,14 +219,14 @@ class System : public Serializable
       only really acts on CODE/GFX/PGFX/COL/PCOL/BCOL/AUD/DATA/ROW.
     */
     Device::AccessFlags getAccessFlags(uInt16 address) const;
-    void setAccessFlags(uInt16 address, Device::AccessFlags flags);
+    void setAccessFlags(uInt16 address, Device::AccessFlags flags) const;
 
     /**
       Increase the given address's access counter
 
       @param address The address to modify
     */
-    void increaseAccessCounter(uInt16 address, bool isWrite);
+    void increaseAccessCounter(uInt16 address, bool isWrite) const;
   #endif
 
   public:
@@ -366,6 +370,41 @@ class System : public Serializable
     bool load(Serializer& in) override;
 
   private:
+    /**
+      Get the byte at the specified address.  No masking of the
+      address occurs before it's sent to the device mapped at
+      the address.
+
+      @param oob      Out-of-band peeks are not part of the activity of the
+                      emulated system
+      @param address  The address from which the value should be loaded
+      @param flags    Indicates that this address has the given flags
+                      for type of access (CODE, DATA, GFX, etc)
+
+      @return The byte at the specified address
+    */
+    template<bool oob = false>
+    uInt8 peekImpl(uInt16 address, Device::AccessFlags flags);
+
+    /**
+      Change the byte at the specified address to the given value.
+      No masking of the address occurs before it's sent to the device
+      mapped at the address.
+
+      This method sets the 'page dirty' if the write succeeds.  In the
+      case of direct-access pokes, the write always succeeds.  Otherwise,
+      if the device is handling the poke, we depend on its return value
+      for this information.
+
+      @param oob      Out-of-band peeks are not part of the activity of the
+                      emulated system
+      @param address  The address where the value should be stored
+      @param value    The value to be stored at the address
+    */
+    template<bool oob = false>
+    void pokeImpl(uInt16 address, uInt8 value, Device::AccessFlags flags);
+
+  private:
     // The system RNG
     Random& myRandom;
 
@@ -391,7 +430,7 @@ class System : public Serializable
     std::array<PageAccess, NUM_PAGES> myPageAccessTable;
 
     // The list of dirty pages
-    std::array<bool, NUM_PAGES> myPageIsDirtyTable;
+    std::array<bool, NUM_PAGES> myPageIsDirtyTable{};
 
     // The current state of the Data Bus
     uInt8 myDataBusState{0};
@@ -405,6 +444,8 @@ class System : public Serializable
     // core is attempting to autodetect display settings, cart modes, etc)
     // Some parts of the codebase need to act differently in such a case
     bool mySystemInAutodetect{false};
+
+    bool myCartridgeDoesBusStuffing{false};
 
   private:
     // Following constructors and assignment operators not supported

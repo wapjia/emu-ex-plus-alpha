@@ -50,9 +50,13 @@ void RecentContent::add(const EmuSystem &system)
 	add(system.contentLocation(), system.contentDisplayName());
 }
 
-void RecentContent::writeConfig(FileIO &io) const
+void RecentContent::writeConfig(FileIO& io) const
 {
 	writeOptionValueIfNotDefault(io, CFGKEY_MAX_RECENT_CONTENT, maxRecentContent, defaultMaxRecentContent);
+}
+
+void RecentContent::writeContent(FileIO& io) const
+{
 	log.info("writing recent content list");
 	for(const auto &e : recentContentList)
 	{
@@ -63,35 +67,36 @@ void RecentContent::writeConfig(FileIO &io) const
 	}
 }
 
-bool RecentContent::readConfig(MapIO &io, unsigned key, const EmuSystem &system)
+bool RecentContent::readConfig(MapIO& io, unsigned key)
 {
 	if(key == CFGKEY_MAX_RECENT_CONTENT)
 	{
 		readOptionValue(io, maxRecentContent);
 		return true;
 	}
-	else if(key == CFGKEY_RECENT_CONTENT_V2)
+	return false;
+}
+
+bool RecentContent::readContent(MapIO& io, const EmuSystem& system)
+{
+	FS::PathString path;
+	if(readSizedData<uint16_t>(io, path) == -1)
 	{
-		FS::PathString path;
-		if(readSizedData<uint16_t>(io, path) == -1)
-		{
-			log.error("error reading string option");
-			return true;
-		}
-		if(path.empty())
-			return true; // don't add empty paths
-		auto displayName = system.contentDisplayNameForPath(path);
-		if(displayName.empty())
-		{
-			log.info("skipping missing recent content:{}", path);
-			return true;
-		}
-		RecentContentInfo info{path, displayName};
-		const auto &added = recentContentList.emplace_back(info);
-		log.info("added game to recent list:{}, name:{}", added.path, added.name);
+		log.error("error reading string option");
+		return false;
+	}
+	if(path.empty())
+		return true; // don't add empty paths
+	auto displayName = system.contentDisplayNameForPath(path);
+	if(displayName.empty())
+	{
+		log.info("skipping missing recent content:{}", path);
 		return true;
 	}
-	return false;
+	RecentContentInfo info{path, displayName};
+	const auto &added = recentContentList.emplace_back(info);
+	log.info("added game to recent list:{}, name:{}", added.path, added.name);
+	return true;
 }
 
 }

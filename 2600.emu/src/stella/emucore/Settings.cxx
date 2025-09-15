@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -16,7 +16,6 @@
 //============================================================================
 
 #include "bspf.hxx"
-
 #include "OSystem.hxx"
 #include "Version.hxx"
 #include "Logger.hxx"
@@ -25,12 +24,23 @@
 #include "PaletteHandler.hxx"
 #include "Joystick.hxx"
 #include "Paddles.hxx"
+#include "CartELF.hxx"
 #ifdef GUI_SUPPORT
   #include "JitterEmulation.hxx"
 #endif
 
 #ifdef DEBUGGER_SUPPORT
   #include "DebuggerDialog.hxx"
+#endif
+
+//#if defined(BSPF_WINDOWS)
+//#include <windows.hxx>
+//#endif
+
+#if defined(BSPF_UNIX) || defined(BSPF_MACOS)
+#include <cstdio>
+#include <sys/ioctl.h>
+#include <unistd.h>
 #endif
 
 #include "Settings.hxx"
@@ -44,6 +54,8 @@ Settings::Settings()
   setPermanent(SETTINGS_VERSION_KEY, 0);
   setPermanent("stella.version", "6.2.1");
 
+  //setTemporary("minimal_ui", 1); // enable for minimal UI testing only
+
   // Video-related options
   setPermanent("video", "");
   setPermanent("speed", "1.0");
@@ -53,6 +65,13 @@ Settings::Settings()
   setPermanent("display", 0);
   setPermanent("uimessages", "true");
   setPermanent("pausedim", "true");
+  setPermanent("bezel.show", "true");
+  setPermanent("bezel.windowed", "false");
+  setPermanent("bezel.win.auto", "true");
+  setPermanent("bezel.win.left", "12");
+  setPermanent("bezel.win.right", "12");
+  setPermanent("bezel.win.top", "0");
+  setPermanent("bezel.win.bottom", "0");
   // TIA specific options
   setPermanent("tia.inter", "false");
   setPermanent("tia.zoom", "3");
@@ -81,8 +100,8 @@ Settings::Settings()
   setPermanent("pal.gamma", "0.0");
   // TV filtering options
   setPermanent("tv.filter", "0");
-  setPermanent("tv.phosphor", "byrom");
-  setPermanent("tv.phosblend", "50");
+  setPermanent(PhosphorHandler::SETTING_MODE, PhosphorHandler::VALUE_BYROM);
+  setPermanent(PhosphorHandler::SETTING_BLEND, PhosphorHandler::DEFAULT_BLEND);
   setPermanent("tv.scanlines", "0");
   setPermanent("tv.scanmask", TIASurface::SETTING_STANDARD);
   // TV options when using 'custom' mode
@@ -91,6 +110,9 @@ Settings::Settings()
   setPermanent("tv.artifacts", "0.0");
   setPermanent("tv.fringing", "0.0");
   setPermanent("tv.bleed", "0.0");
+
+  setPermanent("detectpal60", "false");
+  setPermanent("detectntsc50", "false");
 
   // Sound options
   setPermanent(AudioSettings::SETTING_ENABLED, AudioSettings::DEFAULT_ENABLED);
@@ -110,6 +132,7 @@ Settings::Settings()
   setPermanent("keymap_emu", "");
   setPermanent("keymap_joy", "");
   setPermanent("keymap_pad", "");
+  setPermanent("keymap_drv", "");
   setPermanent("keymap_key", "");
   setPermanent("keymap_ui", "");
   setPermanent("joymap", "");
@@ -147,6 +170,7 @@ Settings::Settings()
   setPermanent("romdir", "");
   setPermanent("userdir", "");
   setPermanent("saveuserdir", "false");
+  setPermanent("bezel.dir", "");
 
   // ROM browser options
   setPermanent("exitlauncher", "false");
@@ -155,7 +179,6 @@ Settings::Settings()
   setPermanent("launcherdisplay", 0);
   setPermanent("launcherres", Common::Size(900, 600));
   setPermanent("launcherfont", "medium");
-  setPermanent("launcherroms", "true");
   setPermanent("launchersubdirs", "false");
   setPermanent("launcherextensions", "false");
   setPermanent("launcherbuttons", "false");
@@ -177,6 +200,8 @@ Settings::Settings()
   setPermanent("dbg.display", 0);
 #endif
   setPermanent("uipalette", "standard");
+  setPermanent("uipalette2", "dark");
+  setPermanent("altuipalette", "false");
   setPermanent("hidpi", "false");
   setPermanent("listdelay", "300");
   setPermanent("mwheel", "4");
@@ -189,9 +214,8 @@ Settings::Settings()
   setPermanent("confirmexit", false);
   setPermanent("autopause", false);
 
-
   // Misc options
-  setPermanent("loglevel", int(Logger::Level::INFO));
+  setPermanent("loglevel", static_cast<int>(Logger::Level::INFO));
   setPermanent("logtoconsole", "0");
   setPermanent("avoxport", "");
   setPermanent("fastscbios", "true");
@@ -203,6 +227,7 @@ Settings::Settings()
   setPermanent("plusroms.nick", "");
   setTemporary("plusroms.id", "");
   setPermanent("plusroms.fixedid", "");
+  setPermanent("filterbstypes", "true");
 
 #ifdef DEBUGGER_SUPPORT
   // Debugger/disassembly options
@@ -211,6 +236,7 @@ Settings::Settings()
   setPermanent("dbg.uhex", "false");
   setPermanent("dbg.ghostreadstrap", "true");
   setPermanent("dbg.logbreaks", "false");
+  setPermanent("dbg.logtrace", "false");
   setPermanent("dbg.autosave", "false");
   setPermanent("dis.resolve", "true");
   setPermanent("dis.gfxformat", "2");
@@ -227,10 +253,14 @@ Settings::Settings()
   setPermanent("plr.cpurandom", "AXYP");
   setPermanent("plr.tiarandom", "false");
   setPermanent("plr.colorloss", "false");
-  setPermanent("plr.tv.jitter", "true");
 #ifdef GUI_SUPPORT
+  setPermanent("plr.tv.jitter", "true");
   setPermanent("plr.tv.jitter_sense", JitterEmulation::PLR_SENSITIVITY);
   setPermanent("plr.tv.jitter_recovery", JitterEmulation::PLR_RECOVERY);
+#else
+  setPermanent("plr.tv.jitter", "false");
+  setPermanent("plr.tv.jitter_sense", 1);
+  setPermanent("plr.tv.jitter_recovery", 1);
 #endif
   setPermanent("plr.debugcolors", "false");
   setPermanent("plr.console", "2600"); // 7800
@@ -249,11 +279,16 @@ Settings::Settings()
   setPermanent("dev.ramrandom", "true");
   setPermanent("dev.cpurandom", "SAXYP");
   setPermanent("dev.tiarandom", "true");
+  setPermanent("dev.hsrandom", "true");
   setPermanent("dev.colorloss", "true");
-  setPermanent("dev.tv.jitter", "true");
 #ifdef GUI_SUPPORT
+  setPermanent("dev.tv.jitter", "true");
   setPermanent("dev.tv.jitter_sense", JitterEmulation::DEV_SENSITIVITY);
   setPermanent("dev.tv.jitter_recovery", JitterEmulation::DEV_RECOVERY);
+#else
+  setPermanent("dev.tv.jitter", "false");
+  setPermanent("dev.tv.jitter_sense", 1);
+  setPermanent("dev.tv.jitter_recovery", 1);
 #endif
   setPermanent("dev.debugcolors", "false");
   setPermanent("dev.tiadriven", "true");
@@ -262,6 +297,9 @@ Settings::Settings()
   setPermanent("dev.tia.plinvphase", "true");
   setPermanent("dev.tia.msinvphase", "true");
   setPermanent("dev.tia.blinvphase", "true");
+  setPermanent("dev.tia.pllatehmove", "true");
+  setPermanent("dev.tia.mslatehmove", "true");
+  setPermanent("dev.tia.bllatehmove", "true");
   setPermanent("dev.tia.delaypfbits", "true");
   setPermanent("dev.tia.delaypfcolor", "true");
   setPermanent("dev.tia.pfscoreglitch", "true");
@@ -277,12 +315,15 @@ Settings::Settings()
   setPermanent("dev.extaccess", "true");
   // Thumb ARM emulation options
   setPermanent("dev.thumb.trapfatal", "true");
+  setPermanent("dev.arm.mips", CartridgeELF::MIPS_DEF);
 #ifdef DEBUGGER_SUPPORT
   setPermanent("dev.thumb.inccycles", "true");
   setPermanent("dev.thumb.cyclefactor", "1.05");
   setPermanent("dev.thumb.chiptype", "0"); // = LPC2103
   setPermanent("dev.thumb.mammode", "2");
 #endif
+
+  setTemporary("elf.dump", false);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -294,7 +335,7 @@ void Settings::setRepository(shared_ptr<KeyValueRepository> repository)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Settings::load(const Options& options)
 {
-  Options fromFile = myRespository->load();
+  const Options fromFile = myRespository->load();
   for (const auto& opt: fromFile)
     setValue(opt.first, opt.second, false);
 
@@ -318,7 +359,7 @@ void Settings::save()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Settings::validate()
 {
-  float f = getFloat("speed");
+  const float f = getFloat("speed");
   if (f <= 0) setValue("speed", "1.0");
 
   int i = getInt("tia.vsizeadjust");
@@ -328,11 +369,12 @@ void Settings::validate()
   sort(s.begin(), s.end());
   if(s != "bgopry")  setValue("tia.dbgcolors", "roygpb");
 
-  s = getString("tv.phosphor");
-  if(s != "always" && s != "byrom")  setValue("tv.phosphor", "byrom");
+  if(PhosphorHandler::toPhosphorMode(getString(PhosphorHandler::SETTING_MODE)) == PhosphorHandler::ByRom)
+    setValue(PhosphorHandler::SETTING_MODE, PhosphorHandler::VALUE_BYROM);
 
-  i = getInt("tv.phosblend");
-  if(i < 0 || i > 100)  setValue("tv.phosblend", "50");
+  i = getInt(PhosphorHandler::SETTING_BLEND);
+  if(i < 0 || i > 100)
+    setValue(PhosphorHandler::SETTING_BLEND, PhosphorHandler::DEFAULT_BLEND);
 
   s = getString("tv.scanmask");
   if(s != TIASurface::SETTING_STANDARD
@@ -461,21 +503,19 @@ void Settings::validate()
 
   i = getInt("loglevel");
   if(i < static_cast<int>(Logger::Level::MIN) || i > static_cast<int>(Logger::Level::MAX))
-    setValue("loglevel", int(Logger::Level::INFO));
+    setValue("loglevel", static_cast<int>(Logger::Level::INFO));
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Settings::usage() const
+void Settings::usage()
 {
-  cout << endl
-    << "Stella version " << STELLA_VERSION << endl
-    << endl
-    << "Usage: stella [options ...] romfile" << endl
-    << "       Run without any options or romfile to use the ROM launcher" << endl
-    << "       Consult the manual for more in-depth information" << endl
-    << endl
-    << "Valid options are:" << endl
-    << endl
+  stringstream buf;
+  buf << "\nStella version " << STELLA_VERSION
+    << "\n\n"
+    << "Usage: stella [options ...] romfile\n"
+    << "       Run without any options or romfile to use the ROM launcher\n"
+    << "       Consult the manual for more in-depth information\n\n"
+    << "Valid options are:\n\n"
     << "  -video        <type>         Type is one of the following:\n"
   #ifdef BSPF_WINDOWS
     << "                 direct3d        Direct3D acceleration\n"
@@ -483,14 +523,12 @@ void Settings::usage() const
     << "                 opengl          OpenGL acceleration\n"
     << "                 opengles2       OpenGLES 2 acceleration\n"
     << "                 opengles        OpenGLES 1 acceleration\n"
-    << "                 software        Software mode (no acceleration)\n"
-    << endl
+    << "                 software        Software mode (no acceleration)\n\n"
     << "  -vsync        <1|0>          Enable 'synchronize to vertical blank interrupt'\n"
     << "  -fullscreen   <1|0>          Enable fullscreen mode\n"
     << "  -center       <1|0>          Centers game window in windowed modes\n"
     << "  -windowedpos  <XxY>          Sets the window position in windowed emulator mode\n"
-    << "  -display      <number>       Sets the display for Stella's emulator\n"
-    << endl
+    << "  -display      <number>       Sets the display for Stella's emulator\n\n"
     << "  -palette        <standard|     Use the specified color palette\n"
     << "                   z26|user|\n"
     << "                   custom>\n"
@@ -506,13 +544,20 @@ void Settings::usage() const
     << "  -pal.saturation  <-1.0 - 1.0>  Adjust saturation of current palette\n"
     << "  -pal.contrast    <-1.0 - 1.0>  Adjust contrast of current palette\n"
     << "  -pal.brightness  <-1.0 - 1.0>  Adjust brightness of current palette\n"
-    << "  -pal.gamma       <-1.0 - 1.0>  Adjust gamma of current palette\n"
-    << endl
-    << "  -speed        <number>       Run emulation at the given speed\n"
-    << "  -turbo        <1|0>          Enable 'Turbo' mode for maximum emulation speed\n"
-    << "  -uimessages   <1|0>          Show onscreen UI messages for different events\n"
-    << "  -pausedim     <1|0>          Enable emulation dimming in pause mode\n"
-    << endl
+    << "  -pal.gamma       <-1.0 - 1.0>  Adjust gamma of current palette\n\n"
+    << "  -detectpal60     <1|0>         Enable PAL-60 autodetection\n"
+    << "  -detectntsc50    <1|0>         Enable NTSC-50 autodetection\n\n"
+    << "  -speed           <number>      Run emulation at the given speed\n"
+    << "  -turbo           <1|0>         Enable 'Turbo' mode for maximum emulation speed\n"
+    << "  -uimessages      <1|0>         Show onscreen UI messages for different events\n"
+    << "  -pausedim        <1|0>         Enable emulation dimming in pause mode\n\n"
+    << "  -bezel.show        <1|0>       Show bezel around emulation window\n"
+    << "  -bezel.windowed    <1|0>       Show bezel in windowed modes\n"
+    << "  -bezel.win.auto    <1|0>       Automatically set bezel window position\n"
+    << "  -bezel.win.left    <0-40>      Set left bezel window position [%]\n"
+    << "  -bezel.win.right   <0-40>      Set right bezel window position [%]\n"
+    << "  -bezel.win.top     <0-40>      Set top bezel window position [%]\n"
+    << "  -bezel.win.bottom  <0-40>      Set bottom bezel window position [%]\n\n"
   #ifdef SOUND_SUPPORT
     << "  -audio.enabled            <1|0>      Enable audio\n"
     << "  -audio.volume             <0-100>    Volume\n"
@@ -525,8 +570,7 @@ void Settings::usage() const
     << "  -audio.headroom           <0-20>     Additional half-frames to prebuffer\n"
     << "  -audio.buffer_size        <0-20>     Max. number of additional half-\n"
     << "                                        frames to buffer\n"
-    << "  -audio.stereo             <1|0>      Enable stereo mode for all ROMs\n"
-    << endl
+    << "  -audio.stereo             <1|0>      Enable stereo mode for all ROMs\n\n"
   #endif
     << "  -tia.zoom        <zoom>       Use the specified zoom level (windowed mode)\n"
     << "                                 for TIA image\n"
@@ -538,11 +582,11 @@ void Settings::usage() const
     << "  -tia.fs_overscan <0-10>       Add overscan to TIA image in fullscreen mode\n"
     << "  -tia.dbgcolors   <string>     Debug colors to use for each object (see manual\n"
     << "                                 for description)\n"
-    << "  -tia.correct_aspect <1|0>     Enable aspect ratio correct scaling\n"
-    << endl
+    << "  -tia.correct_aspect <1|0>     Enable aspect ratio correct scaling\n\n"
     << "  -tv.filter    <0-5>           Set TV effects off (0) or to specified mode\n"
     << "                                 (1-5)\n"
-    << "  -tv.phosphor  <always|byrom>  When to use phosphor mode\n"
+    << "  -tv.phosphor  <byrom|always|> When to use phosphor mode\n"
+    << "                 autoon|auto\n"
     << "  -tv.phosblend <0-100>         Set default blend level in phosphor mode\n"
     << "  -tv.scanlines <0-100>         Set scanline intensity to percentage\n"
     << "                                 (0 disables completely)\n"
@@ -553,12 +597,10 @@ void Settings::usage() const
     << "  -tv.resolution  <-1.0 - 1.0>  Set TV effects custom resolution\n"
     << "  -tv.artifacts   <-1.0 - 1.0>  Set TV effects custom artifacts\n"
     << "  -tv.fringing    <-1.0 - 1.0>  Set TV effects custom fringing\n"
-    << "  -tv.bleed       <-1.0 - 1.0>  Set TV effects custom bleed\n"
-    << endl
+    << "  -tv.bleed       <-1.0 - 1.0>  Set TV effects custom bleed\n\n"
     << "  -cheat        <code>         Use the specified cheatcode (see manual for\n"
     << "                                description)\n"
-    << "  -loglevel     <0|1|2>        Set level of logging during application run\n"
-    << endl
+    << "  -loglevel     <0|1|2>        Set level of logging during application run\n\n"
     << "  -logtoconsole <1|0>          Log output to console/commandline\n"
     << "  -joydeadzone  <0-29>         Sets digital 'dead zone' area for analog joysticks\n"
     << "  -joyallow4    <1|0>          Allow all 4 directions on a joystick to be\n"
@@ -596,17 +638,14 @@ void Settings::usage() const
     << "  -ss1x         <1|0>          Generate TIA snapshot in 1x mode (ignore\n"
     << "                                scaling/effects)\n"
     << "  -ssinterval   <number>       Number of seconds between snapshots in\n"
-    << "                                continuous snapshot mode\n"
-    << endl
+    << "                                continuous snapshot mode\n\n"
     << "  -saveonexit   <none|current| Automatically save state(s) when exiting\n"
     << "                 all>           emulation\n"
     << "  -autoslot     <0|1>          Automatically change to next save slot when\n"
-    << "                                state saving\n"
-    << endl
+    << "                                state saving\n\n"
     << "  -rominfo      <rom>          Display detailed information for the given ROM\n"
     << "  -listrominfo                 Display contents of stella.pro, one line per ROM\n"
-    << "                                entry\n"
-    << endl
+    << "                                entry\n\n"
     << "  -exitlauncher <0|1>          On exiting a ROM, go back to the ROM launcher\n"
     << "  -launcherpos  <XxY>          Sets the window position in windowed launcher\n"
     << "                                mode\n"
@@ -619,7 +658,6 @@ void Settings::usage() const
     << "                 large16>\n"
     << "  -romviewer    <float>        Show ROM info viewer at given zoom level in ROM\n"
     << "                                launcher (use 0 for off)\n"
-    << "  -launcherroms       <1|0>    Show only ROMs in the launcher (vs. all files)\n"
     << "  -launchersubdirs    <0|1>    Show files from subdirectories too\n"
     << "  -launcherextensions <0|1>    Display file extensions in launcher\n"
     << "  -launcherbuttons    <0|1>    Display bottom buttons in launcher\n"
@@ -630,12 +668,17 @@ void Settings::usage() const
     << "  -followlauncher     <0|1>    Default ROM path follows launcher navigation\n"
     << "  -userdir            <dir>    Set the path to save user files to\n"
     << "  -saveuserdir        <0|1>    Update user path when navigating in browser\n"
+    << "  -bezel.dir          <dir>    Set the path to load bezels from\n"
     << "  -lastrom            <name>   Last played ROM, automatically selected in\n"
     << "                                launcher\n"
     << "  -romloadcount <number>       Number of ROM to load next from multicard\n"
-    << "  -uipalette    <standard|     Selects GUI theme\n"
+    << "  -uipalette    <standard|     Set GUI theme\n"
     << "                 classic|\n"
     << "                 light|dark>\n"
+    << "  -uipalette2   <standard|     Set alternative GUI theme\n"
+    << "                 classic|\n"
+    << "                 light|dark>\n"
+    << "  -altuipalette <0|1>          Enable alternative GUI theme\n"
     << "  -hidpi        <0|1>          Enable HiDPI mode\n"
     << "  -dialogfont   <small|        Use the specified font in the dialogs\n"
     << "                 low_medium|\n"
@@ -671,19 +714,17 @@ void Settings::usage() const
     << "                                by attempting to use the application directory\n"
     << "  -plusroms.nick <nick>        Define a nickname for the PlusROMs backends.\n"
     << "  -plusroms.id   <id>          Define a temporary ID for the PlusROMs backends.\n"
+    << "  -filterbstypes <0|1>         Filter bankswitch type list by ROM size.\n"
     << "  -help                        Show the text you're now reading\n"
   #ifdef DEBUGGER_SUPPORT
-    << endl
-    << " The following options are meant for developers\n"
-    << " Arguments are more fully explained in the manual\n"
-    << endl
+    << "\n The following options are meant for developers\n"
+    << " Arguments are more fully explained in the manual\n\n"
     << "   -dis.resolve   <1|0>        Attempt to resolve code sections in disassembler\n"
     << "   -dis.gfxformat <2|16>       Set base to use for displaying (P)GFX sections\n"
     << "                                in disassembler\n"
     << "   -dis.showaddr  <1|0>        Show opcode addresses in disassembler\n"
     << "   -dis.relocate  <1|0>        Relocate calls out of address range in\n"
-    << "                                disassembler\n"
-    << endl
+    << "                                disassembler\n\n"
     << "   -dbg.pos       <XxY>          Sets the window position in windowed debugger mode\n"
     << "   -dbg.display   <number>       Sets the display for the debugger\n"
     << "   -dbg.res       <WxH>          The resolution to use in debugger mode\n"
@@ -694,10 +735,10 @@ void Settings::usage() const
     << "   -dbg.ghostreadstrap <1|0>     Debugger traps on 'ghost' reads\n"
     << "   -dbg.uhex      <0|1>          Lower-/uppercase HEX display\n"
     << "   -dbg.logbreaks <0|1>          Log breaks and traps and continue emulation\n"
+    << "   -dbg.logtrace  <0|1>          Log emulation\n"
     << "   -dbg.autosave  <0|1>          Automatically save breaks, traps etc.\n"
     << "   -break         <address>      Set a breakpoint at 'address'\n"
-    << "   -debug                        Start in debugger mode\n"
-    << endl
+    << "   -debug                        Start in debugger mode\n\n"
     << "   -bs          <arg>          Sets the 'Cartridge.Type' (bankswitch) property\n"
     << "   -type        <arg>          Same as using -bs\n"
     << "   -startbank   <bank>         Sets the ROM's startup bank\n"
@@ -716,14 +757,12 @@ void Settings::usage() const
     << "   -vcenter     <arg>          Sets the 'Display.vcenter' property\n"
     << "   -pp          <arg>          Sets the 'Display.Phosphor' property\n"
     << "   -ppblend     <arg>          Sets the 'Display.PPBlend' property\n"
-    << endl
+    << "   -bezelname   <arg>          Sets the 'Bezel.Name' property\n\n"
   #endif
 
-    << " Various development related parameters for player settings mode\n"
-    << endl
+    << " Various development related parameters for player settings mode\n\n"
     << "  -dev.settings     <1|0>          Select developer (1) or player (0) settings\n"
-    << "                                    mode\n"
-    << endl
+    << "                                    mode\n\n"
     << "  -plr.stats        <1|0>          Overlay console info during emulation\n"
     << "  -plr.detectedinfo <1|0>          Enable initial detected settings info\n"
     << "  -plr.console      <2600|7800>    Select console for B/W and Pause key\n"
@@ -737,8 +776,7 @@ void Settings::usage() const
     << "  -plr.tv.jitter    <1|0>          Enable TV jitter effect\n"
     << "  -plr.tv.jitter_sense <1-10>      Set TV jitter effect sensitivity\n"
     << "  -plr.tv.jitter_recovery <1-20>   Set recovery time for TV jitter effect\n"
-    << "  -plr.extaccess    <1|0>          Enable messages for external access\n"
-    << endl
+    << "  -plr.extaccess    <1|0>          Enable messages for external access\n\n"
     << " The same parameters but for developer settings mode\n"
     << "  -dev.stats        <1|0>          Overlay console info during emulation\n"
     << "  -dev.detectedinfo <1|0>          Enable initial detected settings info\n"
@@ -754,6 +792,7 @@ void Settings::usage() const
     << "  -dev.tv.jitter    <1|0>          Enable TV jitter effect\n"
     << "  -dev.tv.jitter_sense <1-10>      Set TV jitter effect sensitivity\n"
     << "  -dev.tv.jitter_recovery <1-20>   Set recovery time for TV jitter effect\n"
+    << "  -dev.hsrandom     <1|0>          Randomize the hotspot peek values\n"
     << "  -dev.tiadriven    <1|0>          Drive unqused TIA pins randomly on a\n"
     << "                                    read/peek\n"
 #ifdef DEBUGGER_SUPPORT
@@ -762,6 +801,7 @@ void Settings::usage() const
 #endif
     << "  -dev.thumb.trapfatal   <1|0>     Determines whether errors in ARM emulation\n"
     << "                                    throw an exception\n"
+    << "  -dev.arm.mips         <number>   Limit emulation speed to simulate ARM CPU used.\n"
 #ifdef DEBUGGER_SUPPORT
     << "  -dev.thumb.inccycles   <1|0>     Determines whether ARM emulation cycles\n"
     << "                                    increase system cycles\n"
@@ -774,22 +814,60 @@ void Settings::usage() const
     << "                 koolaidman|\n"
     << "                 cosmicark|pesco|\n"
     << "                 quickstep|matchie|\n"
-    << "                 indy500|heman|>\n"
+    << "                 indy500|heman|\n"
+    << "                 flashmenu>\n"
     << "  -dev.tia.plinvphase    <1|0>      Enable inverted HMOVE clock phase for players\n"
     << "  -dev.tia.msinvphase    <1|0>      Enable inverted HMOVE clock phase for\n"
     << "                                    missiles\n"
     << "  -dev.tia.blinvphase    <1|0>      Enable inverted HMOVE clock phase for ball\n"
+    << "  -dev.tia.pllatehmove   <1|0>      Enable short late HMOVE for players\n"
+    << "  -dev.tia.mslatehmove   <1|0>      Enable short late HMOVE for\n"
+    << "                                    missiles\n"
+    << "  -dev.tia.bllatehmove   <1|0>      Enable short late HMOVE for ball\n"
     << "  -dev.tia.delaypfbits   <1|0>      Enable extra delay cycle for PF bits access\n"
     << "  -dev.tia.delaypfcolor  <1|0>      Enable extra delay cycle for PF color\n"
     << "  -dev.tia.pfscoreglitch <1|0>      Enable PF score mode color glitch\n"
     << "  -dev.tia.delaybkcolor  <1|0>      Enable extra delay cycle for background color\n"
     << "  -dev.tia.delayplswap   <1|0>      Enable extra delay cycle for VDELP0/1 swap\n"
     << "  -dev.tia.delayblswap   <1|0>      Enable extra delay cycle for VDELBL swap\n"
-    << endl << std::flush;
+    << "  -elf.dump              <1|0>      Dump ELF linkage information and write elf_executable_image.bin\n\n";
+
+#ifdef BSPF_WINDOWS
+//  int height = 25;
+//  CONSOLE_SCREEN_BUFFER_INFO csbi;
+//
+//  if(NULL != GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
+//    height = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+  cout << buf.view() << std::flush;
+#endif
+
+#if defined(BSPF_UNIX) || defined(BSPF_MACOS)
+  int height = 25;
+  struct winsize ws{};
+
+  ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws);
+
+  height = ws.ws_row;
+
+  int row = 0;
+  while(buf.good())
+  {
+    if(++row == height - 1)
+    {
+      row = 0;
+      cout << "Press \"Enter\"" << std::flush;
+      std::ignore = getchar();
+      cout << '\n';
+    }
+    string substr;
+    getline(buf, substr, '\n');
+    cout << substr << '\n';
+  }
+#endif
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-const Variant& Settings::value(const string& key) const
+const Variant& Settings::value(string_view key) const
 {
   // Try to find the named setting and answer its value
   auto it = myPermanentSettings.find(key);
@@ -805,7 +883,7 @@ const Variant& Settings::value(const string& key) const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Settings::setValue(const string& key, const Variant& value, bool persist)
+void Settings::setValue(string_view key, const Variant& value, bool persist)
 {
   const auto it = myPermanentSettings.find(key);
 
@@ -815,19 +893,19 @@ void Settings::setValue(const string& key, const Variant& value, bool persist)
     it->second = value;
   }
   else
-    myTemporarySettings[key] = value;
+    myTemporarySettings[string{key}] = value;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Settings::setPermanent(const string& key, const Variant& value)
+void Settings::setPermanent(string_view key, const Variant& value)
 {
-  myPermanentSettings[key] = value;
+  myPermanentSettings[string{key}] = value;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Settings::setTemporary(const string& key, const Variant& value)
+void Settings::setTemporary(string_view key, const Variant& value)
 {
-  myTemporarySettings[key] = value;
+  myTemporarySettings[string{key}] = value;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -836,6 +914,7 @@ void Settings::migrateOne()
   const int version = getInt(SETTINGS_VERSION_KEY);
   if (version >= SETTINGS_VERSION) return;
 
+  // NOLINTBEGIN: could be written as IF/ELSE, bugprone-branch-clone
   switch (version) {
     case 0:
       #if defined BSPF_MACOS || defined DARWIN
@@ -845,6 +924,7 @@ void Settings::migrateOne()
     default:
       break;
   }
+  // NOLINTEND
 
   setPermanent(SETTINGS_VERSION_KEY, version + 1);
 }

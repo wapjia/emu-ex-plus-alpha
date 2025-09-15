@@ -53,8 +53,10 @@ public:
 	auto begin() const { return recentContentList.begin(); }
 	auto end() const { return recentContentList.end(); }
 	void clear() { recentContentList.clear(); }
-	void writeConfig(FileIO &) const;
-	bool readConfig(MapIO &, unsigned key, const EmuSystem &);
+	void writeConfig(FileIO&) const;
+	void writeContent(FileIO&) const;
+	bool readConfig(MapIO&, unsigned key);
+	bool readContent(MapIO&, const EmuSystem&);
 
 private:
 	std::vector<RecentContentInfo> recentContentList;

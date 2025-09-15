@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -19,7 +19,6 @@
 #define CARTRIDGE_CREATOR_HXX
 
 class Cartridge;
-class Properties;
 class Settings;
 
 #include "Bankswitch.hxx"
@@ -45,9 +44,9 @@ class CartCreator
       @param settings The settings container
       @return   Pointer to the new cartridge object allocated on the heap
     */
-    static unique_ptr<Cartridge> create(const FilesystemNode& file,
+    static unique_ptr<Cartridge> create(const FSNode& file,
                  const ByteBuffer& image, size_t size, string& md5,
-                 const string& dtype, Settings& settings);
+                 string_view dtype, Settings& settings);
 
   private:
     /**
@@ -56,7 +55,7 @@ class CartCreator
 
       @param image    A pointer to the complete ROM image
       @param size     The size of the ROM image slice
-      @param numroms  The number of ROMs in the multicart
+      @param numRoms  The number of ROMs in the multicart
       @param md5      The md5sum for the slice of the ROM image
       @param type     The detected type of the slice of the ROM image
       @param id       The ID for the slice of the ROM image
@@ -66,7 +65,7 @@ class CartCreator
     */
     static unique_ptr<Cartridge>
       createFromMultiCart(const ByteBuffer& image, size_t& size,
-        uInt32 numroms, string& md5, Bankswitch::Type type, string& id,
+        uInt32 numRoms, string& md5, Bankswitch::Type& type, string& id,
         Settings& settings);
 
     /**
@@ -82,11 +81,12 @@ class CartCreator
     */
     static unique_ptr<Cartridge>
       createFromImage(const ByteBuffer& image, size_t size, Bankswitch::Type type,
-                      const string& md5, Settings& settings);
+                      string_view md5, Settings& settings);
 
   private:
     // Following constructors and assignment operators not supported
     CartCreator() = delete;
+    ~CartCreator() = delete;
     CartCreator(const CartCreator&) = delete;
     CartCreator(CartCreator&&) = delete;
     CartCreator& operator=(const CartCreator&) = delete;

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -17,7 +17,6 @@
 
 // #define TIA_FRAMEMANAGER_DEBUG_LOG
 
-#include <algorithm>
 #include <cmath>
 
 #include "FrameManager.hxx"
@@ -175,7 +174,7 @@ bool FrameManager::onSave(Serializer& out) const
 {
   if (!myJitterEmulation.save(out)) return false;
 
-  out.putInt(uInt32(myState));
+  out.putInt(static_cast<uInt32>(myState));
   out.putInt(myLineInState);
   out.putInt(myVsyncLines);
   out.putInt(myY);
@@ -248,7 +247,7 @@ void FrameManager::recalculateMetrics() {
   // TODO: why "- 1" here: ???
   myMaxVcenter = BSPF::clamp<Int32>(ystartBase + (baseHeight - static_cast<Int32>(myHeight)) / 2 - 1, 0, TIAConstants::maxVcenter);
 
-  //cout << "myVSizeAdjust " << myVSizeAdjust << " " << myHeight << endl << std::flush;
+  //cout << "myVSizeAdjust " << myVSizeAdjust << " " << myHeight << '\n' << std::flush;
 
   myJitterEmulation.setYStart(myYStart);
 }

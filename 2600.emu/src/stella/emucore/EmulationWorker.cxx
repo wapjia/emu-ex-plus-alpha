@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -44,7 +44,7 @@ EmulationWorker::~EmulationWorker()
 {
   // This has to run in a block in order to release the mutex before joining
   {
-    std::unique_lock<std::mutex> lock(myThreadIsRunningMutex);
+    const std::unique_lock<std::mutex> lock(myThreadIsRunningMutex);
 
     if (myState != State::exception) {
       signalQuit();
@@ -61,7 +61,7 @@ EmulationWorker::~EmulationWorker()
 void EmulationWorker::handlePossibleException()
 {
   if (myState == State::exception && myPendingException) {
-    std::exception_ptr ex = myPendingException;
+    const std::exception_ptr ex = myPendingException;
     // Make sure that the exception is not thrown a second time (destructor!!!)
     myPendingException = nullptr;
 
@@ -78,8 +78,8 @@ void EmulationWorker::start(uInt32 cyclesPerSecond, uInt64 maxCycles, uInt64 min
   // Run in a block to release the mutex before notifying; this avoids an unecessary
   // block that will waste a timeslice
   {
-    // Aquire the mutex -> wait until the thread is suspended
-    std::unique_lock<std::mutex> lock(myThreadIsRunningMutex);
+    // Acquire the mutex -> wait until the thread is suspended
+    const std::unique_lock<std::mutex> lock(myThreadIsRunningMutex);
 
     // Pass on possible exceptions
     handlePossibleException();
@@ -113,9 +113,9 @@ uInt64 EmulationWorker::stop()
   // See EmulationWorker::start above for the gory details
   waitUntilPendingSignalHasProcessed();
 
-  uInt64 totalCycles;
+  uInt64 totalCycles{0};
   {
-    std::unique_lock<std::mutex> lock(myThreadIsRunningMutex);
+    const std::unique_lock<std::mutex> lock(myThreadIsRunningMutex);
 
     // Paranoia: make sure that we don't doublecount an emulation timeslice
     totalCycles = myTotalCycles;
@@ -148,7 +148,7 @@ void EmulationWorker::threadMain(std::condition_variable* initializedCondition, 
   try {
     {
       // Wait until our parent releases the lock and sleeps
-      std::lock_guard<std::mutex> guard(*initializationMutex);
+      const std::lock_guard<std::mutex> guard(*initializationMutex);
 
       // Update the state...
       myState = State::initialized;
@@ -303,7 +303,7 @@ void EmulationWorker::dispatchEmulation(std::unique_lock<std::mutex>& lock)
 void EmulationWorker::clearSignal()
 {
   {
-    std::unique_lock<std::mutex> lock(mySignalChangeMutex);
+    const std::unique_lock<std::mutex> lock(mySignalChangeMutex);
     myPendingSignal = Signal::none;
   }
 
@@ -314,7 +314,7 @@ void EmulationWorker::clearSignal()
 void EmulationWorker::signalQuit()
 {
   {
-    std::unique_lock<std::mutex> lock(mySignalChangeMutex);
+    const std::unique_lock<std::mutex> lock(mySignalChangeMutex);
     myPendingSignal = Signal::quit;
   }
 
@@ -334,6 +334,6 @@ void EmulationWorker::waitUntilPendingSignalHasProcessed()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void EmulationWorker::fatal(const string& message)
 {
-  (cerr << "FATAL in emulation worker: " << message << std::endl).flush();
+  (cerr << "FATAL in emulation worker: " << message << '\n').flush();
   throw runtime_error(message);
 }

@@ -8,25 +8,21 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
 // this file, and for a DISCLAIMER OF ALL WARRANTIES.
 //============================================================================
 
-#include <cassert>
-#include <stdexcept>
 #include <regex>
 
 #include "AtariVox.hxx"
 #include "Booster.hxx"
 #include "Cart.hxx"
 #include "Control.hxx"
-#include "Cart.hxx"
 #include "CartCM.hxx"
 #include "Driving.hxx"
-#include "Event.hxx"
 #include "EventHandler.hxx"
 #include "ControllerDetector.hxx"
 #include "Joystick.hxx"
@@ -40,6 +36,7 @@
 #include "TrakBall.hxx"
 #include "Lightgun.hxx"
 #include "QuadTari.hxx"
+#include "Joy2BPlus.hxx"
 #include "M6502.hxx"
 #include "M6532.hxx"
 #include "TIA.hxx"
@@ -55,7 +52,6 @@
 #include "FrameBuffer.hxx"
 #include "TIASurface.hxx"
 #include "OSystem.hxx"
-#include "Serializable.hxx"
 #include "Serializer.hxx"
 #include "TimerManager.hxx"
 #include "Version.hxx"
@@ -77,9 +73,10 @@
 #include "Console.hxx"
 
 namespace {
-  // Emulation speed is a positive float that multiplies the framerate. However, the UI controls
-  // adjust speed in terms of a speedup factor (1/10, 1/9 .. 1/2, 1, 2, 3, .., 10). The following
-  // mapping and formatting functions implement this conversion. The speedup factor is represented
+  // Emulation speed is a positive float that multiplies the framerate. However,
+  // the UI controls adjust speed in terms of a speedup factor (1/10,
+  // 1/9 .. 1/2, 1, 2, 3, .., 10). The following mapping and formatting
+  // functions implement this conversion. The speedup factor is represented
   // by an integer value between -900 and 900 (0 means no speedup).
 
   constexpr int MAX_SPEED = 900;
@@ -112,26 +109,40 @@ namespace {
 
     return ss.str();
   }
-}
-
+} // namespace
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Console::Console(OSystem& osystem, unique_ptr<Cartridge>& cart,
                  const Properties& props, AudioSettings& audioSettings)
   : myOSystem{osystem},
     myEvent{osystem.eventHandler().event()},
+    myAudioSettings{audioSettings},
     myProperties{props},
     myCart{std::move(cart)},
-    myAudioSettings{audioSettings}
+    myDisplayFormat{myProperties.get(PropType::Display_Format)}
 {
+  myEmulationTiming = make_shared<EmulationTiming>();
+  myCart->setProperties(&myProperties);
+
   // Create subsystems for the console
   my6502 = make_unique<M6502>(myOSystem.settings());
   myRiot = make_unique<M6532>(*this, myOSystem.settings());
-  myTIA  = make_unique<TIA>(*this, [this]() { return timing(); },  myOSystem.settings());
+
+  const TIA::onPhosphorCallback callback = [&frameBuffer = this->myOSystem.frameBuffer()](bool enable)
+  {
+    frameBuffer.tiaSurface().enablePhosphor(enable);
+#ifdef DEBUG_BUILD
+    ostringstream msg;
+    msg << "Phosphor effect automatically " << (enable ? "enabled" : "disabled");
+    frameBuffer.showTextMessage(msg.view());
+#endif
+  };
+  myTIA  = make_unique<TIA>(*this, [this]() { return timing(); }, myOSystem.settings(), callback);
   myFrameManager = make_unique<FrameManager>();
   mySwitches = make_unique<Switches>(myEvent, myProperties, myOSystem.settings());
 
   myTIA->setFrameManager(myFrameManager.get());
+  myOSystem.sound().stopWav();
 
   // Reinitialize the RNG
   myOSystem.random().initSeed(static_cast<uInt32>(TimerManager::getTicks()));
@@ -148,9 +159,9 @@ Console::Console(OSystem& osystem, unique_ptr<Cartridge>& cart,
 
   // Let the cart know how to query for the 'Cartridge.StartBank' property
   myCart->setStartBankFromPropsFunc([this]() {
-    const string& startbank = myProperties.get(PropType::Cart_StartBank);
+    const string_view startbank = myProperties.get(PropType::Cart_StartBank);
     return (startbank == EmptyString || BSPF::equalsIgnoreCase(startbank, "AUTO"))
-        ? -1 : BSPF::stringToInt(startbank);
+        ? -1 : BSPF::stoi(startbank);
   });
 
   // We can only initialize after all the devices/components have been created
@@ -160,21 +171,18 @@ Console::Console(OSystem& osystem, unique_ptr<Cartridge>& cart,
   myDevSettingsHandler = make_unique<DevSettingsHandler>(myOSystem);
 
   // Auto-detect NTSC/PAL mode if it's requested
-  string autodetected = "";
-  myDisplayFormat = myProperties.get(PropType::Display_Format);
-
   if (myDisplayFormat == "AUTO")
     myDisplayFormat = formatFromFilename();
 
   // Add the real controllers for this system
   // This must be done before the debugger is initialized
-  const string& md5 = myProperties.get(PropType::Cart_MD5);
-  setControllers(md5);
+  setControllers(myProperties.get(PropType::Cart_MD5));
 
-  // Mute audio and clear framebuffer while autodetection runs
-  myOSystem.sound().mute(1);
+  // Pause audio and clear framebuffer while autodetection runs
+  myOSystem.sound().pause(true);
   myOSystem.frameBuffer().clear();
 
+  string autodetected;
   if(myDisplayFormat == "AUTO" || myOSystem.settings().getBool("rominfo"))
   {
     autodetectFrameLayout();
@@ -221,7 +229,7 @@ Console::Console(OSystem& osystem, unique_ptr<Cartridge>& cart,
 
   setTIAProperties();
 
-  bool joyallow4 = myOSystem.settings().getBool("joyallow4");
+  const bool joyallow4 = myOSystem.settings().getBool("joyallow4");
   myOSystem.eventHandler().allowAllDirections(joyallow4);
 
   // Reset the system to its power-on state
@@ -250,9 +258,12 @@ Console::~Console()
   myLeftControl->close();
   myRightControl->close();
 
-  // Close audio to prevent invalid access to myConsoleTiming from the audio
-  // callback
-  myOSystem.sound().close();
+  // Close audio to prevent invalid access in the audio callback
+  if(myAudioQueue)
+  {
+    myAudioQueue->closeSink(nullptr);  // TODO: is this needed?
+    myAudioQueue.reset();
+  }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -279,25 +290,54 @@ void Console::autodetectFrameLayout(bool reset)
   // We turn off the SuperCharger progress bars, otherwise the SC BIOS
   // will take over 250 frames!
   // The 'fastscbios' option must be changed before the system is reset
-  bool fastscbios = myOSystem.settings().getBool("fastscbios");
-  myOSystem.settings().setValue("fastscbios", true);
+  Settings& settings = myOSystem.settings();
+  const bool fastscbios = settings.getBool("fastscbios");
+  settings.setValue("fastscbios", true);
 
   FrameLayoutDetector frameLayoutDetector;
-  myTIA->setFrameManager(&frameLayoutDetector);
+  myTIA->setFrameManager(&frameLayoutDetector, true);
 
   if (reset) {
     mySystem->reset(true);
     myRiot->update();
   }
 
-  for(int i = 0; i < 60; ++i) myTIA->update();
+  // Sample colors, ratio is 1/5 title (if existing), 4/5 game screen.
+  for(int i = 0; i < 20; ++i)
+    myTIA->update();
+
+  FrameLayoutDetector::simulateInput(*myRiot, myOSystem.eventHandler(), true);
+  myTIA->update();
+  FrameLayoutDetector::simulateInput(*myRiot, myOSystem.eventHandler(), false);
+
+  for(int i = 0; i < 40; ++i)
+    myTIA->update();
+
+  switch(frameLayoutDetector.detectedLayout(
+    settings.getBool("detectpal60"), settings.getBool("detectntsc50"),
+    myProperties.get(PropType::Cart_Name)))
+  {
+    case FrameLayout::pal:
+      myDisplayFormat = "PAL";
+      break;
+
+    case FrameLayout::pal60:
+      myDisplayFormat = "PAL60";
+      break;
+
+    case FrameLayout::ntsc50:
+      myDisplayFormat = "NTSC50";
+      break;
+
+    default:
+      myDisplayFormat = "NTSC";
+      break;
+  }
 
   myTIA->setFrameManager(myFrameManager.get());
 
-  myDisplayFormat = frameLayoutDetector.detectedLayout() == FrameLayout::pal ? "PAL" : "NTSC";
-
   // Don't forget to reset the SC progress bars again
-  myOSystem.settings().setValue("fastscbios", fastscbios);
+  settings.setValue("fastscbios", fastscbios);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -305,12 +345,10 @@ void Console::redetectFrameLayout()
 {
   Serializer s;
 
-  myOSystem.sound().close();
   save(s);
-
   autodetectFrameLayout(false);
-
   load(s);
+
   initializeAudio();
 }
 
@@ -329,14 +367,14 @@ string Console::formatFromFilename() const
   }};
 
   // Get filename, and search using regex's above
-  const string& filename = myOSystem.romFile().getName();
-  for(size_t i = 0; i < Pattern.size(); ++i)
+  const string_view filename = myOSystem.romFile().getName();
+  for(const auto& pat: Pattern)
   {
     try
     {
-      std::regex rgx(Pattern[i][0], std::regex_constants::icase);
-      if(std::regex_search(filename, rgx))
-        return Pattern[i][1];
+      const std::regex rgx(pat[0], std::regex_constants::icase);
+      if(std::regex_search(filename.cbegin(), filename.cend(), rgx))
+        return pat[1];
     }
     catch(...)
     {
@@ -364,7 +402,7 @@ bool Console::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: Console::save" << endl;
+    cerr << "ERROR: Console::save\n";
     return false;
   }
 
@@ -387,7 +425,7 @@ bool Console::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: Console::load" << endl;
+    cerr << "ERROR: Console::load\n";
     return false;
   }
 
@@ -397,7 +435,6 @@ bool Console::load(Serializer& in)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Console::selectFormat(int direction)
 {
-  string saveformat, message;
   Int32 format = myCurrentFormat;
 
   format = BSPF::clampw(format + direction, 0, 6);
@@ -411,8 +448,7 @@ void Console::setFormat(uInt32 format, bool force)
   if(!force && myCurrentFormat == format)
     return;
 
-  string saveformat, message;
-  string autodetected = "";
+  string saveformat, message, autodetected;
 
   myCurrentFormat = format;
   switch(myCurrentFormat)
@@ -500,19 +536,21 @@ void Console::setFormat(uInt32 format, bool force)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Console::toggleColorLoss(bool toggle)
 {
-  const bool colorloss = !myTIA->colorLossEnabled();
-  if(myTIA->enableColorLoss(colorloss))
+  bool colorloss = myTIA->colorLossEnabled();
+  if(toggle)
   {
-    myOSystem.settings().setValue(
-      myOSystem.settings().getBool("dev.settings") ? "dev.colorloss" : "plr.colorloss", colorloss);
-
-    string message = string("PAL color-loss ") +
-                     (colorloss ? "enabled" : "disabled");
-    myOSystem.frameBuffer().showTextMessage(message);
+    colorloss = !colorloss;
+    if(myTIA->enableColorLoss(colorloss))
+      myOSystem.settings().setValue(
+        myOSystem.settings().getBool("dev.settings") ? "dev.colorloss" : "plr.colorloss", colorloss);
+    else {
+      myOSystem.frameBuffer().showTextMessage(
+        "PAL color-loss not available in non PAL modes");
+      return;
+    }
   }
-  else
-    myOSystem.frameBuffer().showTextMessage(
-      "PAL color-loss not available in non PAL modes");
+  const string message = string("PAL color-loss ") + (colorloss ? "enabled" : "disabled");
+  myOSystem.frameBuffer().showTextMessage(message);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -529,16 +567,18 @@ void Console::toggleInter(bool toggle)
     bool enabled = myOSystem.settings().getBool("tia.inter");
 
     if(toggle)
+    {
       enabled = !enabled;
 
-    myOSystem.settings().setValue("tia.inter", enabled);
+      myOSystem.settings().setValue("tia.inter", enabled);
 
-    // ... and apply potential setting changes to the TIA surface
-    myOSystem.frameBuffer().tiaSurface().updateSurfaceSettings();
+      // Apply potential setting changes to the TIA surface
+      myOSystem.frameBuffer().tiaSurface().updateSurfaceSettings();
+    }
     ostringstream ss;
 
     ss << "Interpolation " << (enabled ? "enabled" : "disabled");
-    myOSystem.frameBuffer().showTextMessage(ss.str());
+    myOSystem.frameBuffer().showTextMessage(ss.view());
   }
   else
     myOSystem.frameBuffer().showTextMessage(
@@ -548,7 +588,7 @@ void Console::toggleInter(bool toggle)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Console::toggleTurbo()
 {
-  bool enabled = myOSystem.settings().getBool("turbo");
+  const bool enabled = myOSystem.settings().getBool("turbo");
 
   myOSystem.settings().setValue("turbo", !enabled);
 
@@ -560,14 +600,14 @@ void Console::toggleTurbo()
 
   ostringstream ss;
   ss << "Turbo mode " << (!enabled ? "enabled" : "disabled");
-  myOSystem.frameBuffer().showTextMessage(ss.str());
+  myOSystem.frameBuffer().showTextMessage(ss.view());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Console::changeSpeed(int direction)
 {
   int speed = mapSpeed(myOSystem.settings().getFloat("speed"));
-  bool turbo = myOSystem.settings().getBool("turbo");
+  const bool turbo = myOSystem.settings().getBool("turbo");
 
   speed = BSPF::clamp(speed + direction * SPEED_STEP, MIN_SPEED, MAX_SPEED);
   myOSystem.settings().setValue("speed", unmapSpeed(speed));
@@ -585,30 +625,79 @@ void Console::changeSpeed(int direction)
   ostringstream val;
 
   val << formatSpeed(speed) << "%";
-  myOSystem.frameBuffer().showGaugeMessage("Emulation speed", val.str(), speed, MIN_SPEED, MAX_SPEED);
+  myOSystem.frameBuffer().showGaugeMessage("Emulation speed", val.view(), speed, MIN_SPEED, MAX_SPEED);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Console::togglePhosphor()
+void Console::togglePhosphor(bool toggle)
 {
-  if(myOSystem.frameBuffer().tiaSurface().phosphorEnabled())
+  bool enable = myOSystem.frameBuffer().tiaSurface().phosphorEnabled();
+
+  if(toggle)
   {
-    myProperties.set(PropType::Display_Phosphor, "NO");
-    myOSystem.frameBuffer().tiaSurface().enablePhosphor(false);
-    myOSystem.frameBuffer().showTextMessage("Phosphor effect disabled");
+    enable = !enable;
+    if(!enable)
+      myProperties.set(PropType::Display_Phosphor, "NO");
+    else
+      myProperties.set(PropType::Display_Phosphor, "YES");
+    myOSystem.frameBuffer().tiaSurface().enablePhosphor(enable);
+
+    // disable auto-phosphor
+    myTIA->enableAutoPhosphor(false);
   }
-  else
+
+  ostringstream msg;
+  msg << "Phosphor effect " << (enable ? "enabled" : "disabled");
+  myOSystem.frameBuffer().showTextMessage(msg.view());
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void Console::cyclePhosphorMode(int direction)
+{
+  static constexpr std::array<string_view, PhosphorHandler::NumTypes> MESSAGES = {
+    "by ROM", "always on", "auto-enabled", "auto-enabled/disabled"
+  };
+  PhosphorHandler::PhosphorMode mode =
+    PhosphorHandler::toPhosphorMode(myOSystem.settings().getString(PhosphorHandler::SETTING_MODE));
+
+  if(direction)
   {
-    myProperties.set(PropType::Display_Phosphor, "YES");
-    myOSystem.frameBuffer().tiaSurface().enablePhosphor(true);
-    myOSystem.frameBuffer().showTextMessage("Phosphor effect enabled");
+    mode = static_cast<PhosphorHandler::PhosphorMode>
+      (BSPF::clampw(mode + direction, 0, static_cast<int>(PhosphorHandler::NumTypes - 1)));
+    switch(mode)
+    {
+      case PhosphorHandler::Always:
+        myOSystem.frameBuffer().tiaSurface().enablePhosphor(
+          true, myOSystem.settings().getInt(PhosphorHandler::SETTING_BLEND));
+        myTIA->enableAutoPhosphor(false);
+        break;
+
+      case PhosphorHandler::Auto_on:
+      case PhosphorHandler::Auto:
+        myOSystem.frameBuffer().tiaSurface().enablePhosphor(
+          false, myOSystem.settings().getInt(PhosphorHandler::SETTING_BLEND));
+        myTIA->enableAutoPhosphor(true, mode == PhosphorHandler::Auto_on);
+        break;
+
+      default: // PhosphorHandler::ByRom
+        myOSystem.frameBuffer().tiaSurface().enablePhosphor(
+          myProperties.get(PropType::Display_Phosphor) == "YES",
+          BSPF::stoi(myProperties.get(PropType::Display_PPBlend)));
+        myTIA->enableAutoPhosphor(false);
+        break;
+    }
+    myOSystem.settings().setValue(PhosphorHandler::SETTING_MODE,
+                                  PhosphorHandler::toPhosphorName(mode));
   }
+  ostringstream msg;
+  msg << "Phosphor mode " << MESSAGES[mode];
+  myOSystem.frameBuffer().showTextMessage(msg.view());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Console::changePhosphor(int direction)
 {
-  int blend = BSPF::stringToInt(myProperties.get(PropType::Display_PPBlend));
+  int blend = BSPF::stoi(myProperties.get(PropType::Display_PPBlend));
 
   if(direction)
   {
@@ -618,7 +707,7 @@ void Console::changePhosphor(int direction)
 
   ostringstream val;
   val << blend;
-  myProperties.set(PropType::Display_PPBlend, val.str());
+  myProperties.set(PropType::Display_PPBlend, val.view());
   if(blend)
     val << "%";
   else
@@ -626,7 +715,7 @@ void Console::changePhosphor(int direction)
     val.str("");
     val << "Off";
   }
-  myOSystem.frameBuffer().showGaugeMessage("Phosphor blend", val.str(), blend);
+  myOSystem.frameBuffer().showGaugeMessage("Phosphor blend", val.view(), blend);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -646,8 +735,8 @@ FBInitStatus Console::initializeVideo(bool full)
       Common::Size(TIAConstants::viewableWidth, TIAConstants::viewableHeight) :
       Common::Size(2 * myTIA->width(), myTIA->height());
 
-    bool devSettings = myOSystem.settings().getBool("dev.settings");
-    const string& title = string("Stella ") + STELLA_VERSION +
+    const bool devSettings = myOSystem.settings().getBool("dev.settings");
+    const string title = string{"Stella "} + STELLA_VERSION +
                    ": \"" + myProperties.get(PropType::Cart_Name) + "\"";
     fbstatus = myOSystem.frameBuffer().createDisplay(title,
         BufferType::Emulator, size, false);
@@ -663,22 +752,20 @@ FBInitStatus Console::initializeVideo(bool full)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Console::initializeAudio()
 {
-  myOSystem.sound().close();
-
-  myEmulationTiming
+  (*myEmulationTiming)
     .updatePlaybackRate(myAudioSettings.sampleRate())
     .updatePlaybackPeriod(myAudioSettings.fragmentSize())
     .updateAudioQueueExtraFragments(myAudioSettings.bufferSize())
     .updateAudioQueueHeadroom(myAudioSettings.headroom())
     .updateSpeedFactor(myOSystem.settings().getBool("turbo")
-      ? 20.0F
+      ? 50.0F
       : myOSystem.settings().getFloat("speed"));
 
   createAudioQueue();
   myTIA->setAudioQueue(myAudioQueue);
   myTIA->setAudioRewindMode(myOSystem.state().mode() != StateManager::Mode::Off);
 
-  myOSystem.sound().open(myAudioQueue, &myEmulationTiming);
+  myOSystem.sound().open(myAudioQueue, myEmulationTiming);
 }
 
 /* Original frying research and code by Fred Quimby.
@@ -704,7 +791,7 @@ void Console::initializeAudio()
 void Console::fry() const
 {
   for(int i = 0; i < 0x100; i += mySystem->randGenerator().next() % 4)
-    mySystem->poke(i, mySystem->peek(i) & mySystem->randGenerator().next());
+    mySystem->pokeOob(i, mySystem->peekOob(i) & mySystem->randGenerator().next());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -717,11 +804,11 @@ void Console::changeVerticalCenter(int direction)
   ostringstream ss, val;
   ss << vcenter;
 
-  myProperties.set(PropType::Display_VCenter, ss.str());
+  myProperties.set(PropType::Display_VCenter, ss.view());
   if (vcenter != myTIA->vcenter()) myTIA->setVcenter(vcenter);
 
   val << (vcenter ? vcenter > 0 ? "+" : "" : " ") << vcenter << "px";
-  myOSystem.frameBuffer().showGaugeMessage("V-Center", val.str(), vcenter,
+  myOSystem.frameBuffer().showGaugeMessage("V-Center", val.view(), vcenter,
                                       myTIA->minVcenter(), myTIA->maxVcenter());
 }
 
@@ -751,7 +838,7 @@ void Console::changeVSizeAdjust(int direction)
 
   val << (newAdjustVSize ? newAdjustVSize > 0 ? "+" : "" : " ")
       << newAdjustVSize << "%";
-  myOSystem.frameBuffer().showGaugeMessage("V-Size", val.str(), newAdjustVSize, -5, 5);
+  myOSystem.frameBuffer().showGaugeMessage("V-Size", val.view(), newAdjustVSize, -5, 5);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -775,7 +862,7 @@ void Console::toggleCorrectAspectRatio(bool toggle)
 void Console::setTIAProperties()
 {
   const Int32 vcenter = BSPF::clamp(
-    static_cast<Int32>(BSPF::stringToInt(myProperties.get(PropType::Display_VCenter))), TIAConstants::minVcenter, TIAConstants::maxVcenter
+    static_cast<Int32>(BSPF::stoi(myProperties.get(PropType::Display_VCenter))), TIAConstants::minVcenter, TIAConstants::maxVcenter
   );
 
   if(gameRefreshRate() == 60)
@@ -792,25 +879,25 @@ void Console::setTIAProperties()
   myTIA->setAdjustVSize(myOSystem.settings().getInt("tia.vsizeadjust"));
   myTIA->setVcenter(vcenter);
 
-  myEmulationTiming.updateFrameLayout(myTIA->frameLayout());
-  myEmulationTiming.updateConsoleTiming(myConsoleTiming);
+  myEmulationTiming->updateFrameLayout(myTIA->frameLayout());
+  myEmulationTiming->updateConsoleTiming(myConsoleTiming);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Console::createAudioQueue()
 {
-  bool useStereo = myOSystem.settings().getBool(AudioSettings::SETTING_STEREO)
+  const bool useStereo = myOSystem.settings().getBool(AudioSettings::SETTING_STEREO)
     || myProperties.get(PropType::Cart_Sound) == "STEREO";
 
   myAudioQueue = make_shared<AudioQueue>(
-    myEmulationTiming.audioFragmentSize(),
-    myEmulationTiming.audioQueueCapacity(),
+    myEmulationTiming->audioFragmentSize(),
+    myEmulationTiming->audioQueueCapacity(),
     useStereo
   );
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Console::setControllers(const string& romMd5)
+void Console::setControllers(string_view romMd5)
 {
   // Check for CompuMate scheme; it is special in that a handler creates both
   // controllers for us, and associates them with the bankswitching class
@@ -830,7 +917,7 @@ void Console::setControllers(const string& romMd5)
     myOSystem.eventHandler().defineKeyControllerMappings(
         Controller::Type::CompuMate, Controller::Jack::Left, myProperties);
     myOSystem.eventHandler().defineJoyControllerMappings(
-        Controller::Type::CompuMate, Controller::Jack::Left);
+        Controller::Type::CompuMate, Controller::Jack::Left, myProperties);
   }
   else
   {
@@ -883,46 +970,50 @@ void Console::setControllers(const string& romMd5)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Console::changeLeftController(int direction)
 {
-  int type = static_cast<int>(Controller::getType(myProperties.get(PropType::Controller_Left)));
+  auto type =
+    static_cast<uInt8>(Controller::getType(myProperties.get(PropType::Controller_Left)));
   if(!type)
-    type = static_cast<int>(Controller::getType(leftController().name()));
+    type = static_cast<uInt8>(Controller::getType(leftController().name()));
   type = BSPF::clampw(type + direction,
-                      1, static_cast<int>(Controller::Type::LastType) - 1);
+                      1, static_cast<uInt8>(Controller::Type::LastType) - 1);
 
   myProperties.set(PropType::Controller_Left, Controller::getPropName(Controller::Type{type}));
   setControllers(myProperties.get(PropType::Cart_MD5));
 
   ostringstream msg;
   msg << "Left controller " << Controller::getName(Controller::Type{type});
-  myOSystem.frameBuffer().showTextMessage(msg.str());
+  myOSystem.frameBuffer().showTextMessage(msg.view());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Console::changeRightController(int direction)
 {
-  int type = static_cast<int>(Controller::getType(myProperties.get(PropType::Controller_Right)));
+  auto type =
+    static_cast<uInt8>(Controller::getType(myProperties.get(PropType::Controller_Right)));
   if(!type)
-    type = static_cast<int>(Controller::getType(rightController().name()));
+    type = static_cast<uInt8>(Controller::getType(rightController().name()));
   type = BSPF::clampw(type + direction,
-                      1, static_cast<int>(Controller::Type::LastType) - 1);
+                      1, static_cast<uInt8>(Controller::Type::LastType) - 1);
 
   myProperties.set(PropType::Controller_Right, Controller::getPropName(Controller::Type{type}));
   setControllers(myProperties.get(PropType::Cart_MD5));
 
   ostringstream msg;
   msg << "Right controller " << Controller::getName(Controller::Type{type});
-  myOSystem.frameBuffer().showTextMessage(msg.str());
+  myOSystem.frameBuffer().showTextMessage(msg.view());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-unique_ptr<Controller> Console::getControllerPort(const Controller::Type type,
-                                                  const Controller::Jack port,
-                                                  const string& romMd5)
+unique_ptr<Controller> Console::getControllerPort(
+    Controller::Type type, Controller::Jack port, string_view romMd5)
 {
   unique_ptr<Controller> controller;
 
-  myOSystem.eventHandler().defineKeyControllerMappings(type, port, myProperties);
-  myOSystem.eventHandler().defineJoyControllerMappings(type, port);
+  if(type != Controller::Type::QuadTari)
+  {
+    myOSystem.eventHandler().defineKeyControllerMappings(type, port, myProperties);
+    myOSystem.eventHandler().defineJoyControllerMappings(type, port, myProperties);
+  }
 
   switch(type)
   {
@@ -943,15 +1034,16 @@ unique_ptr<Controller> Console::getControllerPort(const Controller::Type type,
     case Controller::Type::PaddlesIAxDr:
     {
       // Also check if we should swap the paddles plugged into a jack
-      bool swapPaddles = myProperties.get(PropType::Controller_SwapPaddles) == "YES";
+      const bool swapPaddles =
+        myProperties.get(PropType::Controller_SwapPaddles) == "YES";
       bool swapAxis = false, swapDir = false;
       if(type == Controller::Type::PaddlesIAxis)
         swapAxis = true;
       else if(type == Controller::Type::PaddlesIAxDr)
         swapAxis = swapDir = true;
 
-      Paddles::setAnalogXCenter(BSPF::stringToInt(myProperties.get(PropType::Controller_PaddlesXCenter)));
-      Paddles::setAnalogYCenter(BSPF::stringToInt(myProperties.get(PropType::Controller_PaddlesYCenter)));
+      Paddles::setAnalogXCenter(BSPF::stoi(myProperties.get(PropType::Controller_PaddlesXCenter)));
+      Paddles::setAnalogYCenter(BSPF::stoi(myProperties.get(PropType::Controller_PaddlesYCenter)));
       Paddles::setAnalogSensitivity(myOSystem.settings().getInt("psense"));
 
       controller = make_unique<Paddles>(port, myEvent, *mySystem,
@@ -972,24 +1064,28 @@ unique_ptr<Controller> Console::getControllerPort(const Controller::Type type,
 
     case Controller::Type::AtariVox:
     {
-    	FilesystemNode nvramfile = myOSystem.nvramDir("atarivox_eeprom.dat");
-      Controller::onMessageCallback callback = [&os = myOSystem](const string& msg) {
-        bool devSettings = os.settings().getBool("dev.settings");
-        if(os.settings().getBool(devSettings ? "dev.extaccess" : "plr.extaccess"))
-          os.frameBuffer().showTextMessage(msg);
-      };
+      FSNode nvramfile = myOSystem.nvramDir("atarivox_eeprom.dat");
+      const Controller::onMessageCallback callback = [&os = myOSystem]
+      (string_view msg)
+        {
+          const bool devSettings = os.settings().getBool("dev.settings");
+          if(os.settings().getBool(devSettings ? "dev.extaccess" : "plr.extaccess"))
+            os.frameBuffer().showTextMessage(msg);
+        };
       controller = make_unique<AtariVox>(port, myEvent, *mySystem,
           myOSystem.settings().getString("avoxport"), nvramfile, callback);
       break;
     }
     case Controller::Type::SaveKey:
     {
-    	FilesystemNode nvramfile = myOSystem.nvramDir("savekey_eeprom.dat");
-      Controller::onMessageCallback callback = [&os = myOSystem](const string& msg) {
-        bool devSettings = os.settings().getBool("dev.settings");
-        if(os.settings().getBool(devSettings ? "dev.extaccess" : "plr.extaccess"))
-          os.frameBuffer().showTextMessage(msg);
-      };
+      FSNode nvramfile = myOSystem.nvramDir("savekey_eeprom.dat");
+      const Controller::onMessageCallback callback = [&os = myOSystem]
+      (string_view msg)
+        {
+          const bool devSettings = os.settings().getBool("dev.settings");
+          if(os.settings().getBool(devSettings ? "dev.extaccess" : "plr.extaccess"))
+            os.frameBuffer().showTextMessage(msg);
+        };
       controller = make_unique<SaveKey>(port, myEvent, *mySystem, nvramfile, callback);
       break;
     }
@@ -998,19 +1094,40 @@ unique_ptr<Controller> Console::getControllerPort(const Controller::Type type,
       break;
 
     case Controller::Type::KidVid:
-      controller = make_unique<KidVid>(port, myEvent, *mySystem, romMd5);
+    {
+      const Controller::onMessageCallbackForced callback = [&os = myOSystem]
+      (string_view msg, bool force) {
+        const bool devSettings = os.settings().getBool("dev.settings");
+        if(force || os.settings().getBool(devSettings ? "dev.extaccess" : "plr.extaccess"))
+          os.frameBuffer().showTextMessage(msg);
+        };
+      controller = make_unique<KidVid>
+        (port, myEvent, myOSystem, *mySystem, romMd5, callback);
       break;
+    }
 
     case Controller::Type::MindLink:
       controller = make_unique<MindLink>(port, myEvent, *mySystem);
       break;
 
     case Controller::Type::Lightgun:
-      controller = make_unique<Lightgun>(port, myEvent, *mySystem, romMd5, myOSystem.frameBuffer());
+      controller = make_unique<Lightgun>
+        (port, myEvent, *mySystem, romMd5, myOSystem.frameBuffer());
       break;
 
     case Controller::Type::QuadTari:
-      controller = make_unique<QuadTari>(port, myOSystem, *mySystem, myProperties);
+    {
+      unique_ptr<QuadTari> quadTari = make_unique<QuadTari>(port, myOSystem, *mySystem, myProperties, *myCart);
+
+      myOSystem.eventHandler().defineKeyControllerMappings(type, port, myProperties,
+        quadTari->firstController().type(), quadTari->secondController().type());
+      myOSystem.eventHandler().defineJoyControllerMappings(type, port, myProperties,
+        quadTari->firstController().type(), quadTari->secondController().type());
+      controller = std::move(quadTari);
+      break;
+    }
+    case Controller::Type::Joy2BPlus:
+      controller = make_unique<Joy2BPlus>(port, myEvent, *mySystem);
       break;
 
     default:
@@ -1037,7 +1154,7 @@ void Console::toggleSwapPorts(bool toggle)
 
   ostringstream msg;
   msg << "Swap ports " << (swapped ? "enabled" : "disabled");
-  myOSystem.frameBuffer().showTextMessage(msg.str());
+  myOSystem.frameBuffer().showTextMessage(msg.view());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1055,21 +1172,21 @@ void Console::toggleSwapPaddles(bool toggle)
 
   ostringstream msg;
   msg << "Swap paddles " << (swapped ? "enabled" : "disabled");
-  myOSystem.frameBuffer().showTextMessage(msg.str());
+  myOSystem.frameBuffer().showTextMessage(msg.view());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void Console::changePaddleCenterX(int direction)
 {
   const int center =
-    BSPF::clamp(BSPF::stringToInt(myProperties.get(PropType::Controller_PaddlesXCenter)) + direction,
+    BSPF::clamp(BSPF::stoi(myProperties.get(PropType::Controller_PaddlesXCenter)) + direction,
                 Paddles::MIN_ANALOG_CENTER, Paddles::MAX_ANALOG_CENTER);
   myProperties.set(PropType::Controller_PaddlesXCenter, std::to_string(center));
   Paddles::setAnalogXCenter(center);
 
   ostringstream val;
   val << (center ? center > 0 ? "+" : "" : " ") << center * 5 << "px";
-  myOSystem.frameBuffer().showGaugeMessage("Paddles x-center ", val.str(), center,
+  myOSystem.frameBuffer().showGaugeMessage("Paddles x-center ", val.view(), center,
                                            Paddles::MIN_ANALOG_CENTER, Paddles::MAX_ANALOG_CENTER);
 }
 
@@ -1077,14 +1194,14 @@ void Console::changePaddleCenterX(int direction)
 void Console::changePaddleCenterY(int direction)
 {
   const int center =
-    BSPF::clamp(BSPF::stringToInt(myProperties.get(PropType::Controller_PaddlesYCenter)) + direction,
+    BSPF::clamp(BSPF::stoi(myProperties.get(PropType::Controller_PaddlesYCenter)) + direction,
                 Paddles::MIN_ANALOG_CENTER, Paddles::MAX_ANALOG_CENTER);
   myProperties.set(PropType::Controller_PaddlesYCenter, std::to_string(center));
   Paddles::setAnalogYCenter(center);
 
   ostringstream val;
   val << (center ? center > 0 ? "+" : "" : " ") << center * 5 << "px";
-  myOSystem.frameBuffer().showGaugeMessage("Paddles y-center ", val.str(), center,
+  myOSystem.frameBuffer().showGaugeMessage("Paddles y-center ", val.view(), center,
                                            Paddles::MIN_ANALOG_CENTER, Paddles::MAX_ANALOG_CENTER);
 }
 
@@ -1093,7 +1210,7 @@ void Console::changePaddleAxesRange(int direction)
 {
   istringstream m_axis(myProperties.get(PropType::Controller_MouseAxis));
   string mode = "AUTO";
-  int range;
+  int range{0};
 
   m_axis >> mode;
   if(!(m_axis >> range))
@@ -1106,13 +1223,13 @@ void Console::changePaddleAxesRange(int direction)
   control << mode;
   if(range != 100)
     control << " " << std::to_string(range);
-  myProperties.set(PropType::Controller_MouseAxis, control.str());
+  myProperties.set(PropType::Controller_MouseAxis, control.view());
 
   Paddles::setDigitalPaddleRange(range);
 
   ostringstream val;
   val << range << "%";
-  myOSystem.frameBuffer().showGaugeMessage("Mouse axes range", val.str(), range);
+  myOSystem.frameBuffer().showGaugeMessage("Mouse axes range", val.view(), range);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1122,13 +1239,14 @@ void Console::toggleAutoFire(bool toggle)
 
   if(toggle)
   {
-    myOSystem.settings().setValue("autofire", !enabled);
-    Controller::setAutoFire(!enabled);
+    enabled = !enabled;
+    myOSystem.settings().setValue("autofire", enabled);
+    Controller::setAutoFire(enabled);
   }
 
   ostringstream ss;
-  ss << "Autofire " << (!enabled ? "enabled" : "disabled");
-  myOSystem.frameBuffer().showTextMessage(ss.str());
+  ss << "Autofire " << (enabled ? "enabled" : "disabled");
+  myOSystem.frameBuffer().showTextMessage(ss.view());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1155,15 +1273,19 @@ void Console::changeAutoFireRate(int direction)
   else
     val << "Off";
 
-  myOSystem.frameBuffer().showGaugeMessage("Autofire rate", val.str(), rate, 0, isNTSC ? 30 : 25);
+  myOSystem.frameBuffer().showGaugeMessage("Autofire rate", val.view(), rate, 0, isNTSC ? 30 : 25);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 float Console::currentFrameRate() const
 {
+  const uInt32 scalinesLastFrame = myTIA->frameBufferScanlinesLastFrame();
+
   return
-    (myConsoleTiming == ConsoleTiming::ntsc ? 262.F * 60.F : 312.F * 50.F) /
-     myTIA->frameBufferScanlinesLastFrame();
+    scalinesLastFrame != 0 ?
+      (myConsoleTiming == ConsoleTiming::ntsc ? 262.F * 60.F : 312.F * 50.F)
+        / myTIA->frameBufferScanlinesLastFrame() :
+      0;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1195,10 +1317,11 @@ void Console::toggleDeveloperSet(bool toggle)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Console::toggleTIABit(TIABit bit, const string& bitname, bool show, bool toggle) const
+void Console::toggleTIABit(TIABit bit, string_view bitname,
+                           bool show, bool toggle) const
 {
   const bool result = myTIA->toggleBit(bit, toggle ? 2 : 3);
-  const string message = bitname + (result ? " enabled" : " disabled");
+  const string message = string{bitname} + (result ? " enabled" : " disabled");
 
   myOSystem.frameBuffer().showTextMessage(message);
 }
@@ -1213,10 +1336,12 @@ void Console::toggleBits(bool toggle) const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Console::toggleTIACollision(TIABit bit, const string& bitname, bool show, bool toggle) const
+void Console::toggleTIACollision(TIABit bit, string_view bitname,
+                                 bool show, bool toggle) const
 {
   const bool result = myTIA->toggleCollision(bit, toggle ? 2 : 3);
-  const string message = bitname + (result ? " collision enabled" : " collision disabled");
+  const string message = string{bitname} +
+      (result ? " collision enabled" : " collision disabled");
 
   myOSystem.frameBuffer().showTextMessage(message);
 }
@@ -1273,7 +1398,7 @@ void Console::changeJitterSense(int direction) const
     myTIA->setJitterSensitivity(sensitivity);
     myOSystem.settings().setValue(prefix + "tv.jitter_sense", sensitivity);
     val << sensitivity;
-    myOSystem.frameBuffer().showGaugeMessage("TV jitter sensitivity", val.str(), sensitivity,
+    myOSystem.frameBuffer().showGaugeMessage("TV jitter sensitivity", val.view(), sensitivity,
       0, JitterEmulation::MAX_SENSITIVITY);
   }
   else
@@ -1306,8 +1431,8 @@ void Console::changeJitterRecovery(int direction) const
     myTIA->setJitterRecoveryFactor(recovery);
     myOSystem.settings().setValue(prefix + "tv.jitter_recovery", recovery);
     val << recovery;
-    myOSystem.frameBuffer().showGaugeMessage("TV jitter roll", val.str(), recovery,
-      0, JitterEmulation::MAX_RECOVERY);
+    myOSystem.frameBuffer().showGaugeMessage("TV jitter roll", val.view(),
+      recovery, 0, JitterEmulation::MAX_RECOVERY);
   }
   else
   {

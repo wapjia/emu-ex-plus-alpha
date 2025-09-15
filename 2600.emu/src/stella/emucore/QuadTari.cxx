@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -17,11 +17,12 @@
 
 #include "OSystem.hxx"
 #include "EventHandler.hxx"
-#include "Event.hxx"
 #include "Console.hxx"
 #include "System.hxx"
 #include "TIA.hxx"
 #include "FrameBuffer.hxx"
+#include "ControllerDetector.hxx"
+#include "Cart.hxx"
 #include "AtariVox.hxx"
 #include "Driving.hxx"
 #include "Joystick.hxx"
@@ -31,14 +32,12 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 QuadTari::QuadTari(Jack jack, const OSystem& osystem, const System& system,
-                   const Properties& properties)
+                   const Properties& properties, Cartridge& cart)
   : Controller(jack, osystem.eventHandler().event(), system,
                Controller::Type::QuadTari),
     myOSystem{osystem},
     myProperties{properties}
 {
-  Controller::Type firstType = Controller::Type::Joystick,
-    secondType = Controller::Type::Joystick;
   string first, second;
 
   if(jack == Controller::Jack::Left)
@@ -51,11 +50,28 @@ QuadTari::QuadTari(Jack jack, const OSystem& osystem, const System& system,
     first = properties.get(PropType::Controller_Right1);
     second = properties.get(PropType::Controller_Right2);
   }
+  Controller::Type firstType = Controller::getType(first),
+                   secondType = Controller::getType(second);
 
-  if(!first.empty())
-    firstType = Controller::getType(first);
-  if(!second.empty())
-    secondType = Controller::getType(second);
+  // Autodetect QuadTari controllers:
+  // This will detect the same controller for 1st and 2nd controller
+  size_t size = 0;
+  const ByteBuffer& image = cart.getImage(size);
+
+  if(image != nullptr && size != 0)
+  {
+    if(firstType == Controller::Type::Unknown || secondType == Controller::Type::Unknown)
+    {
+      Controller::Type autodetected = Controller::Type::Unknown;
+      autodetected = ControllerDetector::detectType(image, size, autodetected,
+        jack, myOSystem.settings(), true);
+
+      if(firstType == Controller::Type::Unknown)
+        firstType = autodetected;
+      if(secondType == Controller::Type::Unknown)
+        secondType = autodetected;
+    }
+  }
 
   myFirstController = addController(firstType, false);
   mySecondController = addController(secondType, true);
@@ -66,20 +82,21 @@ QuadTari::QuadTari(Jack jack, const OSystem& osystem, const System& system,
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-unique_ptr<Controller> QuadTari::addController(const Controller::Type type, bool second)
+unique_ptr<Controller> QuadTari::addController(Controller::Type type, bool second)
 {
-  Controller::onMessageCallback callback = [&os = myOSystem](const string& msg) {
-    bool devSettings = os.settings().getBool("dev.settings");
-    if(os.settings().getBool(devSettings ? "dev.extaccess" : "plr.extaccess"))
-      os.frameBuffer().showTextMessage(msg);
-  };
+  const Controller::onMessageCallback callback = [&os = myOSystem]
+    (string_view msg) {
+      const bool devSettings = os.settings().getBool("dev.settings");
+      if(os.settings().getBool(devSettings ? "dev.extaccess" : "plr.extaccess"))
+        os.frameBuffer().showTextMessage(msg);
+    };
 
   switch(type)
   {
     case Controller::Type::Paddles:
     {
       // Check if we should swap the paddles plugged into a jack
-      bool swapPaddles = myProperties.get(PropType::Controller_SwapPaddles) == "YES";
+      const bool swapPaddles = myProperties.get(PropType::Controller_SwapPaddles) == "YES";
 
       return make_unique<Paddles>(myJack, myEvent, mySystem, swapPaddles,
                                   false, false, second);
@@ -89,14 +106,14 @@ unique_ptr<Controller> QuadTari::addController(const Controller::Type type, bool
 
     case Controller::Type::AtariVox:
     {
-    	FilesystemNode nvramfile = myOSystem.nvramDir("atarivox_eeprom.dat");
+      FSNode nvramfile = myOSystem.nvramDir("atarivox_eeprom.dat");
       return make_unique<AtariVox>(myJack, myEvent, mySystem,
                                    myOSystem.settings().getString("avoxport"),
                                    nvramfile, callback); // no alternative mapping here
     }
     case Controller::Type::SaveKey:
     {
-    	FilesystemNode nvramfile = myOSystem.nvramDir("savekey_eeprom.dat");
+      FSNode nvramfile = myOSystem.nvramDir("savekey_eeprom.dat");
       return make_unique<SaveKey>(myJack, myEvent, mySystem,
                                   nvramfile, callback); // no alternative mapping here
     }
@@ -136,9 +153,9 @@ bool QuadTari::read(DigitalPin pin)
 void QuadTari::write(DigitalPin pin, bool value)
 {
   if(isFirst())
-    return myFirstController->write(pin, value);
+    myFirstController->write(pin, value);
   else
-    return mySecondController->write(pin, value);
+    mySecondController->write(pin, value);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

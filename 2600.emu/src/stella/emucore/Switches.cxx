@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -21,11 +21,11 @@
 #include "Switches.hxx"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Switches::Switches(const Event& event, const Properties& properties,
+Switches::Switches(const Event& event, const Properties& props,
                    const Settings& settings)
   : myEvent{event}
 {
-  if(properties.get(PropType::Console_RightDiff) == "B")
+  if(props.get(PropType::Console_RightDiff) == "B")
   {
     mySwitches &= ~0x80;
   }
@@ -34,7 +34,7 @@ Switches::Switches(const Event& event, const Properties& properties,
     mySwitches |= 0x80;
   }
 
-  if(properties.get(PropType::Console_LeftDiff) == "B")
+  if(props.get(PropType::Console_LeftDiff) == "B")
   {
     mySwitches &= ~0x40;
   }
@@ -43,7 +43,7 @@ Switches::Switches(const Event& event, const Properties& properties,
     mySwitches |= 0x40;
   }
 
-  if(properties.get(PropType::Console_TVType) == "COLOR")
+  if(props.get(PropType::Console_TVType) == "COLOR")
   {
     mySwitches |= 0x08;
   }
@@ -188,7 +188,7 @@ bool Switches::load(Serializer& in)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool Switches::check7800Mode(const Settings& settings)
 {
-  bool devSettings = settings.getBool("dev.settings");
+  const bool devSettings = settings.getBool("dev.settings");
   myIs7800 = (settings.getString(devSettings ? "dev.console" : "plr.console") == "7800");
 
   return myIs7800;

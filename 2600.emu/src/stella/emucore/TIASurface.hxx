@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -46,11 +46,11 @@ class TIASurface
 {
   public:
     // Setting names of palette types
-    static constexpr const char* SETTING_STANDARD = "standard";
-    static constexpr const char* SETTING_THIN     = "thin";
-    static constexpr const char* SETTING_PIXELS   = "pixels";
-    static constexpr const char* SETTING_APERTURE = "aperture";
-    static constexpr const char* SETTING_MAME     = "mame";
+    static constexpr string_view SETTING_STANDARD = "standard";
+    static constexpr string_view SETTING_THIN     = "thin";
+    static constexpr string_view SETTING_PIXELS   = "pixels";
+    static constexpr string_view SETTING_APERTURE = "aperture";
+    static constexpr string_view SETTING_MAME     = "mame";
 
     /**
       Creates a new TIASurface object
@@ -169,7 +169,7 @@ class TIASurface
       Enable/disable/query NTSC filtering effects.
     */
     void enableNTSC(bool enable);
-    bool ntscEnabled() const { return uInt8(myFilter) & 0x10; }
+    bool ntscEnabled() const { return static_cast<uInt8>(myFilter) & 0x10; }
     string effectsInfo() const;
 
     /**
@@ -195,7 +195,7 @@ class TIASurface
     void updateSurfaceSettings();
 
   private:
-    enum class ScanlineMask {
+    enum class ScanlineMask: uInt8 {
       Standard,
       Thin,
       Pixels,
@@ -246,17 +246,19 @@ class TIASurface
     // Phosphor blend
     int myPBlend{0};
 
-    std::array<uInt32, AtariNTSC::outWidth(TIAConstants::frameBufferWidth) *
-        TIAConstants::frameBufferHeight> myRGBFramebuffer;
-    std::array<uInt32, AtariNTSC::outWidth(TIAConstants::frameBufferWidth) *
-        TIAConstants::frameBufferHeight> myPrevRGBFramebuffer;
+    std::array<uInt32, static_cast<std::size_t>
+      (AtariNTSC::outWidth(TIAConstants::frameBufferWidth) *
+      TIAConstants::frameBufferHeight)> myRGBFramebuffer{};
+    std::array<uInt32, static_cast<std::size_t>
+      (AtariNTSC::outWidth(TIAConstants::frameBufferWidth) *
+        TIAConstants::frameBufferHeight)> myPrevRGBFramebuffer{};
     /////////////////////////////////////////////////////////////
 
     // Use scanlines in TIA rendering mode
     bool myScanlinesEnabled{false};
 
     // Palette for normal TIA rendering mode
-    PaletteArray myPalette;
+    PaletteArray myPalette{};
 
     // Flag for saving a snapshot
     bool mySaveSnapFlag{false};

@@ -89,10 +89,10 @@ struct interrupt_cpu_status_s {
     /* If 1, do a RESET.  */
     int reset;
 
+#define INTRRUPT_MAX_TRAP_FUNC_SIZE 4
+
     /* If 1, call the trapping function.  */
     int trap;
-
-#define INTRRUPT_MAX_TRAP_FUNC_SIZE 4
 
     /* Various subsystems use this to call a function next cycle  */
     void (*trap_func[INTRRUPT_MAX_TRAP_FUNC_SIZE])(uint16_t, void *data);
@@ -144,41 +144,48 @@ inline static void interrupt_set_irq(interrupt_cpu_status_t *cs,
                                      unsigned int int_num,
                                      int value, CLOCK cpu_clk)
 {
-    if (cs == NULL || int_num >= cs->num_ints) {
+    if ((cs == NULL) || (int_num >= cs->num_ints)) {
         return;
     }
 
     if (value) {                /* Trigger the IRQ.  */
         if (!(cs->pending_int[int_num] & IK_IRQ)) {
-            cs->nirq++;
-            cs->global_pending_int = (cs->global_pending_int | (unsigned int)(IK_IRQ | IK_IRQPEND));
-            cs->pending_int[int_num] = (cs->pending_int[int_num] | (unsigned int)IK_IRQ);
+            cs->pending_int[int_num] |= (unsigned int)IK_IRQ;
 
-            cs->irq_pending_clk = CLOCK_MAX;
+            /*
+             * Only when the first IRQ source becomes active, the CPU sees the
+             * IRQ input line go active; on additional ones, no change is visible.
+             */
+            if (cs->nirq == 0) {
+                cs->global_pending_int |= (unsigned int)(IK_IRQ | IK_IRQPEND);
 
-            /* This makes sure that IRQ delay is correctly emulated when
-               cycles are stolen from the CPU.  */
+                cs->irq_pending_clk = CLOCK_MAX;
+
+                /* This makes sure that IRQ delay is correctly emulated when
+                   cycles are stolen from the CPU.  */
 #ifdef DEBUG
-            if (debug.maincpu_traceflg) {
-                log_debug("ICLK=%lu  last_stolen_cycle=%lu",
-                        (unsigned long)cpu_clk,
-                        (unsigned long)(cs->last_stolen_cycles_clk));
-            }
+                if (debug.maincpu_traceflg) {
+                    log_debug(LOG_DEFAULT, "ICLK=%lu  last_stolen_cycle=%lu",
+                            (unsigned long)cpu_clk,
+                            (unsigned long)(cs->last_stolen_cycles_clk));
+                }
 #endif
-            cs->irq_delay_cycles = 0;
+                cs->irq_delay_cycles = 0;
 
-            if (cs->last_stolen_cycles_clk <= cpu_clk) {
-                cs->irq_clk = cpu_clk;
-            } else {
-                interrupt_fixup_int_clk(cs, cpu_clk, &(cs->irq_clk));
+                if (cs->last_stolen_cycles_clk <= cpu_clk) {
+                    cs->irq_clk = cpu_clk;
+                } else {
+                    interrupt_fixup_int_clk(cs, cpu_clk, &(cs->irq_clk));
+                }
             }
+            cs->nirq++;
         }
     } else {                    /* Remove the IRQ condition.  */
         if (cs->pending_int[int_num] & IK_IRQ) {
             if (cs->nirq > 0) {
                 cs->pending_int[int_num] =
                     (cs->pending_int[int_num] & (unsigned int)~IK_IRQ);
-                if (--cs->nirq == 0) {
+                if ((--cs->nirq) == 0) {
                     cs->global_pending_int =
                         (cs->global_pending_int & (unsigned int)~IK_IRQ);
                     cs->irq_pending_clk = cpu_clk + 3;
@@ -206,7 +213,7 @@ inline static void interrupt_set_nmi(interrupt_cpu_status_t *cs,
 
 #ifdef DEBUG
                 if (debug.maincpu_traceflg) {
-                    log_debug("ICLK=%lu  last_stolen_cycle=%lu",
+                    log_debug(LOG_DEFAULT, "ICLK=%lu  last_stolen_cycle=%lu",
                             (unsigned long)cpu_clk,
                             (unsigned long)(cs->last_stolen_cycles_clk));
                 }
@@ -244,6 +251,11 @@ inline static void interrupt_set_nmi(interrupt_cpu_status_t *cs,
     }
 }
 
+/* FIXME: update the acia code and get rid of this
+    src/plus4/plus4acia.c:72
+    src/c64/cart/c64acia1.c:85
+ */
+#if 1
 /* Change the interrupt line state: this can be used to change both NMI
    and IRQ lines.  It is slower than `interrupt_set_nmi()' and
    `interrupt_set_irq()', but is left for backward compatibility (it works
@@ -254,6 +266,7 @@ inline static void interrupt_set_int(interrupt_cpu_status_t *cs, int int_num,
     interrupt_set_nmi(cs, (unsigned int)int_num, (int)(value & IK_NMI), cpu_clk);
     interrupt_set_irq(cs, (unsigned int)int_num, (int)(value & IK_IRQ), cpu_clk);
 }
+#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -269,6 +282,7 @@ inline static void interrupt_ack_nmi(interrupt_cpu_status_t *cs)
     }
 }
 
+/* clear IK_IRQPEND bit and set irq_pending_clk to CLOCK_MAX */
 inline static void interrupt_ack_irq(interrupt_cpu_status_t *cs)
 {
     cs->global_pending_int =
@@ -332,9 +346,10 @@ extern CLOCK maincpu_clk;
 
 #define maincpu_set_int(int_num, value) \
     interrupt_set_int(maincpu_int_status, (int_num), (value), maincpu_clk)
-
+#if 0
 #define maincpu_set_int_clk(int_num, value, clk) \
     interrupt_set_int(maincpu_int_status, (int_num), (value), (clk))
+#endif
 
 #define maincpu_trigger_reset() \
     interrupt_trigger_reset(maincpu_int_status, maincpu_clk)

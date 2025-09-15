@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -36,10 +36,11 @@ class NTSCFilter
 {
   public:
     NTSCFilter() = default;
+    ~NTSCFilter() = default;
 
   public:
     // Set one of the available preset adjustments (Composite, S-Video, RGB, etc)
-    enum class Preset {
+    enum class Preset: uInt8 {
       OFF,
       RGB,
       SVIDEO,
@@ -47,7 +48,7 @@ class NTSCFilter
       BAD,
       CUSTOM
     };
-    enum class Adjustables {
+    enum class Adjustables: uInt8 {
       SHARPNESS,
       RESOLUTION,
       ARTIFACTS,
@@ -80,12 +81,12 @@ class NTSCFilter
     // Get adjustables for the given preset
     // Values will be scaled to 0 - 100 range, independent of how
     // they're actually stored internally
-    void getAdjustables(Adjustable& adjustable, Preset preset) const;
+    static void getAdjustables(Adjustable& adjustable, Preset preset);
 
     // Set custom adjustables to given values
     // Values will be scaled to 0 - 100 range, independent of how
     // they're actually stored internally
-    void setCustomAdjustables(const Adjustable& adjustable);
+    static void setCustomAdjustables(const Adjustable& adjustable);
 
     // The following methods cycle through each custom adjustable
     // They are used in conjunction with the increase/decrease
@@ -101,32 +102,32 @@ class NTSCFilter
                                  string& text, string& valueText, Int32& newValue);
 
     // Load and save NTSC-related settings
-    void loadConfig(const Settings& settings);
-    void saveConfig(Settings& settings) const;
+    static void loadConfig(const Settings& settings);
+    static void saveConfig(Settings& settings);
 
     // Perform Blargg filtering on input buffer, place results in
     // output buffer
-    inline void render(const uInt8* src_buf, uInt32 src_width, uInt32 src_height,
-                       uInt32* dest_buf, uInt32 dest_pitch)
+    void render(const uInt8* src_buf, uInt32 src_width, uInt32 src_height,
+                uInt32* dest_buf, uInt32 dest_pitch)
     {
       myNTSC.render(src_buf, src_width, src_height, dest_buf, dest_pitch);
     }
-    inline void render(const uInt8* src_buf, uInt32 src_width, uInt32 src_height,
-                       uInt32* dest_buf, uInt32 dest_pitch, uInt32* prev_buf)
+    void render(const uInt8* src_buf, uInt32 src_width, uInt32 src_height,
+                uInt32* dest_buf, uInt32 dest_pitch, uInt32* prev_buf)
     {
       myNTSC.render(src_buf, src_width, src_height, dest_buf, dest_pitch, prev_buf);
     }
 
     // Enable threading for the NTSC rendering
-    inline void enableThreading(bool enable)
+    void enableThreading(bool enable)
     {
       myNTSC.enableThreading(enable);
     }
 
   private:
     // Convert from atari_ntsc_setup_t values to equivalent adjustables
-    void convertToAdjustable(Adjustable& adjustable,
-                             const AtariNTSC::Setup& setup) const;
+    static void convertToAdjustable(Adjustable& adjustable,
+                                    const AtariNTSC::Setup& setup);
 
   private:
     // The NTSC object
@@ -144,11 +145,18 @@ class NTSCFilter
     Preset myPreset{Preset::OFF};
 
     struct AdjustableTag {
-      const char* const type{nullptr};
+      string_view type;
       float* value{nullptr};
     };
     uInt32 myCurrentAdjustable{0};
-    static const std::array<AdjustableTag, 5> ourCustomAdjustables;
+
+    static constexpr std::array<AdjustableTag, 5> ourCustomAdjustables = {{
+      { "sharpness", &myCustomSetup.sharpness },
+      { "resolution", &myCustomSetup.resolution },
+      { "artifacts", &myCustomSetup.artifacts },
+      { "fringing", &myCustomSetup.fringing },
+      { "bleeding", &myCustomSetup.bleed }
+    }};
 
   private:
     // Following constructors and assignment operators not supported

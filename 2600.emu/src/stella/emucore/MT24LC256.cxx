@@ -8,14 +8,12 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
 // this file, and for a DISCLAIMER OF ALL WARRANTIES.
 //============================================================================
-
-#include <cstdio>
 
 #include "System.hxx"
 #include "MT24LC256.hxx"
@@ -43,7 +41,7 @@
 */
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-MT24LC256::MT24LC256(const FilesystemNode& eepromfile, const System& system,
+MT24LC256::MT24LC256(const FSNode& eepromfile, const System& system,
                      const Controller::onMessageCallback& callback)
   : mySystem{system},
     myCallback{callback},
@@ -82,7 +80,7 @@ MT24LC256::~MT24LC256()
   if(myDataChanged)
   {
     try { myDataFile.write(myData, FLASH_SIZE); }
-    catch(...) { }
+    catch(...) { cerr << "ERROR writing MT24LC256 data file\n"; }
   }
 }
 
@@ -122,8 +120,8 @@ void MT24LC256::update()
   if(myCyclesWhenSDASet == myCyclesWhenSCLSet)
   {
 #ifdef DEBUG_EEPROM
-    cerr << endl << "  I2C_PIN_WRITE(SCL = " << mySCL
-         << ", SDA = " << mySDA << ")" << " @ " << mySystem.cycles() << endl;
+    cerr << "\n  I2C_PIN_WRITE(SCL = " << mySCL
+         << ", SDA = " << mySDA << ")" << " @ " << mySystem.cycles() << '\n';
 #endif
     jpee_clock(mySCL);
     jpee_data(mySDA);
@@ -175,6 +173,7 @@ void MT24LC256::jpee_init()
   jpee_pagemask = PAGE_SIZE - 1;
   jpee_smallmode = 0;
   jpee_logmode = -1;
+  jpee_packet.fill(0);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -261,7 +260,7 @@ void MT24LC256::jpee_clock_fall()
       {
         if (!jpee_pptr)
         {
-          jpee_packet[0] = uInt8(jpee_nb);
+          jpee_packet[0] = static_cast<uInt8>(jpee_nb);
           if (jpee_smallmode && ((jpee_nb & 0xF0) == 0xA0))
           {
             jpee_packet[1] = (jpee_nb >> 1) & 7;
@@ -306,7 +305,7 @@ void MT24LC256::jpee_clock_fall()
       {
         if (!jpee_pptr)
         {
-          jpee_packet[0] = uInt8(jpee_nb);
+          jpee_packet[0] = static_cast<uInt8>(jpee_nb);
           if (jpee_smallmode)
             jpee_pptr=2;
           else
@@ -315,7 +314,7 @@ void MT24LC256::jpee_clock_fall()
         else if (jpee_pptr < 70)
         {
           JPEE_LOG1("I2C_SENT(%02X)",jpee_nb & 0xFF)
-          jpee_packet[jpee_pptr++] = uInt8(jpee_nb);
+          jpee_packet[jpee_pptr++] = static_cast<uInt8>(jpee_nb);
           jpee_address = (jpee_packet[1] << 8) | jpee_packet[2];
           if (jpee_pptr > 2)
             jpee_ad_known = 1;

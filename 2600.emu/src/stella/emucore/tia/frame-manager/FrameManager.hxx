@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -26,7 +26,7 @@
 class FrameManager: public AbstractFrameManager {
   public:
 
-    enum Metrics : uInt32 {
+    enum Metrics: uInt32 {  // NOLINT: use 32-bit, even though 16-bit is sufficient
       vblankNTSC = 37,
       vblankPAL = 45,
       vsync = 3,
@@ -34,6 +34,7 @@ class FrameManager: public AbstractFrameManager {
       frameSizePAL = 312,
       baseHeightNTSC = 228, // 217..239
       baseHeightPAL = 274, // 260..288
+      // NOLINTNEXTLINE: lround suggested, but not constexpr until C++23
       maxHeight = static_cast<uInt32>(baseHeightPAL * 1.05 + 0.5), // 288
       maxLinesVsync = 50,
       initialGarbageFrames = TIAConstants::initialGarbageFrames,
@@ -45,6 +46,7 @@ class FrameManager: public AbstractFrameManager {
   public:
 
     FrameManager();
+    ~FrameManager() override = default;
 
   public:
     void setJitterSensitivity(uInt8 sensitivity) override { myJitterEmulation.setSensitivity(sensitivity); }
@@ -54,6 +56,8 @@ class FrameManager: public AbstractFrameManager {
     bool jitterEnabled() const override { return myJitterEnabled; }
 
     void enableJitter(bool enabled) override { myJitterEnabled = enabled; }
+
+    bool vsyncCorrect() const override { return !myJitterEnabled || myJitterEmulation.vsyncCorrect(); }
 
     uInt32 height() const override { return myHeight; }
 
@@ -93,7 +97,7 @@ class FrameManager: public AbstractFrameManager {
 
   private:
 
-    enum class State {
+    enum class State: uInt8 {
       waitForVsyncStart,
       waitForVsyncEnd,
       waitForFrameStart,

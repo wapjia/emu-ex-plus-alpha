@@ -36,15 +36,16 @@ class GLTextureStorage: public Texture
 public:
 	constexpr GLTextureStorage() = default;
 
-	GLTextureStorage(RendererTask &rTask, TextureConfig config, bool singleBuffer):
+	GLTextureStorage(RendererTask& rTask, TextureConfig config, TextureBufferImageMode imageMode):
 		Texture{rTask, config},
-		bufferIdx{singleBuffer ? SINGLE_BUFFER_VALUE : (int8_t)0} {}
+		bufferIdx{imageMode == TextureBufferImageMode::Single ? SINGLE_BUFFER_VALUE : (int8_t)0} {}
 
 	bool setFormat(PixmapDesc, ColorSpace, TextureSamplerConfig);
 	void writeAligned(PixmapView pixmap, int assumeAlign, TextureWriteFlags writeFlags = {});
 	LockedTextureBuffer lock(TextureBufferFlags bufferFlags = {});
 	void unlock(LockedTextureBuffer lockBuff, TextureWriteFlags writeFlags = {});
-	bool isSingleBuffered() const { return bufferIdx == SINGLE_BUFFER_VALUE; }
+	auto imageMode() const { return bufferIdx == SINGLE_BUFFER_VALUE ? TextureBufferImageMode::Single : TextureBufferImageMode::Double; }
+	int buffers() const { return imageMode() == TextureBufferImageMode::Single ? 1 : 2; }
 
 protected:
 	int8_t bufferIdx{};
@@ -53,12 +54,12 @@ protected:
 
 	BufferInfo currentBuffer() const
 	{
-		return isSingleBuffered() ? info[0] : info[bufferIdx];
+		return buffers() == 1 ? info[0] : info[bufferIdx];
 	}
 
 	void swapBuffer()
 	{
-		if(isSingleBuffered())
+		if(buffers() == 1)
 			return;
 		bufferIdx = (bufferIdx + 1) % 2;
 	}
@@ -75,8 +76,8 @@ class GLSystemMemoryStorage final: public GLTextureStorage<GLSystemMemoryStorage
 {
 public:
 	constexpr GLSystemMemoryStorage() = default;
-	GLSystemMemoryStorage(RendererTask &rTask, TextureConfig config, bool singleBuffer);
-	void initBuffer(PixmapDesc desc, bool singleBuffer);
+	GLSystemMemoryStorage(RendererTask&, TextureConfig, TextureBufferImageMode);
+	void initBuffer(PixmapDesc, TextureBufferImageMode);
 
 private:
 	std::unique_ptr<char[]> storage;
@@ -94,8 +95,8 @@ class GLPixelBufferStorage final: public GLTextureStorage<GLPixelBufferStorage, 
 {
 public:
 	constexpr GLPixelBufferStorage() = default;
-	GLPixelBufferStorage(RendererTask &rTask, TextureConfig config, bool singleBuffer);
-	void initBuffer(PixmapDesc desc, bool singleBuffer);
+	GLPixelBufferStorage(RendererTask&, TextureConfig, TextureBufferImageMode);
+	void initBuffer(PixmapDesc, TextureBufferImageMode);
 	GLuint pbo() const { return pixelBuff.get(); }
 
 private:
@@ -124,10 +125,10 @@ public:
 protected:
 	GLPixmapBufferTextureVariant directTex{};
 
-	void initWithSystemMemory(RendererTask &rTask, TextureConfig config, bool singleBuffer = false);
-	void initWithPixelBuffer(RendererTask &rTask, TextureConfig config,  bool singleBuffer = false);
-	void initWithHardwareBuffer(RendererTask &rTask, TextureConfig config, bool singleBuffer = false);
-	void initWithSurfaceTexture(RendererTask &rTask, TextureConfig config, bool singleBuffer = false);
+	void initWithSystemMemory(RendererTask&, TextureConfig, TextureBufferImageMode = {});
+	void initWithPixelBuffer(RendererTask&, TextureConfig,  TextureBufferImageMode = {});
+	void initWithHardwareBuffer(RendererTask&, TextureConfig, TextureBufferImageMode = {});
+	void initWithSurfaceTexture(RendererTask&, TextureConfig, TextureBufferImageMode = {});
 };
 
 using PixmapBufferTextureImpl = GLPixmapBufferTexture;

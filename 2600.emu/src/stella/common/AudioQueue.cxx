@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -29,16 +29,20 @@ AudioQueue::AudioQueue(uInt32 fragmentSize, uInt32 capacity, bool isStereo)
 {
   const uInt8 sampleSize = myIsStereo ? 2 : 1;
 
-  myFragmentBuffer = make_unique<Int16[]>(myFragmentSize * sampleSize * (capacity + 2));
+  myFragmentBuffer = make_unique<Int16[]>(
+      static_cast<size_t>(myFragmentSize) * sampleSize * (capacity + 2));
 
   for (uInt32 i = 0; i < capacity; ++i)
-    myFragmentQueue[i] = myAllFragments[i] = myFragmentBuffer.get() + i * sampleSize * myFragmentSize;
+    myFragmentQueue[i] = myAllFragments[i] = myFragmentBuffer.get() +
+      static_cast<size_t>(myFragmentSize) * sampleSize * i;
 
   myAllFragments[capacity] = myFirstFragmentForEnqueue =
-    myFragmentBuffer.get() + capacity * sampleSize * myFragmentSize;
+    myFragmentBuffer.get() + static_cast<size_t>(myFragmentSize) * sampleSize *
+    capacity;
 
   myAllFragments[capacity + 1] = myFirstFragmentForDequeue =
-    myFragmentBuffer.get() + (capacity + 1) * sampleSize * myFragmentSize;
+    myFragmentBuffer.get() + static_cast<size_t>(myFragmentSize) * sampleSize *
+    (capacity + 1);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -50,7 +54,7 @@ uInt32 AudioQueue::capacity() const
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 uInt32 AudioQueue::size() const
 {
-  //lock_guard<mutex> guard(myMutex);
+  //const lock_guard<mutex> guard(myMutex);
 
   return mySize;
 }
@@ -70,7 +74,7 @@ uInt32 AudioQueue::fragmentSize() const
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Int16* AudioQueue::enqueue(Int16* fragment)
 {
-  //lock_guard<mutex> guard(myMutex);
+  //const lock_guard<mutex> guard(myMutex);
 
   Int16* newFragment = nullptr;
 
@@ -83,7 +87,7 @@ Int16* AudioQueue::enqueue(Int16* fragment)
     return newFragment;
   }
 
-  const uInt8 capacity = static_cast<uInt8>(myFragmentQueue.size());
+  const auto capacity = static_cast<uInt8>(myFragmentQueue.size());
   const uInt8 fragmentIndex = (myNextFragment + mySize) % capacity;
 
   newFragment = myFragmentQueue.at(fragmentIndex);
@@ -102,7 +106,7 @@ Int16* AudioQueue::enqueue(Int16* fragment)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Int16* AudioQueue::dequeue(Int16* fragment)
 {
-  //lock_guard<mutex> guard(myMutex);
+  //const lock_guard<mutex> guard(myMutex);
 
   if (mySize == 0) return nullptr;
 
@@ -125,7 +129,7 @@ Int16* AudioQueue::dequeue(Int16* fragment)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void AudioQueue::closeSink(Int16* fragment)
 {
-  //lock_guard<mutex> guard(myMutex);
+  //const lock_guard<mutex> guard(myMutex);
 
   if (myFirstFragmentForDequeue && fragment)
     throw runtime_error("attempt to return unknown buffer on closeSink");

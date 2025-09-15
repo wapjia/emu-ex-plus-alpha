@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -53,7 +53,7 @@ class Cartridge3F : public CartridgeEnhanced
       @param bsSize    The size specified by the bankswitching scheme
                        (where 0 means variable-sized ROM)
     */
-    Cartridge3F(const ByteBuffer& image, size_t size, const string& md5,
+    Cartridge3F(const ByteBuffer& image, size_t size, string_view md5,
                 const Settings& settings, size_t bsSize = 0);
     ~Cartridge3F() override = default;
 

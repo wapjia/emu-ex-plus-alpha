@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -96,7 +96,7 @@ void RewindManager::setup()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool RewindManager::addState(const string& message, bool timeMachine)
+bool RewindManager::addState(string_view message, bool timeMachine)
 {
   // only check for Time Machine states, ignore for debugger
   if(timeMachine && myStateList.currentIsValid())
@@ -146,7 +146,7 @@ bool RewindManager::addState(const string& message, bool timeMachine)
 uInt32 RewindManager::rewindStates(uInt32 numStates)
 {
   const uInt64 startCycles = myOSystem.console().tia().cycles();
-  uInt32 i;
+  uInt32 i{0};
   string message;
 
   for(i = 0; i < numStates; ++i)
@@ -186,7 +186,7 @@ uInt32 RewindManager::rewindStates(uInt32 numStates)
 uInt32 RewindManager::unwindStates(uInt32 numStates)
 {
   const uInt64 startCycles = myOSystem.console().tia().cycles();
-  uInt32 i;
+  uInt32 i{0};
   string message;
 
   for(i = 0; i < numStates; ++i)
@@ -239,13 +239,13 @@ string RewindManager::saveAllStates()
       << myOSystem.console().properties().get(PropType::Cart_Name)
       << ".sta";
 
-    Serializer out(buf.str(), Serializer::Mode::ReadWriteTrunc);
+    Serializer out(buf.view(), Serializer::Mode::ReadWriteTrunc);
     if (!out)
       return "Can't save to all states file";
 
     const uInt32 curIdx = getCurrentIdx();
     rewindStates(MAX_BUF_SIZE);
-    uInt32 numStates = static_cast<uInt32>(cyclesList().size());
+    const uInt32 numStates = static_cast<uInt32>(cyclesList().size());
 
     // Save header
     buf.str("");
@@ -256,7 +256,7 @@ string RewindManager::saveAllStates()
     {
       RewindState& state = myStateList.current();
       Serializer& s = state.data;
-      const uInt32 stateSize = static_cast<uInt32>(s.size());
+      const auto stateSize = static_cast<uInt32>(s.size());
 
       out.putInt(stateSize);
 
@@ -296,7 +296,7 @@ string RewindManager::loadAllStates()
       << ".sta";
 
     // Make sure the file can be opened for reading
-    Serializer in(buf.str(), Serializer::Mode::ReadOnly);
+    const Serializer in(buf.view(), Serializer::Mode::ReadOnly);
     if (!in)
       return "Can't load from all states file";
 
@@ -354,7 +354,7 @@ void RewindManager::compressStates()
   double maxError = 1.5;
   uInt32 idx = myStateList.size() - 2;
   // in case maxError is <= 1.5 remove first state by default:
-  Common::LinkedObjectPool<RewindState>::const_iter removeIter = myStateList.first();
+  auto removeIter = myStateList.first();
   /*if(myUncompressed < mySize)
     //  if compression is enabled, the first but one state is removed by default:
     removeIter++;*/
@@ -393,7 +393,10 @@ string RewindManager::loadState(Int64 startCycles, uInt32 numStates)
   const Int64 diff = startCycles - state.cycles;
   stringstream message;
 
-  message << (diff >= 0 ? "Rewind" : "Unwind") << " " << getUnitString(diff);
+  if(diff)
+    message << (diff > 0 ? "Rewind" : "Unwind") << " " << getUnitString(diff);
+  else
+    message << "No wind";
   message << " [" << myStateList.currentIdx() << "/" << myStateList.size() << "]";
 
   // add optional message
@@ -406,35 +409,35 @@ string RewindManager::loadState(Int64 startCycles, uInt32 numStates)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 string RewindManager::getUnitString(Int64 cycles)
 {
-  constexpr Int32 NTSC_FREQ = 1193182; // ~76*262*60
-  constexpr Int32 PAL_FREQ  = 1182298; // ~76*312*50
-  const Int32 scanlines = std::max<Int32>(
+  constexpr size_t NTSC_FREQ = 1193182; // ~76*262*60
+  constexpr size_t PAL_FREQ  = 1182298; // ~76*312*50
+  const size_t scanlines = std::max<size_t>(
       myOSystem.console().tia().scanlinesLastFrame(), 240);
   const bool isNTSC = scanlines <= 287;
-  const Int32 freq = isNTSC ? NTSC_FREQ : PAL_FREQ; // = cycles/second
+  const size_t freq = isNTSC ? NTSC_FREQ : PAL_FREQ; // = cycles/second
 
-  constexpr Int32 NUM_UNITS = 5;
+  constexpr size_t NUM_UNITS = 5;
   const std::array<string, NUM_UNITS> UNIT_NAMES = {
     "cycle", "scanline", "frame", "second", "minute"
   };
-  const std::array<Int64, NUM_UNITS+1> UNIT_CYCLES = {
+  const std::array<uInt64, NUM_UNITS+1> UNIT_CYCLES = {
     1, 76, 76 * scanlines, freq, freq * 60, Int64{1} << 62
   };
 
   stringstream result;
-  Int32 i = 0;
+  size_t i = 0;
 
-  cycles = std::abs(cycles);
+  const uInt64 u_cycles = std::abs(cycles);
 
   for(i = 0; i < NUM_UNITS - 1; ++i)
   {
     // use the lower unit up to twice the nextCycles unit, except for an exact match of the nextCycles unit
     // TODO: does the latter make sense, e.g. for ROMs with changing scanlines?
-    if(cycles == 0 || (cycles < UNIT_CYCLES[i + 1] * 2 && cycles % UNIT_CYCLES[i + 1] != 0))
+    if(u_cycles == 0 || (u_cycles < UNIT_CYCLES[i + 1] * 2 && u_cycles % UNIT_CYCLES[i + 1] != 0))
       break;
   }
-  result << (cycles / UNIT_CYCLES[i]) << " " << UNIT_NAMES[i];
-  if(cycles / UNIT_CYCLES[i] != 1)
+  result << (u_cycles / UNIT_CYCLES[i]) << " " << UNIT_NAMES[i];
+  if(u_cycles / UNIT_CYCLES[i] != 1)
     result << "s";
 
   return result.str();
@@ -467,8 +470,9 @@ IntArray RewindManager::cyclesList() const
   IntArray arr;
 
   const uInt64 firstCycle = getFirstCycles();
+  // NOLINTNEXTLINE (TODO: convert myStateList to use range-for)
   for(auto it = myStateList.cbegin(); it != myStateList.cend(); ++it)
-    arr.push_back(uInt32(it->cycles - firstCycle));
+    arr.push_back(static_cast<uInt32>(it->cycles - firstCycle));
 
   return arr;
 }

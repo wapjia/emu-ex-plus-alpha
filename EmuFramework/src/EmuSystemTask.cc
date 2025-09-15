@@ -33,16 +33,6 @@ EmuSystemTask::EmuSystemTask(EmuApp& app_):
 		[this](FrameParams params)
 		{
 			bool renderingFrame = advanceFrames(params);
-			if(renderingFrame)
-			{
-				app.record(FrameTimingStatEvent::waitForPresent);
-				framePresentedSem.acquire();
-				auto endFrameTime = SteadyClock::now();
-				app.reportFrameWorkDuration(endFrameTime - params.time);
-				app.record(FrameTimingStatEvent::endOfFrame, endFrameTime);
-				app.viewController().emuView.setFrameTimingStats({.stats{app.frameTimingStats}, .lastFrameTime{params.lastTime},
-					.inputRate{app.system().frameRate()}, .outputRate{frameRateConfig.rate}});
-			}
 			if(params.isFromRenderer() && !renderingFrame)
 			{
 				drawWindowNow();
@@ -56,7 +46,8 @@ void EmuSystemTask::start(Window& win)
 	if(isStarted())
 		return;
 	win.removeFrameEvents();
-	win.setDrawEventPriority(Window::drawEventPriorityLocked); // block UI from posting draws
+	win.setDrawEventEnabled(false); // block UI from posting draws
+	shouldWaitForPresent = app.lowLatencyVideo && app.effectiveFrameClockSource() != FrameClockSource::Renderer;
 	setWindowInternal(win);
 	taskThread = makeThreadSync(
 		[this](auto &sem)
@@ -111,9 +102,9 @@ void EmuSystemTask::start(Window& win)
 				return true;
 			});
 			sem.release();
-			log.info("starting thread:{} event loop", threadId);
+			log.info("starting emulation thread:{}, sync present:{}", threadId, shouldWaitForPresent);
 			eventLoop.run(started);
-			log.info("exiting thread:{}", threadId);
+			log.info("exiting emulation thread:{}", threadId);
 			commandPort.detach();
 		});
 }
@@ -135,9 +126,12 @@ void EmuSystemTask::setWindowInternal(Window& win)
 
 void EmuSystemTask::drawWindowNow()
 {
-	waitingForPresent_ = true;
+	bool shouldWait = setWaitForPresent();
 	window().drawNow();
-	framePresentedSem.acquire();
+	if(shouldWait)
+	{
+		framePresentedSem.acquire();
+	}
 }
 
 EmuSystemTask::SuspendContext EmuSystemTask::suspend()
@@ -172,7 +166,7 @@ void EmuSystemTask::stop()
 	taskThread.join();
 	app.flushMainThreadMessages();
 	winPtr->setFrameEventsOnThisThread();
-	winPtr->setDrawEventPriority(); // allow UI to post draws again
+	winPtr->setDrawEventEnabled(true); // allow UI to post draws again
 	winPtr->setIntendedFrameRate(0);
 	winPtr = {};
 }
@@ -391,7 +385,10 @@ bool EmuSystemTask::advanceFrames(FrameParams frameParams)
 	auto *audioPtr = app.audio ? &app.audio : nullptr;
 	auto frameInfo = sys.timing.advanceFrames(frameParams);
 	int interval = app.frameInterval;
-	viewCtrl.presentTime = frameParams.presentTime(interval);
+	if(shouldWaitForPresent)
+	{
+		viewCtrl.presentTime = frameParams.presentTime(interval);
+	}
 	if(sys.shouldFastForward()) [[unlikely]]
 	{
 		// for skipping loading on disk-based computers
@@ -406,9 +403,8 @@ bool EmuSystemTask::advanceFrames(FrameParams frameParams)
 	{
 		if(enableBlankFrameInsertion)
 		{
-			waitingForPresent_ = true;
 			viewCtrl.drawBlankFrame = true;
-			window().drawNow();
+			drawWindowNow();
 			return true;
 		}
 		return false;
@@ -440,16 +436,29 @@ bool EmuSystemTask::advanceFrames(FrameParams frameParams)
 	if(frameInfo.duration > Milliseconds{70})
 		frameInfo.advanced = std::min(frameInfo.advanced, 4);
 	EmuVideo *videoPtr = savedAdvancedFrames ? nullptr : &app.video;
+	bool shouldWait{};
 	if(videoPtr)
 	{
 		app.record(FrameTimingStatEvent::startOfFrame, frameParams.time);
 		app.record(FrameTimingStatEvent::startOfEmulation);
-		waitingForPresent_ = true;
+		shouldWait = setWaitForPresent();
 	}
 	//log.debug("running {} frame(s), skip:{}", frameInfo.advanced, !videoPtr);
 	sys.runFrames({this}, videoPtr, audioPtr, frameInfo.advanced);
 	app.inputManager.turboActions.update(app);
-	return videoPtr;
+	if(!videoPtr)
+		return false;
+	app.record(FrameTimingStatEvent::waitForPresent);
+	if(shouldWait)
+	{
+		framePresentedSem.acquire();
+	}
+	auto endFrameTime = SteadyClock::now();
+	app.reportFrameWorkDuration(endFrameTime - frameParams.time);
+	app.record(FrameTimingStatEvent::endOfFrame, endFrameTime);
+	viewCtrl.emuView.setFrameTimingStats({.stats{app.frameTimingStats}, .lastFrameTime{frameParams.lastTime},
+		.inputRate{sys.frameRate()}, .outputRate{frameRateConfig.rate}});
+	return true;
 }
 
 void EmuSystemTask::notifyWindowPresented()

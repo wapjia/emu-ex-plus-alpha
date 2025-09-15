@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -33,16 +33,16 @@ class DrawCounterDecodes
   protected:
 
     DrawCounterDecodes();
+    ~DrawCounterDecodes() = default;
 
   private:
 
-    uInt8* myPlayerDecodes[8]{nullptr}; // TJ: one per NUSIZ number and size
-
-    uInt8* myMissileDecodes[8]{nullptr}; // TJ: one per NUSIZ number and size
+    uInt8* myPlayerDecodes[8]{};  // TJ: one per NUSIZ number and size
+    uInt8* myMissileDecodes[8]{}; // TJ: one per NUSIZ number and size
 
     // TJ: 6 scanline pixel arrays, one for each copy pattern
-    uInt8 myDecodes0[160], myDecodes1[160], myDecodes2[160], myDecodes3[160],
-          myDecodes4[160], myDecodes6[160];
+    uInt8 myDecodes0[160]{}, myDecodes1[160]{}, myDecodes2[160]{},
+          myDecodes3[160]{}, myDecodes4[160]{}, myDecodes6[160]{};
 
     static DrawCounterDecodes myInstance;
 

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -47,7 +47,7 @@ class CartridgeUA : public CartridgeEnhanced
       @param settings      A reference to the various settings (read-only)
       @param swapHotspots  Swap hotspots
     */
-    CartridgeUA(const ByteBuffer& image, size_t size, const string& md5,
+    CartridgeUA(const ByteBuffer& image, size_t size, string_view md5,
                 const Settings& settings, bool swapHotspots = false);
     ~CartridgeUA() override = default;
 
@@ -99,7 +99,7 @@ class CartridgeUA : public CartridgeEnhanced
     bool poke(uInt16 address, uInt8 value) override;
 
   private:
-    bool checkSwitchBank(uInt16 address, uInt8 value = 0) override;
+    bool checkSwitchBank(uInt16 address, uInt8) override;
 
     uInt16 hotspot() const override { return 0x0220; }
 

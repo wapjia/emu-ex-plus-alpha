@@ -7,6 +7,6 @@
 class StaggeredLogger
 {
   public:
-    constexpr StaggeredLogger(const string& message, Logger::Level level) {}
+    constexpr StaggeredLogger(string_view message, Logger::Level level) {}
     void log() {}
 };

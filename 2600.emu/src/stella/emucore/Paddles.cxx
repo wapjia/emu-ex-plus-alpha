@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -104,10 +104,10 @@ Paddles::Paddles(Jack jack, const Event& event, const System& system,
   if(swappaddle)
   {
     // First paddle is right A|B, second is left A|B
-    swapEvents(myAAxisValue, myBAxisValue);
-    swapEvents(myLeftAFireEvent, myLeftBFireEvent);
-    swapEvents(myLeftADecEvent, myLeftBDecEvent);
-    swapEvents(myLeftAIncEvent, myLeftBIncEvent);
+    std::swap(myAAxisValue, myBAxisValue);
+    std::swap(myLeftAFireEvent, myLeftBFireEvent);
+    std::swap(myLeftADecEvent, myLeftBDecEvent);
+    std::swap(myLeftAIncEvent, myLeftBIncEvent);
   }
 
   // Direction of movement can be swapped
@@ -115,8 +115,8 @@ Paddles::Paddles(Jack jack, const Event& event, const System& system,
   // result in either increasing or decreasing paddle movement
   if(swapdir)
   {
-    swapEvents(myLeftADecEvent, myLeftAIncEvent);
-    swapEvents(myLeftBDecEvent, myLeftBIncEvent);
+    std::swap(myLeftADecEvent, myLeftAIncEvent);
+    std::swap(myLeftBDecEvent, myLeftBIncEvent);
   }
 
   // The following are independent of whether or not the port
@@ -140,16 +140,6 @@ Paddles::Paddles(Jack jack, const Event& event, const System& system,
   setPin(DigitalPin::One, true);
   setPin(DigitalPin::Two, true);
   setPin(DigitalPin::Six, true);
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void Paddles::swapEvents(Event::Type& event1, Event::Type& event2)
-{
-  Event::Type swappedEvent;
-
-  swappedEvent = event1;
-  event1 = event2;
-  event2 = swappedEvent;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -195,7 +185,8 @@ void Paddles::updateA()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-AnalogReadout::Connection Paddles::getReadOut(int lastAxis, int& newAxis, int center)
+AnalogReadout::Connection
+Paddles::getReadOut(int lastAxis,int& newAxis, int center)
 {
   const float range = ANALOG_RANGE - analogDeadZone() * 2;
 
@@ -224,7 +215,7 @@ AnalogReadout::Connection Paddles::getReadOut(int lastAxis, int& newAxis, int ce
 
   // dejitter, suppress small changes only
   const float dejitter = powf(baseFactor, std::abs(newAxis - lastAxis) * diffFactor);
-  int newVal = newAxis * (1 - dejitter) + lastAxis * dejitter;
+  const int newVal = newAxis * (1 - dejitter) + lastAxis * dejitter;
 
   // only use new dejittered value for larger differences
   if(abs(newVal - newAxis) > 10)

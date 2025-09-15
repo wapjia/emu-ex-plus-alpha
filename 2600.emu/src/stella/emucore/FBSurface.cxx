@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -28,7 +28,8 @@
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void FBSurface::readPixels(uInt8* buffer, uInt32 pitch, const Common::Rect& rect) const
 {
-  uInt8* src = reinterpret_cast<uInt8*>(myPixels + rect.y() * myPitch + rect.x());
+  auto* src = reinterpret_cast<uInt8*>(myPixels +
+      (rect.y() * static_cast<size_t>(myPitch)) + rect.x());
 
   if(rect.empty())
     std::copy_n(src, width() * height() * 4, buffer);
@@ -42,8 +43,8 @@ void FBSurface::readPixels(uInt8* buffer, uInt32 pitch, const Common::Rect& rect
     while(h--)
     {
       std::copy_n(src, w * 4, dst);
-      src += myPitch * 4;
-      dst += pitch * 4;
+      src += static_cast<size_t>(myPitch) * 4;
+      dst += static_cast<size_t>(pitch) * 4;
     }
   }
 }
@@ -52,7 +53,7 @@ void FBSurface::readPixels(uInt8* buffer, uInt32 pitch, const Common::Rect& rect
 void FBSurface::pixel(uInt32 x, uInt32 y, ColorId color)
 {
   // Note: checkbounds() must be done in calling method
-  uInt32* buffer = myPixels + y * myPitch + x;
+  uInt32* buffer = myPixels + (y * static_cast<size_t>(myPitch)) + x;
 
   *buffer = myPalette[color];
 }
@@ -125,7 +126,7 @@ void FBSurface::hLine(uInt32 x, uInt32 y, uInt32 x2, ColorId color)
   if(!checkBounds(x, y) || !checkBounds(x2, 2))
     return;
 
-  uInt32* buffer = myPixels + y * myPitch + x;
+  uInt32* buffer = myPixels + (y * static_cast<size_t>(myPitch)) + x;
   while(x++ <= x2)
     *buffer++ = myPalette[color];
 }
@@ -136,7 +137,7 @@ void FBSurface::vLine(uInt32 x, uInt32 y, uInt32 y2, ColorId color)
   if(!checkBounds(x, y) || !checkBounds(x, y2))
     return;
 
-  uInt32* buffer = myPixels + y * myPitch + x;
+  uInt32* buffer = myPixels + (y * static_cast<size_t>(myPitch)) + x;
   while(y++ <= y2)
   {
     *buffer = myPalette[color];
@@ -190,14 +191,14 @@ void FBSurface::drawChar(const GUI::Font& font, uInt8 chr,
     bby = desc.bbx[chr].y;  // NOLINT
   }
 
-  uInt32 cx = tx + bbx;
-  uInt32 cy = ty + desc.ascent - bby - bbh;
+  const uInt32 cx = tx + bbx;
+  const uInt32 cy = ty + desc.ascent - bby - bbh;
 
   if(!checkBounds(cx , cy) || !checkBounds(cx + bbw - 1, cy + bbh - 1))
     return;
 
   const uInt16* tmp = desc.bits + (desc.offset ? desc.offset[chr] : (chr * desc.fbbh));
-  uInt32* buffer = myPixels + cy * myPitch + cx;
+  uInt32* buffer = myPixels + (cy * static_cast<size_t>(myPitch)) + cx;
 
   for(int y = 0; y < bbh; y++)
   {
@@ -227,7 +228,7 @@ void FBSurface::drawBitmap(const uInt32* bitmap, uInt32 tx, uInt32 ty,
   if(!checkBounds(tx, ty) || !checkBounds(tx + w - 1, ty + h - 1))
     return;
 
-  uInt32* buffer = myPixels + ty * myPitch + tx;
+  uInt32* buffer = myPixels + (ty * static_cast<size_t>(myPitch)) + tx;
 
   for(uInt32 y = 0; y < h; ++y)
   {
@@ -246,7 +247,7 @@ void FBSurface::drawPixels(const uInt32* data, uInt32 tx, uInt32 ty, uInt32 nump
   if(!checkBounds(tx, ty) || !checkBounds(tx + numpixels - 1, ty))
     return;
 
-  uInt32* buffer = myPixels + ty * myPitch + tx;
+  uInt32* buffer = myPixels + (ty * static_cast<size_t>(myPitch)) + tx;
 
   for(uInt32 i = 0; i < numpixels; ++i)
     *buffer++ = data[i];
@@ -292,12 +293,15 @@ void FBSurface::frameRect(uInt32 x, uInt32 y, uInt32 w, uInt32 h,
         vLine(x + w - 1, i, i, color);
       }
       break;
+
+    default:
+      break;  // Not supposed to get here
   }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void FBSurface::splitString(const GUI::Font& font, const string& s, int w,
-                            string& left, string& right) const
+void FBSurface::splitString(const GUI::Font& font, string_view s, int w,
+                            string& left, string& right)
 {
 #ifdef GUI_SUPPORT
   uInt32 pos = 0;
@@ -334,13 +338,7 @@ void FBSurface::splitString(const GUI::Font& font, const string& s, int w,
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool FBSurface::isWhiteSpace(const char c) const
-{
-  return string(" ,.;:+-*/\\'([\n").find(c) != string::npos;
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-int FBSurface::drawString(const GUI::Font& font, const string& s,
+int FBSurface::drawString(const GUI::Font& font, string_view s,
                           int x, int y, int w, int h,
                           ColorId color, TextAlign align,
                           int deltax, bool useEllipsis, ColorId shadowColor,
@@ -349,10 +347,10 @@ int FBSurface::drawString(const GUI::Font& font, const string& s,
   int lines = 0;
 
 #ifdef GUI_SUPPORT
-  string inStr = s;
+  string inStr{s};
 
   // draw multiline string
-  while(inStr.length() && h >= font.getFontHeight() * 2)
+  while(!inStr.empty() && h >= font.getFontHeight() * 2)
   {
     // String is too wide.
     string leftStr, rightStr;
@@ -361,14 +359,14 @@ int FBSurface::drawString(const GUI::Font& font, const string& s,
     drawString(font, leftStr, x, y, w, color, align, deltax, false, shadowColor,
                linkStart, linkLen, underline);
     if(linkStart != string::npos)
-      linkStart = std::max(0, int(linkStart - leftStr.length()));
+      linkStart = std::max(0, static_cast<int>(linkStart - leftStr.length()));
 
     h -= font.getFontHeight();
     y += font.getFontHeight();
     inStr = rightStr;
     lines++;
   }
-  if(inStr.length())
+  if(!inStr.empty())
   {
     drawString(font, inStr, x, y, w, color, align, deltax, useEllipsis, shadowColor,
                linkStart, linkLen, underline);
@@ -379,11 +377,11 @@ int FBSurface::drawString(const GUI::Font& font, const string& s,
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void FBSurface::drawString(const GUI::Font& font, const string& s,
-                           int x, int y, int w,
-                           ColorId color, TextAlign align,
-                           int deltax, bool useEllipsis, ColorId shadowColor,
-                           size_t linkStart, size_t linkLen, bool underline)
+int FBSurface::drawString(const GUI::Font& font, string_view s,
+                          int x, int y, int w,
+                          ColorId color, TextAlign align,
+                          int deltax, bool useEllipsis, ColorId shadowColor,
+                          size_t linkStart, size_t linkLen, bool underline)
 {
 #ifdef GUI_SUPPORT
   const string ELLIPSIS = "\x1d"; // "..."
@@ -401,14 +399,14 @@ void FBSurface::drawString(const GUI::Font& font, const string& s,
     int w2 = font.getStringWidth(ELLIPSIS);
 
     // SLOW algorithm to find the acceptable length. But it is good enough for now.
-    for(size_t i = 0; i < s.size(); ++i)
+    for(auto c: s)
     {
-      const int charWidth = font.getCharWidth(s[i]);
+      const int charWidth = font.getCharWidth(c);
       if(w2 + charWidth > w)
         break;
 
       w2 += charWidth;
-      str += s[i];
+      str += c;
     }
     str += ELLIPSIS;
 
@@ -448,16 +446,17 @@ void FBSurface::drawString(const GUI::Font& font, const string& s,
     hLine(x0, y + font.getFontHeight() - 1, x1, kTextColorLink);
 
 #endif
+  return x;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool FBSurface::checkBounds(const uInt32 x, const uInt32 y) const
+bool FBSurface::checkBounds(uInt32 x, uInt32 y) const
 {
   if (x <= width() && y <= height())
     return true;
 
   cerr << "FBSurface::checkBounds() failed: "
-    << x << ", " << y << " vs " << width() << ", " << height() << endl;
+       << x << ", " << y << " vs " << width() << ", " << height() << '\n';
   return false;
 }
 

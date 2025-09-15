@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -16,7 +16,6 @@
 //============================================================================
 
 #include <sstream>
-#include <map>
 
 #include "Logger.hxx"
 
@@ -24,11 +23,8 @@
 #include "Console.hxx"
 #include "PaletteHandler.hxx"
 #include "FrameBuffer.hxx"
-#include "FSNode.hxx"
 #include "OSystem.hxx"
-#include "Joystick.hxx"
 #include "Paddles.hxx"
-#include "MindLink.hxx"
 #include "Lightgun.hxx"
 #include "PointingDevice.hxx"
 #include "Driving.hxx"
@@ -81,7 +77,7 @@ EventHandler::EventHandler(OSystem& osystem)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-EventHandler::~EventHandler()
+EventHandler::~EventHandler()  // NOLINT (we need an empty d'tor)
 {
 }
 
@@ -138,7 +134,7 @@ void EventHandler::initialize()
 
   // Default phosphor blend
   Properties::setDefault(PropType::Display_PPBlend,
-                         myOSystem.settings().getString("tv.phosblend"));
+                         myOSystem.settings().getString(PhosphorHandler::SETTING_BLEND));
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -146,7 +142,7 @@ void EventHandler::reset(EventHandlerState state)
 {
   setState(state);
   myOSystem.state().reset();
-#ifdef PNG_SUPPORT
+#ifdef IMAGE_SUPPORT
   myOSystem.png().setContinuousSnapInterval(0);
 #endif
   myFryingFlag = false;
@@ -169,6 +165,9 @@ void EventHandler::addPhysicalJoystick(const PhysicalJoystickPtr& joy)
 
   setActionMappings(EventMode::kEmulationMode);
   setActionMappings(EventMode::kMenuMode);
+
+  if(myOverlay)
+    myOverlay->handleEvent(Event::UIReload);
 #endif
 }
 
@@ -177,11 +176,14 @@ void EventHandler::removePhysicalJoystick(int id)
 {
 #ifdef JOYSTICK_SUPPORT
   myPJoyHandler->remove(id);
+
+  if(myOverlay)
+    myOverlay->handleEvent(Event::UIReload);
 #endif
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void EventHandler::mapStelladaptors(const string& saport)
+void EventHandler::mapStelladaptors(string_view saport)
 {
 #ifdef JOYSTICK_SUPPORT
   myPJoyHandler->mapStelladaptors(saport);
@@ -203,7 +205,7 @@ void EventHandler::toggleAllow4JoyDirections(bool toggle)
   ostringstream ss;
   ss << "Allow all 4 joystick directions ";
   ss << (joyAllow4 ? "enabled" : "disabled");
-  myOSystem.frameBuffer().showTextMessage(ss.str());
+  myOSystem.frameBuffer().showTextMessage(ss.view());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -235,6 +237,14 @@ void EventHandler::set7800Mode()
     myIs7800 = myOSystem.console().switches().check7800Mode(myOSystem.settings());
   else
     myIs7800 = false;
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void EventHandler::toggleUIPalette()
+{
+  myOSystem.settings().setValue("altuipalette", !myOSystem.settings().getBool("altuipalette"));
+  myOSystem.frameBuffer().setUIPalette();
+  myOSystem.frameBuffer().update(FrameBuffer::UpdateMode::REDRAW);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -270,11 +280,11 @@ void EventHandler::poll(uInt64 time)
       myOSystem.state().update();
 
   #ifdef CHEATCODE_SUPPORT
-    for(auto& cheat: myOSystem.cheat().perFrame())
+    for(const auto& cheat: myOSystem.cheat().perFrame())
       cheat->evaluate();
   #endif
 
-  #ifdef PNG_SUPPORT
+  #ifdef IMAGE_SUPPORT
     // Handle continuous snapshots
     if(myOSystem.png().continuousSnapEnabled())
       myOSystem.png().updateTime(time);
@@ -386,12 +396,13 @@ void EventHandler::handleSystemEvent(SystemEvent e, int, int)
       break;
 
     default:  // handle other events as testing requires
-      // cerr << "handleSystemEvent: " << e << endl;
+      // cerr << "handleSystemEvent: " << e << '\n';
       break;
   }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// NOLINTNEXTLINE (readability-function-size)
 void EventHandler::handleEvent(Event::Type event, Int32 value, bool repeated)
 {
   // Take care of special events that aren't part of the emulation core
@@ -527,6 +538,13 @@ void EventHandler::handleEvent(Event::Type event, Int32 value, bool repeated)
         myGlobalKeyHandler->setSetting(GlobalKeyHandler::Setting::ZOOM);
       }
       return;
+
+    case Event::ToggleUIPalette:
+      if(pressed && !repeated)
+      {
+        toggleUIPalette();
+      }
+      break;
 
     case Event::ToggleFullScreen:
       if(pressed && !repeated)
@@ -717,6 +735,22 @@ void EventHandler::handleEvent(Event::Type event, Int32 value, bool repeated)
       {
         myOSystem.console().togglePhosphor();
         myGlobalKeyHandler->setSetting(GlobalKeyHandler::Setting::PHOSPHOR);
+      }
+      return;
+
+    case Event::PhosphorModeDecrease:
+      if(pressed && !repeated)
+      {
+        myOSystem.console().cyclePhosphorMode(-1);
+        myGlobalKeyHandler->setSetting(GlobalKeyHandler::Setting::PHOSPHOR_MODE);
+      }
+      return;
+
+    case Event::PhosphorModeIncrease:
+      if(pressed && !repeated)
+      {
+        myOSystem.console().cyclePhosphorMode(+1);
+        myGlobalKeyHandler->setSetting(GlobalKeyHandler::Setting::PHOSPHOR_MODE);
       }
       return;
 
@@ -1484,18 +1518,31 @@ void EventHandler::handleEvent(Event::Type event, Int32 value, bool repeated)
       return;
 
     case Event::ReloadConsole:
-      if(pressed && !repeated) myOSystem.reloadConsole(true);
-      return;
-
     case Event::PreviousMultiCartRom:
-      if(pressed && !repeated) myOSystem.reloadConsole(false);
+      if(pressed && !repeated) {
+        const auto reloadError = myOSystem.reloadConsole(event == Event::ReloadConsole);
+
+        if (reloadError) {
+          exitEmulation(true);
+          myOSystem.frameBuffer().showTextMessage(reloadError.value(), MessagePosition::MiddleCenter, true);
+        }
+      }
+
       return;
 
     case Event::ToggleTimeMachine:
       if(pressed && !repeated) myOSystem.toggleTimeMachine();
       return;
 
-  #ifdef PNG_SUPPORT
+    case Event::ToggleBezel:
+      if(pressed && !repeated)
+      {
+        myOSystem.frameBuffer().toggleBezel();
+        myGlobalKeyHandler->setSetting(GlobalKeyHandler::Setting::BEZEL);
+      }
+      return;
+
+  #ifdef IMAGE_SUPPORT
     case Event::ToggleContSnapshots:
       if(pressed && !repeated) myOSystem.png().toggleContinuousSnapshots(false);
       return;
@@ -1538,17 +1585,17 @@ void EventHandler::handleEvent(Event::Type event, Int32 value, bool repeated)
             {
               StringList msg;
               const string saveOnExit = myOSystem.settings().getString("saveonexit");
-              bool activeTM = myOSystem.settings().getBool(
+              const bool activeTM = myOSystem.settings().getBool(
                 myOSystem.settings().getBool("dev.settings") ? "dev.timemachine" : "plr.timemachine");
 
 
-              msg.push_back("Do you really want to exit emulation?");
+              msg.emplace_back("Do you really want to exit emulation?");
               if (saveOnExit != "all" || !activeTM)
               {
-                msg.push_back("");
-                msg.push_back("You will lose all your progress.");
+                msg.emplace_back("");
+                msg.emplace_back("You will lose all your progress.");
               }
-              myOSystem.messageMenu().setMessage("Exit Emulation", msg, true);
+              MessageMenu::setMessage("Exit Emulation", msg, true);
               enterMenuMode(EventHandlerState::MESSAGEMENU);
             }
             else
@@ -1659,14 +1706,13 @@ void EventHandler::handleEvent(Event::Type event, Int32 value, bool repeated)
         myOSystem.console().switches().update();
       }
       return;
-
-    case Event::Console7800Pause:
-      if(pressed && !repeated)
+    case Event::Console7800Pause: // only works in 7800 mode
+      if(myIs7800 && !repeated)
       {
-        myEvent.set(Event::ConsoleBlackWhite, 0);
-        myEvent.set(Event::ConsoleColor, 0);
-        if (myIs7800)
+        // Press and release pause button
+        if(pressed)
           myOSystem.frameBuffer().showTextMessage("Pause pressed");
+        myEvent.set(Event::Console7800Pause, pressed);
         myOSystem.console().switches().update();
       }
       return;
@@ -1767,7 +1813,7 @@ void EventHandler::handleConsoleStartupEvents()
   if(myOSystem.settings().getBool("holdselect"))
     handleEvent(Event::ConsoleSelect);
 
-  const string& holdjoy0 = myOSystem.settings().getString("holdjoy0");
+  const string_view holdjoy0 = myOSystem.settings().getString("holdjoy0");
 
   if(BSPF::containsIgnoreCase(holdjoy0, "U"))
     handleEvent(Event::LeftJoystickUp);
@@ -1780,7 +1826,7 @@ void EventHandler::handleConsoleStartupEvents()
   if(BSPF::containsIgnoreCase(holdjoy0, "F"))
     handleEvent(Event::LeftJoystickFire);
 
-  const string& holdjoy1 = myOSystem.settings().getString("holdjoy1");
+  const string_view holdjoy1 = myOSystem.settings().getString("holdjoy1");
   if(BSPF::containsIgnoreCase(holdjoy1, "U"))
     handleEvent(Event::RightJoystickUp);
   if(BSPF::containsIgnoreCase(holdjoy1, "D"))
@@ -1915,15 +1961,15 @@ void EventHandler::setActionMappings(EventMode mode)
 
     #ifdef JOYSTICK_SUPPORT
         const string joydesc = myPJoyHandler->getMappingDesc(event, mode);
-        if(joydesc != "")
+        if(!joydesc.empty())
         {
-          if(key != "")
+          if(!key.empty())
             key += ", ";
           key += joydesc;
         }
     #endif
 
-        if(key != "")
+        if(!key.empty())
           item.key = key;
       }
       break;
@@ -1937,15 +1983,15 @@ void EventHandler::setActionMappings(EventMode mode)
 
     #ifdef JOYSTICK_SUPPORT
         const string joydesc = myPJoyHandler->getMappingDesc(event, mode);
-        if(joydesc != "")
+        if(!joydesc.empty())
         {
-          if(key != "")
+          if(!key.empty())
             key += ", ";
           key += joydesc;
         }
     #endif
 
-        if(key != "")
+        if(!key.empty())
           item.key = key;
       }
       break;
@@ -1987,11 +2033,11 @@ void EventHandler::setComboMap()
     {
       for(const json& combo : mapping)
       {
-        int i = combo.at("combo").get<Event::Type>() - Event::Combo1,
-          j = 0;
-        json events = combo.at("events");
+        const int i = combo.at("combo").get<Event::Type>() - Event::Combo1;
+        int j = 0;
+        const json events = combo.at("events");
 
-        for(const json& event : events)
+        for(const json& event: events)
           myComboTable[i][j++] = event;
       }
     }
@@ -2017,7 +2063,7 @@ json EventHandler::convertLegacyComboMapping(string list)
 
   try
   {
-    int numCombos;
+    int numCombos{0};
     // Get combo count, which should be the first int in the list
     // If it isn't, then we treat the entire list as invalid
     buf >> numCombos;
@@ -2030,19 +2076,18 @@ json EventHandler::convertLegacyComboMapping(string list)
 
         for(int j = 0; j < EVENTS_PER_COMBO; ++j)
         {
-          int event;
-
+          int event{0};
           buf >> event;
           // skip all NoType events
           if(event != Event::NoType)
-            events.push_back(Event::Type(event));
+            events.push_back(static_cast<Event::Type>(event));
         }
         // only store if there are any NoType events
-        if(events.size())
+        if(!events.empty())
         {
           json combo;
 
-          combo["combo"] = Event::Type(Event::Combo1 + i);
+          combo["combo"] = static_cast<Event::Type>(Event::Combo1 + i);
           combo["events"] = events;
           convertedMapping.push_back(combo);
         }
@@ -2057,10 +2102,19 @@ json EventHandler::convertLegacyComboMapping(string list)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void EventHandler::removePhysicalJoystickFromDatabase(const string& name)
+void EventHandler::removePhysicalJoystickFromDatabase(string_view name)
 {
 #ifdef JOYSTICK_SUPPORT
   myPJoyHandler->remove(name);
+#endif
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void EventHandler::setPhysicalJoystickPortInDatabase(string_view name,
+                                                     PhysicalJoystick::Port port)
+{
+#ifdef JOYSTICK_SUPPORT
+  myPJoyHandler->setPort(name, port);
 #endif
 }
 
@@ -2173,14 +2227,14 @@ void EventHandler::saveComboMapping()
 
       // skip all NoType events
       if(event != Event::NoType)
-        events.push_back(Event::Type(event));
+        events.push_back(static_cast<Event::Type>(event));
     }
     // only store if there are any NoType events
-    if(events.size())
+    if(!events.empty())
     {
       json combo;
 
-      combo["combo"] = Event::Type(Event::Combo1 + i);
+      combo["combo"] = static_cast<Event::Type>(Event::Combo1 + i);
       combo["events"] = events;
       mapping.push_back(combo);
     }
@@ -2189,7 +2243,7 @@ void EventHandler::saveComboMapping()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-StringList EventHandler::getActionList(EventMode mode) const
+StringList EventHandler::getActionList(EventMode mode)
 {
   StringList l;
   switch(mode)
@@ -2209,58 +2263,31 @@ StringList EventHandler::getActionList(EventMode mode) const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-StringList EventHandler::getActionList(Event::Group group) const
+StringList EventHandler::getActionList(Event::Group group)
 {
-  StringList l;
-
   switch(group)
   {
-    case Event::Group::Menu:
-      return getActionList(EventMode::kMenuMode);
-
-    case Event::Group::Emulation:
-      return getActionList(EventMode::kEmulationMode);
-
-    case Event::Group::Misc:
-      return getActionList(MiscEvents);
-
-    case Event::Group::AudioVideo:
-      return getActionList(AudioVideoEvents);
-
-    case Event::Group::States:
-      return getActionList(StateEvents);
-
-    case Event::Group::Console:
-      return getActionList(ConsoleEvents);
-
-    case Event::Group::Joystick:
-      return getActionList(JoystickEvents);
-
-    case Event::Group::Paddles:
-      return getActionList(PaddlesEvents);
-
-    case Event::Group::Keyboard:
-      return getActionList(KeyboardEvents);
-
-    case Event::Group::Driving:
-      return getActionList(DrivingEvents);
-
-    case Event::Group::Devices:
-      return getActionList(DevicesEvents);
-
-    case Event::Group::Debug:
-      return getActionList(DebugEvents);
-
-    case Event::Group::Combo:
-      return getActionList(ComboEvents);
-
-    default:
-      return l; // ToDo
+    using enum Event::Group;
+    case Menu:        return getActionList(EventMode::kMenuMode);
+    case Emulation:   return getActionList(EventMode::kEmulationMode);
+    case Misc:        return getActionList(MiscEvents);
+    case AudioVideo:  return getActionList(AudioVideoEvents);
+    case States:      return getActionList(StateEvents);
+    case Console:     return getActionList(ConsoleEvents);
+    case Joystick:    return getActionList(JoystickEvents);
+    case Paddles:     return getActionList(PaddlesEvents);
+    case Keyboard:    return getActionList(KeyboardEvents);
+    case Driving:     return getActionList(DrivingEvents);
+    case Devices:     return getActionList(DevicesEvents);
+    case Debug:       return getActionList(DebugEvents);
+    case Combo:       return getActionList(ComboEvents);
+    default:          return {}; // ToDo
   }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-StringList EventHandler::getActionList(const Event::EventSet& events, EventMode mode) const
+StringList EventHandler::getActionList(const Event::EventSet& events,
+                                       EventMode mode)
 {
   StringList l;
 
@@ -2289,7 +2316,7 @@ StringList EventHandler::getActionList(const Event::EventSet& events, EventMode 
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-VariantList EventHandler::getComboList() const
+VariantList EventHandler::getComboList()
 {
   // For now, this only works in emulation mode
   VariantList l;
@@ -2300,10 +2327,10 @@ VariantList EventHandler::getComboList() const
   {
     const Event::Type event = EventHandler::ourEmulActionList[i].event;
     // exclude combos events
-    if(!(event >= Event::Combo1 && event <= Event::Combo16))
+    if(event < Event::Combo1 || event > Event::Combo16)
     {
       buf << i;
-      VarList::push_back(l, EventHandler::ourEmulActionList[i].action, buf.str());
+      VarList::push_back(l, EventHandler::ourEmulActionList[i].action, buf.view());
       buf.str("");
     }
   }
@@ -2332,7 +2359,7 @@ StringList EventHandler::getComboListForEvent(Event::Type event) const
       }
       // Make sure entries are 1-to-1, using '-1' to indicate Event::NoType
       if(i == l.size())
-        l.push_back("-1");
+        l.emplace_back("-1");
     }
   }
   return l;
@@ -2347,7 +2374,7 @@ void EventHandler::setComboListForEvent(Event::Type event, const StringList& eve
     const int combo = event - Event::Combo1;
     for(uInt32 i = 0; i < EVENTS_PER_COMBO; ++i)
     {
-      const uInt32 idx = BSPF::stringToInt(events[i]);
+      const uInt32 idx = BSPF::stoi(events[i]);
       if(idx < ourEmulActionList.size())
         myComboTable[combo][i] = EventHandler::ourEmulActionList[idx].event;
       else
@@ -2358,16 +2385,16 @@ void EventHandler::setComboListForEvent(Event::Type event, const StringList& eve
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-int EventHandler::getEmulActionListIndex(int idx, const Event::EventSet& events) const
+int EventHandler::getEmulActionListIndex(int idx, const Event::EventSet& events)
 {
   // idx = index into intersection set of 'events' and 'ourEmulActionList'
   //   ordered by 'ourEmulActionList'!
   Event::Type event = Event::NoType;
 
-  for(uInt32 i = 0; i < ourEmulActionList.size(); ++i)
+  for(auto& alist: ourEmulActionList)
   {
     for(const auto& item : events)
-      if(EventHandler::ourEmulActionList[i].event == item)
+      if(alist.event == item)
       {
         idx--;
         if(idx < 0)
@@ -2386,56 +2413,30 @@ int EventHandler::getEmulActionListIndex(int idx, const Event::EventSet& events)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-int EventHandler::getActionListIndex(int idx, Event::Group group) const
+int EventHandler::getActionListIndex(int idx, Event::Group group)
 {
   switch(group)
   {
-    case Event::Group::Menu:
-      return idx;
-
-    case Event::Group::Emulation:
-      return idx;
-
-    case Event::Group::Misc:
-      return getEmulActionListIndex(idx, MiscEvents);
-
-    case Event::Group::AudioVideo:
-      return getEmulActionListIndex(idx, AudioVideoEvents);
-
-    case Event::Group::States:
-      return getEmulActionListIndex(idx, StateEvents);
-
-    case Event::Group::Console:
-      return getEmulActionListIndex(idx, ConsoleEvents);
-
-    case Event::Group::Joystick:
-      return getEmulActionListIndex(idx, JoystickEvents);
-
-    case Event::Group::Paddles:
-      return getEmulActionListIndex(idx, PaddlesEvents);
-
-    case Event::Group::Keyboard:
-      return getEmulActionListIndex(idx, KeyboardEvents);
-
-    case Event::Group::Driving:
-      return getEmulActionListIndex(idx, DrivingEvents);
-
-    case Event::Group::Devices:
-      return getEmulActionListIndex(idx, DevicesEvents);
-
-    case Event::Group::Debug:
-      return getEmulActionListIndex(idx, DebugEvents);
-
-    case Event::Group::Combo:
-      return getEmulActionListIndex(idx, ComboEvents);
-
-    default:
-      return -1;
+    using enum Event::Group;
+    case Menu:
+    case Emulation:   return idx;
+    case Misc:        return getEmulActionListIndex(idx, MiscEvents);
+    case AudioVideo:  return getEmulActionListIndex(idx, AudioVideoEvents);
+    case States:      return getEmulActionListIndex(idx, StateEvents);
+    case Console:     return getEmulActionListIndex(idx, ConsoleEvents);
+    case Joystick:    return getEmulActionListIndex(idx, JoystickEvents);
+    case Paddles:     return getEmulActionListIndex(idx, PaddlesEvents);
+    case Keyboard:    return getEmulActionListIndex(idx, KeyboardEvents);
+    case Driving:     return getEmulActionListIndex(idx, DrivingEvents);
+    case Devices:     return getEmulActionListIndex(idx, DevicesEvents);
+    case Debug:       return getEmulActionListIndex(idx, DebugEvents);
+    case Combo:       return getEmulActionListIndex(idx, ComboEvents);
+    default:          return -1;
   }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Event::Type EventHandler::eventAtIndex(int idx, Event::Group group) const
+Event::Type EventHandler::eventAtIndex(int idx, Event::Group group)
 {
   const int index = getActionListIndex(idx, group);
 
@@ -2456,7 +2457,7 @@ Event::Type EventHandler::eventAtIndex(int idx, Event::Group group) const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-string EventHandler::actionAtIndex(int idx, Event::Group group) const
+string EventHandler::actionAtIndex(int idx, Event::Group group)
 {
   const int index = getActionListIndex(idx, group);
 
@@ -2477,7 +2478,7 @@ string EventHandler::actionAtIndex(int idx, Event::Group group) const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-string EventHandler::keyAtIndex(int idx, Event::Group group) const
+string EventHandler::keyAtIndex(int idx, Event::Group group)
 {
   const int index = getActionListIndex(idx, group);
 
@@ -2498,7 +2499,7 @@ string EventHandler::keyAtIndex(int idx, Event::Group group) const
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void EventHandler::setMouseControllerMode(const string& enable)
+void EventHandler::setMouseControllerMode(string_view enable)
 {
   if(myOSystem.hasConsole())
   {
@@ -2530,7 +2531,7 @@ void EventHandler::changeMouseControllerMode(int direction)
   string usemouse = myOSystem.settings().getString("usemouse");
 
   int i = 0;
-  for(auto& mode : MODES)
+  for(const auto& mode : MODES)
   {
     if(mode == usemouse)
     {
@@ -2546,13 +2547,13 @@ void EventHandler::changeMouseControllerMode(int direction)
 
   ostringstream ss;
   ss << "Mouse controls " << MSG[i] << " devices";
-  myOSystem.frameBuffer().showTextMessage(ss.str());
+  myOSystem.frameBuffer().showTextMessage(ss.view());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void EventHandler::changeMouseCursor(int direction)
 {
-  int cursor = BSPF::clampw(myOSystem.settings().getInt("cursor") + direction, 0, 3);
+  const int cursor = BSPF::clampw(myOSystem.settings().getInt("cursor") + direction, 0, 3);
 
   myOSystem.settings().setValue("cursor", cursor);
   myOSystem.frameBuffer().setCursorState();
@@ -2561,7 +2562,7 @@ void EventHandler::changeMouseCursor(int direction)
   ss << "Mouse cursor visibilility: "
     << ((cursor & 2) ? "+" : "-") << "UI, "
     << ((cursor & 1) ? "+" : "-") << "Emulation";
-  myOSystem.frameBuffer().showTextMessage(ss.str());
+  myOSystem.frameBuffer().showTextMessage(ss.view());
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -2570,7 +2571,7 @@ void EventHandler::enterMenuMode(EventHandlerState state)
 #ifdef GUI_SUPPORT
   setState(state);
   myOverlay->reStack();
-  myOSystem.sound().mute(true);
+  myOSystem.sound().pause(true);
 #endif
 }
 
@@ -2580,7 +2581,7 @@ void EventHandler::leaveMenuMode()
 #ifdef GUI_SUPPORT
   myOverlay->removeDialog(); // remove the base dialog from dialog stack
   setState(EventHandlerState::EMULATION);
-  myOSystem.sound().mute(false);
+  myOSystem.sound().pause(false);
 #endif
 }
 
@@ -2676,12 +2677,12 @@ void EventHandler::setState(EventHandlerState state)
   {
     case EventHandlerState::EMULATION:
     case EventHandlerState::PLAYBACK:
-      myOSystem.sound().mute(false);
+      myOSystem.sound().pause(false);
       enableTextEvents(false);
       break;
 
     case EventHandlerState::PAUSE:
-      myOSystem.sound().mute(true);
+      myOSystem.sound().pause(true);
       enableTextEvents(false);
       break;
 
@@ -2786,327 +2787,338 @@ void EventHandler::exitEmulation(bool checkLauncher)
   }
 }
 
+#if defined(__clang__)
+  #pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#elif defined(__GNUC__) || defined(__GNUG__)
+  #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#endif
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 EventHandler::EmulActionList EventHandler::ourEmulActionList = { {
-  { Event::Quit,                    "Quit",                                  "" },
-  { Event::ReloadConsole,           "Reload current ROM/load next game",     "" },
-  { Event::PreviousMultiCartRom,    "Load previous multicart game",          "" },
-  { Event::ExitMode,                "Exit current Stella menu/mode",         "" },
-  { Event::OptionsMenuMode,         "Enter Options menu UI",                 "" },
-  { Event::CmdMenuMode,             "Toggle Commands menu UI",               "" },
-  { Event::HighScoresMenuMode,      "Toggle High Scores UI",                 "" },
-  { Event::PlusRomsSetupMode,       "Toggle PlusROMs setup UI",              "" },
-  { Event::TogglePauseMode,         "Toggle Pause mode",                     "" },
-  { Event::StartPauseMode,          "Start Pause mode",                      "" },
-  { Event::Fry,                     "Fry cartridge",                         "" },
-  { Event::DecreaseSpeed,           "Decrease emulation speed",              "" },
-  { Event::IncreaseSpeed,           "Increase emulation speed",              "" },
-  { Event::ToggleTurbo,             "Toggle 'Turbo' mode",                   "" },
-  { Event::DebuggerMode,            "Toggle Debugger mode",                  "" },
+  { Event::Quit,                    "Quit"                                  },
+  { Event::ReloadConsole,           "Reload current ROM/load next game"     },
+  { Event::PreviousMultiCartRom,    "Load previous multicart game"          },
+  { Event::ExitMode,                "Exit current Stella menu/mode"         },
+  { Event::OptionsMenuMode,         "Enter Options menu UI"                 },
+  { Event::CmdMenuMode,             "Toggle Commands menu UI"               },
+#ifdef IMAGE_SUPPORT
+  { Event::ToggleBezel,             "Toggle bezel display"                  },
+#endif
+  { Event::HighScoresMenuMode,      "Toggle High Scores UI"                 },
+  { Event::PlusRomsSetupMode,       "Toggle PlusROMs setup UI"              },
+  { Event::TogglePauseMode,         "Toggle Pause mode"                     },
+  { Event::StartPauseMode,          "Start Pause mode"                      },
+  { Event::Fry,                     "Fry cartridge"                         },
+  { Event::DecreaseSpeed,           "Decrease emulation speed"              },
+  { Event::IncreaseSpeed,           "Increase emulation speed"              },
+  { Event::ToggleTurbo,             "Toggle 'Turbo' mode"                   },
+  { Event::DebuggerMode,            "Toggle Debugger mode"                  },
 
-  { Event::ConsoleSelect,           "Select",                                "" },
-  { Event::ConsoleReset,            "Reset",                                 "" },
-  { Event::ConsoleColor,            "Color TV",                              "" },
-  { Event::ConsoleBlackWhite,       "Black & White TV",                      "" },
-  { Event::ConsoleColorToggle,      "Toggle Color / B&W TV",                 "" },
-  { Event::Console7800Pause,        "7800 Pause Key",                        "" },
-  { Event::ConsoleLeftDiffA,        "Left Difficulty A",                     "" },
-  { Event::ConsoleLeftDiffB,        "Left Difficulty B",                     "" },
-  { Event::ConsoleLeftDiffToggle,   "Toggle Left Difficulty",                "" },
-  { Event::ConsoleRightDiffA,       "Right Difficulty A",                    "" },
-  { Event::ConsoleRightDiffB,       "Right Difficulty B",                    "" },
-  { Event::ConsoleRightDiffToggle,  "Toggle Right Difficulty",               "" },
-  { Event::SaveState,               "Save state",                            "" },
-  { Event::SaveAllStates,           "Save all TM states of current game",    "" },
-  { Event::PreviousState,           "Change to previous state slot",         "" },
-  { Event::NextState,               "Change to next state slot",             "" },
-  { Event::ToggleAutoSlot,          "Toggle automatic state slot change",    "" },
-  { Event::LoadState,               "Load state",                            "" },
-  { Event::LoadAllStates,           "Load saved TM states for current game", "" },
+  { Event::ConsoleSelect,           "Select"                                },
+  { Event::ConsoleReset,            "Reset"                                 },
+  { Event::ConsoleColor,            "Color TV"                              },
+  { Event::ConsoleBlackWhite,       "Black & White TV"                      },
+  { Event::ConsoleColorToggle,      "Toggle Color / B&W TV"                 },
+  { Event::Console7800Pause,        "7800 Pause Key"                        },
+  { Event::ConsoleLeftDiffA,        "Left Difficulty A"                     },
+  { Event::ConsoleLeftDiffB,        "Left Difficulty B"                     },
+  { Event::ConsoleLeftDiffToggle,   "Toggle Left Difficulty"                },
+  { Event::ConsoleRightDiffA,       "Right Difficulty A"                    },
+  { Event::ConsoleRightDiffB,       "Right Difficulty B"                    },
+  { Event::ConsoleRightDiffToggle,  "Toggle Right Difficulty"               },
+  { Event::SaveState,               "Save state"                            },
+  { Event::SaveAllStates,           "Save all TM states of current game"    },
+  { Event::PreviousState,           "Change to previous state slot"         },
+  { Event::NextState,               "Change to next state slot"             },
+  { Event::ToggleAutoSlot,          "Toggle automatic state slot change"    },
+  { Event::LoadState,               "Load state"                            },
+  { Event::LoadAllStates,           "Load saved TM states for current game" },
 
-#ifdef PNG_SUPPORT
-  { Event::TakeSnapshot,            "Snapshot",                              "" },
-  { Event::ToggleContSnapshots,     "Save continuous snapsh. (as defined)",  "" },
-  { Event::ToggleContSnapshotsFrame,"Save continuous snapsh. (every frame)", "" },
+#ifdef IMAGE_SUPPORT
+  { Event::TakeSnapshot,            "Snapshot"                              },
+  { Event::ToggleContSnapshots,     "Save continuous snapsh. (as defined)"  },
+  { Event::ToggleContSnapshotsFrame,"Save continuous snapsh. (every frame)" },
 #endif
   // Global keys:
-  { Event::PreviousSettingGroup,    "Select previous setting group",         "" },
-  { Event::NextSettingGroup,        "Select next setting group",             "" },
-  { Event::PreviousSetting,         "Select previous setting",               "" },
-  { Event::NextSetting,             "Select next setting",                   "" },
-  { Event::SettingDecrease,         "Decrease current setting",              "" },
-  { Event::SettingIncrease,         "Increase current setting",              "" },
+  { Event::PreviousSettingGroup,    "Select previous setting group"         },
+  { Event::NextSettingGroup,        "Select next setting group"             },
+  { Event::PreviousSetting,         "Select previous setting"               },
+  { Event::NextSetting,             "Select next setting"                   },
+  { Event::SettingDecrease,         "Decrease current setting"              },
+  { Event::SettingIncrease,         "Increase current setting"              },
 
   // Controllers:
-  { Event::LeftJoystickUp,          "Left Joystick Up",                      "" },
-  { Event::LeftJoystickDown,        "Left Joystick Down",                    "" },
-  { Event::LeftJoystickLeft,        "Left Joystick Left",                    "" },
-  { Event::LeftJoystickRight,       "Left Joystick Right",                   "" },
-  { Event::LeftJoystickFire,        "Left Joystick Fire",                    "" },
-  { Event::LeftJoystickFire5,       "Left Booster Top Booster Button",       "" },
-  { Event::LeftJoystickFire9,       "Left Booster Handle Grip Trigger",      "" },
+  { Event::LeftJoystickUp,          "Left Joystick Up"                      },
+  { Event::LeftJoystickDown,        "Left Joystick Down"                    },
+  { Event::LeftJoystickLeft,        "Left Joystick Left"                    },
+  { Event::LeftJoystickRight,       "Left Joystick Right"                   },
+  { Event::LeftJoystickFire,        "Left Joystick Fire"                    },
+  { Event::LeftJoystickFire5,       "Left Top Booster Button, Button 'C'"   },
+  { Event::LeftJoystickFire9,       "Left Handle Grip Trigger, Button '3'"  },
 
-  { Event::RightJoystickUp,         "Right Joystick Up",                     "" },
-  { Event::RightJoystickDown,       "Right Joystick Down",                   "" },
-  { Event::RightJoystickLeft,       "Right Joystick Left",                   "" },
-  { Event::RightJoystickRight,      "Right Joystick Right",                  "" },
-  { Event::RightJoystickFire,       "Right Joystick Fire",                   "" },
-  { Event::RightJoystickFire5,      "Right Booster Top Booster Button",      "" },
-  { Event::RightJoystickFire9,      "Right Booster Handle Grip Trigger",     "" },
+  { Event::RightJoystickUp,         "Right Joystick Up"                     },
+  { Event::RightJoystickDown,       "Right Joystick Down"                   },
+  { Event::RightJoystickLeft,       "Right Joystick Left"                   },
+  { Event::RightJoystickRight,      "Right Joystick Right"                  },
+  { Event::RightJoystickFire,       "Right Joystick Fire"                   },
+  { Event::RightJoystickFire5,      "Right Top Booster Button, Button 'C'"  },
+  { Event::RightJoystickFire9,      "Right Handle Grip Trigger, Button '3'" },
 
-  { Event::QTJoystickThreeUp,       "QuadTari Joystick 3 Up",                "" },
-  { Event::QTJoystickThreeDown,     "QuadTari Joystick 3 Down",              "" },
-  { Event::QTJoystickThreeLeft,     "QuadTari Joystick 3 Left",              "" },
-  { Event::QTJoystickThreeRight,    "QuadTari Joystick 3 Right",             "" },
-  { Event::QTJoystickThreeFire,     "QuadTari Joystick 3 Fire",              "" },
+  { Event::QTJoystickThreeUp,       "QuadTari Joystick 3 Up"                },
+  { Event::QTJoystickThreeDown,     "QuadTari Joystick 3 Down"              },
+  { Event::QTJoystickThreeLeft,     "QuadTari Joystick 3 Left"              },
+  { Event::QTJoystickThreeRight,    "QuadTari Joystick 3 Right"             },
+  { Event::QTJoystickThreeFire,     "QuadTari Joystick 3 Fire"              },
 
-  { Event::QTJoystickFourUp,        "QuadTari Joystick 4 Up",                "" },
-  { Event::QTJoystickFourDown,      "QuadTari Joystick 4 Down",              "" },
-  { Event::QTJoystickFourLeft,      "QuadTari Joystick 4 Left",              "" },
-  { Event::QTJoystickFourRight,     "QuadTari Joystick 4 Right",             "" },
-  { Event::QTJoystickFourFire,      "QuadTari Joystick 4 Fire",              "" },
+  { Event::QTJoystickFourUp,        "QuadTari Joystick 4 Up"                },
+  { Event::QTJoystickFourDown,      "QuadTari Joystick 4 Down"              },
+  { Event::QTJoystickFourLeft,      "QuadTari Joystick 4 Left"              },
+  { Event::QTJoystickFourRight,     "QuadTari Joystick 4 Right"             },
+  { Event::QTJoystickFourFire,      "QuadTari Joystick 4 Fire"              },
 
-  { Event::LeftPaddleAAnalog,       "Left Paddle A Analog",                  "" },
-  { Event::LeftPaddleAIncrease,     "Left Paddle A Turn Left",               "" },
-  { Event::LeftPaddleADecrease,     "Left Paddle A Turn Right",              "" },
-  { Event::LeftPaddleAFire,         "Left Paddle A Fire",                    "" },
+  { Event::LeftPaddleAAnalog,       "Left Paddle A Analog"                  },
+  { Event::LeftPaddleAIncrease,     "Left Paddle A Turn Left"               },
+  { Event::LeftPaddleADecrease,     "Left Paddle A Turn Right"              },
+  { Event::LeftPaddleAFire,         "Left Paddle A Fire"                    },
 
-  { Event::LeftPaddleBAnalog,       "Left Paddle B Analog",                  "" },
-  { Event::LeftPaddleBIncrease,     "Left Paddle B Turn Left",               "" },
-  { Event::LeftPaddleBDecrease,     "Left Paddle B Turn Right",              "" },
-  { Event::LeftPaddleBFire,         "Left Paddle B Fire",                    "" },
+  { Event::LeftPaddleBAnalog,       "Left Paddle B Analog"                  },
+  { Event::LeftPaddleBIncrease,     "Left Paddle B Turn Left"               },
+  { Event::LeftPaddleBDecrease,     "Left Paddle B Turn Right"              },
+  { Event::LeftPaddleBFire,         "Left Paddle B Fire"                    },
 
-  { Event::RightPaddleAAnalog,      "Right Paddle A Analog",                 "" },
-  { Event::RightPaddleAIncrease,    "Right Paddle A Turn Left",              "" },
-  { Event::RightPaddleADecrease,    "Right Paddle A Turn Right",             "" },
-  { Event::RightPaddleAFire,        "Right Paddle A Fire",                   "" },
+  { Event::RightPaddleAAnalog,      "Right Paddle A Analog"                 },
+  { Event::RightPaddleAIncrease,    "Right Paddle A Turn Left"              },
+  { Event::RightPaddleADecrease,    "Right Paddle A Turn Right"             },
+  { Event::RightPaddleAFire,        "Right Paddle A Fire"                   },
 
-  { Event::RightPaddleBAnalog,      "Right Paddle B Analog",                 "" },
-  { Event::RightPaddleBIncrease,    "Right Paddle B Turn Left",              "" },
-  { Event::RightPaddleBDecrease,    "Right Paddle B Turn Right",             "" },
-  { Event::RightPaddleBFire,        "Right Paddle B Fire",                   "" },
+  { Event::RightPaddleBAnalog,      "Right Paddle B Analog"                 },
+  { Event::RightPaddleBIncrease,    "Right Paddle B Turn Left"              },
+  { Event::RightPaddleBDecrease,    "Right Paddle B Turn Right"             },
+  { Event::RightPaddleBFire,        "Right Paddle B Fire"                   },
 
-  { Event::QTPaddle3AFire,          "QuadTari Paddle 3A Fire",               "" },
-  { Event::QTPaddle3BFire,          "QuadTari Paddle 3B Fire",               "" },
-  { Event::QTPaddle4AFire,          "QuadTari Paddle 4A Fire",               "" },
-  { Event::QTPaddle4BFire,          "QuadTari Paddle 4B Fire",               "" },
+  { Event::QTPaddle3AFire,          "QuadTari Paddle 3A Fire"               },
+  { Event::QTPaddle3BFire,          "QuadTari Paddle 3B Fire"               },
+  { Event::QTPaddle4AFire,          "QuadTari Paddle 4A Fire"               },
+  { Event::QTPaddle4BFire,          "QuadTari Paddle 4B Fire"               },
 
-  { Event::LeftKeyboard1,           "Left Keyboard 1",                       "" },
-  { Event::LeftKeyboard2,           "Left Keyboard 2",                       "" },
-  { Event::LeftKeyboard3,           "Left Keyboard 3",                       "" },
-  { Event::LeftKeyboard4,           "Left Keyboard 4",                       "" },
-  { Event::LeftKeyboard5,           "Left Keyboard 5",                       "" },
-  { Event::LeftKeyboard6,           "Left Keyboard 6",                       "" },
-  { Event::LeftKeyboard7,           "Left Keyboard 7",                       "" },
-  { Event::LeftKeyboard8,           "Left Keyboard 8",                       "" },
-  { Event::LeftKeyboard9,           "Left Keyboard 9",                       "" },
-  { Event::LeftKeyboardStar,        "Left Keyboard *",                       "" },
-  { Event::LeftKeyboard0,           "Left Keyboard 0",                       "" },
-  { Event::LeftKeyboardPound,       "Left Keyboard #",                       "" },
+  { Event::LeftKeyboard1,           "Left Keyboard 1"                       },
+  { Event::LeftKeyboard2,           "Left Keyboard 2"                       },
+  { Event::LeftKeyboard3,           "Left Keyboard 3"                       },
+  { Event::LeftKeyboard4,           "Left Keyboard 4"                       },
+  { Event::LeftKeyboard5,           "Left Keyboard 5"                       },
+  { Event::LeftKeyboard6,           "Left Keyboard 6"                       },
+  { Event::LeftKeyboard7,           "Left Keyboard 7"                       },
+  { Event::LeftKeyboard8,           "Left Keyboard 8"                       },
+  { Event::LeftKeyboard9,           "Left Keyboard 9"                       },
+  { Event::LeftKeyboardStar,        "Left Keyboard *"                       },
+  { Event::LeftKeyboard0,           "Left Keyboard 0"                       },
+  { Event::LeftKeyboardPound,       "Left Keyboard #"                       },
 
-  { Event::RightKeyboard1,          "Right Keyboard 1",                      "" },
-  { Event::RightKeyboard2,          "Right Keyboard 2",                      "" },
-  { Event::RightKeyboard3,          "Right Keyboard 3",                      "" },
-  { Event::RightKeyboard4,          "Right Keyboard 4",                      "" },
-  { Event::RightKeyboard5,          "Right Keyboard 5",                      "" },
-  { Event::RightKeyboard6,          "Right Keyboard 6",                      "" },
-  { Event::RightKeyboard7,          "Right Keyboard 7",                      "" },
-  { Event::RightKeyboard8,          "Right Keyboard 8",                      "" },
-  { Event::RightKeyboard9,          "Right Keyboard 9",                      "" },
-  { Event::RightKeyboardStar,       "Right Keyboard *",                      "" },
-  { Event::RightKeyboard0,          "Right Keyboard 0",                      "" },
-  { Event::RightKeyboardPound,      "Right Keyboard #",                      "" },
+  { Event::RightKeyboard1,          "Right Keyboard 1"                      },
+  { Event::RightKeyboard2,          "Right Keyboard 2"                      },
+  { Event::RightKeyboard3,          "Right Keyboard 3"                      },
+  { Event::RightKeyboard4,          "Right Keyboard 4"                      },
+  { Event::RightKeyboard5,          "Right Keyboard 5"                      },
+  { Event::RightKeyboard6,          "Right Keyboard 6"                      },
+  { Event::RightKeyboard7,          "Right Keyboard 7"                      },
+  { Event::RightKeyboard8,          "Right Keyboard 8"                      },
+  { Event::RightKeyboard9,          "Right Keyboard 9"                      },
+  { Event::RightKeyboardStar,       "Right Keyboard *"                      },
+  { Event::RightKeyboard0,          "Right Keyboard 0"                      },
+  { Event::RightKeyboardPound,      "Right Keyboard #"                      },
 
-  { Event::LeftDrivingAnalog,       "Left Driving Analog",                   "" },
-  { Event::LeftDrivingCCW,          "Left Driving Turn Left",                "" },
-  { Event::LeftDrivingCW,           "Left Driving Turn Right",               "" },
-  { Event::LeftDrivingFire,         "Left Driving Fire",                     "" },
+  { Event::LeftDrivingAnalog,       "Left Driving Analog"                   },
+  { Event::LeftDrivingCCW,          "Left Driving Turn Left"                },
+  { Event::LeftDrivingCW,           "Left Driving Turn Right"               },
+  { Event::LeftDrivingFire,         "Left Driving Fire"                     },
 
-  { Event::RightDrivingAnalog,      "Right Driving Analog",                  "" },
-  { Event::RightDrivingCCW,         "Right Driving Turn Left",               "" },
-  { Event::RightDrivingCW,          "Right Driving Turn Right",              "" },
-  { Event::RightDrivingFire,        "Right Driving Fire",                    "" },
+  { Event::RightDrivingAnalog,      "Right Driving Analog"                  },
+  { Event::RightDrivingCCW,         "Right Driving Turn Left"               },
+  { Event::RightDrivingCW,          "Right Driving Turn Right"              },
+  { Event::RightDrivingFire,        "Right Driving Fire"                    },
 
   // Video
-  { Event::ToggleInter,             "Toggle display interpolation",          "" },
-  { Event::VidmodeDecrease,         "Previous zoom level",                   "" },
-  { Event::VidmodeIncrease,         "Next zoom level",                       "" },
-  { Event::ToggleFullScreen,        "Toggle fullscreen",                     "" },
+  { Event::ToggleInter,             "Toggle display interpolation"          },
+  { Event::VidmodeDecrease,         "Previous zoom level"                   },
+  { Event::VidmodeIncrease,         "Next zoom level"                       },
+  { Event::ToggleFullScreen,        "Toggle fullscreen"                     },
 #ifdef ADAPTABLE_REFRESH_SUPPORT
-  { Event::ToggleAdaptRefresh,      "Toggle fullscreen refresh rate adapt",  "" },
+  { Event::ToggleAdaptRefresh,      "Toggle fullscreen refresh rate adapt"  },
 #endif
-  { Event::OverscanDecrease,        "Decrease overscan in fullscreen mode",  "" },
-  { Event::OverscanIncrease,        "Increase overscan in fullscreen mode",  "" },
-  { Event::ToggleCorrectAspectRatio,"Toggle aspect ratio correct scaling",   "" },
-  { Event::VSizeAdjustDecrease,     "Decrease vertical display size",        "" },
-  { Event::VSizeAdjustIncrease,     "Increase vertical display size",        "" },
-  { Event::VCenterDecrease,         "Move display up",                       "" },
-  { Event::VCenterIncrease,         "Move display down",                     "" },
-  { Event::FormatDecrease,          "Decrease TV format",                    "" },
-  { Event::FormatIncrease,          "Increase TV format",                    "" },
+  { Event::OverscanDecrease,        "Decrease overscan in fullscreen mode"  },
+  { Event::OverscanIncrease,        "Increase overscan in fullscreen mode"  },
+  { Event::ToggleCorrectAspectRatio,"Toggle aspect ratio correct scaling"   },
+  { Event::VSizeAdjustDecrease,     "Decrease vertical display size"        },
+  { Event::VSizeAdjustIncrease,     "Increase vertical display size"        },
+  { Event::VCenterDecrease,         "Move display up"                       },
+  { Event::VCenterIncrease,         "Move display down"                     },
+  { Event::FormatDecrease,          "Decrease TV format"                    },
+  { Event::FormatIncrease,          "Increase TV format"                    },
     // Palette settings
-  { Event::PaletteDecrease,         "Switch to previous palette",            "" },
-  { Event::PaletteIncrease,         "Switch to next palette",                "" },
-  { Event::PreviousPaletteAttribute,"Select previous palette attribute",     "" },
-  { Event::NextPaletteAttribute,    "Select next palette attribute",         "" },
-  { Event::PaletteAttributeDecrease,"Decrease selected palette attribute",   "" },
-  { Event::PaletteAttributeIncrease,"Increase selected palette attribute",   "" },
+  { Event::PaletteDecrease,         "Switch to previous palette"            },
+  { Event::PaletteIncrease,         "Switch to next palette"                },
+  { Event::PreviousPaletteAttribute,"Select previous palette attribute"     },
+  { Event::NextPaletteAttribute,    "Select next palette attribute"         },
+  { Event::PaletteAttributeDecrease,"Decrease selected palette attribute"   },
+  { Event::PaletteAttributeIncrease,"Increase selected palette attribute"   },
   // Blargg TV effects:
-  { Event::VidmodeStd,              "Disable TV effects",                    "" },
-  { Event::VidmodeRGB,              "Select 'RGB' preset",                   "" },
-  { Event::VidmodeSVideo,           "Select 'S-Video' preset",               "" },
-  { Event::VidModeComposite,        "Select 'Composite' preset",             "" },
-  { Event::VidModeBad,              "Select 'Badly adjusted' preset",        "" },
-  { Event::VidModeCustom,           "Select 'Custom' preset",                "" },
-  { Event::PreviousVideoMode,       "Select previous TV effect mode preset", "" },
-  { Event::NextVideoMode,           "Select next TV effect mode preset",     "" },
-  { Event::PreviousAttribute,       "Select previous 'Custom' attribute",    "" },
-  { Event::NextAttribute,           "Select next 'Custom' attribute",        "" },
-  { Event::DecreaseAttribute,       "Decrease selected 'Custom' attribute",  "" },
-  { Event::IncreaseAttribute,       "Increase selected 'Custom' attribute",  "" },
+  { Event::VidmodeStd,              "Disable TV effects"                    },
+  { Event::VidmodeRGB,              "Select 'RGB' preset"                   },
+  { Event::VidmodeSVideo,           "Select 'S-Video' preset"               },
+  { Event::VidModeComposite,        "Select 'Composite' preset"             },
+  { Event::VidModeBad,              "Select 'Badly adjusted' preset"        },
+  { Event::VidModeCustom,           "Select 'Custom' preset"                },
+  { Event::PreviousVideoMode,       "Select previous TV effect mode preset" },
+  { Event::NextVideoMode,           "Select next TV effect mode preset"     },
+  { Event::PreviousAttribute,       "Select previous 'Custom' attribute"    },
+  { Event::NextAttribute,           "Select next 'Custom' attribute"        },
+  { Event::DecreaseAttribute,       "Decrease selected 'Custom' attribute"  },
+  { Event::IncreaseAttribute,       "Increase selected 'Custom' attribute"  },
   // Other TV effects
-  { Event::TogglePhosphor,          "Toggle 'phosphor' effect",              "" },
-  { Event::PhosphorDecrease,        "Decrease 'phosphor' blend",             "" },
-  { Event::PhosphorIncrease,        "Increase 'phosphor' blend",             "" },
-  { Event::ScanlinesDecrease,       "Decrease scanlines",                    "" },
-  { Event::ScanlinesIncrease,       "Increase scanlines",                    "" },
-  { Event::PreviousScanlineMask,    "Switch to previous scanline mask",      "" },
-  { Event::NextScanlineMask,        "Switch to next scanline mask",          "" },
+  { Event::TogglePhosphor,          "Toggle 'phosphor' effect"              },
+  { Event::PhosphorModeDecrease,    "Decrease 'phosphor' enabling mode"     },
+  { Event::PhosphorModeIncrease,    "Increase 'phosphor' enabling mode"     },
+  { Event::PhosphorDecrease,        "Decrease 'phosphor' blend"             },
+  { Event::PhosphorIncrease,        "Increase 'phosphor' blend"             },
+  { Event::ScanlinesDecrease,       "Decrease scanlines"                    },
+  { Event::ScanlinesIncrease,       "Increase scanlines"                    },
+  { Event::PreviousScanlineMask,    "Switch to previous scanline mask"      },
+  { Event::NextScanlineMask,        "Switch to next scanline mask"          },
   // Audio
-  { Event::SoundToggle,             "Toggle sound",                          "" },
-  { Event::VolumeDecrease,          "Decrease volume",                       "" },
-  { Event::VolumeIncrease,          "Increase volume",                       "" },
+  { Event::SoundToggle,             "Toggle sound"                          },
+  { Event::VolumeDecrease,          "Decrease volume"                       },
+  { Event::VolumeIncrease,          "Increase volume"                       },
 
   // Devices & Ports:
-  { Event::DecreaseDeadzone,        "Decrease digital dead zone",            "" },
-  { Event::IncreaseDeadzone,        "Increase digital dead zone",            "" },
-  { Event::DecAnalogDeadzone,       "Decrease analog dead zone",             "" },
-  { Event::IncAnalogDeadzone,       "Increase analog dead zone",             "" },
-  { Event::DecAnalogSense,          "Decrease analog paddle sensitivity",    "" },
-  { Event::IncAnalogSense,          "Increase analog paddle sensitivity",    "" },
-  { Event::DecAnalogLinear,         "Decrease analog paddle linearity",      "" },
-  { Event::IncAnalogLinear,         "Increase analog paddle linearity",      "" },
-  { Event::DecDejtterAveraging,     "Decrease paddle dejitter averaging",    "" },
-  { Event::IncDejtterAveraging,     "Increase paddle dejitter averaging",    "" },
-  { Event::DecDejtterReaction,      "Decrease paddle dejitter reaction",     "" },
-  { Event::IncDejtterReaction,      "Increase paddle dejitter reaction",     "" },
-  { Event::DecDigitalSense,         "Decrease digital paddle sensitivity",   "" },
-  { Event::IncDigitalSense,         "Increase digital paddle sensitivity",   "" },
-  { Event::ToggleAutoFire,          "Toggle auto fire",                      "" },
-  { Event::DecreaseAutoFire,        "Decrease auto fire speed",              "" },
-  { Event::IncreaseAutoFire,        "Increase auto fire speed",              "" },
-  { Event::ToggleFourDirections,    "Toggle allow four joystick directions", "" },
-  { Event::ToggleKeyCombos,         "Toggle use of modifier key combos",     "" },
-  { Event::ToggleSAPortOrder,       "Swap Stelladaptor port ordering",       "" },
+  { Event::DecreaseDeadzone,        "Decrease digital dead zone"            },
+  { Event::IncreaseDeadzone,        "Increase digital dead zone"            },
+  { Event::DecAnalogDeadzone,       "Decrease analog dead zone"             },
+  { Event::IncAnalogDeadzone,       "Increase analog dead zone"             },
+  { Event::DecAnalogSense,          "Decrease analog paddle sensitivity"    },
+  { Event::IncAnalogSense,          "Increase analog paddle sensitivity"    },
+  { Event::DecAnalogLinear,         "Decrease analog paddle linearity"      },
+  { Event::IncAnalogLinear,         "Increase analog paddle linearity"      },
+  { Event::DecDejtterAveraging,     "Decrease paddle dejitter averaging"    },
+  { Event::IncDejtterAveraging,     "Increase paddle dejitter averaging"    },
+  { Event::DecDejtterReaction,      "Decrease paddle dejitter reaction"     },
+  { Event::IncDejtterReaction,      "Increase paddle dejitter reaction"     },
+  { Event::DecDigitalSense,         "Decrease digital paddle sensitivity"   },
+  { Event::IncDigitalSense,         "Increase digital paddle sensitivity"   },
+  { Event::ToggleAutoFire,          "Toggle auto fire"                      },
+  { Event::DecreaseAutoFire,        "Decrease auto fire speed"              },
+  { Event::IncreaseAutoFire,        "Increase auto fire speed"              },
+  { Event::ToggleFourDirections,    "Toggle allow four joystick directions" },
+  { Event::ToggleKeyCombos,         "Toggle use of modifier key combos"     },
+  { Event::ToggleSAPortOrder,       "Swap Stelladaptor port ordering"       },
   // Devices & Ports related properties
-  { Event::PreviousLeftPort,        "Select previous left controller",       "" },
-  { Event::NextLeftPort,            "Select next left controller",           "" },
-  { Event::PreviousRightPort,       "Select previous right controller",      "" },
-  { Event::NextRightPort,           "Select next right controller",          "" },
-  { Event::ToggleSwapPorts,         "Toggle swap ports",                     "" },
-  { Event::ToggleSwapPaddles,       "Toggle swap paddles",                   "" },
+  { Event::PreviousLeftPort,        "Select previous left controller"       },
+  { Event::NextLeftPort,            "Select next left controller"           },
+  { Event::PreviousRightPort,       "Select previous right controller"      },
+  { Event::NextRightPort,           "Select next right controller"          },
+  { Event::ToggleSwapPorts,         "Toggle swap ports"                     },
+  { Event::ToggleSwapPaddles,       "Toggle swap paddles"                   },
 
   // Mouse
-  { Event::PrevMouseAsController,   "Select previous mouse controls",        "" },
-  { Event::NextMouseAsController,   "Select next mouse controls",            "" },
-  { Event::DecMousePaddleSense,     "Decrease mouse paddle sensitivity",     "" },
-  { Event::IncMousePaddleSense,     "Increase mouse paddle sensitivity",     "" },
-  { Event::DecMouseTrackballSense,  "Decrease mouse trackball sensitivity",  "" },
-  { Event::IncMouseTrackballSense,  "Increase mouse trackball sensitivity",  "" },
-  { Event::DecreaseDrivingSense,    "Decrease driving sensitivity",          "" },
-  { Event::IncreaseDrivingSense,    "Increase driving sensitivity",          "" },
-  { Event::PreviousCursorVisbility, "Select prev. cursor visibility mode",   "" },
-  { Event::NextCursorVisbility,     "Select next cursor visibility mode",    "" },
-  { Event::ToggleGrabMouse,         "Toggle grab mouse",                     "" },
+  { Event::PrevMouseAsController,   "Select previous mouse controls"        },
+  { Event::NextMouseAsController,   "Select next mouse controls"            },
+  { Event::DecMousePaddleSense,     "Decrease mouse paddle sensitivity"     },
+  { Event::IncMousePaddleSense,     "Increase mouse paddle sensitivity"     },
+  { Event::DecMouseTrackballSense,  "Decrease mouse trackball sensitivity"  },
+  { Event::IncMouseTrackballSense,  "Increase mouse trackball sensitivity"  },
+  { Event::DecreaseDrivingSense,    "Decrease driving sensitivity"          },
+  { Event::IncreaseDrivingSense,    "Increase driving sensitivity"          },
+  { Event::PreviousCursorVisbility, "Select prev. cursor visibility mode"   },
+  { Event::NextCursorVisbility,     "Select next cursor visibility mode"    },
+  { Event::ToggleGrabMouse,         "Toggle grab mouse"                     },
   // Mouse related properties
-  { Event::PreviousMouseControl,    "Select previous mouse emulation mode",  "" },
-  { Event::NextMouseControl,        "Select next mouse emulation mode",      "" },
-  { Event::DecreaseMouseAxesRange,  "Decrease mouse axes range",             "" },
-  { Event::IncreaseMouseAxesRange,  "Increase mouse axes range",             "" },
+  { Event::PreviousMouseControl,    "Select previous mouse emulation mode"  },
+  { Event::NextMouseControl,        "Select next mouse emulation mode"      },
+  { Event::DecreaseMouseAxesRange,  "Decrease mouse axes range"             },
+  { Event::IncreaseMouseAxesRange,  "Increase mouse axes range"             },
 
   // Time Machine
-  { Event::ToggleTimeMachine,       "Toggle 'Time Machine' mode",            "" },
-  { Event::TimeMachineMode,         "Toggle 'Time Machine' UI",              "" },
-  { Event::RewindPause,             "Rewind one state & enter Pause mode",   "" },
-  { Event::Rewind1Menu,             "Rewind one state & enter TM UI",        "" },
-  { Event::Rewind10Menu,            "Rewind 10 states & enter TM UI",        "" },
-  { Event::RewindAllMenu,           "Rewind all states & enter TM UI",       "" },
-  { Event::UnwindPause,             "Unwind one state & enter Pause mode",   "" },
-  { Event::Unwind1Menu,             "Unwind one state & enter TM UI",        "" },
-  { Event::Unwind10Menu,            "Unwind 10 states & enter TM UI",        "" },
-  { Event::UnwindAllMenu,           "Unwind all states & enter TM UI",       "" },
-  { Event::TogglePlayBackMode,      "Toggle 'Time Machine' playback mode",   "" },
+  { Event::ToggleTimeMachine,       "Toggle 'Time Machine' mode"            },
+  { Event::TimeMachineMode,         "Toggle 'Time Machine' UI"              },
+  { Event::RewindPause,             "Rewind one state & enter Pause mode"   },
+  { Event::Rewind1Menu,             "Rewind one state & enter TM UI"        },
+  { Event::Rewind10Menu,            "Rewind 10 states & enter TM UI"        },
+  { Event::RewindAllMenu,           "Rewind all states & enter TM UI"       },
+  { Event::UnwindPause,             "Unwind one state & enter Pause mode"   },
+  { Event::Unwind1Menu,             "Unwind one state & enter TM UI"        },
+  { Event::Unwind10Menu,            "Unwind 10 states & enter TM UI"        },
+  { Event::UnwindAllMenu,           "Unwind all states & enter TM UI"       },
+  { Event::TogglePlayBackMode,      "Toggle 'Time Machine' playback mode"   },
 
   // Developer:
-  { Event::ToggleDeveloperSet,      "Toggle developer settings sets",        "" },
-  { Event::ToggleFrameStats,        "Toggle frame stats",                    "" },
-  { Event::ToggleP0Bit,             "Toggle TIA Player0 object",             "" },
-  { Event::ToggleP0Collision,       "Toggle TIA Player0 collisions",         "" },
-  { Event::ToggleP1Bit,             "Toggle TIA Player1 object",             "" },
-  { Event::ToggleP1Collision,       "Toggle TIA Player1 collisions",         "" },
-  { Event::ToggleM0Bit,             "Toggle TIA Missile0 object",            "" },
-  { Event::ToggleM0Collision,       "Toggle TIA Missile0 collisions",        "" },
-  { Event::ToggleM1Bit,             "Toggle TIA Missile1 object",            "" },
-  { Event::ToggleM1Collision,       "Toggle TIA Missile1 collisions",        "" },
-  { Event::ToggleBLBit,             "Toggle TIA Ball object",                "" },
-  { Event::ToggleBLCollision,       "Toggle TIA Ball collisions",            "" },
-  { Event::TogglePFBit,             "Toggle TIA Playfield object",           "" },
-  { Event::TogglePFCollision,       "Toggle TIA Playfield collisions",       "" },
-  { Event::ToggleBits,              "Toggle all TIA objects",                "" },
-  { Event::ToggleCollisions,        "Toggle all TIA collisions",             "" },
-  { Event::ToggleFixedColors,       "Toggle TIA 'Fixed Debug Colors' mode",  "" },
-  { Event::ToggleColorLoss,         "Toggle PAL color-loss effect",          "" },
-  { Event::ToggleJitter,            "Toggle TV scanline 'Jitter' effect",    "" },
-  { Event::JitterSenseDecrease,     "Decrease TV 'Jitter' sensitivity",      "" },
-  { Event::JitterSenseIncrease,     "Increase TV 'Jitter' sensitivity",      "" },
-  { Event::JitterRecDecrease,       "Decrease TV 'Jitter' roll",             "" },
-  { Event::JitterRecIncrease,       "Increase TV 'Jitter' roll",             "" },
+  { Event::ToggleDeveloperSet,      "Toggle developer settings sets"        },
+  { Event::ToggleFrameStats,        "Toggle frame stats"                    },
+  { Event::ToggleP0Bit,             "Toggle TIA Player0 object"             },
+  { Event::ToggleP0Collision,       "Toggle TIA Player0 collisions"         },
+  { Event::ToggleP1Bit,             "Toggle TIA Player1 object"             },
+  { Event::ToggleP1Collision,       "Toggle TIA Player1 collisions"         },
+  { Event::ToggleM0Bit,             "Toggle TIA Missile0 object"            },
+  { Event::ToggleM0Collision,       "Toggle TIA Missile0 collisions"        },
+  { Event::ToggleM1Bit,             "Toggle TIA Missile1 object"            },
+  { Event::ToggleM1Collision,       "Toggle TIA Missile1 collisions"        },
+  { Event::ToggleBLBit,             "Toggle TIA Ball object"                },
+  { Event::ToggleBLCollision,       "Toggle TIA Ball collisions"            },
+  { Event::TogglePFBit,             "Toggle TIA Playfield object"           },
+  { Event::TogglePFCollision,       "Toggle TIA Playfield collisions"       },
+  { Event::ToggleBits,              "Toggle all TIA objects"                },
+  { Event::ToggleCollisions,        "Toggle all TIA collisions"             },
+  { Event::ToggleFixedColors,       "Toggle TIA 'Fixed Debug Colors' mode"  },
+  { Event::ToggleColorLoss,         "Toggle PAL color-loss effect"          },
+  { Event::ToggleJitter,            "Toggle TV scanline 'Jitter' effect"    },
+  { Event::JitterSenseDecrease,     "Decrease TV 'Jitter' sensitivity"      },
+  { Event::JitterSenseIncrease,     "Increase TV 'Jitter' sensitivity"      },
+  { Event::JitterRecDecrease,       "Decrease TV 'Jitter' roll"             },
+  { Event::JitterRecIncrease,       "Increase TV 'Jitter' roll"             },
 
   // Combo
-  { Event::Combo1,                  "Combo 1",                               "" },
-  { Event::Combo2,                  "Combo 2",                               "" },
-  { Event::Combo3,                  "Combo 3",                               "" },
-  { Event::Combo4,                  "Combo 4",                               "" },
-  { Event::Combo5,                  "Combo 5",                               "" },
-  { Event::Combo6,                  "Combo 6",                               "" },
-  { Event::Combo7,                  "Combo 7",                               "" },
-  { Event::Combo8,                  "Combo 8",                               "" },
-  { Event::Combo9,                  "Combo 9",                               "" },
-  { Event::Combo10,                 "Combo 10",                              "" },
-  { Event::Combo11,                 "Combo 11",                              "" },
-  { Event::Combo12,                 "Combo 12",                              "" },
-  { Event::Combo13,                 "Combo 13",                              "" },
-  { Event::Combo14,                 "Combo 14",                              "" },
-  { Event::Combo15,                 "Combo 15",                              "" },
-  { Event::Combo16,                 "Combo 16",                              "" },
+  { Event::Combo1,                  "Combo 1"                               },
+  { Event::Combo2,                  "Combo 2"                               },
+  { Event::Combo3,                  "Combo 3"                               },
+  { Event::Combo4,                  "Combo 4"                               },
+  { Event::Combo5,                  "Combo 5"                               },
+  { Event::Combo6,                  "Combo 6"                               },
+  { Event::Combo7,                  "Combo 7"                               },
+  { Event::Combo8,                  "Combo 8"                               },
+  { Event::Combo9,                  "Combo 9"                               },
+  { Event::Combo10,                 "Combo 10"                              },
+  { Event::Combo11,                 "Combo 11"                              },
+  { Event::Combo12,                 "Combo 12"                              },
+  { Event::Combo13,                 "Combo 13"                              },
+  { Event::Combo14,                 "Combo 14"                              },
+  { Event::Combo15,                 "Combo 15"                              },
+  { Event::Combo16,                 "Combo 16"                              },
 } };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 EventHandler::MenuActionList EventHandler::ourMenuActionList = { {
-  { Event::UIHelp,            "Open context-sensitive help",  "" },
+  { Event::UIHelp,                  "Open context-sensitive help"           },
 
-  { Event::UIUp,              "Move Up",                      "" },
-  { Event::UIDown,            "Move Down",                    "" },
-  { Event::UILeft,            "Move Left",                    "" },
-  { Event::UIRight,           "Move Right",                   "" },
+  { Event::UIUp,                    "Move Up"                               },
+  { Event::UIDown,                  "Move Down"                             },
+  { Event::UILeft,                  "Move Left"                             },
+  { Event::UIRight,                 "Move Right"                            },
 
-  { Event::UIHome,            "Home",                         "" },
-  { Event::UIEnd,             "End",                          "" },
-  { Event::UIPgUp,            "Page Up",                      "" },
-  { Event::UIPgDown,          "Page Down",                    "" },
+  { Event::UIHome,                  "Home"                                  },
+  { Event::UIEnd,                   "End"                                   },
+  { Event::UIPgUp,                  "Page Up"                               },
+  { Event::UIPgDown,                "Page Down"                             },
 
-  { Event::UIOK,              "OK",                           "" },
-  { Event::UICancel,          "Cancel",                       "" },
-  { Event::UISelect,          "Select item",                  "" },
+  { Event::UIOK,                    "OK"                                    },
+  { Event::UICancel,                "Cancel"                                },
+  { Event::UISelect,                "Select item"                           },
 
-  { Event::UINavPrev,         "Previous object",              "" },
-  { Event::UINavNext,         "Next object",                  "" },
-  { Event::UITabPrev,         "Previous tab",                 "" },
-  { Event::UITabNext,         "Next tab",                     "" },
+  { Event::UINavPrev,               "Previous object"                       },
+  { Event::UINavNext,               "Next object"                           },
+  { Event::UITabPrev,               "Previous tab"                          },
+  { Event::UITabNext,               "Next tab"                              },
 
-  { Event::UIPrevDir,         "Parent directory",             "" },
-  { Event::ToggleFullScreen,  "Toggle fullscreen",            "" },
-  { Event::Quit,              "Quit",                         "" }
+  { Event::UIPrevDir,               "Parent directory"                      },
+  { Event::ToggleFullScreen,        "Toggle fullscreen"                     },
+  { Event::ToggleUIPalette,         "Toggle UI theme"                       },
+  { Event::Quit,                    "Quit"                                  }
 } };
 
 // Event groups
@@ -3114,7 +3126,7 @@ EventHandler::MenuActionList EventHandler::ourMenuActionList = { {
 const Event::EventSet EventHandler::MiscEvents = {
   Event::Quit, Event::ReloadConsole, Event::Fry, Event::StartPauseMode,
   Event::TogglePauseMode, Event::OptionsMenuMode, Event::CmdMenuMode,
-  Event::PlusRomsSetupMode, Event::ExitMode,
+  Event::ToggleBezel, Event::PlusRomsSetupMode, Event::ExitMode,
   Event::ToggleTurbo, Event::DecreaseSpeed, Event::IncreaseSpeed,
   Event::TakeSnapshot, Event::ToggleContSnapshots, Event::ToggleContSnapshotsFrame,
   // Event::MouseAxisXMove, Event::MouseAxisYMove,
@@ -3142,6 +3154,7 @@ const Event::EventSet EventHandler::AudioVideoEvents = {
   Event::PreviousVideoMode, Event::NextVideoMode,
   Event::PreviousAttribute, Event::NextAttribute, Event::DecreaseAttribute, Event::IncreaseAttribute,
   Event::PhosphorDecrease, Event::PhosphorIncrease, Event::TogglePhosphor,
+  Event::PhosphorModeDecrease, Event::PhosphorModeIncrease,
   Event::ScanlinesDecrease, Event::ScanlinesIncrease,
   Event::PreviousScanlineMask, Event::NextScanlineMask,
   Event::ToggleInter,

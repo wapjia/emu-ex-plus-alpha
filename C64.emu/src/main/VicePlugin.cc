@@ -171,11 +171,116 @@ struct PluginConfig
 {
 	std::span<const std::string_view> modelNames;
 	std::string_view configName{};
+	std::string_view stateExt{};
 	const char *getModelFuncName{};
 	const char *setModelFuncName{};
 	const char *borderModeStr{};
 	int8_t defaultModelId{};
 	int8_t modelIdBase{};
+};
+
+constexpr PluginConfig pluginConf[]
+{
+	// C64
+	{
+		.modelNames = c64ModelStr,
+		.configName = "c64.config",
+		.stateExt = ".vsf",
+		.getModelFuncName = "c64model_get",
+		.setModelFuncName = "c64model_set",
+		.borderModeStr = "VICIIBorderMode",
+		.defaultModelId = C64MODEL_C64_NTSC
+	},
+	// C64 (accurate)
+	{
+		.modelNames = c64ModelStr,
+		.configName = "c64sc.config",
+		.stateExt = ".c64sc.vsf",
+		.getModelFuncName = "c64model_get",
+		.setModelFuncName = "c64model_set",
+		.borderModeStr = "VICIIBorderMode",
+		.defaultModelId = C64MODEL_C64_NTSC
+	},
+	// DTV
+	{
+		.modelNames = dtvModelStr,
+		.configName = "c64dtv.config",
+		.stateExt = ".c64dtv.vsf",
+		.getModelFuncName = "dtvmodel_get",
+		.setModelFuncName = "dtvmodel_set",
+		.borderModeStr = "VICIIBorderMode",
+		.defaultModelId = DTVMODEL_V3_NTSC
+	},
+	// C128
+	{
+		.modelNames = c128ModelStr,
+		.configName = "c128.config",
+		.stateExt = ".c128.vsf",
+		.getModelFuncName = "c128model_get",
+		.setModelFuncName = "c128model_set",
+		.borderModeStr = "VICIIBorderMode",
+		.defaultModelId = C128MODEL_C128_NTSC
+	},
+	// C64 Super CPU
+	{
+		.modelNames = superCPUModelStr,
+		.configName = "scpu64.config",
+		.stateExt = ".scpu64.vsf",
+		.getModelFuncName = "c64model_get",
+		.setModelFuncName = "c64model_set",
+		.borderModeStr = "VICIIBorderMode",
+		.defaultModelId = C64MODEL_C64_NTSC
+	},
+	// CBM-II 6x0
+	{
+		.modelNames = cbm2ModelStr,
+		.configName = "cbm2.config",
+		.stateExt = ".cbm2.vsf",
+		.getModelFuncName = "cbm2model_get",
+		.setModelFuncName = "cbm2model_set",
+		.defaultModelId = CBM2MODEL_610_NTSC,
+		.modelIdBase = CBM2MODEL_610_PAL
+	},
+	// CBM-II 5x0
+	{
+		.modelNames = cbm5x0ModelStr,
+		.configName = "cbm5x0.config",
+		.stateExt = ".cbm5x0.vsf",
+		.getModelFuncName = "cbm2model_get",
+		.setModelFuncName = "cbm2model_set",
+		.borderModeStr = "VICIIBorderMode",
+		.defaultModelId = CBM2MODEL_510_NTSC,
+		.modelIdBase = CBM2MODEL_510_PAL
+	},
+	// PET
+	{
+		.modelNames = petModelStr,
+		.configName = "pet.config",
+		.stateExt = ".pet.vsf",
+		.getModelFuncName = "petmodel_get",
+		.setModelFuncName = "petmodel_set",
+		.defaultModelId = PETMODEL_8032
+	},
+	// PLUS4
+	{
+		.modelNames = plus4ModelStr,
+		.configName = "plus4.config",
+		.stateExt = ".plus4.vsf",
+		.getModelFuncName = "plus4model_get",
+		.setModelFuncName = "plus4model_set",
+		.borderModeStr = "TEDBorderMode",
+		.defaultModelId = PLUS4MODEL_PLUS4_NTSC
+	},
+	// VIC20
+	{
+		.modelNames = vic20ModelStr,
+		.configName = "vic20.config",
+		.stateExt = ".vic20.vsf",
+		.getModelFuncName = "vic20model_get",
+		.setModelFuncName = "vic20model_set",
+		.borderModeStr = "VICBorderMode",
+		.defaultModelId = VIC20MODEL_VIC20_NTSC
+	},
 };
 
 static IG::PathString makePluginLibPath(const char *libName, const char *libBasePath)
@@ -351,16 +456,16 @@ const char *VicePlugin::cartridge_get_file_name(int type)
 	const char *filename{};
 	switch(type)
 	{
-		case CARTRIDGE_CBM2_8KB_1000:
+		case CARTRIDGE_CBM2_GENERIC_C1:
 			resources_get_string("Cart1Name", &filename);
 			break;
-		case CARTRIDGE_CBM2_8KB_2000:
+		case CARTRIDGE_CBM2_GENERIC_C2:
 			resources_get_string("Cart2Name", &filename);
 			break;
-		case CARTRIDGE_CBM2_16KB_4000:
+		case CARTRIDGE_CBM2_GENERIC_C4:
 			resources_get_string("Cart4Name", &filename);
 			break;
-		case CARTRIDGE_CBM2_16KB_6000:
+		case CARTRIDGE_CBM2_GENERIC_C6:
 			resources_get_string("Cart6Name", &filename);
 			break;
 		default:
@@ -549,7 +654,7 @@ VicePlugin commonVicePlugin(void *lib, ViceSystem system)
 		plugin.cart_getid_slotmain_ =
 			[]()
 			{
-				return CARTRIDGE_CBM2_8KB_1000;
+				return CARTRIDGE_CBM2_GENERIC_C1;
 			};
 		loadSymbolCheck(plugin.cartridge_attach_image_, lib, "cartridge_attach_image");
 		loadSymbolCheck(plugin.cartridge_detach_image_, lib, "cartridge_detach_image");
@@ -598,101 +703,6 @@ VicePlugin commonVicePlugin(void *lib, ViceSystem system)
 
 VicePlugin loadVicePlugin(ViceSystem system, const char *libBasePath)
 {
-	static constexpr PluginConfig pluginConf[]
-	{
-		// C64
-		{
-			c64ModelStr,
-			"c64.config",
-			"c64model_get",
-			"c64model_set",
-			"VICIIBorderMode",
-			C64MODEL_C64_NTSC
-		},
-		// C64 (accurate)
-		{
-			c64ModelStr,
-			"c64sc.config",
-			"c64model_get",
-			"c64model_set",
-			"VICIIBorderMode",
-			C64MODEL_C64_NTSC
-		},
-		// DTV
-		{
-			dtvModelStr,
-			"c64dtv.config",
-			"dtvmodel_get",
-			"dtvmodel_set",
-			"VICIIBorderMode",
-			DTVMODEL_V3_NTSC
-		},
-		// C128
-		{
-			c128ModelStr,
-			"c128.config",
-			"c128model_get",
-			"c128model_set",
-			"VICIIBorderMode",
-			C128MODEL_C128_NTSC
-		},
-		// C64 Super CPU
-		{
-			superCPUModelStr,
-			"scpu64.config",
-			"c64model_get",
-			"c64model_set",
-			"VICIIBorderMode",
-			C64MODEL_C64_NTSC
-		},
-		// CBM-II 6x0
-		{
-			cbm2ModelStr,
-			"cbm2.config",
-			"cbm2model_get",
-			"cbm2model_set",
-			{},
-			CBM2MODEL_610_NTSC,
-			CBM2MODEL_610_PAL
-		},
-		// CBM-II 5x0
-		{
-			cbm5x0ModelStr,
-			"cbm5x0.config",
-			"cbm2model_get",
-			"cbm2model_set",
-			"VICIIBorderMode",
-			CBM2MODEL_510_NTSC,
-			CBM2MODEL_510_PAL
-		},
-		// PET
-		{
-			petModelStr,
-			"pet.config",
-			"petmodel_get",
-			"petmodel_set",
-			{},
-			PETMODEL_8032
-		},
-		// PLUS4
-		{
-			plus4ModelStr,
-			"plus4.config",
-			"plus4model_get",
-			"plus4model_set",
-			"TEDBorderMode",
-			PLUS4MODEL_PLUS4_NTSC
-		},
-		// VIC20
-		{
-			vic20ModelStr,
-			"vic20.config",
-			"vic20model_get",
-			"vic20model_set",
-			"VICBorderMode",
-			VIC20MODEL_VIC20_NTSC
-		},
-	};
 	auto libPath = makePluginLibPath(libName[std::to_underlying(system)], libBasePath);
 	logMsg("loading VICE plugin:%s", libPath.data());
 	auto lib = IG::openSharedLibrary(libPath.data(), {.resolveAllSymbols = true});
@@ -708,6 +718,7 @@ VicePlugin loadVicePlugin(ViceSystem system, const char *libBasePath)
 	//logMsg("setModel() address:%p", plugin.model_set_);
 	plugin.modelNames = conf.modelNames;
 	plugin.configName = conf.configName;
+	plugin.stateExt = conf.stateExt;
 	plugin.defaultModelId = conf.defaultModelId;
 	plugin.modelIdBase = conf.modelIdBase;
 	plugin.borderModeStr = conf.borderModeStr;

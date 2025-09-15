@@ -83,7 +83,7 @@ public:
 		PropertyDesc<uint8_t>{.isValid = isValidWithMax<6>}> optionVideoSystem;
 	Property<AudioSettings::ResamplingQuality, CFGKEY_AUDIO_RESAMPLE_QUALITY,
 		PropertyDesc<AudioSettings::ResamplingQuality>{.defaultValue = AudioSettings::DEFAULT_RESAMPLING_QUALITY,
-		.isValid = isValidWithMinMax<AudioSettings::ResamplingQuality::nearestNeightbour, AudioSettings::ResamplingQuality::lanczos_3>}>
+		.isValid = isValidWithMinMax<AudioSettings::ResamplingQuality::nearestNeighbour, AudioSettings::ResamplingQuality::lanczos_3>}>
 		optionAudioResampleQuality;
 	Property<Controller::Type, CFGKEY_INPUT_PORT_1,
 		PropertyDesc<Controller::Type>{.isValid = optionIsValidControllerType}> optionInputPort1;
@@ -129,6 +129,7 @@ public:
 	void renderFramebuffer(EmuVideo &);
 	bool onVideoRenderFormatChange(EmuVideo &, PixelFormat);
 	bool resetSessionOptions(EmuApp &);
+	void onOptionsLoaded();
 
 private:
 	bool updatePaddle(Input::DragTrackerState dragState);

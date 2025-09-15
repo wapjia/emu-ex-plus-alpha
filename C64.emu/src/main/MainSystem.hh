@@ -221,12 +221,11 @@ public:
 		return true;
 	}
 
-
 	// required API functions
 	void loadContent(IO &, EmuSystemCreateParams, OnLoadProgressDelegate);
 	[[gnu::hot]] void runFrame(EmuSystemTaskContext task, EmuVideo *video, EmuAudio *audio);
 	FS::FileString stateFilename(int slot, std::string_view name) const;
-	std::string_view stateFilenameExt() const { return ".vsf"; }
+	std::string_view stateFilenameExt() const { return plugin.stateExt; }
 	size_t stateSize();
 	void readState(EmuApp &, std::span<uint8_t> buff);
 	size_t writeState(std::span<uint8_t> buff, SaveStateFlags = {});
@@ -255,7 +254,7 @@ public:
 	void addThreadGroupIds(std::vector<ThreadId> &ids) const { ids.emplace_back(emuThreadId); }
 
 protected:
-	void initC64(EmuApp &app);
+	bool initC64(EmuApp &app);
 	void setVirtualDeviceTraps(bool on);
 	bool virtualDeviceTraps() const;
 	void handleKeyboardInput(InputAction, bool positionalShift = {});

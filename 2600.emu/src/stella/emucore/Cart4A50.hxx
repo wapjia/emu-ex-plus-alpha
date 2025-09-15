@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -65,7 +65,7 @@ class Cartridge4A50 : public Cartridge
       @param md5       The md5sum of the ROM image
       @param settings  A reference to the various settings (read-only)
     */
-    Cartridge4A50(const ByteBuffer& image, size_t size, const string& md5,
+    Cartridge4A50(const ByteBuffer& image, size_t size, string_view md5,
                   const Settings& settings);
     ~Cartridge4A50() override = default;
 
@@ -176,43 +176,37 @@ class Cartridge4A50 : public Cartridge
     /**
       Methods to perform all the ways that banks can be switched
     */
-    inline void bankROMLower(uInt16 value)
-    {
+    void bankROMLower(uInt16 value) {
       myIsRomLow = true;
       mySliceLow = value << 11;
       myBankChanged = true;
     }
 
-    inline void bankRAMLower(uInt16 value)
-    {
+    void bankRAMLower(uInt16 value) {
       myIsRomLow = false;
       mySliceLow = value << 11;
       myBankChanged = true;
     }
 
-    inline void bankROMMiddle(uInt16 value)
-    {
+    void bankROMMiddle(uInt16 value) {
       myIsRomMiddle = true;
       mySliceMiddle = value << 11;
       myBankChanged = true;
     }
 
-    inline void bankRAMMiddle(uInt16 value)
-    {
+    void bankRAMMiddle(uInt16 value) {
       myIsRomMiddle = false;
       mySliceMiddle = value << 11;
       myBankChanged = true;
     }
 
-    inline void bankROMHigh(uInt16 value)
-    {
+    void bankROMHigh(uInt16 value) {
       myIsRomHigh = true;
       mySliceHigh = value << 8;
       myBankChanged = true;
     }
 
-    inline void bankRAMHigh(uInt16 value)
-    {
+    void bankRAMHigh(uInt16 value) {
       myIsRomHigh = false;
       mySliceHigh = value << 8;
       myBankChanged = true;
@@ -223,7 +217,7 @@ class Cartridge4A50 : public Cartridge
     ByteBuffer myImage;
 
     // The 32K of RAM on the cartridge
-    std::array<uInt8, 32_KB> myRAM;
+    std::array<uInt8, 32_KB> myRAM{};
 
     // (Actual) Size of the ROM image
     size_t mySize{0};

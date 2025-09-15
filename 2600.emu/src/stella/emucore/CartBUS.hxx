@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -41,14 +41,14 @@ class CartridgeBUS : public CartridgeARM
   friend class CartridgeBUSWidget;
   friend class CartridgeBUSInfoWidget;
   friend class CartridgeRamBUSWidget;
-  
-  enum class BUSSubtype {
+
+  enum class BUSSubtype: uInt8 {
     BUS0, // very old demos when BUS was in flux, not supported in Stella
     BUS1, // draconian_20161102.bin
-    BUS2, // 128bus_20170120.bin, 128chronocolour_20170101.bin, parrot_20161231_NTSC.bin
+    BUS2, // 128bus_20170120.bin, 128chronocolour_20170101.bin,
+          // parrot_20161231_NTSC.bin
     BUS3  // rpg_20170616_NTSC.bin
   };
-
 
   public:
     /**
@@ -59,7 +59,7 @@ class CartridgeBUS : public CartridgeARM
       @param md5       The md5sum of the ROM image
       @param settings  A reference to the various settings (read-only)
     */
-    CartridgeBUS(const ByteBuffer& image, size_t size, const string& md5,
+    CartridgeBUS(const ByteBuffer& image, size_t size, string_view md5,
                  const Settings& settings);
     ~CartridgeBUS() override = default;
 
@@ -160,20 +160,20 @@ class CartridgeBUS : public CartridgeARM
   */
   uInt8 internalRamGetValue(uInt16 addr) const override;
 
-
   #ifdef DEBUGGER_SUPPORT
     /**
       Get debugger widget responsible for accessing the inner workings
       of the cart.
     */
     CartDebugWidget* debugWidget(GuiObject* boss, const GUI::Font& lfont,
-                                 const GUI::Font& nfont, int x, int y, int w, int h) override;
-  
-    CartDebugWidget* infoWidget(GuiObject* boss, const GUI::Font& lfont,
-                                const GUI::Font& nfont, int x, int y, int w, int h) override;
+                                 const GUI::Font& nfont, int x, int y,
+                                 int w, int h) override;
 
+    CartDebugWidget* infoWidget(GuiObject* boss, const GUI::Font& lfont,
+                                const GUI::Font& nfont, int x, int y,
+                                int w, int h) override;
   #endif
-  
+
   public:
     /**
       Get the byte at the specified address.
@@ -220,7 +220,7 @@ class CartridgeBUS : public CartridgeARM
 
     uInt32 getDatastreamIncrement(uInt8 index) const;
     void setDatastreamIncrement(uInt8 index, uInt32 value);
-  
+
     uInt32 getAddressMap(uInt8 index) const;
     void setAddressMap(uInt8 index, uInt32 value);
 
@@ -249,7 +249,7 @@ class CartridgeBUS : public CartridgeARM
     //   $0000 - 2K BUS driver
     //   $0800 - 4K Display Data
     //   $1800 - 2K C Variable & Stack
-    std::array<uInt8, 8_KB> myRAM;
+    std::array<uInt8, 8_KB> myRAM{};
 
     // Indicates the offset into the ROM image (aligns to current bank)
     uInt16 myBankOffset{0};
@@ -269,27 +269,27 @@ class CartridgeBUS : public CartridgeARM
 
     // ARM cycle count from when the last callFunction() occurred
     uInt64 myARMCycles{0};
-  
+
     // Pointer to the array of datastream pointers
     uInt16 myDatastreamBase{0}; // was DSxPTR
 
     // Pointer to the array of datastream increments
     uInt16 myDatastreamIncrementBase{0};  // was DSxINC
-  
+
     // Pointer to the array of datastream maps
     uInt16 myDatastreamMapBase{0};  // was DSMAPS
-  
+
     // Pointer to the beginning of the waveform data block
     uInt16 myWaveformBase{0}; // was WAVEFORM
 
     // The music mode counters
-    std::array<uInt32, 3> myMusicCounters{0};
+    std::array<uInt32, 3> myMusicCounters{};
 
     // The music frequency
-    std::array<uInt32, 3> myMusicFrequencies{0};
+    std::array<uInt32, 3> myMusicFrequencies{};
 
     // The music waveform sizes
-    std::array<uInt8, 3> myMusicWaveformSize{0};
+    std::array<uInt8, 3> myMusicWaveformSize{};
 
     // Fractional DPC music OSC clocks unused during the last update
     double myFractionalClocks{0.0};
@@ -302,7 +302,7 @@ class CartridgeBUS : public CartridgeARM
     uInt8 myMode{0};
 
     uInt8 myFastJumpActive{false};
-  
+
   // BUS subtype
   BUSSubtype myBUSSubtype{BUSSubtype::BUS1};
 

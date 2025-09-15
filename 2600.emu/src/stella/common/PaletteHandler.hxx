@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -29,10 +29,10 @@ class PaletteHandler
 {
   public:
     // Setting names of palette types
-    static constexpr const char* SETTING_STANDARD = "standard";
-    static constexpr const char* SETTING_Z26 = "z26";
-    static constexpr const char* SETTING_USER = "user";
-    static constexpr const char* SETTING_CUSTOM = "custom";
+    static constexpr string_view SETTING_STANDARD = "standard";
+    static constexpr string_view SETTING_Z26 = "z26";
+    static constexpr string_view SETTING_USER = "user";
+    static constexpr string_view SETTING_CUSTOM = "custom";
 
     // Phase shift default and limits
     static constexpr float DEF_NTSC_SHIFT = 26.2F;
@@ -41,7 +41,7 @@ class PaletteHandler
     static constexpr float DEF_RGB_SHIFT = 0.0F;
     static constexpr float MAX_RGB_SHIFT = 22.5F;
 
-    enum Adjustables {
+    enum Adjustables : uInt8 {
       PHASE_SHIFT,
       RED_SCALE,
       GREEN_SCALE,
@@ -68,6 +68,7 @@ class PaletteHandler
 
   public:
     explicit PaletteHandler(OSystem& system);
+    ~PaletteHandler() = default;
 
     /**
       Cycle through available palettes.
@@ -115,7 +116,7 @@ class PaletteHandler
 
       @param name  The palette to switch to
     */
-    void setPalette(const string& name);
+    void setPalette(string_view name);
 
     /**
       Sets the palette from current settings.
@@ -126,7 +127,7 @@ class PaletteHandler
   private:
     static constexpr char DEGREE = 0x1c;
 
-    enum PaletteType {
+    enum PaletteType: uInt8 {
       Standard,
       Z26,
       User,
@@ -180,7 +181,7 @@ class PaletteHandler
 
       @return  The palette type
     */
-    PaletteType toPaletteType(const string& name) const;
+    PaletteType toPaletteType(string_view name) const;
 
     /**
       Convert enumeration to palette settings name.
@@ -189,7 +190,7 @@ class PaletteHandler
 
       @return  The palette's settings name
     */
-    string toPaletteName(PaletteType type) const;
+    static string_view toPaletteName(PaletteType type);
 
     /**
       Display current adjustable with gauge bar message
@@ -210,16 +211,16 @@ class PaletteHandler
 
       @param timing  Use NTSC or PAL phase shift and generate according palette
     */
-    void generateCustomPalette(ConsoleTiming timing);
+    void generateCustomPalette(ConsoleTiming timing) const;
 
     /**
       Create new palette by applying palette adjustments on given palette.
 
-      @param source  The palette which should be adjusted
+      @param palette  The palette which should be adjusted
 
       @return  An adjusted palette
     */
-    PaletteArray adjustedPalette(const PaletteArray& source);
+    PaletteArray adjustedPalette(const PaletteArray& palette) const;
 
     /**
       Adjust hue and saturation for given RGB values.
@@ -230,22 +231,22 @@ class PaletteHandler
       @param H  The hue adjustment value
       @param S  The saturation
     */
-    void adjustHueSaturation(int& R, int& G, int& B, float H, float S);
+    static void adjustHueSaturation(int& R, int& G, int& B, float H, float S);
 
     /**
       Rotate a 2D vector.
     */
-    vector2d rotate(const vector2d& vec, float angle) const;
+    static vector2d rotate(const vector2d& vec, float angle);
 
     /**
       Scale a 2D vector.
     */
-    vector2d scale(const vector2d& vec, float factor) const;
+    static vector2d scale(const vector2d& vec, float factor);
 
     /**
       Get the dot product of two 2D vectors.
     */
-    float dotProduct(const vector2d& vec1, const vector2d& vec2) const;
+    static float dotProduct(const vector2d& vec1, const vector2d& vec2);
 
     /**
       Loads a user-defined palette file (from OSystem::paletteFile), filling the
@@ -262,7 +263,7 @@ class PaletteHandler
     uInt32 myCurrentAdjustable{0};
 
     struct AdjustableTag {
-      const char* const name{nullptr};
+      string_view name;
       float* value{nullptr};
     };
     const std::array<AdjustableTag, NUM_ADJUSTABLES> myAdjustables =

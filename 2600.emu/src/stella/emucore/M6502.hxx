@@ -8,7 +8,7 @@
 // MM     MM 66  66 55  55 00  00 22
 // MM     MM  6666   5555   0000  222222
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -31,6 +31,7 @@ class DispatchResult;
   #include "Expression.hxx"
   #include "TrapArray.hxx"
   #include "BreakpointMap.hxx"
+  #include "TimerMap.hxx"
 #endif
 
 #include "bspf.hxx"
@@ -83,16 +84,6 @@ class M6502 : public Serializable
     void reset();
 
     /**
-      Request a maskable interrupt
-    */
-    void irq() { myExecutionStatus |= MaskableInterruptBit; }
-
-    /**
-      Request a non-maskable interrupt
-    */
-    void nmi() { myExecutionStatus |= NonmaskableInterruptBit; }
-
-    /**
       Set the callback for handling a halt condition
     */
     void setOnHaltCallback(const onHaltCallback& callback) {
@@ -114,10 +105,10 @@ class M6502 : public Serializable
       is executed, someone stops execution, or an error occurs.  Answers
       true iff execution stops normally.
 
-      @param cycles Indicates the number of cycles to execute. Not that the actual
-                    granularity of the CPU is instructions, so this is only accurate up to
-                    a couple of cycles
-      @param result A DispatchResult object that will transport the result
+      @param cycles  Indicates the number of cycles to execute. Not that the
+                     actual granularity of the CPU is instructions, so this
+                     is only accurate up to a couple of cycles
+      @param result  A DispatchResult object that will transport the result
     */
     void execute(uInt64 cycles, DispatchResult& result);
 
@@ -235,28 +226,40 @@ class M6502 : public Serializable
     BreakpointMap& breakPoints() { return myBreakPoints; }
 
     // methods for 'breakif' handling
-    uInt32 addCondBreak(Expression* e, const string& name, bool oneShot = false);
+    uInt32 addCondBreak(Expression* e, string_view name, bool oneShot = false);
     bool delCondBreak(uInt32 idx);
     void clearCondBreaks();
     const StringList& getCondBreakNames() const;
 
     // methods for 'savestateif' handling
-    uInt32 addCondSaveState(Expression* e, const string& name);
+    uInt32 addCondSaveState(Expression* e, string_view name);
     bool delCondSaveState(uInt32 idx);
     void clearCondSaveStates();
     const StringList& getCondSaveStateNames() const;
 
     // methods for 'trapif' handling
-    uInt32 addCondTrap(Expression* e, const string& name);
-    bool delCondTrap(uInt32 brk);
+    uInt32 addCondTrap(Expression* e, string_view name);
+    bool delCondTrap(uInt32 idx);
     void clearCondTraps();
     const StringList& getCondTrapNames() const;
+
+    // methods for 'timer' handling:
+    uInt32 addTimer(uInt16 fromAddr, uInt16 toAddr, uInt8 fromBank, uInt8 toBank,
+                    bool mirrors, bool anyBank);
+    uInt32 addTimer(uInt16 addr, uInt8 bank, bool mirrors, bool anyBank);
+    bool delTimer(uInt32 idx);
+    void clearTimers();
+    void resetTimers();
+    uInt32 numTimers() const { return myTimer.size(); }
+    const TimerMap::Timer& getTimer(uInt32 idx) const { return myTimer.get(idx); }
 
     void setGhostReadsTrap(bool enable) { myGhostReadsTrap = enable; }
     void setReadFromWritePortBreak(bool enable) { myReadFromWritePortBreak = enable; }
     void setWriteToReadPortBreak(bool enable) { myWriteToReadPortBreak = enable; }
     void setLogBreaks(bool enable) { myLogBreaks = enable; }
-    bool getLogBreaks() { return myLogBreaks; }
+    bool getLogBreaks() const { return myLogBreaks; }
+    void setLogTrace(bool enable) { myLogTrace = enable; }
+    bool getLogTrace() const { return myLogTrace; }
 #endif  // DEBUGGER_SUPPORT
 
   private:
@@ -318,11 +321,6 @@ class M6502 : public Serializable
     }
 
     /**
-      Called after an interrupt has be requested using irq() or nmi()
-    */
-    void interruptHandler();
-
-    /**
       Check whether halt was requested (RDY low) and notify
     */
     void handleHalt();
@@ -349,9 +347,7 @@ class M6502 : public Serializable
     */
     static constexpr uInt8
       StopExecutionBit        = 0x01,
-      FatalErrorBit           = 0x02,
-      MaskableInterruptBit    = 0x04,
-      NonmaskableInterruptBit = 0x08
+      FatalErrorBit           = 0x02
     ;
     uInt8 myExecutionStatus{0};
 
@@ -465,6 +461,9 @@ class M6502 : public Serializable
     StringList myCondSaveStateNames;
     vector<unique_ptr<Expression>> myTrapConds;
     StringList myTrapCondNames;
+
+    TimerMap myTimer;
+
 #endif  // DEBUGGER_SUPPORT
 
     bool myGhostReadsTrap{false};          // trap on ghost reads
@@ -472,6 +471,7 @@ class M6502 : public Serializable
     bool myWriteToReadPortBreak{false};    // trap on writes to read ports
     bool myStepStateByInstruction{false};
     bool myLogBreaks{false};               // log breaks/taps and continue emulation
+    bool myLogTrace{false};                // log emulation
 
   private:
     // Following constructors and assignment operators not supported

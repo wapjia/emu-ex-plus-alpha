@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -46,7 +46,7 @@ class Cartridge4K : public CartridgeEnhanced
       @param settings  A reference to the various settings (read-only)
       @param bsSize    The size specified by the bankswitching scheme
     */
-    Cartridge4K(const ByteBuffer& image, size_t size, const string& md5,
+    Cartridge4K(const ByteBuffer& image, size_t size, string_view md5,
                 const Settings& settings, size_t bsSize = 4_KB);
     ~Cartridge4K() override = default;
 
@@ -71,7 +71,7 @@ class Cartridge4K : public CartridgeEnhanced
   #endif
 
   private:
-    bool checkSwitchBank(uInt16 address, uInt8 value = 0) override { return false; }
+    bool checkSwitchBank(uInt16, uInt8) override { return false; }
 
   private:
     // Following constructors and assignment operators not supported

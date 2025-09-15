@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -29,11 +29,11 @@ class KeyValueRepositoryPropertyFile : public KeyValueRepositoryFile<KeyValueRep
     using KeyValueRepositoryFile<KeyValueRepositoryPropertyFile>::load;
     using KeyValueRepositoryFile<KeyValueRepositoryPropertyFile>::save;
 
-    explicit KeyValueRepositoryPropertyFile(const FilesystemNode& node);
+    explicit KeyValueRepositoryPropertyFile(const FSNode& node);
 
-    static std::map<string, Variant> load(istream& in);
+    static KVRMap load(istream& in);
 
-    static bool save(ostream& out, const std::map<string, Variant>& values);
+    static bool save(ostream& out, const KVRMap& values);
 };
 
 #endif // KEY_VALUE_REPOSITORY_PROPERTY_FILE_HXX

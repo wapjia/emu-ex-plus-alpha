@@ -108,6 +108,8 @@ public:
 		return data_.get();
 	}
 
+	constexpr void reset() { data_.reset(); }
+
 protected:
 	std::unique_ptr<T[], Deleter> data_;
 };

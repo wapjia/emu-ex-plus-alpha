@@ -9,7 +9,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -22,6 +22,7 @@
 #include "System.hxx"
 #include "bspf.hxx"
 #include "Cart.hxx"
+#include "PlusROM.hxx"
 #ifdef DEBUGGER_SUPPORT
   #include "CartE7Widget.hxx"
 #endif
@@ -75,7 +76,7 @@ class CartridgeE7 : public Cartridge
       @param md5       The md5sum of the ROM image
       @param settings  A reference to the various settings (read-only)
     */
-    CartridgeE7(const ByteBuffer& image, size_t size, const string& md5,
+    CartridgeE7(const ByteBuffer& image, size_t size, string_view md5,
                 const Settings& settings);
     ~CartridgeE7() override = default;
 
@@ -109,6 +110,13 @@ class CartridgeE7 : public Cartridge
       @param address The address to use when querying the bank
     */
     uInt16 getBank(uInt16 address = 0) const override;
+
+    /**
+      Get the current bank for a bank segment.
+
+      @param segment  The segment to get the bank for
+    */
+    uInt16 getSegmentBank(uInt16 segment = 0) const override;
 
     /**
       Query the number of banks supported by the cartridge.
@@ -177,6 +185,24 @@ class CartridgeE7 : public Cartridge
     */
     string name() const override { return "CartridgeE7"; }
 
+    /**
+      Answer whether this is a PlusROM cart.  Note that until the
+      initialize method has been called, this will always return false.
+
+      @return  Whether this is actually a PlusROM cart
+    */
+    bool isPlusROM() const override { return myPlusROM->isValid(); }
+
+    /**
+      Set the callback for displaying messages
+    */
+    void setMessageCallback(const messageCallback& callback) override
+    {
+        Cartridge::setMessageCallback(callback);
+        if (myPlusROM->isValid())
+            myPlusROM->setMessageCallback(myMsgCallback);
+    }
+
   #ifdef DEBUGGER_SUPPORT
     /**
       Get debugger widget responsible for accessing the inner workings
@@ -208,12 +234,12 @@ class CartridgeE7 : public Cartridge
     void checkSwitchBank(uInt16 address);
 
     // Size of a ROM or RAM bank
-    static constexpr uInt32 BANK_SIZE = 0x800; // 2K
+    static constexpr size_t BANK_SIZE = 0x800; // 2K
 
   private:
     // Size of RAM in the cart
     static constexpr uInt32 RAM_SIZE = 0x800; // 1K + 4 * 256B = 2K
-    // Number of segment within the 4K address space
+    // Number of segments within the 4K address space
     static constexpr uInt32 NUM_SEGMENTS = 2;
 
     /**
@@ -221,8 +247,9 @@ class CartridgeE7 : public Cartridge
     */
     uInt16 romSize() const;
 
-    void setAccess(uInt16 addrFrom, uInt16 size, uInt16 directOffset, uInt8* directData,
-                   uInt16 codeOffset, System::PageAccessType type, uInt16 addrMask = 0);
+    void setAccess(uInt16 addrFrom, uInt16 size, uInt16 directOffset,
+                   uInt8* directData, uInt16 codeOffset,
+                   System::PageAccessType type, uInt16 addrMask = 0);
 
   private:
     // Pointer to a dynamically allocated ROM image of the cartridge
@@ -232,16 +259,19 @@ class CartridgeE7 : public Cartridge
     size_t mySize{0};
 
     // The 2K of RAM
-    std::array<uInt8, RAM_SIZE> myRAM;
+    std::array<uInt8, RAM_SIZE> myRAM{};
 
     // Indicates which bank is in the segment
-    std::array<uInt16, NUM_SEGMENTS> myCurrentBank;
+    std::array<uInt16, NUM_SEGMENTS> myCurrentBank{};
 
     // Indicates which 256 byte bank of RAM is being used
     uInt16 myCurrentRAM{0};
 
     // The number of the RAM bank (== bankCount() - 1)
     uInt32 myRAMBank{0};
+
+    // Handle PlusROM functionality, if available
+    unique_ptr<PlusROM> myPlusROM;
 
   private:
     // Following constructors and assignment operators not supported

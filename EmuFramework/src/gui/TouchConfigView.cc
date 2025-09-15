@@ -715,9 +715,6 @@ public:
 		buttons.emplace_back(
 			leftUIComponents.name, attach,
 			[this]{ add(leftUIComponents); });
-		buttons.emplace_back(
-			rewindUIComponents.name, attach,
-			[this]{ add(rewindUIComponents); });
 	}
 
 private:

@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -36,7 +36,7 @@
 */
 
 // This comes directly from SDL_scancode.h
-enum StellaKey
+enum StellaKey  // NOLINT: use 32-bit, even though 16-bit is sufficient
 {
     KBDK_UNKNOWN = 0,
 
@@ -393,7 +393,7 @@ enum StellaKey
 };
 
 // This comes directly from SDL_keycode.h
-enum StellaMod
+enum StellaMod: uInt16
 {
     KBDM_NONE = 0x0000,
     KBDM_LSHIFT = 0x0001,
@@ -417,7 +417,7 @@ enum StellaMod
 // Test if specified modifier is pressed
 namespace StellaModTest
 {
-  inline constexpr bool isAlt(int mod)
+  constexpr bool isAlt(int mod)
   {
 #if defined(BSPF_MACOS) || defined(MACOS_KEYS)
     return (mod & KBDM_GUI);
@@ -426,27 +426,27 @@ namespace StellaModTest
 #endif
   }
 
-  inline constexpr bool isControl(int mod)
+  constexpr bool isControl(int mod)
   {
     return (mod & KBDM_CTRL);
   }
 
-  inline constexpr bool isShift(int mod)
+  constexpr bool isShift(int mod)
   {
     return (mod & KBDM_SHIFT);
   }
-}
+}  // namespace StellaModTest
 
 namespace StellaKeyName
 {
-  inline const char* forKey(StellaKey key)
+  inline string_view forKey(StellaKey key)
   {
   #ifdef SDL_SUPPORT
     return SDL_GetScancodeName(SDL_Scancode(key));
   #else
-    return "";
+    return string_view{};
   #endif
   }
-}
+}  // namespace StellaKeyName
 
 #endif /* StellaKeys */

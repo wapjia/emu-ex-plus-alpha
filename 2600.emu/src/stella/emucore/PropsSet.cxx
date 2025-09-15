@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -19,7 +19,6 @@
 
 #include "bspf.hxx"
 #include "FSNode.hxx"
-#include "Logger.hxx"
 #include "DefProps.hxx"
 #include "Props.hxx"
 #include "PropsSet.hxx"
@@ -35,11 +34,11 @@ PropertiesSet::PropertiesSet()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void PropertiesSet::setRepository(shared_ptr<CompositeKeyValueRepository> repository)
 {
-  myRepository = repository;
+  myRepository = std::move(repository);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool PropertiesSet::getMD5(const string& md5, Properties& properties,
+bool PropertiesSet::getMD5(string_view md5, Properties& properties,
                            bool useDefaults) const
 {
   properties.setDefaults();
@@ -116,7 +115,7 @@ void PropertiesSet::insert(const Properties& properties, bool save)
 
   // Since the PropSet is keyed by md5, we can't insert without a valid one
   const string& md5 = properties.get(PropType::Cart_MD5);
-  if(md5 == "")
+  if(md5.empty())
     return;
 
   // Make sure the exact entry isn't already in any list
@@ -125,7 +124,7 @@ void PropertiesSet::insert(const Properties& properties, bool save)
     return;
   else if(getMD5(md5, defaultProps, true) && defaultProps == properties)
   {
-    cerr << "DELETE" << endl << std::flush;
+    cerr << "DELETE" << '\n' << std::flush;
     myRepository->remove(md5);
     return;
   }
@@ -134,7 +133,7 @@ void PropertiesSet::insert(const Properties& properties, bool save)
     properties.save(*myRepository->get(md5));
   } else {
     const auto ret = myTempProps.emplace(md5, properties);
-    if(ret.second == false)
+    if(!ret.second)
     {
       // Remove old item and insert again
       myTempProps.erase(ret.first);
@@ -144,7 +143,7 @@ void PropertiesSet::insert(const Properties& properties, bool save)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void PropertiesSet::loadPerROM(const FilesystemNode& rom, const string& md5)
+void PropertiesSet::loadPerROM(const FSNode& rom, string_view md5)
 {
   Properties props;
 
@@ -154,7 +153,7 @@ void PropertiesSet::loadPerROM(const FilesystemNode& rom, const string& md5)
 
   // First, does this ROM have a per-ROM properties entry?
   // If so, load it into the database
-  FilesystemNode propsNode(rom.getPathWithExt(".pro"));
+  const FSNode propsNode(rom.getPathWithExt(".pro"));
   if (propsNode.exists()) {
     KeyValueRepositoryPropertyFile repo(propsNode);
     props.load(repo);

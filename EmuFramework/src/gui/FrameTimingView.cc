@@ -137,6 +137,12 @@ FrameTimingView::FrameTimingView(ViewAttachParams attach):
 		app().showFrameTimingStats,
 		[this](BoolMenuItem &item) { app().showFrameTimingStats = item.flipBoolValue(*this); }
 	},
+	lowLatencyVideo
+	{
+		"Low Latency Mode", attach,
+		app().lowLatencyVideo,
+		[this](BoolMenuItem& item) { app().setLowLatencyVideo(item.flipBoolValue(*this)); }
+	},
 	frameClockItems
 	{
 		[&]()
@@ -274,6 +280,7 @@ void FrameTimingView::loadStockItems()
 	item.emplace_back(&blankFrameInsertion);
 	if(used(screenFrameRate) && app().emuScreen().supportedFrameRates().size() > 1)
 		item.emplace_back(&screenFrameRate);
+	item.emplace_back(&lowLatencyVideo);
 }
 
 bool FrameTimingView::onFrameRateChange(VideoSystem vidSys, SteadyClockDuration d)

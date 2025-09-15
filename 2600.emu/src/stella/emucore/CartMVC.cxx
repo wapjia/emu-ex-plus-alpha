@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -22,30 +22,30 @@
 
 /**
   Implementation of MovieCart.
-  1K of memory is presented on the bus, but is repeated to fill the 4K image space.
-  Contents are dynamically altered with streaming image and audio content as specific
-  128-byte regions are entered.
+  1K of memory is presented on the bus, but is repeated to fill the 4K image
+  space.  Contents are dynamically altered with streaming image and audio content
+  as specific 128-byte regions are entered.
   Original implementation: github.com/lodefmode/moviecart
 
   @author  Rob Bairos
 */
 
 namespace {
-  static constexpr uInt8 LO_JUMP_BYTE(uInt16 b) {
+  constexpr uInt8 LO_JUMP_BYTE(uInt16 b) {
     return b & 0xff;
   }
-  static constexpr uInt8 HI_JUMP_BYTE(uInt16 b) {
+  constexpr uInt8 HI_JUMP_BYTE(uInt16 b) {
     return ((b & 0xff00) >> 8) | 0x10;
   }
 
-  static constexpr uInt8 COLOR_BLUE = 0x9A;
-  // static constexpr uInt8 COLOR_WHITE = 0x0E;
+  constexpr uInt8 COLOR_BLUE = 0x9A;
+  // constexpr uInt8 COLOR_WHITE = 0x0E;
 
-  static constexpr uInt8 OSD_FRAMES = 180;
-  static constexpr int BACK_SECONDS = 10;
+  constexpr uInt8 OSD_FRAMES = 180;
+  constexpr int BACK_SECONDS = 10;
 
-  static constexpr int TITLE_CYCLES = 1000000;
-}
+  constexpr int TITLE_CYCLES = 1000000;
+} // namespace
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 /**
@@ -54,19 +54,22 @@ namespace {
 class StreamReader : public Serializable
 {
   public:
-    StreamReader() { myBuffer1.fill(0);  myBuffer2.fill(0); }
+    StreamReader() = default;
 
-    bool open(const string& path) {
+    bool open(string_view path) {
       myFile = Serializer(path, Serializer::Mode::ReadOnly);
-      if(myFile)
-        myFileSize = myFile.size();
+      myFileSize = myFile ? myFile.size() : 0;
 
-      return bool(myFile);
+      return static_cast<bool>(myFile);
+    }
+
+    [[nodiscard]] bool isValid() const {
+      return myFileSize > 0;
     }
 
     void blankPartialLines(bool index) {
-      constexpr int colorSize = 192 * 5;
-      if (index)
+      const int colorSize = myVisibleLines * 5;
+      if(index)
       {
         // top line
         myColor[0] = 0;
@@ -91,24 +94,75 @@ class StreamReader : public Serializable
     void swapField(bool index, bool odd) {
       uInt8* offset = index ? myBuffer1.data() : myBuffer2.data();
 
-      myVersion  = offset + VERSION_DATA_OFFSET;
-      myFrame    = offset + FRAME_DATA_OFFSET;
-      myAudio    = offset + AUDIO_DATA_OFFSET;
-      myGraph    = offset + GRAPH_DATA_OFFSET;
-      myTimecode = offset + TIMECODE_DATA_OFFSET;
-      myColor    = offset + COLOR_DATA_OFFSET;
-      myColorBK  = offset + COLORBK_DATA_OFFSET;
+      class FrameFormat
+      {
+        public:
 
-      if (!odd)
+          uInt8 version[4];   // ('M', 'V', 'C', 0)
+          uInt8 format;       // ( 1-------)
+          uInt8 timecode[4];  // (hour, minute, second, fame)
+          uInt8 vsync;        // eg 3
+          uInt8 vblank;       // eg 37
+          uInt8 overscan;     // eg 30
+          uInt8 visible;      // eg 192
+          uInt8 rate;         // eg 60
+          uInt8 dataStart;
+
+          // sound[vsync+blank+overscan+visible]
+          // graph[5 * visible]
+          // color[5 * visible]
+          // bkcolor[1 * visible]
+          // timecode[60]
+          // padding
+      };
+
+      const FrameFormat* ff = reinterpret_cast<FrameFormat*>(offset);
+
+      if(ff->format & 0x80)
+      {
+        myVSyncLines = ff->vsync;
+        myBlankLines = ff->vblank;
+        myOverscanLines = ff->overscan;
+        myVisibleLines = ff->visible;
+        myEmbeddedFrame = ff->timecode[3] + 1;
+
+        const int totalLines = myVSyncLines + myBlankLines + myOverscanLines + myVisibleLines;
+
+        myAudio    = const_cast<uInt8*>(&ff->dataStart);
+        myGraph    = myAudio + totalLines;
+        myColor    = const_cast<uInt8*>(myGraph) +
+                     static_cast<ptrdiff_t>(5 * myVisibleLines);
+        myColorBK  = myColor + static_cast<ptrdiff_t>(5 * myVisibleLines);
+        myTimecode = myColorBK + static_cast<ptrdiff_t>(1 * myVisibleLines);
+      }
+      else // previous format, ntsc assumed
+      {
+        myVSyncLines = 3;
+        myBlankLines = 37;
+        myOverscanLines = 30;
+        myVisibleLines = 192;
+        myEmbeddedFrame = offset[4 + 3 -1];
+
+        const int totalLines = myVSyncLines + myBlankLines + myOverscanLines + myVisibleLines;
+
+        myAudio    = offset + 4 + 3;
+        myGraph    = myAudio + totalLines;
+        myTimecode = const_cast<uInt8*>(myGraph) +
+                     static_cast<ptrdiff_t>(5 * myVisibleLines);
+        myColor    = const_cast<uInt8*>(myTimecode) + 60;
+        myColorBK  = myColor + static_cast<ptrdiff_t>(5 * myVisibleLines);
+      }
+
+      if(!odd)
           myColorBK++;
     }
 
     bool readField(uInt32 fnum, bool index) {
       if(myFile)
       {
-        const size_t offset = ((fnum + 0) * CartridgeMVC::MVC_FIELD_PAD_SIZE);
+        const size_t offset = ((fnum + 0) * CartridgeMVC::MVC_FIELD_SIZE);
 
-        if(offset + CartridgeMVC::MVC_FIELD_PAD_SIZE < myFileSize)
+        if(offset + CartridgeMVC::MVC_FIELD_SIZE <= myFileSize)
         {
           myFile.setPosition(offset);
           if(index)
@@ -122,8 +176,6 @@ class StreamReader : public Serializable
       return false;
     }
 
-    uInt8 readVersion() { return *myVersion++; }
-    uInt8 readFrame()   { return *myFrame++;   }
     uInt8 readColor()   { return *myColor++;   }
     uInt8 readColorBK() { return *myColorBK++; }
 
@@ -135,7 +187,12 @@ class StreamReader : public Serializable
 
     uInt8 readAudio() { return *myAudio++; }
 
-    uInt8 peekAudio() const { return *myAudio; }
+    [[nodiscard]] uInt8 getVisibleLines() const  { return myVisibleLines; }
+    [[nodiscard]] uInt8 getVSyncLines() const    { return myVSyncLines; }
+    [[nodiscard]] uInt8 getBlankLines() const    { return myBlankLines; }
+    [[nodiscard]] uInt8 getOverscanLines() const { return myOverscanLines; }
+    [[nodiscard]] uInt8 getEmbeddedFrame() const { return myEmbeddedFrame; }
+    [[nodiscard]] uInt8 peekAudio() const        { return *myAudio; }
 
     void startTimeCode() { myGraph = myTimecode; }
 
@@ -152,8 +209,6 @@ class StreamReader : public Serializable
         const uInt8*  myTimecode
         const uInt8*  myColor
         const uInt8*  myColorBK
-        const uInt8*  myVersion
-        const uInt8*  myFrame
       #endif
       }
       catch(...)
@@ -176,8 +231,6 @@ class StreamReader : public Serializable
         const uInt8*  myTimecode
         const uInt8*  myColor
         const uInt8*  myColorBK
-        const uInt8*  myVersion
-        const uInt8*  myFrame
       #endif
       }
       catch(...)
@@ -188,16 +241,6 @@ class StreamReader : public Serializable
     }
 
   private:
-    static constexpr int
-        VERSION_DATA_OFFSET = 0,
-        FRAME_DATA_OFFSET = 4,
-        AUDIO_DATA_OFFSET = 7,
-        GRAPH_DATA_OFFSET = 269,
-        TIMECODE_DATA_OFFSET = 1229,
-        COLOR_DATA_OFFSET = 1289,
-        COLORBK_DATA_OFFSET = 2249,
-        END_DATA_OFFSET = 2441;
-
     const uInt8*  myAudio{nullptr};
 
     const uInt8*  myGraph{nullptr};
@@ -206,11 +249,15 @@ class StreamReader : public Serializable
     const uInt8*  myTimecode{nullptr};
     uInt8*        myColor{nullptr};
     uInt8*        myColorBK{nullptr};
-    const uInt8*  myVersion{nullptr};
-    const uInt8*  myFrame{nullptr};
 
-    std::array<uInt8, CartridgeMVC::MVC_FIELD_SIZE> myBuffer1;
-    std::array<uInt8, CartridgeMVC::MVC_FIELD_SIZE> myBuffer2;
+    std::array<uInt8, CartridgeMVC::MVC_FIELD_SIZE> myBuffer1{};
+    std::array<uInt8, CartridgeMVC::MVC_FIELD_SIZE> myBuffer2{};
+
+    uInt8         myVisibleLines{192};
+    uInt8         myVSyncLines{3};
+    uInt8         myBlankLines{37};
+    uInt8         myOverscanLines{30};
+    uInt8         myEmbeddedFrame{0};
 
     Serializer myFile;
     size_t myFileSize{0};
@@ -301,8 +348,7 @@ class MovieInputs : public Serializable
 static constexpr uInt8
   TIMECODE_HEIGHT = 12,
   MAX_LEVEL       = 11,
-  DEFAULT_LEVEL   = 6,
-  BLANK_LINE_SIZE = (30+3+37-1); // 70-1
+  DEFAULT_LEVEL   = 6;
 
 // Automatically generated
 // Several not used
@@ -338,9 +384,12 @@ static constexpr uInt16
   addr_end_lines            = 0xa80,
   addr_set_aud_endlines     = 0xa80,
   addr_set_overscan_size    = 0xa9a,
+  addr_set_vsync_size       = 0xaa3,
   addr_set_vblank_size      = 0xab0,
   addr_pick_extra_lines     = 0xab9,
   addr_pick_transport       = 0xac6,
+  addr_title_gap1           = 0xb2c,
+  addr_title_gap2           = 0xb40,
   addr_title_loop           = 0xb50,
   addr_audio_bank           = 0xb80;
 
@@ -378,7 +427,7 @@ static constexpr uInt8 scale9[16] = {
 static constexpr uInt8 scale10[16] = {
   0,  0,  0,  0,  0,  1,  3,  6,  9, 12, 14, 15, 15, 15, 15, 15   /* 2.7778 */
 };
-static const uInt8* scales[11] = {
+static constexpr const uInt8* const scales[11] = {
   scale0, scale1, scale2, scale3, scale4, scale5,
   scale6, scale7, scale8, scale9, scale10
 };
@@ -736,21 +785,23 @@ static constexpr uInt8 levelBarsOddData[] = {
 class MovieCart : public Serializable
 {
   public:
-    MovieCart() { myROM.fill(0); }
+    MovieCart() = default;
 
-    bool init(const string& path);
+    bool init(string_view path);
     bool process(uInt16 address);
 
     bool save(Serializer& out) const override;
     bool load(Serializer& in) override;
 
-    uInt8 readROM(uInt16 address) const {
+    [[nodiscard]] uInt8 readROM(uInt16 address) const {
       return myROM[address & 1023];
     }
 
     void writeROM(uInt16 address, uInt8 data) {
       myROM[address & 1023] = data;
     }
+
+  void setConsoleTiming(ConsoleTiming timing);
 
   private:
     enum Mode : uInt8
@@ -761,7 +812,7 @@ class MovieCart : public Serializable
       Last = Time
     };
 
-    enum class TitleState
+    enum class TitleState : uInt8
     {
       Display,
       Exiting,
@@ -794,7 +845,7 @@ class MovieCart : public Serializable
     void updateTransport();
 
     // data
-    std::array<uInt8, 1_KB> myROM;
+    std::array<uInt8, 1_KB> myROM{};
 
     // title screen state
     int        myTitleCycles{0};
@@ -808,11 +859,12 @@ class MovieCart : public Serializable
     // state machine info
     uInt8 myState{3};
     bool  myPlaying{true};
+    uInt8  myMute{0};
     bool  myOdd{true};
     bool  myBufferIndex{false};
 
     uInt8 myLines{0};
-    Int32 myFrameNumber{1};  // signed
+    Int32 myFrameNumber{0};  // signed
 
     uInt8 myMode{Mode::Volume};
     uInt8 myBright{DEFAULT_LEVEL};
@@ -837,7 +889,7 @@ class MovieCart : public Serializable
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool MovieCart::init(const string& path)
+bool MovieCart::init(string_view path)
 {
   std::copy_n(kernelROM, 1_KB, myROM.data());
 
@@ -850,9 +902,10 @@ bool MovieCart::init(const string& path)
 
   myState = 3;
   myPlaying = true;
+  myMute = 0;
   myOdd = true;
   myBufferIndex = false;
-  myFrameNumber = 1;
+  myFrameNumber = 0;
 
   myInputs.init();
   myLastInputs.init();
@@ -880,6 +933,32 @@ bool MovieCart::init(const string& path)
   return true;
 }
 
+static constexpr uInt8 RAINBOW_HEIGHT = 30, TITLE_HEIGHT = 12;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void MovieCart::setConsoleTiming(ConsoleTiming timing)
+{
+  uInt8 lines = 0;
+
+  switch(timing)
+  {
+    case ConsoleTiming::ntsc:
+    default:
+      lines = 192;
+      break;
+
+    case ConsoleTiming::pal:
+    case ConsoleTiming::secam:
+      lines = 242;
+      break;
+  }
+
+  const uInt8 val = (lines - RAINBOW_HEIGHT - RAINBOW_HEIGHT - TITLE_HEIGHT * 2) / 2;
+
+  writeROM(addr_title_gap1 + 1, val);
+  writeROM(addr_title_gap2 + 1, val);
+}
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void MovieCart::writeColor(uInt16 address, uInt8 v)
 {
@@ -904,7 +983,7 @@ void MovieCart::updateTransport()
     {
       const uInt8 temp = ~(myA10_Count & 0x1e) & 0x1e;
 
-      if (temp == myDirectionValue)
+      if(temp == myDirectionValue)
         myInputs.updateDirection(temp);
 
       myDirectionValue = temp;
@@ -924,7 +1003,7 @@ void MovieCart::updateTransport()
 
   if(myInputs.reset)
   {
-    myFrameNumber = 1;
+    myFrameNumber = 0;
     myPlaying = true;
     myDrawTimeCode = OSD_FRAMES;
 
@@ -944,7 +1023,7 @@ void MovieCart::updateTransport()
   }
   else if(myInputs.down && !myLastInputs.down)
   {
-    if (myMode == Mode::Last)
+    if(myMode == Mode::Last)
       myMode = 0;
     else
       myMode++;
@@ -970,7 +1049,7 @@ void MovieCart::updateTransport()
       {
         myDrawTimeCode = OSD_FRAMES;
         mySpeed += 4;
-        if (mySpeed < 0)
+        if(mySpeed < 0)
           mySpeed -= 4;
       }
       else if(myMode == Mode::Volume)
@@ -978,7 +1057,7 @@ void MovieCart::updateTransport()
         myDrawLevelBars = OSD_FRAMES;
         if(myInputs.left)
         {
-          if (myVolume)
+          if(myVolume)
             myVolume--;
         }
         else
@@ -1009,7 +1088,7 @@ void MovieCart::updateTransport()
   if(myInputs.select && !myLastInputs.select)
   {
     myDrawTimeCode = OSD_FRAMES;
-    myFrameNumber -= 60 * BACK_SECONDS + 1;
+    myFrameNumber -= 60 * BACK_SECONDS;
     //goto update_stream;
     myLastInputs = myInputs;
     return;
@@ -1039,7 +1118,10 @@ void MovieCart::updateTransport()
   else
     myDrawLevelBars = 0;
 
-  if(myPlaying)
+  if(myMute)
+    myMute--;
+
+  if(myPlaying && !myMute)
     myVolumeScale = scales[myVolume];
   else
     myVolumeScale = scales[0];
@@ -1069,7 +1151,7 @@ void MovieCart::updateTransport()
     {
       if(myInputs.right)
         step = mySpeed;
-      else if (myInputs.left)
+      else if(myInputs.left)
         step = -mySpeed;
     }
     else
@@ -1079,10 +1161,11 @@ void MovieCart::updateTransport()
   }
 
   myFrameNumber += step;
-  if(myFrameNumber < 1)
+  while(myFrameNumber < 0)
   {
-    myFrameNumber = 1;
+    myFrameNumber += 2;
     mySpeed = 1;
+    myMute = 4;
   }
 
   myLastInputs = myInputs;
@@ -1091,7 +1174,6 @@ void MovieCart::updateTransport()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void MovieCart::fill_addr_right_line()
 {
-  uint8_t v;
   writeAudio(addr_set_aud_right + 1);
 
   writeGraph(addr_set_gdata5 + 1);
@@ -1100,7 +1182,7 @@ void MovieCart::fill_addr_right_line()
   writeGraph(addr_set_gdata8 + 1);
   writeGraph(addr_set_gdata9 + 1);
 
-  v = myStream.readColor();
+  uint8_t v = myStream.readColor();
   writeColor(addr_set_gcol5 + 1, v);
 
   v = myStream.readColor();
@@ -1116,23 +1198,21 @@ void MovieCart::fill_addr_right_line()
   writeColor(addr_set_gcol9 + 1, v);
 
   // alternate between background color and playfield color
-  if (myForceColor)
+  if(myForceColor)
   {
-      v = 0;
-      writeROM(addr_set_colubk_r + 1, v);
+    v = 0;
+    writeROM(addr_set_colubk_r + 1, v);
   }
   else
   {
-      v = myStream.readColorBK();
-	  writeColor(addr_set_colubk_r + 1, v);
+    v = myStream.readColorBK();
+    writeColor(addr_set_colubk_r + 1, v);
   }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void MovieCart::fill_addr_left_line(bool again)
 {
-  uint8_t v;
-
   writeAudio(addr_set_aud_left + 1);
 
   writeGraph(addr_set_gdata0 + 1);
@@ -1141,7 +1221,7 @@ void MovieCart::fill_addr_left_line(bool again)
   writeGraph(addr_set_gdata3 + 1);
   writeGraph(addr_set_gdata4 + 1);
 
-  v = myStream.readColor();
+  uint8_t v = myStream.readColor();
   writeColor(addr_set_gcol0 + 1, v);
 
   v = myStream.readColor();
@@ -1158,15 +1238,15 @@ void MovieCart::fill_addr_left_line(bool again)
 
 
   // alternate between background color and playfield color
-  if (myForceColor)
+  if(myForceColor)
   {
-      v = 0;
-      writeROM(addr_set_colupf_l + 1, v);
+    v = 0;
+    writeROM(addr_set_colupf_l + 1, v);
   }
   else
   {
-      v = myStream.readColorBK();
-      writeColor(addr_set_colupf_l + 1, v);
+    v = myStream.readColorBK();
+    writeColor(addr_set_colupf_l + 1, v);
   }
 
   // addr_pick_line_end
@@ -1195,17 +1275,19 @@ void MovieCart::fill_addr_end_lines()
   // keep at overscan=29, vblank=36
   //      or overscan=30, vblank=36 + 1 blank line
 
+  writeROM(addr_set_vsync_size + 1, myStream.getVSyncLines());
+
   if(myOdd)
   {
-    writeROM(addr_set_overscan_size + 1, 29);
-    writeROM(addr_set_vblank_size + 1, 36);
+    writeROM(addr_set_overscan_size + 1, myStream.getOverscanLines()-1);
+    writeROM(addr_set_vblank_size + 1, myStream.getBlankLines()-1);
 
     writeROM(addr_pick_extra_lines + 1, 0);
   }
   else
   {
-    writeROM(addr_set_overscan_size + 1, 30);
-    writeROM(addr_set_vblank_size + 1, 36);
+    writeROM(addr_set_overscan_size + 1, myStream.getOverscanLines());
+    writeROM(addr_set_vblank_size + 1, myStream.getBlankLines()-1);
 
     // extra line after vblank
     writeROM(addr_pick_extra_lines + 1, 1);
@@ -1226,33 +1308,20 @@ void MovieCart::fill_addr_end_lines()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void MovieCart::fill_addr_blank_lines()
 {
-  // version number
-  myStream.readVersion();
-  myStream.readVersion();
-  myStream.readVersion();
-  myStream.readVersion();
+  myOdd = (myStream.getEmbeddedFrame() & 1);
 
-  // frame number
-  myStream.readFrame();
-  myStream.readFrame();
-  const uInt8 v = myStream.readFrame();
-
-  // make sure we're in sync with frame data
-  myOdd = (v & 1);
-
-  // 30 overscan
-  // 3 vsync
-  // 37 vblank
+  const uInt8 blankTotal = (myStream.getOverscanLines() +
+      myStream.getVSyncLines() + myStream.getBlankLines()-1); // 70-1
 
   if(myOdd)
   {
     writeAudioData(addr_audio_bank + 0, myFirstAudioVal);
-    for(uInt8 i = 1; i < (BLANK_LINE_SIZE + 1); i++)
+    for(uInt8 i = 1; i < (blankTotal + 1); i++)
       writeAudio(addr_audio_bank + i);
   }
   else
   {
-    for(uInt8 i = 0; i < (BLANK_LINE_SIZE -1); i++)
+    for(uInt8 i = 0; i < (blankTotal -1); i++)
       writeAudio(addr_audio_bank + i);
   }
 }
@@ -1330,9 +1399,11 @@ void MovieCart::runStateMachine()
             }
 
             if(myOdd)
-              myStream.overrideGraph(&levelBarsOddData[levelValue * 40]);
+              myStream.overrideGraph(
+                &levelBarsOddData[static_cast<ptrdiff_t>(levelValue) * 40]);
             else
-              myStream.overrideGraph(&levelBarsEvenData[levelValue * 40]);
+              myStream.overrideGraph(
+                &levelBarsEvenData[static_cast<ptrdiff_t>(levelValue) * 40]);
           }
         }
 
@@ -1350,7 +1421,7 @@ void MovieCart::runStateMachine()
          {
             if(myDrawTimeCode)
             {
-               if (myLines == (TIMECODE_HEIGHT - 0))
+               if(myLines == (TIMECODE_HEIGHT - 0))
                   myStream.blankPartialLines(true);
             }
             if(myDrawLevelBars)
@@ -1362,14 +1433,14 @@ void MovieCart::runStateMachine()
 
         if(myLines >= 1)
         {
-          fill_addr_left_line(1);
+          fill_addr_left_line(true);
 
           myLines -= 1;
           myState = 1;
         }
         else
         {
-          fill_addr_left_line(0);
+          fill_addr_left_line(false);
           fill_addr_end_lines();
 
           myStream.swapField(myBufferIndex, myOdd);
@@ -1389,16 +1460,16 @@ void MovieCart::runStateMachine()
       if(myA7)
       {
         // hit end? rewind just before end
-        while (myFrameNumber >= 2 &&
+        while (myFrameNumber >= 0 &&
             !myStream.readField(myFrameNumber, myBufferIndex))
         {
           myFrameNumber -= 2;
-          myJoyRepeat = 0;
-          myPlaying = false;
+          mySpeed = 1;
+          myMute = 4;
         }
 
         myForceColor = 0;
-        myLines = 191;
+        myLines = myStream.getVisibleLines() - 1;
         myState = 1;
       }
       break;
@@ -1411,8 +1482,8 @@ void MovieCart::runStateMachine()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool MovieCart::process(uInt16 address)
 {
-  const bool a12 = (address & (1 << 12)) ? 1:0;
-  const bool a11 = (address & (1 << 11)) ? 1:0;
+  const bool a12 = (address & (1 << 12));
+  const bool a11 = (address & (1 << 11));
 
   // count a10 pulses
   const bool a10i = (address & (1 << 10));
@@ -1427,7 +1498,8 @@ bool MovieCart::process(uInt16 address)
   switch(myTitleState)
   {
     case TitleState::Display:
-      myTitleCycles++;
+      if(myStream.isValid())
+        myTitleCycles++;
       if(myTitleCycles == TITLE_CYCLES)
       {
         stopTitleScreen();
@@ -1444,6 +1516,9 @@ bool MovieCart::process(uInt16 address)
     case TitleState::Stream:
       runStateMachine();
       break;
+
+    default:
+      break;  // Not supposed to get here
   }
 
   return a12;
@@ -1482,9 +1557,9 @@ bool MovieCart::save(Serializer& out) const
     out.putByte(myDrawLevelBars);
     out.putByte(myDrawTimeCode);
 
-    if(!myStream.save(out)) throw;
-    if(!myInputs.save(out)) throw;
-    if(!myLastInputs.save(out)) throw;
+    if(!myStream.save(out)) return false;
+    if(!myInputs.save(out)) return false;
+    if(!myLastInputs.save(out)) return false;
 
     out.putByte(mySpeed);
     out.putByte(myJoyRepeat);
@@ -1536,9 +1611,9 @@ bool MovieCart::load(Serializer& in)
     myDrawLevelBars = in.getByte();
     myDrawTimeCode = in.getByte();
 
-    if(!myStream.load(in)) throw;
-    if(!myInputs.load(in)) throw;
-    if(!myLastInputs.load(in)) throw;
+    if(!myStream.load(in)) return false;
+    if(!myInputs.load(in)) return false;
+    if(!myLastInputs.load(in)) return false;
 
     mySpeed = in.getByte();
     myJoyRepeat = in.getByte();
@@ -1558,8 +1633,8 @@ bool MovieCart::load(Serializer& in)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-CartridgeMVC::CartridgeMVC(const string& path, size_t size,
-                           const string& md5, const Settings& settings,
+CartridgeMVC::CartridgeMVC(string_view path, size_t size,
+                           string_view md5, const Settings& settings,
                            size_t bsSize)
   : Cartridge(settings, md5),
     myImage{make_unique<uInt8[]>(bsSize)},  // not used
@@ -1567,10 +1642,11 @@ CartridgeMVC::CartridgeMVC(const string& path, size_t size,
     myMovie{make_unique<MovieCart>()},
     myPath{path}
 {
+    createRomAccessArrays(size);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-CartridgeMVC::~CartridgeMVC()
+CartridgeMVC::~CartridgeMVC()  // NOLINT (we need an empty d'tor)
 {
 }
 
@@ -1589,6 +1665,12 @@ void CartridgeMVC::install(System& system)
 void CartridgeMVC::reset()
 {
   myMovie->init(myPath);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void CartridgeMVC::consoleChanged(ConsoleTiming timing)
+{
+  myMovie->setConsoleTiming(timing);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1622,29 +1704,11 @@ bool CartridgeMVC::poke(uInt16 address, uInt8 value)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool CartridgeMVC::save(Serializer& out) const
 {
-  try
-  {
-    if(!myMovie->save(out)) throw;
-  }
-  catch(...)
-  {
-    return false;
-  }
-
-  return true;
+  return myMovie->save(out);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool CartridgeMVC::load(Serializer& in)
 {
-  try
-  {
-    if(!myMovie->load(in)) throw;
-  }
-  catch(...)
-  {
-    return false;
-  }
-
-  return true;
+  return myMovie->load(in);
 }

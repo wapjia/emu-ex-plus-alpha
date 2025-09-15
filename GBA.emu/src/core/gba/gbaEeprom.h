@@ -1,5 +1,5 @@
-#ifndef EEPROM_H
-#define EEPROM_H
+#ifndef VBAM_CORE_GBA_GBAEEPROM_H_
+#define VBAM_CORE_GBA_GBAEEPROM_H_
 
 #include <cstdint>
 
@@ -30,4 +30,4 @@ extern int eepromSize;
 #define EEPROM_READDATA2 3
 #define EEPROM_WRITEDATA 4
 
-#endif // EEPROM_H
+#endif // VBAM_CORE_GBA_GBAEEPROM_H_

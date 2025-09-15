@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -199,12 +199,8 @@ class Paddles : public Controller
     static int DIGITAL_SENSITIVITY, DIGITAL_DISTANCE;
     static int DEJITTER_BASE, DEJITTER_DIFF;
 
-    /**
-      Swap two events.
-    */
-    void swapEvents(Event::Type& event1, Event::Type& event2);
-
-    AnalogReadout::Connection getReadOut(int lastAxis, int& newAxis, int center);
+    static AnalogReadout::Connection getReadOut(int lastAxis,
+                                                int& newAxis, int center);
 
     void updateA();
     void updateB();

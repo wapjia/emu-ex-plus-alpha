@@ -9,72 +9,26 @@ CPPFLAGS += -I$(projectPath)/src \
 -DTHUMB_SUPPORT \
 -I$(projectPath)/src/stella/emucore \
 -I$(projectPath)/src/stella/emucore/tia \
+-I$(projectPath)/src/stella/emucore/elf \
 -I$(projectPath)/src/stella/common \
 -I$(projectPath)/src/stella/common/tv_filters \
 -I$(projectPath)/src/stella/gui
 
-CFLAGS_WARN += -Wno-unused-parameter
+CFLAGS_WARN += -Wno-unused-parameter -Wno-deprecated-literal-operator
 
 stellaSrc := AtariVox.cxx \
 Bankswitch.cxx \
 Booster.cxx \
-Cart0840.cxx \
-Cart0FA0.cxx \
-Cart2K.cxx \
-Cart3E.cxx \
-Cart3EPlus.cxx \
-Cart3EX.cxx \
-Cart3F.cxx \
-Cart4A50.cxx \
-Cart4K.cxx \
-Cart4KSC.cxx \
-CartAR.cxx \
-CartARM.cxx \
-CartBF.cxx \
-CartBFSC.cxx \
-CartBUS.cxx \
-CartCDF.cxx \
-CartCM.cxx \
-CartCTY.cxx \
-CartCV.cxx \
-Cart.cxx \
-CartCreator.cxx \
-CartDetector.cxx \
-CartDF.cxx \
-CartDFSC.cxx \
-CartDPC.cxx \
-CartDPCPlus.cxx \
-CartE0.cxx \
-CartE7.cxx \
-CartEF.cxx \
-CartEFSC.cxx \
-CartEnhanced.cxx \
-CartF0.cxx \
-CartF4.cxx \
-CartF4SC.cxx \
-CartF6.cxx \
-CartF6SC.cxx \
-CartF8.cxx \
-CartF8SC.cxx \
-CartFA2.cxx \
-CartFA.cxx \
-CartFC.cxx \
-CartFE.cxx \
-CartMDM.cxx \
-CartMVC.cxx \
-CartSB.cxx \
-CartTVBoy.cxx \
-CartUA.cxx \
-CartWD.cxx \
-CartX07.cxx \
 CompuMate.cxx \
 Console.cxx \
 Control.cxx \
 ControllerDetector.cxx \
+CortexM0.cxx \
 DispatchResult.cxx \
 Driving.cxx \
 EmulationTiming.cxx \
 Genesis.cxx \
+Joy2BPlus.cxx \
 Joystick.cxx \
 Keyboard.cxx \
 KidVid.cxx \
@@ -110,8 +64,15 @@ tia/TIA.cxx \
 tia/frame-manager/AbstractFrameManager.cxx \
 tia/frame-manager/FrameLayoutDetector.cxx \
 tia/frame-manager/FrameManager.cxx \
-tia/frame-manager/JitterEmulation.cxx
+tia/frame-manager/JitterEmulation.cxx \
+elf/BusTransactionQueue.cxx \
+elf/ElfEnvironment.cxx \
+elf/ElfLinker.cxx \
+elf/ElfParser.cxx \
+elf/ElfUtil.cxx \
+elf/VcsLib.cxx
 
+cartsSrc := $(subst $(projectPath)/src/,,$(wildcard $(projectPath)/src/stella/emucore/Cart*.cxx))
 stellaPath := stella/emucore
 SRC += main/Main.cc \
 main/options.cc \
@@ -134,6 +95,7 @@ stella/common/audio/HighPass.cxx \
 stella/common/audio/LanczosResampler.cxx \
 stella/common/audio/SimpleResampler.cxx \
 stella/common/repository/CompositeKeyValueRepository.cxx \
+$(cartsSrc) \
 $(addprefix $(stellaPath)/,$(stellaSrc))
 
 include $(EMUFRAMEWORK_PATH)/package/emuframework.mk

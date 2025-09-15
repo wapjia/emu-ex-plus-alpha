@@ -20,7 +20,11 @@
 #endif
 
 #ifdef _MSC_VER
+#if __STDC_WANT_SECURE_LIB__
+#define snprintf sprintf_s
+#else
 #define snprintf _snprintf
+#endif
 #endif
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1920,6 +1924,17 @@ static INSN_REGPARM int thumbE0(ARM7TDMI &cpu, uint32_t opcode, uint32_t oldArmN
   return clockTicks;
 }
 
+static INSN_REGPARM int thumbE8(ARM7TDMI &cpu, uint32_t opcode, uint32_t oldArmNextPC)
+{
+#ifdef GBA_LOGGING
+    // TODO: This is (erroneously) used by some Wii U VC ROMs. We should have a configuration
+    // toggle to enable the correct hardware behavior, which would be to call CPUUndefinedException.
+    if (systemVerbose & VERBOSE_UNDEFINED)
+        log("Undefined Wii U THUMB instruction %04x at %08x (ignored)\n", opcode, armNextPC - 2);
+#endif
+    return 0;
+}
+
 // BLL #offset (forward)
 static INSN_REGPARM int thumbF0(ARM7TDMI &cpu, uint32_t opcode, uint32_t oldArmNextPC)
 {
@@ -2078,7 +2093,7 @@ constexpr insnfunc_t thumbInsnTable[1024] = {
     thumbE0, thumbE0, thumbE0, thumbE0, thumbE0, thumbE0, thumbE0, thumbE0,
     thumbE0, thumbE0, thumbE0, thumbE0, thumbE0, thumbE0, thumbE0, thumbE0,
     thumbE0, thumbE0, thumbE0, thumbE0, thumbE0, thumbE0, thumbE0, thumbE0,
-    thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, // E8
+		thumbE8, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, // E8
     thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI,
     thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI,
     thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI, thumbUI,

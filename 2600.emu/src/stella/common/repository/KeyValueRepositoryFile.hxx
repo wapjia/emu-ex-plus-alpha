@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -25,18 +25,18 @@
 #include "FSNode.hxx"
 #include "bspf.hxx"
 
-template<class T>
+template<typename T>
 class KeyValueRepositoryFile : public KeyValueRepository {
   public:
-    explicit KeyValueRepositoryFile(const FilesystemNode& node);
+    explicit KeyValueRepositoryFile(const FSNode& node);
 
-    std::map<string, Variant> load() override;
+    KVRMap load() override;
 
-    bool save(const std::map<string, Variant>& values) override;
+    bool save(const KVRMap& values) override;
 
   protected:
 
-    const FilesystemNode& myNode;
+    const FSNode& myNode;  // NOLINT: we want a reference here
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -44,16 +44,17 @@ class KeyValueRepositoryFile : public KeyValueRepository {
 ///////////////////////////////////////////////////////////////////////////////
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-template<class T>
-KeyValueRepositoryFile<T>::KeyValueRepositoryFile(const FilesystemNode& node)
+template<typename T>
+KeyValueRepositoryFile<T>::KeyValueRepositoryFile(const FSNode& node)
   : myNode{node}
-{}
+{
+}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-template<class T>
-std::map<string, Variant> KeyValueRepositoryFile<T>::load()
+template<typename T>
+KVRMap KeyValueRepositoryFile<T>::load()
 {
-  if (!myNode.exists()) return std::map<string, Variant>();
+  if (!myNode.exists()) return {};
 
   stringstream in;
 
@@ -64,18 +65,18 @@ std::map<string, Variant> KeyValueRepositoryFile<T>::load()
   catch (const runtime_error& err) {
     Logger::error(err.what());
 
-    return std::map<string, Variant>();
+    return {};
   }
   catch (...) {
-    return std::map<string, Variant>();
+    return {};
   }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-template<class T>
-bool KeyValueRepositoryFile<T>::save(const std::map<string, Variant>& values)
+template<typename T>
+bool KeyValueRepositoryFile<T>::save(const KVRMap& values)
 {
-  if (values.size() == 0) return true;
+  if (values.empty()) return true;
 
   stringstream out;
 

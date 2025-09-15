@@ -8,7 +8,7 @@
 //  SS  SS   tt   ee      ll   ll  aa  aa
 //   SSSS     ttt  eeeee llll llll  aaaaa
 //
-// Copyright (c) 1995-2022 by Bradford W. Mott, Stephen Anthony
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
 // and the Stella Team
 //
 // See the file "License.txt" for information on usage and redistribution of
@@ -19,15 +19,14 @@
 #include "M6502.hxx"
 #include "M6532.hxx"
 #include "Control.hxx"
-#include "Paddles.hxx"
 #include "DelayQueueIteratorImpl.hxx"
 #include "TIAConstants.hxx"
-#include "frame-manager/FrameManager.hxx"
 #include "AudioQueue.hxx"
 #include "DispatchResult.hxx"
+#include "PhosphorHandler.hxx"
 #include "Base.hxx"
 
-enum CollisionMask: uInt32 {
+enum CollisionMask: uInt16 {
   player0   = 0b0111110000000000,
   player1   = 0b0100001111000000,
   missile0  = 0b0010001000111000,
@@ -65,7 +64,7 @@ static constexpr uInt8 resxLateHblankThreshold = TIAConstants::H_CYCLES - 3;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 TIA::TIA(ConsoleIO& console, const ConsoleTimingProvider& timingProvider,
-         Settings& settings)
+         Settings& settings, const onPhosphorCallback& callback)
   : myConsole{console},
     myTimingProvider{timingProvider},
     mySettings{settings},
@@ -74,7 +73,8 @@ TIA::TIA(ConsoleIO& console, const ConsoleTimingProvider& timingProvider,
     myMissile1{~CollisionMask::missile1 & 0x7FFF},
     myPlayer0{~CollisionMask::player0 & 0x7FFF},
     myPlayer1{~CollisionMask::player1 & 0x7FFF},
-    myBall{~CollisionMask::ball & 0x7FFF}
+    myBall{~CollisionMask::ball & 0x7FFF},
+    myPhosphorCallback{callback}
 {
   myBackground.setTIA(this);
   myPlayfield.setTIA(this);
@@ -88,11 +88,12 @@ TIA::TIA(ConsoleIO& console, const ConsoleTimingProvider& timingProvider,
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void TIA::setFrameManager(AbstractFrameManager* frameManager)
+void TIA::setFrameManager(AbstractFrameManager* frameManager, bool layoutDetector)
 {
   clearFrameManager();
 
   myFrameManager = frameManager;
+  myIsLayoutDetector = layoutDetector;
 
   myFrameManager->setHandlers(
     [this] () {
@@ -187,12 +188,28 @@ void TIA::initialize()
   myFrontBuffer.fill(0);
   myFramebuffer.fill(0);
 
+  // Prepare variables for auto-phosphor
+  memset(&myPosP0, 0, sizeof(ObjectPos));
+  memset(&myPosP1, 0, sizeof(ObjectPos));
+  memset(&myPosM0, 0, sizeof(ObjectPos));
+  memset(&myPosM1, 0, sizeof(ObjectPos));
+  memset(&myPosBL, 0, sizeof(ObjectPos));
+  memset(&myPatPF, 0, sizeof(ObjectGfx));
+  myFrameEnd = 0;
+
   applyDeveloperSettings();
 
   // Must be done last, after all other items have reset
-  bool devSettings = mySettings.getBool("dev.settings");
+  const bool devSettings = mySettings.getBool("dev.settings");
   setFixedColorPalette(mySettings.getString("tia.dbgcolors"));
-  enableFixedColors(mySettings.getBool(devSettings ? "dev.debugcolors" : "plr.debugcolors"));
+  enableFixedColors(
+    mySettings.getBool(devSettings ? "dev.debugcolors" : "plr.debugcolors"));
+  // Auto-phosphor settings:
+  const string mode = mySettings.getString(PhosphorHandler::SETTING_MODE);
+  myAutoPhosphorAutoOn = mode == PhosphorHandler::VALUE_AUTO_ON;
+  myAutoPhosphorEnabled = myAutoPhosphorAutoOn || mode == PhosphorHandler::VALUE_AUTO;
+  myAutoPhosphorActive = false;
+  myFlickerCount = 0;
 
 #ifdef DEBUGGER_SUPPORT
   createAccessArrays();
@@ -274,7 +291,7 @@ bool TIA::save(Serializer& out) const
     if(!myInput0.save(out)) return false;
     if(!myInput1.save(out)) return false;
 
-    out.putInt(int(myHstate));
+    out.putInt(static_cast<int>(myHstate));
 
     out.putInt(myHctr);
     out.putInt(myHctrDelta);
@@ -290,7 +307,7 @@ bool TIA::save(Serializer& out) const
 
     out.putInt(myLinesSinceChange);
 
-    out.putInt(int(myPriority));
+    out.putInt(static_cast<int>(myPriority));
 
     out.putByte(mySubClock);
     out.putLong(myLastCycle);
@@ -319,7 +336,7 @@ bool TIA::save(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: TIA::save" << endl;
+    cerr << "ERROR: TIA::save\n";
     return false;
   }
 
@@ -397,7 +414,7 @@ bool TIA::load(Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: TIA::load" << endl;
+    cerr << "ERROR: TIA::load\n";
     return false;
   }
 
@@ -412,13 +429,17 @@ void TIA::bindToControllers()
       updateEmulation();
 
       switch (pin) {
-        case Controller::AnalogPin::Five:
+        using enum Controller::AnalogPin;
+        case Five:
           updateAnalogReadout(1);
           break;
 
-        case Controller::AnalogPin::Nine:
+        case Nine:
           updateAnalogReadout(0);
           break;
+
+        default:
+          break;  // Not supposed to get here
       }
     }
   );
@@ -428,13 +449,17 @@ void TIA::bindToControllers()
       updateEmulation();
 
       switch (pin) {
-        case Controller::AnalogPin::Five:
+        using enum Controller::AnalogPin;
+        case Five:
           updateAnalogReadout(3);
           break;
 
-        case Controller::AnalogPin::Nine:
+        case Nine:
           updateAnalogReadout(2);
           break;
+
+        default:
+          break;  // Not supposed to get here
       }
     }
   );
@@ -910,7 +935,7 @@ bool TIA::saveDisplay(Serializer& out) const
   }
   catch(...)
   {
-    cerr << "ERROR: TIA::saveDisplay" << endl;
+    cerr << "ERROR: TIA::saveDisplay\n";
     return false;
   }
 
@@ -930,7 +955,7 @@ bool TIA::loadDisplay(const Serializer& in)
   }
   catch(...)
   {
-    cerr << "ERROR: TIA::loadDisplay" << endl;
+    cerr << "ERROR: TIA::loadDisplay\n";
     return false;
   }
 
@@ -940,10 +965,11 @@ bool TIA::loadDisplay(const Serializer& in)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void TIA::applyDeveloperSettings()
 {
-  bool devSettings = mySettings.getBool("dev.settings");
+  const bool devSettings = mySettings.getBool("dev.settings");
   if(devSettings)
   {
-    bool custom = BSPF::equalsIgnoreCase("custom", mySettings.getString("dev.tia.type"));
+    const bool custom =
+      BSPF::equalsIgnoreCase("custom", mySettings.getString("dev.tia.type"));
 
     setPlInvertedPhaseClock(custom
                             ? mySettings.getBool("dev.tia.plinvphase")
@@ -952,6 +978,11 @@ void TIA::applyDeveloperSettings()
                             ? mySettings.getBool("dev.tia.msinvphase")
                             : BSPF::equalsIgnoreCase("cosmicark", mySettings.getString("dev.tia.type")));
     setBlInvertedPhaseClock(custom ? mySettings.getBool("dev.tia.blinvphase") : false);
+    setPlShortLateHMove(custom
+                        ? mySettings.getBool("dev.tia.pllatehmove")
+                        : BSPF::equalsIgnoreCase("flashmenu", mySettings.getString("dev.tia.type")));
+    setMsShortLateHMove(custom ? mySettings.getBool("dev.tia.mslatehmove") : false);
+    setBlShortLateHMove(custom ? mySettings.getBool("dev.tia.bllatehmove") : false);
     setPFBitsDelay(custom
                    ? mySettings.getBool("dev.tia.delaypfbits")
                    : BSPF::equalsIgnoreCase("pesco", mySettings.getString("dev.tia.type")));
@@ -1103,9 +1134,9 @@ bool TIA::toggleBit(TIABit b, uInt8 mode)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool TIA::toggleBits(bool toggle)
 {
-  toggleBit(static_cast<TIABit>(0xFF), toggle
-                          ? mySpriteEnabledBits > 0 ? 0 : 1
-                          : mySpriteEnabledBits);
+  toggleBit(TIABit::AllBits, toggle
+    ? mySpriteEnabledBits > 0 ? 0 : 1
+    : mySpriteEnabledBits);
 
   return mySpriteEnabledBits;
 }
@@ -1148,9 +1179,9 @@ bool TIA::toggleCollision(TIABit b, uInt8 mode)
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 bool TIA::toggleCollisions(bool toggle)
 {
-  toggleCollision(static_cast<TIABit>(0xFF), toggle
-                                ? myCollisionsEnabledBits > 0 ? 0 : 1
-                                : myCollisionsEnabledBits);
+  toggleCollision(TIABit::AllBits, toggle
+    ? myCollisionsEnabledBits > 0 ? 0 : 1
+    : myCollisionsEnabledBits);
 
   return myCollisionsEnabledBits;
 }
@@ -1182,14 +1213,9 @@ bool TIA::enableFixedColors(bool enable)
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-bool TIA::setFixedColorPalette(const string& colors)
+bool TIA::setFixedColorPalette(string_view colors)
 {
-  string s = colors;
-  sort(s.begin(), s.end());
-  if(s != "bgopry")
-    return false;
-
-  for(int i = 0; i < 6; ++i)
+  for(size_t i = 0; i < std::max<size_t>(6, colors.size()); ++i)
   {
     switch(colors[i])
     {
@@ -1250,7 +1276,7 @@ bool TIA::driveUnusedPinsRandom(uInt8 mode)
   // If mode is 0 or 1, use it as a boolean (off or on)
   // Otherwise, return the state
   if (mode == 0 || mode == 1)
-    myTIAPinsDriven = bool(mode);
+    myTIAPinsDriven = static_cast<bool>(mode);
 
   return myTIAPinsDriven;
 }
@@ -1392,12 +1418,92 @@ void TIA::onFrameComplete()
   // Blank out any extra lines not drawn this frame
   const Int32 missingScanlines = myFrameManager->missingScanlines();
   if (missingScanlines > 0)
-    std::fill_n(myBackBuffer.begin() + TIAConstants::H_PIXEL * myFrameManager->getY(), missingScanlines * TIAConstants::H_PIXEL, 0);
+    std::fill_n(myBackBuffer.begin() +
+      static_cast<size_t>(TIAConstants::H_PIXEL * myFrameManager->getY()),
+      missingScanlines * TIAConstants::H_PIXEL, 0);
 
   myFrontBuffer = myBackBuffer;
 
   myFrontBufferScanlines = scanlinesLastFrame();
 
+  if(myAutoPhosphorEnabled)
+  {
+    // Calculate difference to previous frames (with some margin).
+    // If difference to latest frame is larger than to older frames, and this happens for
+    // multiple frames, enabled phosphor mode.
+    static constexpr int MIN_FLICKER_DELTA = 6;
+    static constexpr int MAX_FLICKER_DELTA = TIAConstants::H_PIXEL - MIN_FLICKER_DELTA;
+    static constexpr int MIN_DIFF = 4;
+    static constexpr int PHOSPHOR_FRAMES = 8;
+
+    int diffCount[FLICKER_FRAMES - 1];
+
+    //cerr << missingScanlines << ", " << myFrameEnd << " | ";
+    //cerr << myFlickerFrame << ": ";
+    for(int frame = 0; frame < FLICKER_FRAMES - 1; ++frame)
+    {
+      const int otherFrame = (myFlickerFrame + frame + 1) % FLICKER_FRAMES;
+      int count = 0;
+      for(uInt32 y = 0; y <= myFrameEnd; ++y)
+      {
+        int delta = std::abs(myPosP0[y][myFlickerFrame] - myPosP0[y][otherFrame]);
+        if(delta >= MIN_FLICKER_DELTA && delta <= MAX_FLICKER_DELTA)
+          ++count;
+        delta = std::abs(myPosP1[y][myFlickerFrame] - myPosP1[y][otherFrame]);
+        if(delta >= MIN_FLICKER_DELTA && delta <= MAX_FLICKER_DELTA)
+          ++count;
+        delta = std::abs(myPosM0[y][myFlickerFrame] - myPosM0[y][otherFrame]);
+        if(delta >= MIN_FLICKER_DELTA && delta <= MAX_FLICKER_DELTA)
+          ++count;
+        delta = std::abs(myPosM1[y][myFlickerFrame] - myPosM1[y][otherFrame]);
+        if(delta >= MIN_FLICKER_DELTA && delta <= MAX_FLICKER_DELTA)
+          ++count;
+        delta = std::abs(myPosBL[y][myFlickerFrame] - myPosBL[y][otherFrame]);
+        if(delta >= MIN_FLICKER_DELTA && delta <= MAX_FLICKER_DELTA)
+          ++count;
+        if(myPatPF[y][myFlickerFrame] != myPatPF[y][otherFrame])
+          ++count;
+      }
+      diffCount[frame] = count;
+    }
+    //cerr << ": ";
+    //for(int i = 0; i < FLICKER_FRAMES - 1; ++i)
+    //  cerr << diffCount[i] << ", ";
+    if(diffCount[0] > MIN_DIFF &&
+      (diffCount[0] > diffCount[1] * 1.1 ||
+       diffCount[0] > diffCount[2] * 1.2 ||
+       diffCount[0] > diffCount[3] * 1.3))
+    {
+      if(myFlickerCount < PHOSPHOR_FRAMES)
+      {
+        myFlickerCount += 2; // enabled phosphor twice as fast
+        if(myFlickerCount >= PHOSPHOR_FRAMES && !myAutoPhosphorActive)
+        {
+          myAutoPhosphorActive = true;
+          myPhosphorCallback(true);
+          // If auto-on, disable phosphor automatic (phosphor stays enabled)
+          if(myAutoPhosphorAutoOn)
+            myAutoPhosphorEnabled = false;
+        }
+      }
+    }
+    else if(myFlickerCount)
+    {
+      if(--myFlickerCount == 0 && myAutoPhosphorActive)
+      {
+        myAutoPhosphorActive = false;
+        myPhosphorCallback(false);
+      }
+    }
+    //cerr << "|" << myFlickerCount;
+    //if(myAutoPhosphorActive)
+    //  cerr << " *** ON ***\n";
+    //else
+    //  cerr << " off\n";
+
+    if(--myFlickerFrame < 0)
+      myFlickerFrame = FLICKER_FRAMES - 1;
+  }
   ++myFramesSinceLastRender;
 }
 
@@ -1438,16 +1544,16 @@ void TIA::cycle(uInt32 colorClocks)
     if (++myHctr >= TIAConstants::H_CLOCKS)
       nextLine();
 
-    #ifdef SOUND_SUPPORT
-      myAudio.tick();
-    #endif
+  #ifdef SOUND_SUPPORT
+    myAudio.tick();
+  #endif
 
     ++myTimestamp;
   }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void TIA::tickMovement()
+FORCE_INLINE void TIA::tickMovement()
 {
   if (!myMovementInProgress) return;
 
@@ -1457,9 +1563,9 @@ void TIA::tickMovement()
 
     myMissile0.movementTick(movementCounter, myHctr, hblank);
     myMissile1.movementTick(movementCounter, myHctr, hblank);
-    myPlayer0.movementTick(movementCounter, hblank);
-    myPlayer1.movementTick(movementCounter, hblank);
-    myBall.movementTick(movementCounter, hblank);
+    myPlayer0.movementTick(movementCounter, myHctr, hblank);
+    myPlayer1.movementTick(movementCounter, myHctr, hblank);
+    myBall.movementTick(movementCounter, myHctr, hblank);
 
     myMovementInProgress =
       myMissile0.isMoving ||
@@ -1520,20 +1626,25 @@ void TIA::tickHframe()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void TIA::applyRsync()
 {
-  const uInt32 x = myHctr > TIAConstants::H_BLANK_CLOCKS ? myHctr - TIAConstants::H_BLANK_CLOCKS : 0;
+  const uInt32 x = myHctr > TIAConstants::H_BLANK_CLOCKS
+      ? myHctr - TIAConstants::H_BLANK_CLOCKS : 0;
 
   myHctrDelta = TIAConstants::H_CLOCKS - 3 - myHctr;
   if (myFrameManager->isRendering())
-    std::fill_n(myBackBuffer.begin() + myFrameManager->getY() * TIAConstants::H_PIXEL + x, TIAConstants::H_PIXEL - x, 0);
+    std::fill_n(myBackBuffer.begin() +
+      static_cast<size_t>(myFrameManager->getY() * TIAConstants::H_PIXEL + x),
+      TIAConstants::H_PIXEL - x, 0);
 
   myHctr = TIAConstants::H_CLOCKS - 3;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void TIA::nextLine()
+FORCE_INLINE void TIA::nextLine()
 {
+  bool cloned = false;
   if (myLinesSinceChange >= 2) {
     cloneLastLine();
+    cloned = true;
   }
 
   myHctr = 0;
@@ -1551,20 +1662,81 @@ void TIA::nextLine()
   myBall.nextLine();
   myPlayfield.nextLine();
 
-  if (myFrameManager->isRendering() && myFrameManager->getY() == 0) flushLineCache();
+  if(myFrameManager->isRendering())
+  {
+    if(myFrameManager->getY() == 0)
+      flushLineCache();
 
+    // Save positions of objects for auto-phosphor
+    if(myAutoPhosphorEnabled)
+    {
+      // Test ROMs:
+      // - missing phosphor:
+      //   - QB: flicker sprite for multi color (same position, different shape and color)
+      //   - Star Castle Arcade: vector font flicker (same position, different shape)
+      //   - Omega Race: no phosphor enabled (flickers every 2nd frame)
+      //   - Riddle of the Sphinx: shots (too small to be detected)
+      //   x Yars' Revenge: shield, neutral zone (PF flicker)
+      //
+      // - unneccassary phosphor:
+      //   - Gas Hog: before game starts (odd invisible sprite position changes)
+      //   x Turmoil: M1 rockets (gap between RESM1 and HMOVE?)
+      //   x Fathom: seaweed (many sprites moving vertically)
+      //   x FourPlay: game start (???)
+      //   x Freeway: always (too many sprites?)
+      const uInt32 y = myFrameManager->getY();
+
+      myPosP0[y][myFlickerFrame] = myPlayer0.getPosition();
+      myPosP1[y][myFlickerFrame] = myPlayer1.getPosition();
+      // Only use new position if missile/ball are enabled
+      if(myMissile0.isOn())
+        myPosM0[y][myFlickerFrame] = myMissile0.getPosition();
+      if(myMissile1.isOn())
+        myPosM1[y][myFlickerFrame] = myMissile1.getPosition();
+      if(myBall.isOn())
+        myPosBL[y][myFlickerFrame] = myBall.getPosition();
+      // Note: code checks only right side of playfield
+      myPatPF[y][myFlickerFrame] =
+          (static_cast<uInt32>(registerValue(PF0))) << 16
+        | (static_cast<uInt32>(registerValue(PF1))) << 8
+        | (static_cast<uInt32>(registerValue(PF2)));
+      // Define end of frame for faster auto-phosphor calculation
+      if(!cloned)
+        myFrameEnd = y;
+    }
+  }
   mySystem->m6502().clearHaltRequest();
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void TIA::cloneLastLine()
 {
-  const auto y = myFrameManager->getY();
+  if(myIsLayoutDetector)
+  {
+    // y is always 0 in FrameLayoutDetector
+    for(uInt32 i = 0 ; i < TIAConstants::H_PIXEL; ++i)
+      myFrameManager->pixelColor(myBackBuffer[i]);
+  }
+  else
+  {
+    const size_t y = myFrameManager->getY();
 
-  if (!myFrameManager->isRendering() || y == 0) return;
+    if(!myFrameManager->isRendering() || y == 0) return;
 
-  std::copy_n(myBackBuffer.begin() + (y-1) * TIAConstants::H_PIXEL, TIAConstants::H_PIXEL,
-      myBackBuffer.begin() + y * TIAConstants::H_PIXEL);
+    std::copy_n(myBackBuffer.begin() + (y - 1) * TIAConstants::H_PIXEL,
+      TIAConstants::H_PIXEL, myBackBuffer.begin() + y * TIAConstants::H_PIXEL);
+
+    // Save positions of objects for auto-phosphor
+    if(myAutoPhosphorEnabled)
+    {
+      myPosP0[y][myFlickerFrame] = myPosP0[y - 1][myFlickerFrame];
+      myPosP1[y][myFlickerFrame] = myPosP1[y - 1][myFlickerFrame];
+      myPosM0[y][myFlickerFrame] = myPosM0[y - 1][myFlickerFrame];
+      myPosM1[y][myFlickerFrame] = myPosM1[y - 1][myFlickerFrame];
+      myPosBL[y][myFlickerFrame] = myPosBL[y - 1][myFlickerFrame];
+      myPatPF[y][myFlickerFrame] = myPatPF[y - 1][myFlickerFrame];
+    }
+  }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1574,7 +1746,7 @@ void TIA::scheduleCollisionUpdate()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void TIA::updateCollision()
+FORCE_INLINE void TIA::updateCollision()
 {
   myCollisionMask |= (
     myPlayer0.collision &
@@ -1587,7 +1759,7 @@ void TIA::updateCollision()
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-void TIA::renderPixel(uInt32 x, uInt32 y)
+FORCE_INLINE void TIA::renderPixel(uInt32 x, uInt32 y)
 {
   if (x >= TIAConstants::H_PIXEL) return;
 
@@ -1638,10 +1810,15 @@ void TIA::renderPixel(uInt32 x, uInt32 y)
         else if (myBall.isOn())       color = myBall.getColor();
         else                          color = myBackground.getColor();
         break;
+
+      default:
+        break;  // Not supposed to get here
     }
   }
 
   myBackBuffer[y * TIAConstants::H_PIXEL + x] = color;
+  if (myIsLayoutDetector)
+    myFrameManager->pixelColor(color);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1667,7 +1844,9 @@ void TIA::flushLineCache()
 void TIA::clearHmoveComb()
 {
   if (myFrameManager->isRendering() && myHstate == HState::blank)
-    std::fill_n(myBackBuffer.begin() + myFrameManager->getY() * TIAConstants::H_PIXEL, 8, myColorHBlank);
+    std::fill_n(myBackBuffer.begin() +
+      static_cast<size_t>(myFrameManager->getY() * TIAConstants::H_PIXEL),
+      8, myColorHBlank);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1725,6 +1904,27 @@ void TIA::setBlInvertedPhaseClock(bool enable)
 {
   myBall.setInvertedPhaseClock(enable);
 }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void TIA::setPlShortLateHMove(bool enable)
+{
+  myPlayer0.setShortLateHMove(enable);
+  myPlayer1.setShortLateHMove(enable);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void TIA::setMsShortLateHMove(bool enable)
+{
+  myMissile0.setShortLateHMove(enable);
+  myMissile1.setShortLateHMove(enable);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+void TIA::setBlShortLateHMove(bool enable)
+{
+  myBall.setShortLateHMove(enable);
+}
+
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 void TIA::delayedWrite(uInt8 address, uInt8 value)
