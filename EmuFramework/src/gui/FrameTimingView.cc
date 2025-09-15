@@ -139,7 +139,7 @@ FrameTimingView::FrameTimingView(ViewAttachParams attach):
 	},
 	lowLatencyVideo
 	{
-		"Low Latency Mode", attach,
+		"低延迟模式", attach,
 		app().lowLatencyVideo,
 		[this](BoolMenuItem& item) { app().setLowLatencyVideo(item.flipBoolValue(*this)); }
 	},

@@ -207,7 +207,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 
 	MultiChoiceMenuItem cartType
 	{
-		"卡片类型", attachParams(),
+		"卡带类型", attachParams(),
 		MenuId{system().cartType},
 		cartTypeItems,
 		{
