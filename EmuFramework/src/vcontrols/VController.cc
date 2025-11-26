@@ -261,6 +261,7 @@ KeyInfo VController::keyboardKeyFromPointer(const Input::MotionEvent &e)
 bool VController::pointerInputEvent(const Input::MotionEvent &e, IG::WindowRect gameRect)
 {
 	assumeExpr(e.isPointer());
+	/* 爱吾修改：删除原版的虚拟按钮的相关逻辑
 	if(e.pushed() || e.released())
 	{
 		for(const auto &grp: uiElements)
@@ -350,6 +351,29 @@ bool VController::pointerInputEvent(const Input::MotionEvent &e, IG::WindowRect 
 			setGamepadControlsVisible(true);
 			app.viewController().placeEmuViews();
 		}
+	爱吾修改：删除原版的虚拟按钮的相关逻辑 */
+	//爱吾修改：自行实现触屏模拟光枪等逻辑
+	bool elementsArePushed = false;
+	auto &system = this->system();
+	dragTracker.inputEvent(e,
+	[&](Input::DragTrackerState dragState, auto &currElems)
+	{
+		if(!elementsArePushed)
+		{
+			elementsArePushed |= system.onPointerInputStart(e, dragState, gameRect);
+		}
+	},
+	[&](Input::DragTrackerState dragState, Input::DragTrackerState prevDragState, auto &currElems)
+	{
+		if(!elementsArePushed)
+		{
+			elementsArePushed |= system.onPointerInputUpdate(e, dragState, prevDragState, gameRect);
+		}
+	},
+	[&](Input::DragTrackerState dragState, auto &currElems)
+	{
+		elementsArePushed |= system.onPointerInputEnd(e, dragState, gameRect);
+	});
 	return elementsArePushed;
 }
 
