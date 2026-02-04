@@ -78,7 +78,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 
 	MultiChoiceMenuItem inputPorts
 	{
-		"Input Ports", attachParams(),
+		"输入端口", attachParams(),
 		MenuId{system().mdInputPortDev[1]},
 		inputPortsItem,
 		{
