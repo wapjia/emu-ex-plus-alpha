@@ -13,19 +13,15 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/base/Screen.hh>
-#include <imagine/base/EventLoop.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/base/Application.hh>
+#include <imagine/base/android/Choreographer.hh>
+#include <imagine/base/android/AndroidApplication.hh>
 #include <imagine/base/sharedLibrary.hh>
-#include <imagine/time/Time.hh>
-#include <imagine/util/algorithm.h>
-#include <imagine/util/variant.hh>
-#include <imagine/base/SimpleFrameTimer.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <android/choreographer.h>
+#include <android/native_activity.h>
 #include <unistd.h>
-#include <cerrno>
+#include <jni.h>
 
 namespace IG
 {
@@ -122,7 +118,7 @@ JavaChoreographer::JavaChoreographer(AndroidApplication &app, JNIEnv *env, jobje
 
 void JavaChoreographer::scheduleVSync()
 {
-	assert(frameHelper);
+	assume(frameHelper);
 	if(requested)
 		return;
 	requested = true;
@@ -146,11 +142,11 @@ NativeChoreographer::NativeChoreographer(AndroidApplication &app):
 	appPtr{&app}
 {
 	loadSymbol(getInstance, {}, "AChoreographer_getInstance");
-	assert(getInstance);
+	assume(getInstance);
 	loadSymbol(postFrameCallback, {}, "AChoreographer_postFrameCallback");
-	assert(postFrameCallback);
+	assume(postFrameCallback);
 	choreographer = getInstance();
-	assert(choreographer);
+	assume(choreographer);
 	log.info("created native choreographer");
 }
 

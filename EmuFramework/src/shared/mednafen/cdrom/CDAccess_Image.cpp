@@ -42,9 +42,10 @@
 #include "CDAccess_Image.h"
 
 #include "CDAFReader.h"
-#include <imagine/util/string.h>
 
 #include <map>
+
+import imagine;
 
 namespace Mednafen
 {

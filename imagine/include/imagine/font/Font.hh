@@ -32,13 +32,13 @@
 
 namespace IG
 {
-
 class IO;
-
-namespace Data
-{
-class PixmapSource;
 }
+
+namespace IG::Data
+{
+
+class PixmapSource;
 
 class GlyphImage: public GlyphImageImpl
 {
@@ -74,7 +74,7 @@ public:
 	Font makeFromFile(const char *name) const;
 	Font makeSystem() const;
 	Font makeBoldSystem() const;
-	Font makeFromAsset(const char *name, const char *appName = ApplicationContext::applicationName) const;
+	Font makeFromAsset(const char *name, const char *appName = ApplicationMeta::name) const;
 };
 
 

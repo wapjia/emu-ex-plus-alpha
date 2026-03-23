@@ -20,11 +20,13 @@
 #include <imagine/gfx/GfxText.hh>
 #include <imagine/util/DelegateFunc.hh>
 #include <imagine/util/concepts.hh>
-#include <imagine/util/utility.h>
 #include <imagine/util/variant.hh>
+#ifndef IG_USE_MODULE_STD
 #include <iterator>
 #include <memory>
 #include <type_traits>
+#include <utility>
+#endif
 
 namespace IG::Input
 {
@@ -139,7 +141,7 @@ struct MenuItemI
 	virtual bool inputEvent(const Input::Event&, ViewInputEventParams p = {});
 };
 
-constexpr MenuId defaultMenuId{std::numeric_limits<MenuId::Type>::min()};
+inline constexpr MenuId defaultMenuId{std::numeric_limits<MenuId::Type>::min()};
 
 class MenuItem: public MenuItemI
 {

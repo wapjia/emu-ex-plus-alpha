@@ -13,21 +13,13 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "Input"
-#include <imagine/base/ApplicationContext.hh>
 #include <imagine/base/Application.hh>
-#include <imagine/base/Window.hh>
-#include <imagine/base/x11/XInputDevice.hh>
-#include <imagine/input/Event.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/util/algorithm.h>
-#include <imagine/util/ScopeGuard.hh>
-#include <imagine/util/bit.hh>
-#include "xlibutils.h"
+#include <imagine/logger/SystemLogger.hh>
 #include <xcb/xinput.h>
 #include <xkbcommon/xkbcommon-x11.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
-#include <memory>
+#include "macros.h"
+import xutils;
 
 static std::string_view xiDeviceInfoName(const xcb_input_xi_device_info_t& info)
 {
@@ -74,7 +66,7 @@ std::string KeyEvent::keyString(ApplicationContext ctx) const
 namespace IG
 {
 
-constexpr SystemLogger log{"X11"};
+static SystemLogger log{"X11"};
 constexpr int XC_left_ptr = 68; // from X11/cursorfont.h
 
 static bool isXInputDevice(Input::Device &d)
@@ -165,14 +157,14 @@ void XApplication::initXInput2()
 	if(!extReply || !extReply->present)
 	{
 		log.error("XInput extension not available");
-		::exit(-1);
+		std::exit(-1);
 	}
 	xI2opcode = extReply->major_opcode;
 	auto verReply = XCB_REPLY(xcb_input_xi_query_version, xConn, 2, 0);
 	if(!verReply || verReply->major_version < 2)
 	{
 		log.error("required XInput 2.x version not available, server supports {}.{}", verReply->major_version, verReply->minor_version);
-		::exit(-1);
+		std::exit(-1);
 	}
 }
 
@@ -295,7 +287,7 @@ void XApplication::initInputSystem()
 	kbState = initXkb(*xConn);
 	if(!kbState)
 	{
-		::exit(-1);
+		std::exit(-1);
 	}
 }
 

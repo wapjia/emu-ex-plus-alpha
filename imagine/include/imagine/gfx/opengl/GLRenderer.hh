@@ -24,28 +24,14 @@
 #include <imagine/gfx/BasicEffect.hh>
 #include <imagine/gfx/Quads.hh>
 #include <imagine/util/used.hh>
-#include <memory>
-#include <optional>
-#include <string_view>
 #ifdef CONFIG_BASE_GL_PLATFORM_EGL
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #endif
-
-#ifndef GL_R8
-#define GL_R8 0x8229
-#endif
-
-#ifndef GL_RG
-#define GL_RG 0x8227
-#endif
-
-#ifndef GL_RG8
-#define GL_RG8 0x822B
-#endif
-
-#ifndef GL_RED
-#define GL_RED 0x1903
+#ifndef IG_USE_MODULE_STD
+#include <memory>
+#include <optional>
+#include <string_view>
 #endif
 
 namespace IG
@@ -55,11 +41,14 @@ class ApplicationContext;
 
 namespace IG::Gfx
 {
-
 class RendererCommands;
 class TextureSampler;
 class GLSLProgram;
 class RendererTask;
+}
+
+namespace IG::Gfx
+{
 
 class DrawContextSupport
 {
@@ -171,6 +160,8 @@ public:
 	BasicEffect basicEffect_{};
 	Gfx::QuadIndexArray<uint8_t> quadIndices;
 	CustomEvent releaseShaderCompilerEvent;
+	static bool checkGLErrors;
+	static bool checkGLErrorsVerbose;
 
 	GLRenderer(ApplicationContext);
 	GLDisplay glDisplay() const;

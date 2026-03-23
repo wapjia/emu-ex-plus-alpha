@@ -14,17 +14,14 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/VController.hh>
-#include <emuframework/EmuSystem.hh>
-#include <imagine/util/math.hh>
-#include <imagine/base/Window.hh>
-#include <imagine/gfx/Renderer.hh>
-#include <imagine/gfx/RendererCommands.hh>
-#include <imagine/pixmap/MemPixmap.hh>
-#include <imagine/gui/View.hh>
-#include <imagine/logger/logger.h>
+#include <emuframework/EmuInput.hh>
+#include <emuframework/InputManager.hh>
+import imagine;
 
 namespace EmuEx
 {
+
+using namespace IG;
 
 constexpr SystemLogger log{"VControllerGamepad"};
 
@@ -41,8 +38,8 @@ void VControllerDPad::updateBoundingAreaGfx(Gfx::Renderer &r)
 	MemPixmap mapMemPix{{padArea.size(), PixelFmtRGB565}};
 	auto mapPix = mapMemPix.view();
 	auto pixels = mapPix.mdspan<uint16_t>();
-	for(auto y : iotaCount(pixels.extent(0)))
-		for(auto x : iotaCount(pixels.extent(1)))
+	for(auto y: iotaCount(pixels.extent(0)))
+		for(auto x: iotaCount(pixels.extent(1)))
 		{
 			auto input = getInput({padArea.xPos(LT2DO) + int(x), padArea.yPos(LT2DO) + int(y)});
 			//log.info("got input {}", input);

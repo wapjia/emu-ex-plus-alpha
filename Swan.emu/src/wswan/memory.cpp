@@ -31,7 +31,7 @@
 #include <mednafen/FileStream.h>
 #include <time.h>
 #include <trio/trio.h>
-#include <emuframework/EmuSystem.hh>
+import emuex;
 
 namespace MDFN_IEN_WSWAN
 {

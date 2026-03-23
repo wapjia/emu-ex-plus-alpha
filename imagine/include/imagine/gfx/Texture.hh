@@ -19,7 +19,9 @@
 #include <imagine/gfx/TextureConfig.hh>
 #include <imagine/gfx/TextureSamplerConfig.hh>
 #include <imagine/pixmap/Pixmap.hh>
+#ifndef IG_USE_MODULE_STD
 #include <utility>
+#endif
 
 #ifdef CONFIG_GFX_OPENGL
 #include <imagine/gfx/opengl/GLTexture.hh>

@@ -16,9 +16,7 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/config/defs.hh>
-
-struct xcb_connection_t;
-struct xcb_screen_t;
+#include <xcb/xproto.h>
 
 namespace IG
 {

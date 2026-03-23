@@ -13,18 +13,16 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/base/Application.hh>
 #include <imagine/base/Screen.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/time/Time.hh>
-#include <imagine/util/utility.h>
-#include <imagine/util/algorithm.h>
+#include <imagine/base/Window.hh>
+#include <imagine/base/Application.hh>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
 
 namespace IG
 {
 
-constexpr SystemLogger log{"Screen"};
+static SystemLogger log{"Screen"};
 
 Screen::Screen(ApplicationContext ctx, InitParams params):
 	ScreenImpl{ctx, params},
@@ -76,8 +74,8 @@ bool Screen::isPosted() const
 
 bool Screen::frameUpdate(SteadyClockTimePoint time)
 {
-	assert(hasTime(time));
-	assert(isActive);
+	assume(hasTime(time));
+	assume(isActive);
 	framePosted = false;
 	if(!onFrameDelegate.size())
 	{

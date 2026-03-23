@@ -16,10 +16,10 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/config/defs.hh>
+#include <android/performance_hint.h>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
-
-struct APerformanceHintSession;
-struct APerformanceHintManager;
+#endif
 
 namespace IG
 {

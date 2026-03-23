@@ -18,8 +18,10 @@
 #include <imagine/io/PosixIO.hh>
 #include <imagine/io/MapIO.hh>
 #include <imagine/util/string/CStringView.hh>
+#ifndef IG_USE_MODULE_STD
 #include <variant>
 #include <span>
+#endif
 
 namespace IG
 {

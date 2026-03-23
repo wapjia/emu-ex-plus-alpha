@@ -13,20 +13,18 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "Bluez"
 #include <imagine/bluetooth/BluetoothAdapter.hh>
-#include <imagine/thread/Thread.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/util/algorithm.h>
+#include <imagine/util/ranges.hh>
+#include <imagine/logger/SystemLogger.hh>
+#include <imagine/util/fd-utils.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/rfcomm.h>
 #include <bluetooth/hidp.h>
-#include <imagine/util/fd-utils.h>
-#include <imagine/util/ranges.hh>
-#include <imagine/util/algorithm.h>
-#include <cerrno>
+#include <errno.h>
 
 #ifdef __ANDROID__
 // Bluez dlsym functions
@@ -35,6 +33,8 @@ CLINK int bluez_dl();
 
 namespace IG
 {
+
+static SystemLogger log{"Bluetooth"};
 
 struct ScanStatusMessage
 {
@@ -57,7 +57,7 @@ bool BluetoothAdapter::openDefault()
 {
 	if(isOpen())
 		return true;
-	logMsg("opening default BT adapter");
+	log.info("opening default BT adapter");
 	#ifdef __ANDROID__
 	if(bluez_dl() != 0)
 		return;
@@ -65,13 +65,13 @@ bool BluetoothAdapter::openDefault()
 	devId = hci_get_route(0);
 	if(devId < 0)
 	{
-		logMsg("no routes, errno: %d, %s", errno, strerror(errno));
+		log.info("no routes, errno:{}, {}", errno, strerror(errno));
 		return false;
 	}
 	socket = hci_open_dev(devId);
 	if(socket < 0)
 	{
-		logMsg("error opening socket");
+		log.info("error opening socket");
 		return false;
 	}
 	statusPipe.attach(
@@ -83,10 +83,10 @@ bool BluetoothAdapter::openDefault()
 				auto msg = io.template getExpected<ScanStatusMessage>();
 				if(!msg.has_value())
 				{
-					logErr("error reading BT socket status message in pipe");
+					log.error("error reading BT socket status message in pipe");
 					return true;
 				}
-				logMsg("got bluetooth adapter status delegate message");
+				log.info("got bluetooth adapter status delegate message");
 				bta.onScanStatus(bta, msg->type, msg->arg);
 			}
 			return true;
@@ -112,7 +112,7 @@ void BluetoothAdapter::close()
 	}
 	if(socket > 0)
 	{
-		logMsg("closing BT device socket");
+		log.info("closing BT device socket");
 		::close(socket);
 		socket = -1;
 	}
@@ -122,46 +122,46 @@ void BluetoothAdapter::close()
 bool BluezBluetoothAdapter::doScan(const BTOnScanDeviceClassDelegate &onDeviceClass, const BTOnScanDeviceNameDelegate &onDeviceName)
 {
 	auto &bta = static_cast<BluetoothAdapter&>(*this);
-	logMsg("starting Bluetooth scan, cache %d", bta.useScanCache);
+	log.info("starting Bluetooth scan, cache:{}", bta.useScanCache);
 	int devices = 0, maxDevices = 10;
 	inquiry_info *deviceInfo = 0;
 	devices = hci_inquiry(devId, bta.scanSecs, maxDevices, 0, &deviceInfo,
 		bta.useScanCache ? 0 : IREQ_CACHE_FLUSH);
 	if(devices == -1)
 	{
-		logMsg("inquiry failed");
-		if(deviceInfo) free(deviceInfo);
+		log.error("inquiry failed");
+		if(deviceInfo) std::free(deviceInfo);
 		sendBTScanStatusDelegate(BluetoothScanState::Failed);
 		return false;
 	}
 
 	if(scanCancelled)
 	{
-		logMsg("cancelled scan after hci_inquiry");
+		log.info("cancelled scan after hci_inquiry");
 		sendBTScanStatusDelegate(BluetoothScanState::Cancelled);
 		return true;
 	}
 
-	logMsg("%d devices", devices);
+	log.info("{} devices", devices);
 	if(devices == 0)
 	{
 		sendBTScanStatusDelegate(BluetoothScanState::NoDevs);
-		if(deviceInfo) free(deviceInfo);
+		if(deviceInfo) std::free(deviceInfo);
 		return true;
 	}
 	else
 		sendBTScanStatusDelegate(BluetoothScanState::Processing, devices);
-	for(auto i : iotaCount(devices))
+	for(auto i: iotaCount(devices))
 	{
 		if(!onDeviceClass(bta, std::to_array(deviceInfo[i].dev_class)))
 		{
-			logMsg("skipping device due to class %X:%X:%X", deviceInfo[i].dev_class[0], deviceInfo[i].dev_class[1], deviceInfo[i].dev_class[2]);
+			log.info("skipping device due to class {}:{}:{}", deviceInfo[i].dev_class[0], deviceInfo[i].dev_class[1], deviceInfo[i].dev_class[2]);
 			continue;
 		}
 
 		if(scanCancelled)
 		{
-			logMsg("cancelled scan in hci_read_remote_name loop");
+			log.info("cancelled scan in hci_read_remote_name loop");
 			sendBTScanStatusDelegate(BluetoothScanState::Cancelled);
 			return true;
 		}
@@ -169,18 +169,18 @@ bool BluezBluetoothAdapter::doScan(const BTOnScanDeviceClassDelegate &onDeviceCl
 		char name[248];
 		if(hci_read_remote_name(socket, &deviceInfo[i].bdaddr, sizeof(name), name, 0) < 0)
 		{
-			logMsg("error reading device name");
+			log.error("error reading device name");
 			sendBTScanStatusDelegate(BluetoothScanState::NameFailed);
 			continue;
 		}
-		logMsg("device name: %s", name);
+		log.info("device name:{}", name);
 		onDeviceName(bta, name, deviceInfo[i].bdaddr.b);
 	}
-	if(deviceInfo) free(deviceInfo);
+	if(deviceInfo) std::free(deviceInfo);
 
 	if(scanCancelled)
 	{
-		logMsg("canceled scan after hci_read_remote_name loop");
+		log.info("canceled scan after hci_read_remote_name loop");
 		sendBTScanStatusDelegate(BluetoothScanState::Cancelled);
 		return true;
 	}
@@ -208,7 +208,7 @@ bool BluetoothAdapter::startScan(OnStatusDelegate onResult, OnScanDeviceClassDel
 	}
 	else
 	{
-		logMsg("previous bluetooth detection still running");
+		log.info("previous bluetooth detection still running");
 		return 0;
 	}
 }
@@ -220,11 +220,11 @@ void BluetoothAdapter::requestName(BluetoothPendingSocket& pending, BTOnScanDevi
 	auto &baddr = pending.addr.l2_bdaddr.b;
 	if(hci_read_remote_name(bta.socket, &pending.addr.l2_bdaddr, sizeof(name), name, 0) < 0)
 	{
-		logErr("error reading device name");
+		log.error("error reading device name");
 		onDeviceName(bta, nullptr, baddr);
 		return;
 	}
-	logMsg("device name: %s", name);
+	log.info("device name:{}", name);
 	onDeviceName(bta, name, baddr);
 }
 
@@ -244,24 +244,24 @@ void BluetoothAdapter::setL2capService(uint32_t psm, bool active, OnStatusDelega
 {
 	if(!active)
 	{
-		logMsg("unregistering psm: 0x%X", psm);
+		log.info("unregistering psm{:X}", psm);
 		if(auto removedServer = moveOut(serverList, [&](const L2CapServer& server){ return server.psm == psm; });
 			removedServer.fd != -1)
 		{
 			::close(removedServer.fd);
 			return;
 		}
-		logMsg("psm not found in server list");
+		log.info("psm not found in server list");
 		return;
 	}
 
 	if(serverList.isFull())
 	{
-		logErr("too many l2cap services registered");
+		log.error("too many l2cap services registered");
 		onResult(*this, BluetoothScanState::Failed, 0);
 		return;
 	}
-	logMsg("registering l2cap service for PSM 0x%X", psm);
+	log.info("registering l2cap service for PSM:{:X}", psm);
 	struct sockaddr_l2 addr{};
 	addr.l2_family = AF_BLUETOOTH;
 	addr.l2_psm = htobs(psm);
@@ -269,7 +269,7 @@ void BluetoothAdapter::setL2capService(uint32_t psm, bool active, OnStatusDelega
 	auto serverFd = ::socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 	if(serverFd == -1)
 	{
-		logErr("error creating L2CAP socket with PSM %d", psm);
+		log.error("error creating L2CAP socket with PSM:{:X}", psm);
 		onResult(*this, BluetoothScanState::Failed, 0);
 		return;
 	}
@@ -277,7 +277,7 @@ void BluetoothAdapter::setL2capService(uint32_t psm, bool active, OnStatusDelega
 	int ret = bind(serverFd, (struct sockaddr *)&addr, sizeof(addr));
 	if(ret == -1)
 	{
-		logErr("error in bind()");
+		log.error("error in bind()");
 		::close(serverFd);
 		onResult(*this, BluetoothScanState::Failed, 0);
 		return;
@@ -296,7 +296,7 @@ void BluetoothAdapter::setL2capService(uint32_t psm, bool active, OnStatusDelega
 	ret = listen(serverFd, 1);
 	if(ret == -1)
 	{
-		logErr("error in listen()");
+		log.error("error in listen()");
 		::close(serverFd);
 		onResult(*this, BluetoothScanState::Failed, 0);
 		return;
@@ -306,18 +306,18 @@ void BluetoothAdapter::setL2capService(uint32_t psm, bool active, OnStatusDelega
 	server.connectSrc = {serverFd, {.eventLoop = EventLoop::forThread()},
 		[this](int fd, int)
 		{
-			logMsg("incoming l2cap connection from server fd %d", fd);
+			log.info("incoming l2cap connection from server fd:{}", fd);
 			BluetoothPendingSocket pending;
 			socklen_t addrLen = sizeof(pending.addr);
 			pending.fd = accept(fd, (struct sockaddr *)&pending.addr, &addrLen);
 			if(pending.fd == -1)
 			{
-				logErr("failed accepting connection");
+				log.error("failed accepting connection");
 				BluetoothPendingSocket error;
 				onIncomingL2capConnection(*this, error);
 				return true;
 			}
-			logMsg("for PSM 0x%X, fd %d", pending.addr.l2_psm, pending.fd);
+			log.info("for PSM:{:X} fd:{}", pending.addr.l2_psm, pending.fd);
 			onIncomingL2capConnection(*this, pending);
 			return true;
 		}
@@ -350,8 +350,8 @@ void BluetoothPendingSocket::requestName(BluetoothAdapter& bta, BluetoothAdapter
 
 std::system_error BluetoothSocket::open(BluetoothAdapter&, BluetoothPendingSocket& pending)
 {
-	assert(pending);
-	logMsg("accepting connection from fd %d", pending.fd);
+	assume(pending);
+	log.info("accepting connection from fd:{}", pending.fd);
 	fd = pending.fd;
 	pending = {};
 	if(onStatus(*this, BluetoothSocketState::Opened) == 1)
@@ -365,22 +365,22 @@ bool BluezBluetoothSocket::readPendingData(PollEventFlags events)
 	auto &sock = static_cast<BluetoothSocket&>(*this);
 	if(events & pollEventError)
 	{
-		logMsg("poll error with events %X", events);
+		log.info("poll error with events:{:X}", events);
 		if(events & pollEventOutput) // happened while connecting
 		{
-			logErr("error connecting socket %d", fd);
+			log.error("error connecting socket:{}", fd);
 			if(Config::DEBUG_BUILD)
 			{
 				socklen_t optLen = sizeof(int), opt = 0;
 				getsockopt(fd, SOL_SOCKET, SO_ERROR, &opt, &optLen);
-				logMsg("got so_error %d", opt);
+				log.info("got so_error:{}", opt);
 			}
 			sock.onStatus(sock, BluetoothSocketState::ConnectError);
 			//defaultBluezAdapter.onScanStatus()(defaultBluezAdapter, BluetoothAdapter::SOCKET_OPEN_FAILED, 0);
 		}
 		else
 		{
-			logMsg("socket %d disconnected", fd);
+			log.info("socket {} disconnected", fd);
 			sock.onStatus(sock, BluetoothSocketState::ReadError);
 		}
 		return false;
@@ -395,7 +395,7 @@ bool BluezBluetoothSocket::readPendingData(PollEventFlags events)
 			auto len = read(fd, buff, sizeof buff);
 			if(len <= 0) [[unlikely]]
 			{
-				logMsg("error %d reading packet from socket %d", len == -1 ? errno : 0, fd);
+				log.error("error:{} reading packet from socket:{}", len == -1 ? errno : 0, fd);
 				sock.onStatus(sock, BluetoothSocketState::ReadError);
 				return false;
 			}
@@ -406,7 +406,7 @@ bool BluezBluetoothSocket::readPendingData(PollEventFlags events)
 	}
 	else if(events & pollEventOutput)
 	{
-		logMsg("finished opening socket %d", fd);
+		log.info("finished opening socket:{}", fd);
 		if(sock.onStatus(sock, BluetoothSocketState::Opened) == 1)
 			fdSrc.setEvents(pollEventInput);
 		else
@@ -431,7 +431,7 @@ std::system_error BluetoothSocket::openRfcomm(BluetoothAdapter &, BluetoothAddr 
 	fd = ::socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 	if(fd == -1)
 	{
-		logMsg("error creating RFCOMM socket with channel %d", channel);
+		log.error("error creating RFCOMM socket with channel:{}", channel);
 		//onStatus.invoke(*this, STATUS_ERROR);
 		return std::system_error{errno, std::generic_category()};
 	}
@@ -459,7 +459,7 @@ std::system_error BluetoothSocket::openL2cap(BluetoothAdapter &, BluetoothAddr b
 	fd = ::socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 	if(fd == -1)
 	{
-		logMsg("error creating L2CAP socket with PSM %d", psm);
+		log.error("error creating L2CAP socket with PSM:{}", psm);
 		return std::system_error{errno, std::generic_category()};
 	}
 
@@ -494,14 +494,14 @@ void BluezBluetoothSocket::close()
 			logWarn("error shutting down socket");*/
 		fdSrc.detach();
 		if(::close(fd) != 0)
-			logWarn("error closing socket");
+			log.warn("error closing socket");
 		fd = -1;
 	}
 }
 
 ssize_t BluetoothSocket::write(const void *data, size_t size)
 {
-	assert(fd >= 0);
+	assume(fd >= 0);
 	return fd_writeAll(fd, data, size);
 }
 

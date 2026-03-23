@@ -16,9 +16,14 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/EmuSystem.hh>
+#ifdef IG_USE_MODULES
+import imagine;
+import std;
+#else
 #include <imagine/time/Time.hh>
 #include <imagine/gui/MenuItem.hh>
 #include <span>
+#endif
 
 namespace EmuEx
 {

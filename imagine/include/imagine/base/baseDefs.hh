@@ -21,116 +21,104 @@
 #include <imagine/util/string/CStringView.hh>
 #include <imagine/util/enum.hh>
 #include <imagine/util/variant.hh>
+#ifndef IG_USE_MODULE_STD
 #include <vector>
 #include <memory>
 #include <string_view>
 #include <type_traits>
-#include <variant>
+#endif
 
 namespace Config
 {
 #if defined __ANDROID__
-static constexpr bool BASE_SUPPORTS_VIBRATOR = true;
+inline constexpr bool BASE_SUPPORTS_VIBRATOR = true;
 #else
-static constexpr bool BASE_SUPPORTS_VIBRATOR = false;
+inline constexpr bool BASE_SUPPORTS_VIBRATOR = false;
 #endif
 
 #if defined __ANDROID__ || (defined __APPLE__ && TARGET_OS_IPHONE)
-static constexpr bool BASE_CAN_BACKGROUND_APP = true;
+inline constexpr bool BASE_CAN_BACKGROUND_APP = true;
 #else
-static constexpr bool BASE_CAN_BACKGROUND_APP = false;
+inline constexpr bool BASE_CAN_BACKGROUND_APP = false;
 #endif
 
 #if defined __ANDROID__ || (defined __APPLE__ && TARGET_OS_IPHONE)
-#define CONFIG_BASE_SUPPORTS_ORIENTATION_SENSOR
-static constexpr bool BASE_SUPPORTS_ORIENTATION_SENSOR = true;
+inline constexpr bool BASE_SUPPORTS_ORIENTATION_SENSOR = true;
 #else
-static constexpr bool BASE_SUPPORTS_ORIENTATION_SENSOR = false;
+inline constexpr bool BASE_SUPPORTS_ORIENTATION_SENSOR = false;
 #endif
 
 #if defined __ANDROID__ || defined CONFIG_OS_IOS
-#define CONFIG_BASE_MULTI_SCREEN
-static constexpr bool BASE_MULTI_SCREEN = true;
+inline constexpr bool BASE_MULTI_SCREEN = true;
 #else
-static constexpr bool BASE_MULTI_SCREEN = false;
+inline constexpr bool BASE_MULTI_SCREEN = false;
 #endif
 
 #if defined CONFIG_OS_IOS
-#define CONFIG_BASE_SCREEN_FRAME_INTERVAL
-static constexpr bool SCREEN_FRAME_INTERVAL = true;
+inline constexpr bool SCREEN_FRAME_INTERVAL = true;
 #else
-static constexpr bool SCREEN_FRAME_INTERVAL = false;
+inline constexpr bool SCREEN_FRAME_INTERVAL = false;
 #endif
 
 #if (defined CONFIG_PACKAGE_X11 && !defined CONFIG_MACHINE_PANDORA) || defined CONFIG_BASE_MULTI_SCREEN
-#define CONFIG_BASE_MULTI_WINDOW
-static constexpr bool BASE_MULTI_WINDOW = true;
+inline constexpr bool BASE_MULTI_WINDOW = true;
 #else
-static constexpr bool BASE_MULTI_WINDOW = false;
-#endif
-
-#if defined CONFIG_OS_IOS && defined __ARM_ARCH_6K__
-#define CONFIG_GFX_SOFT_ORIENTATION 1
-#elif !defined __ANDROID__ && !defined CONFIG_OS_IOS
-#define CONFIG_GFX_SOFT_ORIENTATION 1
+inline constexpr bool BASE_MULTI_WINDOW = false;
 #endif
 
 #if defined CONFIG_GFX_SOFT_ORIENTATION
-static constexpr bool SYSTEM_ROTATES_WINDOWS = false;
+inline constexpr bool SYSTEM_ROTATES_WINDOWS = false;
 #else
-static constexpr bool SYSTEM_ROTATES_WINDOWS = true;
+inline constexpr bool SYSTEM_ROTATES_WINDOWS = true;
 #endif
 
 #if defined __linux__
-#define CONFIG_BASE_GL_PLATFORM_EGL
-static constexpr bool GL_PLATFORM_EGL = true;
+inline constexpr bool GL_PLATFORM_EGL = true;
 #else
-static constexpr bool GL_PLATFORM_EGL = false;
+inline constexpr bool GL_PLATFORM_EGL = false;
 #endif
-static constexpr bool SYSTEM_FILE_PICKER = Config::envIsAndroid;
+
+inline constexpr bool SYSTEM_FILE_PICKER = Config::envIsAndroid;
 
 #if defined __ANDROID__ || (defined __APPLE__ && TARGET_OS_IPHONE)
-#define CONFIG_BASE_STATUS_BAR
-static constexpr bool STATUS_BAR = true;
+inline constexpr bool STATUS_BAR = true;
 #else
-static constexpr bool STATUS_BAR = false;
+inline constexpr bool STATUS_BAR = false;
 #endif
 
 #if defined __ANDROID__
-#define CONFIG_BASE_NAVIGATION_BAR
-static constexpr bool NAVIGATION_BAR = true;
+inline constexpr bool NAVIGATION_BAR = true;
 #else
-static constexpr bool NAVIGATION_BAR = false;
+inline constexpr bool NAVIGATION_BAR = false;
 #endif
 
 #if defined __ANDROID__
-constexpr bool TRANSLUCENT_SYSTEM_UI = true;
+inline constexpr bool TRANSLUCENT_SYSTEM_UI = true;
 #else
-constexpr bool TRANSLUCENT_SYSTEM_UI = false;
+inline constexpr bool TRANSLUCENT_SYSTEM_UI = false;
 #endif
 
 #if defined __ANDROID__
-constexpr bool DISPLAY_CUTOUT = true;
+inline constexpr bool DISPLAY_CUTOUT = true;
 #else
-constexpr bool DISPLAY_CUTOUT = false;
+inline constexpr bool DISPLAY_CUTOUT = false;
 #endif
 
 #if defined __ANDROID__
-#define IG_CONFIG_SENSORS
-constexpr bool SENSORS = true;
+inline constexpr bool SENSORS = true;
 #else
-constexpr bool SENSORS = false;
+inline constexpr bool SENSORS = false;
 #endif
 
-constexpr bool threadPerformanceHints = Config::envIsAndroid;
+inline constexpr bool threadPerformanceHints = Config::envIsAndroid;
 
-constexpr bool multipleScreenFrameRates = (Config::envIsAndroid && Config::is64Bit);
+inline constexpr bool multipleScreenFrameRates = (Config::envIsAndroid && Config::is64Bit);
 
-constexpr bool cpuAffinity = Config::envIsAndroid || Config::envIsLinux;
+inline constexpr bool cpuAffinity = Config::envIsAndroid || Config::envIsLinux;
 
-constexpr bool freeformWindows = Config::envIsLinux;
+inline constexpr bool freeformWindows = Config::envIsLinux;
 
-constexpr bool windowFocus = Config::envIsAndroid || Config::envIsLinux;
+inline constexpr bool windowFocus = Config::envIsAndroid || Config::envIsLinux;
 }
 
 namespace IG::Input
@@ -173,33 +161,47 @@ struct Orientations
 	static constexpr Orientations all() { return {.portrait = 1, .landscapeRight = 1, .portraitUpsideDown = 1, .landscapeLeft = 1}; }
 };
 
-std::string_view asString(Orientations);
+inline constexpr std::string_view asString(Orientations o)
+{
+	switch(o)
+	{
+		case Orientations{}: return "Unset";
+		case Orientations{.portrait = 1}: return "Portrait";
+		case Orientations{.landscapeRight = 1}: return "Landscape Right";
+		case Orientations{.portraitUpsideDown = 1}: return "Portrait Upside-Down";
+		case Orientations{.landscapeLeft = 1}: return "Landscape Left";
+		case Orientations::allLandscape(): return "Either Landscape";
+		case Orientations::allPortrait(): return "Either Portrait";
+		case Orientations::allButUpsideDown(): return "All But Upside-Down";
+		case Orientations::all(): return "All";
+	}
+	return "Unknown";
+}
 
-WISE_ENUM_CLASS((Rotation, uint8_t),
+enum class Rotation: uint8_t
+{
 	UP,
 	RIGHT,
 	DOWN,
 	LEFT,
-	ANY);
-
-template<>
-constexpr bool isValidProperty(const Rotation &v) { return enumIsValidUpToLast(v); }
+	ANY
+};
 
 constexpr bool isSideways(Rotation r) { return r == Rotation::LEFT || r == Rotation::RIGHT; }
 
-static constexpr int APP_ON_EXIT_PRIORITY = 0;
-static constexpr int RENDERER_TASK_ON_EXIT_PRIORITY = 200;
-static constexpr int RENDERER_DRAWABLE_ON_EXIT_PRIORITY = 300;
-static constexpr int WINDOW_ON_EXIT_PRIORITY = 400;
-static constexpr int SCREEN_ON_EXIT_PRIORITY = 500;
-static constexpr int INPUT_DEVICE_ON_EXIT_PRIORITY = 600;
+inline constexpr int APP_ON_EXIT_PRIORITY = 0;
+inline constexpr int RENDERER_TASK_ON_EXIT_PRIORITY = 200;
+inline constexpr int RENDERER_DRAWABLE_ON_EXIT_PRIORITY = 300;
+inline constexpr int WINDOW_ON_EXIT_PRIORITY = 400;
+inline constexpr int SCREEN_ON_EXIT_PRIORITY = 500;
+inline constexpr int INPUT_DEVICE_ON_EXIT_PRIORITY = 600;
 
-static constexpr int INPUT_DEVICE_ON_RESUME_PRIORITY = -INPUT_DEVICE_ON_EXIT_PRIORITY;
-static constexpr int SCREEN_ON_RESUME_PRIORITY = -SCREEN_ON_EXIT_PRIORITY;
-static constexpr int WINDOW_ON_RESUME_PRIORITY = -WINDOW_ON_EXIT_PRIORITY;
-static constexpr int RENDERER_DRAWABLE_ON_RESUME_PRIORITY = -RENDERER_DRAWABLE_ON_EXIT_PRIORITY;
-static constexpr int RENDERER_TASK_ON_RESUME_PRIORITY = -RENDERER_TASK_ON_EXIT_PRIORITY;
-static constexpr int APP_ON_RESUME_PRIORITY = 0;
+inline constexpr int INPUT_DEVICE_ON_RESUME_PRIORITY = -INPUT_DEVICE_ON_EXIT_PRIORITY;
+inline constexpr int SCREEN_ON_RESUME_PRIORITY = -SCREEN_ON_EXIT_PRIORITY;
+inline constexpr int WINDOW_ON_RESUME_PRIORITY = -WINDOW_ON_EXIT_PRIORITY;
+inline constexpr int RENDERER_DRAWABLE_ON_RESUME_PRIORITY = -RENDERER_DRAWABLE_ON_EXIT_PRIORITY;
+inline constexpr int RENDERER_TASK_ON_RESUME_PRIORITY = -RENDERER_TASK_ON_EXIT_PRIORITY;
+inline constexpr int APP_ON_RESUME_PRIORITY = 0;
 
 // Window/Screen helper classes
 
@@ -235,11 +237,12 @@ struct WindowDrawParams
 
 enum class ScreenChange : int8_t { added, removed, frameRate };
 
-WISE_ENUM_CLASS((SensorType, uint8_t),
-	(Accelerometer, 1),
-	(Gyroscope, 4),
-	(Light, 5)
-);
+enum class SensorType: uint8_t
+{
+	Accelerometer = 1,
+	Gyroscope = 4,
+	Light = 5
+};
 
 using SensorValues = std::array<float, 3>;
 

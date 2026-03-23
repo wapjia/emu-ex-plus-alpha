@@ -13,6 +13,7 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <imagine/util/utility.hh>
 #include <imagine/input/DragTracker.hh>
 
 namespace IG::Input
@@ -20,7 +21,7 @@ namespace IG::Input
 
 void DragTrackerState::update(WPt pos, int dragStartPixels)
 {
-	assert(isTracking());
+	assume(isTracking());
 	pos_ = pos;
 	if(!isDragging_ &&
 		(std::abs(downPos_.x - pos.x) > dragStartPixels ||

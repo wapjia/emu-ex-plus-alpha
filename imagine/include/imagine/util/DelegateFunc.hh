@@ -16,20 +16,21 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/util/concepts.hh>
+#ifndef IG_USE_MODULE_STD
 #include <utility>
 #include <new>
 #include <cstddef>
-#include <cassert>
 #include <array>
+#endif
 
 namespace IG
 {
 
-constexpr struct DelegateFuncDefaultInit{} delegateFuncDefaultInit;
+inline constexpr struct DelegateFuncDefaultInit{} delegateFuncDefaultInit;
 
-template <size_t, size_t, class, class ...> class DelegateFuncBase;
+template <size_t StorageSize, size_t Align, class Func> class DelegateFuncBase;
 
-template <size_t StorageSize, size_t Align, class R, class ...Args>
+template <size_t StorageSize, size_t Align, class R, class... Args>
 class DelegateFuncBase<StorageSize, Align, R(Args...)>
 {
 public:
@@ -82,7 +83,6 @@ public:
 	constexpr R operator()(CallArgs&&... args) const
 		requires ValidInvokeArgs<FreeFuncPtr, CallArgs...>
 	{
-		assert(exec);
 		return exec(store, std::forward<CallArgs>(args)...);
 	}
 
@@ -120,13 +120,13 @@ private:
 	R (*exec)(const Storage &, Args...){};
 };
 
-template <size_t StorageSize, size_t Align, class R, class ...Args>
-using DelegateFuncA = DelegateFuncBase<StorageSize, Align, R, Args...>;
+template <size_t StorageSize, size_t Align, class Func>
+using DelegateFuncA = DelegateFuncBase<StorageSize, Align, Func>;
 
-template <size_t StorageSize, class R, class ...Args>
-using DelegateFuncS = DelegateFuncBase<StorageSize, sizeof(void*), R, Args...>;
+template <size_t StorageSize, class Func>
+using DelegateFuncS = DelegateFuncBase<StorageSize, sizeof(void*), Func>;
 
-template <class R, class ...Args>
-using DelegateFunc = DelegateFuncBase<sizeof(void*)*2, sizeof(void*), R, Args...>;
+template <class Func>
+using DelegateFunc = DelegateFuncBase<sizeof(void*)*2, sizeof(void*), Func>;
 
 }

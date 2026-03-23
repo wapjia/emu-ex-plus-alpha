@@ -17,10 +17,12 @@
 
 #include <imagine/gui/viewDefs.hh>
 #include <imagine/util/DelegateFunc.hh>
-#include <imagine/util/utility.h>
 #include <imagine/util/string/utf16.hh>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
 #include <string_view>
+#include <utility>
+#endif
 
 namespace IG::Input
 {

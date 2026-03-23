@@ -17,11 +17,56 @@
 
 #include <imagine/time/Time.hh>
 #include <imagine/util/concepts.hh>
-#include "SampleFormat.hh"
+#ifndef IG_USE_MODULE_STD
 #include <cmath>
+#include <cstdint>
+#endif
 
 namespace IG::Audio
 {
+
+class SampleFormat
+{
+public:
+	constexpr SampleFormat() = default;
+	constexpr SampleFormat(uint8_t bytes, bool isFloat = false):
+		bytes_{bytes}, isFloat_{isFloat}{}
+
+	constexpr int bytes() const
+	{
+		return bytes_;
+	}
+
+	constexpr int bits() const
+	{
+		return bytes() * 8;
+	}
+
+	constexpr bool isFloat() const
+	{
+		return isFloat_;
+	}
+
+	constexpr bool operator ==(SampleFormat const& rhs) const = default;
+
+	constexpr explicit operator bool() const
+	{
+		return bytes();
+	}
+
+protected:
+	uint8_t bytes_:7{};
+	uint8_t isFloat_:1{};
+};
+
+namespace SampleFormats
+{
+	inline constexpr SampleFormat   i8{1};
+	inline constexpr SampleFormat  i16{2};
+	inline constexpr SampleFormat  i32{4};
+	inline constexpr SampleFormat  f32{4, true};
+	inline constexpr SampleFormat none;
+}
 
 struct Format
 {

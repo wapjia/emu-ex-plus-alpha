@@ -13,15 +13,16 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "ArchFS"
 #include <imagine/fs/ArchiveFS.hh>
 #include <imagine/io/IO.hh>
 #include <imagine/io/FileIO.hh>
-#include <imagine/util/utility.h>
 #include <imagine/util/string.h>
+#include <imagine/logger/SystemLogger.hh>
 
 namespace IG::FS
 {
+
+[[maybe_unused]] static SystemLogger log{"Archive"};
 
 template <class... Args>
 static std::shared_ptr<ArchiveIO> makeArchiveEntryPtr(Args&& ...args)
@@ -62,7 +63,7 @@ ArchiveIO* ArchiveIterator::operator->()
 
 void ArchiveIterator::operator++()
 {
-	assumeExpr(impl->hasEntry()); // incrementing end-iterator is undefined
+	assume(impl->hasEntry()); // incrementing end-iterator is undefined
 	impl->readNextEntry();
 }
 

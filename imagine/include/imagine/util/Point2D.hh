@@ -16,8 +16,10 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/util/AssignmentArithmetics.hh>
+#ifndef IG_USE_MODULE_STD
 #include <numeric>
 #include <cmath>
+#endif
 
 namespace IG
 {

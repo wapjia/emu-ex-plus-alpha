@@ -18,12 +18,14 @@
 #include <imagine/config/defs.hh>
 #include <imagine/fs/PosixFS.hh>
 #include <imagine/util/string/CStringView.hh>
-#include <imagine/util/string/uri.hh>
+#ifndef IG_USE_MODULE_STD
 #include <concepts>
 #include <cstddef>
 #include <memory>
 #include <iterator>
 #include <string_view>
+#include <utility>
+#endif
 
 // Tries to mirror API of C++ filesystem TS library in most cases
 
@@ -74,46 +76,7 @@ bool remove(CStringView path);
 bool create_directory(CStringView path);
 bool rename(CStringView oldPath, CStringView newPath);
 
-PathString makeAppPathFromLaunchCommand(CStringView launchPath);
-FileString basename(CStringView path);
-PathString dirname(CStringView path);
-FileString displayName(CStringView path);
-
-// URI path functions
-static constexpr std::string_view uriPathSegmentTreeName{"/tree/"};
-static constexpr std::string_view uriPathSegmentDocumentName{"/document/"};
-PathString dirnameUri(CStringView pathOrUri);
-std::pair<std::string_view, size_t> uriPathSegment(std::string_view uri, std::string_view segmentName);
-
-template <class T>
-concept ConvertibleToPathString = std::convertible_to<T, PathStringImpl> || std::convertible_to<T, std::string_view>;
-
-static constexpr PathString pathString(ConvertibleToPathString auto &&base, auto &&...components)
-{
-	PathString path{IG_forward(base)};
-	([&]()
-	{
-		path += '/';
-		path += IG_forward(components);
-	}(), ...);
-	return path;
-}
-
-static constexpr PathString uriString(ConvertibleToPathString auto &&base, auto &&...components)
-{
-	if(!isUri(base))
-		return pathString(IG_forward(base), IG_forward(components)...);
-	// assumes base is already encoded and encodes the components
-	PathString uri{IG_forward(base)};
-	([&]()
-	{
-		uri += "%2F";
-		uri += encodeUri<PathString>(IG_forward(components));
-	}(), ...);
-	return uri;
-}
-
-static PathString createDirectorySegments(ConvertibleToPathString auto &&base, auto &&...components)
+inline PathString createDirectorySegments(ConvertibleToPathString auto &&base, auto &&...components)
 {
 	PathString path{IG_forward(base)};
 	([&]()

@@ -19,9 +19,11 @@
 #include <imagine/gui/View.hh>
 #include <imagine/gui/NavView.hh>
 #include <imagine/gfx/Quads.hh>
+#ifndef IG_USE_MODULE_STD
 #include <vector>
 #include <memory>
 #include <string_view>
+#endif
 
 namespace IG
 {

@@ -15,8 +15,7 @@
 
 #include "CPUAffinityView.hh"
 #include <emuframework/EmuApp.hh>
-#include <cstdio>
-#include <format>
+import imagine;
 
 namespace EmuEx
 {
@@ -37,7 +36,7 @@ CPUAffinityView::CPUAffinityView(ViewAttachParams attach, int cpuCount):
 		{
 			.onSetDisplayString = [this](auto idx, Gfx::Text &t)
 			{
-				t.resetString(wise_enum::to_string(CPUAffinityMode(affinityModeItems[idx].id.val)));
+				t.resetString(enumName(CPUAffinityMode(affinityModeItems[idx].id.val)));
 				return true;
 			},
 			.defaultItemOnSelect = [this](TextMenuItem &item) { app().cpuAffinityMode = CPUAffinityMode(item.id.val); }
@@ -48,7 +47,7 @@ CPUAffinityView::CPUAffinityView(ViewAttachParams attach, int cpuCount):
 	menuItems.emplace_back(&affinityMode);
 	menuItems.emplace_back(&cpusHeading);
 	cpuAffinityItems.reserve(cpuCount);
-	for(int i : iotaCount(cpuCount))
+	for(int i: iotaCount(cpuCount))
 	{
 		auto &item = cpuAffinityItems.emplace_back([&]
 			{

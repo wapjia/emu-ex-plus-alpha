@@ -13,21 +13,18 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "DBus"
+#include <imagine/base/Application.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <unistd.h>
 #include <sys/param.h>
 #include <gio/gio.h>
-#include <imagine/base/EventLoop.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/base/Application.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/logger/logger.h>
 
 namespace IG
 {
 
-#define DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER 1
-static constexpr const char *appObjectPath = "/com/explusalpha/imagine";
+static SystemLogger log{"DBus"};
+constexpr const char *appObjectPath = "/com/explusalpha/imagine";
+constexpr uint32_t DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER = 1;
 
 bool LinuxApplication::initDBus()
 {
@@ -37,7 +34,7 @@ bool LinuxApplication::initDBus()
 	gbus = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &err);
 	if(!gbus)
 	{
-		logErr("error getting DBUS session: %s", err->message);
+		log.error("error getting DBUS session:{}", err->message);
 		g_error_free(err);
 		return false;
 	}
@@ -63,7 +60,7 @@ static guint setOpenPathListener(LinuxApplication &app, GDBusConnection *bus, co
 		{
 			if(!g_variant_is_of_type(param, G_VARIANT_TYPE("(s)")))
 			{
-				logErr("invalid arg type for signal openPath");
+				log.error("invalid arg type for signal openPath");
 				return;
 			}
 			gchar *openPath;
@@ -88,7 +85,7 @@ static bool uniqueInstanceRunning(GDBusConnection *bus, const char *name)
 		&err);
 	if(err)
 	{
-		logErr("error calling RequestName: %s", err->message);
+		log.error("error calling RequestName:{}", err->message);
 		g_error_free(err);
 		return false;
 	}
@@ -97,12 +94,12 @@ static bool uniqueInstanceRunning(GDBusConnection *bus, const char *name)
 	g_variant_unref(retVar);
 	if(reply == DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)
 	{
-		logMsg("no running instance detected");
+		log.info("no running instance detected");
 		return false;
 	}
 	else
 	{
-		logMsg("running instance detected");
+		log.info("running instance detected");
 		return true;
 	}
 }
@@ -136,13 +133,13 @@ void LinuxApplication::setIdleDisplayPowerSave(bool wantsAllowScreenSaver)
 			&err);
 		if(err)
 		{
-			logErr("error calling Inhibit: %s", err->message);
+			log.error("error calling Inhibit:{}", err->message);
 			g_error_free(err);
 			return;
 		}
 		g_variant_get(retVar, "(u)", &screenSaverCookie);
 		g_variant_unref(retVar);
-		logMsg("Got screensaver inhibit cookie:%u", screenSaverCookie);
+		log.info("Got screensaver inhibit cookie:{}", screenSaverCookie);
 	}
 	allowScreenSaver = wantsAllowScreenSaver;
 }
@@ -180,12 +177,12 @@ bool LinuxApplication::registerInstance(ApplicationInitParams initParams, const 
 	{
 		if(!realpath(path, realPath))
 		{
-			logErr("error in realpath()");
+			log.error("error in realpath()");
 			exit(1);
 		}
 		path = realPath;
 	}
-	logMsg("sending dbus signal to other instance with arg: %s", path);
+	log.info("sending dbus signal to other instance with arg:{}", path);
 	g_dbus_connection_emit_signal(gbus,
 		name, appObjectPath, name,
 		"openPath", g_variant_new("(s)", path),

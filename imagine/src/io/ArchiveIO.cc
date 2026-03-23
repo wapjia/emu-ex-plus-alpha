@@ -13,21 +13,22 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "ArchIO"
 #include <imagine/io/ArchiveIO.hh>
-#include <imagine/io/IO.hh>
 #include <imagine/io/FileIO.hh>
+#include <imagine/io/IO.hh>
+#include <imagine/io/IOUtils-impl.hh>
 #include <imagine/fs/FSDefs.hh>
 #include <imagine/util/variant.hh>
-#include <imagine/logger/logger.h>
-#include "utils.hh"
-#include <imagine/io/IOUtils-impl.hh>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <archive.h>
 #include <archive_entry.h>
-#include <format>
+import imagine.internal.io;
 
 namespace IG
 {
+
+static SystemLogger log{"ArchiveIO"};
 
 template class IOUtils<ArchiveIO>;
 
@@ -104,7 +105,7 @@ void ArchiveIO::init(IO io)
 			auto newPos = a.io.seek(offset, (IOSeekMode)whence);
 			if(newPos == -1)
 			{
-				logErr("error seeking to %llu", (long long)newPos);
+				log.error("error seeking to {}", newPos);
 				return ARCHIVE_FATAL;
 			}
 			return newPos;
@@ -165,10 +166,10 @@ void ArchiveIO::init(IO io)
 	{
 		auto errString = archive_error_string(newArch.get());
 		if(Config::DEBUG_BUILD)
-			logErr("error opening archive:%s", errString);
+			log.error("error opening archive:{}", errString);
 		throw std::runtime_error{std::format("Error opening archive: {}", errString)};
 	}
-	logMsg("opened archive:%p", newArch.get());
+	log.info("opened archive:{}", (void*)newArch.get());
 	arch = std::move(newArch);
 	ctrlBlock = std::move(newCtrlBlock);
 	readNextEntry(); // go to first entry
@@ -178,32 +179,32 @@ void ArchiveIO::freeArchive(struct archive *arch)
 {
 	if(!arch)
 		return;
-	logMsg("freeing archive:%p", arch);
+	log.info("freeing archive:{}", (void*)arch);
 	archive_read_free(arch);
 }
 
 std::string_view ArchiveIO::name() const
 {
-	assumeExpr(ptr);
+	assume(ptr);
 	auto name = archive_entry_pathname(ptr);
 	return name ? name : "";
 }
 
 FS::file_type ArchiveIO::type() const
 {
-	assumeExpr(ptr);
+	assume(ptr);
 	return makeEntryType(archive_entry_filetype(ptr));
 }
 
 size_t ArchiveIO::size()
 {
-	assumeExpr(ptr);
+	assume(ptr);
 	return archive_entry_size(ptr);
 }
 
 uint32_t ArchiveIO::crc32() const
 {
-	assumeExpr(ptr);
+	assume(ptr);
 	return archive_entry_crc32(ptr);
 }
 
@@ -216,19 +217,19 @@ bool ArchiveIO::readNextEntry()
 	auto ret = archive_read_next_header(arch.get(), &entryPtr);
 	if(ret == ARCHIVE_EOF)
 	{
-		logMsg("reached archive end");
+		log.info("reached archive end");
 		return false;
 	}
 	else if(ret <= ARCHIVE_FAILED)
 	{
 		if(Config::DEBUG_BUILD)
-			logErr("error reading archive entry:%s", archive_error_string(arch.get()));
+			log.error("error reading archive entry:{}", archive_error_string(arch.get()));
 		return false;
 	}
 	else if(ret != ARCHIVE_OK)
 	{
 		if(Config::DEBUG_BUILD)
-			logWarn("warning reading archive entry:%s", archive_error_string(arch.get()));
+			log.warn("warning reading archive entry:{}", archive_error_string(arch.get()));
 	}
 	ptr = entryPtr;
 	return true;
@@ -243,7 +244,7 @@ void ArchiveIO::rewind()
 {
 	if(!arch) [[unlikely]]
 		return;
-	logMsg("rewinding archive:%p", arch.get());
+	log.info("rewinding archive:{}", (void*)arch.get());
 	// take the existing IO, rewind, and re-use it
 	auto io = std::move(ctrlBlock->io);
 	io.rewind();
@@ -291,7 +292,7 @@ off_t ArchiveIO::seek(off_t offset, IOSeekMode mode)
 		{
 			return 0;
 		}
-		logErr("seek to offset %lld failed", (long long)offset);
+		log.error("seek to offset {} failed", offset);
 		return -1;
 	}
 	return newPos;

@@ -5,7 +5,6 @@
 #endif
 
 #include <EGL/egl.h>
-#include <imagine/logger/logger.h>
 #include <span>
 
 #ifndef EGL_CONTEXT_MAJOR_VERSION_KHR
@@ -89,7 +88,7 @@ static EGLint eglConfigAttrib(EGLDisplay display, EGLConfig config, EGLint attrI
 	return val;
 }
 
-static void printEGLConf(EGLDisplay display, EGLConfig config)
+static void printEGLConf(EGLDisplay display, EGLConfig config, auto& log)
 {
 	EGLint id = eglConfigAttrib(display, config, EGL_CONFIG_ID);
 	EGLint buffSize = eglConfigAttrib(display, config, EGL_BUFFER_SIZE);
@@ -109,7 +108,7 @@ static void printEGLConf(EGLDisplay display, EGLConfig config)
 	EGLint maxSwap = eglConfigAttrib(display, config, EGL_MAX_SWAP_INTERVAL);
 	EGLint samples = eglConfigAttrib(display, config, EGL_SAMPLES);
 	EGLint sampleBuffs = eglConfigAttrib(display, config, EGL_SAMPLE_BUFFERS);
-	logMsg("config:0x%X %d:%d:%d:%d (%d) cav:%s(0x%X) ds:%d-%d nid:0x%X nrend:%d ntype:0x%X stype:%s(0x%X) rtype:%s(0x%X) ms:%d %d swap:%d-%d",
+	log.info("config:{:X} {}:{}:{}:{} ({}) cav:{}({:X}) ds:{}-{} nid:{:X} nrend:{} ntype:{:X} stype:{}({:X}) rtype:{}({:X}) ms:{} {} swap:{}-{}",
 			id, redSize, greenSize, blueSize, alphaSize, buffSize,
 			eglConfigCaveatToStr(cav), cav, depthSize, stencilSize,
 			nID, nRend, nType, eglSurfaceTypeToStr(sType), sType,
@@ -117,27 +116,27 @@ static void printEGLConf(EGLDisplay display, EGLConfig config)
 			minSwap, maxSwap);
 }
 
-inline void printEGLConfs(EGLDisplay display)
+inline void printEGLConfs(EGLDisplay display, auto& log)
 {
 	EGLConfig conf[96];
 	EGLint num = 0;
 	eglGetConfigs(display, conf, std::size(conf), &num);
-	logMsg("EGLDisplay has %d configs:", num);
-	for(auto c : std::span<EGLConfig>{conf, (size_t)num})
+	log.info("EGLDisplay has {} configs:", num);
+	for(auto c : std::span<EGLConfig>{conf, std::size_t(num)})
 	{
-		printEGLConf(display, c);
+		printEGLConf(display, c, log);
 	}
 }
 
-inline void printEGLConfsWithAttr(EGLDisplay display, const EGLint *attr)
+inline void printEGLConfsWithAttr(EGLDisplay display, const EGLint *attr, auto& log)
 {
 	EGLConfig conf[96];
 	EGLint num = 0;
 	eglChooseConfig(display, attr, conf, std::size(conf), &num);
-	logMsg("got %d configs", num);
-	for(auto c : std::span<EGLConfig>{conf, (size_t)num})
+	log.info("got {} configs", num);
+	for(auto c : std::span<EGLConfig>{conf, std::size_t(num)})
 	{
-		printEGLConf(display, c);
+		printEGLConf(display, c, log);
 	}
 }
 

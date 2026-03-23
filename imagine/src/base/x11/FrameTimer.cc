@@ -13,14 +13,14 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <imagine/config/macros.h>
 #include <imagine/base/Application.hh>
-#include <imagine/logger/logger.h>
-#include <memory>
+#include <imagine/logger/SystemLogger.hh>
 
 namespace IG
 {
 
-constexpr SystemLogger log{"FrameTimer"};
+static SystemLogger log{"FrameTimer"};
 
 void XApplication::emplaceFrameTimer(FrameTimer &t, Screen &screen, bool useVariableTime)
 {

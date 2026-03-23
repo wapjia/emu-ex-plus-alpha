@@ -13,8 +13,7 @@
 	You should have received a copy of the GNU General Public License
 	along with MD.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/EmuAppInlines.hh>
-#include <emuframework/EmuSystemInlines.hh>
+module;
 #include "system.h"
 #include "loadrom.h"
 #include "md_cart.h"
@@ -31,75 +30,29 @@
 #include <scd/scd.h>
 #include <mednafen/mednafen.h>
 #include <mednafen/cdrom/CDAccess.h>
-#include <mednafen-emuex/ArchiveVFS.hh>
 #endif
-#include "Cheats.hh"
-#include <imagine/fs/FS.hh>
-#include <imagine/fs/ArchiveFS.hh>
-#include <imagine/io/FileIO.hh>
-#include <imagine/util/format.hh>
-#include <imagine/util/ScopeGuard.hh>
 
-t_config config{};
-t_bitmap bitmap{};
-bool config_ym2413_enabled = true;
+module system;
 
 namespace EmuEx
 {
 
-constexpr SystemLogger log{"MD.emu"};
-const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2025\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nGenesis Plus Team\nsegaretro.org/Genesis_Plus";
-bool EmuSystem::hasCheats = true;
-bool EmuSystem::hasPALVideoSystem = true;
-bool EmuSystem::canRenderRGBA8888 = RENDER_BPP == 32;
-bool EmuSystem::hasRectangularPixels = true;
-bool EmuApp::needsGlobalInstance = true;
-
-MdApp::MdApp(ApplicationInitParams initParams, ApplicationContext &ctx):
-	EmuApp{initParams, ctx}, mdSystem{ctx}
+extern "C++" FS::PathString EmuSystem::willLoadContentFromPath(std::string_view path, std::string_view displayName)
 {
-	audio_init(44100, 60);
-}
-
-static bool hasBinExtension(std::string_view name)
-{
-	return IG::endsWithAnyCaseless(name, ".bin");
-}
-
-bool hasMDExtension(std::string_view name)
-{
-	return hasBinExtension(name) || IG::endsWithAnyCaseless(name, ".smd", ".md", ".gen"
-		#ifndef NO_SYSTEM_PBC
-		, ".sms"
-		#endif
-		);
-}
-
-static bool hasMDCDExtension(std::string_view name)
-{
-	return IG::endsWithAnyCaseless(name, ".cue", ".iso", ".chd");
-}
-
-static bool hasMDWithCDExtension(std::string_view name)
-{
-	return hasMDExtension(name)
 	#ifndef NO_SCD
-		|| hasMDCDExtension(name)
+	// check if loading a .bin with matching .cue
+	if(hasBinExtension(path))
+	{
+		FS::PathString possibleCuePath{path};
+		possibleCuePath.replace(possibleCuePath.end() - 3, possibleCuePath.end(), "cue");
+		return possibleCuePath;
+	}
 	#endif
-	;
+	return {};
 }
 
-const char *EmuSystem::shortSystemName() const
-{
-	return "MD-Genesis";
-}
-
-const char *EmuSystem::systemName() const
-{
-	return "Mega Drive (Sega Genesis)";
-}
-
-EmuSystem::NameFilterFunc EmuSystem::defaultFsFilter = hasMDWithCDExtension;
+extern "C++" std::string_view EmuSystem::shortSystemName() const { return "MD-Genesis"; }
+extern "C++" std::string_view EmuSystem::systemName() const { return "Mega Drive (Sega Genesis)"; }
 
 void MdSystem::runFrame(EmuSystemTaskContext taskCtx, EmuVideo *video, EmuAudio *audio)
 {
@@ -114,7 +67,7 @@ void MdSystem::runFrame(EmuSystemTaskContext taskCtx, EmuVideo *video, EmuAudio 
 	}
 }
 
-void MdSystem::renderFramebuffer(EmuVideo &video)
+void MdSystem::renderFramebuffer(EmuVideo& video)
 {
 	video.startFrameWithAltFormat({}, framebufferRenderFormatPixmap());
 }
@@ -123,7 +76,7 @@ VideoSystem MdSystem::videoSystem() const { return vdp_pal ? VideoSystem::PAL : 
 
 void MdSystem::reset(EmuApp &, ResetMode mode)
 {
-	assert(hasContent());
+	assume(hasContent());
 	#ifndef NO_SCD
 	if(sCD.isActive)
 		system_reset();
@@ -134,15 +87,15 @@ void MdSystem::reset(EmuApp &, ResetMode mode)
 
 FS::FileString MdSystem::stateFilename(int slot, std::string_view name) const
 {
-	return IG::format<FS::FileString>("{}.{}.gp", name, saveSlotCharAiWu(slot));//爱吾修改：修改即时存档插槽名
+	return format<FS::FileString>("{}.{}.gp", name, saveSlotCharAiWu(slot));//爱吾修改：修改即时存档插槽名
 }
 
-static FS::PathString saveFilename(EmuApp &app)
+static FS::PathString saveFilename(EmuApp& app)
 {
 	return app.contentSaveFilePath(".srm");
 }
 
-static FS::PathString bramSaveFilename(EmuApp &app)
+static FS::PathString bramSaveFilename(EmuApp& app)
 {
 	return app.contentSaveFilePath(".brm");
 }
@@ -154,7 +107,7 @@ void MdSystem::readState(EmuApp &app, std::span<uint8_t> buff)
 
 size_t MdSystem::writeState(std::span<uint8_t> buff, SaveStateFlags flags)
 {
-	assert(buff.size() == maxSaveStateSize);
+	assume(buff.size() == maxSaveStateSize);
 	return state_save(buff.data(), flags.uncompressed);
 }
 
@@ -178,7 +131,7 @@ void MdSystem::loadBackupMemory(EmuApp &app)
 		if(!bramFile)
 		{
 			log.info("no BRAM on disk, formatting");
-			IG::fill(bram);
+			fill(bram);
 			memcpy(bram + sizeof(bram) - sizeof(fmtBram), fmtBram, sizeof(fmtBram));
 			auto sramFormatStart = sram.sram + 0x10000 - sizeof(fmt64kSram);
 			memcpy(sramFormatStart, fmt64kSram, sizeof(fmt64kSram));
@@ -219,7 +172,7 @@ void MdSystem::loadBackupMemory(EmuApp &app)
 	}
 }
 
-void MdSystem::onFlushBackupMemory(EmuApp &app, BackupMemoryDirtyFlags)
+void MdSystem::onFlushBackupMemory(EmuApp& app, BackupMemoryDirtyFlags)
 {
 	if(!hasContent())
 		return;
@@ -279,7 +232,7 @@ void MdSystem::onFlushBackupMemory(EmuApp &app, BackupMemoryDirtyFlags)
 	}
 }
 
-WallClockTimePoint MdSystem::backupMemoryLastWriteTime(const EmuApp &app) const
+WallClockTimePoint MdSystem::backupMemoryLastWriteTime(const EmuApp& app) const
 {
 	return appContext().fileUriLastWriteTime(
 		app.contentSaveFilePath(sCD.isActive ? ".brm" : ".srm").c_str());
@@ -310,26 +263,12 @@ static unsigned detectISORegion(uint8 bootSector[0x800])
 		return REGION_JAPAN_NTSC;
 }
 
-FS::PathString EmuSystem::willLoadContentFromPath(std::string_view path, std::string_view displayName)
-{
-	#ifndef NO_SCD
-	// check if loading a .bin with matching .cue
-	if(hasBinExtension(path))
-	{
-		FS::PathString possibleCuePath{path};
-		possibleCuePath.replace(possibleCuePath.end() - 3, possibleCuePath.end(), "cue");
-		return possibleCuePath;
-	}
-	#endif
-	return {};
-}
-
-void MdSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDelegate)
+void MdSystem::loadContent(IO& io, EmuSystemCreateParams, OnLoadProgressDelegate)
 {
 	#ifndef NO_SCD
 	using namespace Mednafen;
 	CDAccess *cd{};
-	auto deleteCDAccess = IG::scopeGuard([&](){ delete cd; });
+	auto deleteCDAccess = scopeGuard([&](){ delete cd; });
 	if(hasMDCDExtension(contentFileName()) ||
 		(hasBinExtension(contentFileName()) && io.size() > 1024*1024*10)) // CD
 	{
@@ -427,7 +366,7 @@ void MdSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDelegate
 		log.info("using PAL timing");
 
 	system_init();
-	for(auto i : iotaCount(2))
+	for(auto i: iotaCount(2))
 	{
 		if(old_system[i] != -1)
 			old_system[i] = input.system[i]; // store input ports set by game
@@ -460,22 +399,10 @@ void MdSystem::configAudioRate(FrameRate outputFrameRate, int outputRate)
 	sound_restore();
 }
 
-bool MdSystem::onVideoRenderFormatChange(EmuVideo &, IG::PixelFormat fmt)
+bool MdSystem::onVideoRenderFormatChange(EmuVideo&, PixelFormat fmt)
 {
 	setFramebufferRenderFormat(fmt);
 	return false;
-}
-
-void EmuApp::onCustomizeNavView(EmuApp::NavView &view)
-{
-	const Gfx::LGradientStopDesc navViewGrad[] =
-	{
-		{ .0, Gfx::PackedColor::format.build(0., 0., 1. * .4, 1.) },
-		{ .3, Gfx::PackedColor::format.build(0., 0., 1. * .4, 1.) },
-		{ .97, Gfx::PackedColor::format.build(0., 0., .6 * .4, 1.) },
-		{ 1., view.separatorColor() },
-	};
-	view.setBackgroundGradient(navViewGrad);
 }
 
 }

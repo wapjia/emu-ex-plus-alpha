@@ -26,7 +26,9 @@ class PerformanceHintSessionImpl {};
 
 #include <imagine/thread/Thread.hh>
 #include <imagine/time/Time.hh>
+#ifndef IG_USE_MODULE_STD
 #include <span>
+#endif
 
 namespace IG
 {

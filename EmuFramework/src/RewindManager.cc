@@ -16,11 +16,12 @@
 #include <emuframework/RewindManager.hh>
 #include <emuframework/EmuApp.hh>
 #include <emuframework/Option.hh>
-#include <emuframework/EmuOptions.hh>
-#include <imagine/logger/logger.h>
+import imagine;
 
 namespace EmuEx
 {
+
+using namespace IG;
 
 constexpr SystemLogger log{"RewindMgr"};
 constexpr Seconds defaultSaveFreq{1};
@@ -67,8 +68,8 @@ bool RewindManager::reset()
 
 void RewindManager::saveState(EmuApp &app)
 {
-	assumeExpr(maxStates);
-	assumeExpr(stateIdx < maxStates);
+	assume(maxStates);
+	assume(stateIdx < maxStates);
 	//log.debug("saving rewind state index:{}", stateIdx);
 	auto &entry = stateEntries[stateIdx];
 	stateIdx = stateIdx + 1 == maxStates ? 0 : stateIdx + 1;
@@ -79,7 +80,7 @@ void RewindManager::rewindState(EmuApp &app)
 {
 	if(!maxStates)
 		return;
-	assumeExpr(stateIdx < maxStates);
+	assume(stateIdx < maxStates);
 	auto prevIdx = stateIdx ? stateIdx - 1 : maxStates - 1;
 	auto &entry = stateEntries[prevIdx];
 	if(!entry.size)
@@ -121,6 +122,5 @@ void RewindManager::writeConfig(FileIO &io) const
 	writeOptionValueIfNotDefault(io, CFGKEY_REWIND_STATES, uint32_t(maxStates), 0u);
 	writeOptionValueIfNotDefault(io, CFGKEY_REWIND_TIMER_SECS, int16_t(saveTimer.frequency.count()), defaultSaveFreq.count());
 }
-
 
 }

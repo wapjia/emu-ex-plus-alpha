@@ -13,30 +13,18 @@
 	You should have received a copy of the GNU General Public License
 	along with PCE.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/EmuApp.hh>
-#include <emuframework/EmuInput.hh>
-#include <emuframework/Option.hh>
-#include "MainSystem.hh"
-#include <pce/pcecd.h>
-#include <pce/vce.h>
-#include <pce_fast/pcecd.h>
-#include <mednafen-emuex/MDFNUtils.hh>
+module;
+#include <mednafen/mednafen.h>
 #include <mednafen/general.h>
+#include <mednafen/state.h>
+#include "mdfnDefs.hh"
+#include <pce/pcecd.h>
+#include <pce_fast/pcecd.h>
+
+module system;
 
 namespace EmuEx
 {
-
-const char *EmuSystem::configFilename = "PceEmu.config";
-
-std::span<const AspectRatioInfo> PceSystem::aspectRatioInfos()
-{
-	static constexpr AspectRatioInfo aspectRatioInfo[]
-	{
-		{"4:3 (原画)", {4, 3}},
-		EMU_SYSTEM_DEFAULT_ASPECT_RATIO_INFO_INIT
-	};
-	return aspectRatioInfo;
-}
 
 static bool visibleLinesAreValid(VisibleLines lines)
 {
@@ -201,7 +189,7 @@ void PceSystem::setAdpcmFilter(bool on)
 
 }
 
-namespace Mednafen
+extern "C++" namespace Mednafen
 {
 
 using namespace EmuEx;
@@ -228,7 +216,8 @@ uint64 MDFN_GetSettingUI(const char *name_)
 		return 3;
 	if("pce.vramsize" == name)
 		return 32768;
-	bug_unreachable("unhandled settingUI %s", name_);
+	PceSystem::log.error("unhandled settingUI {}", name_);
+	unreachable();
 }
 
 int64 MDFN_GetSettingI(const char *name_)
@@ -238,7 +227,8 @@ int64 MDFN_GetSettingI(const char *name_)
 		return 2; //PCE_PSG::_REVISION_COUNT
 	if("filesys.state_comp_level" == name)
 		return 6;
-	bug_unreachable("unhandled settingI %s", name_);
+	PceSystem::log.error("unhandled settingI {}", name_);
+	unreachable();
 }
 
 double MDFN_GetSettingF(const char *name_)
@@ -248,7 +238,8 @@ double MDFN_GetSettingF(const char *name_)
 		return 0.50;
 	if("pce.resamp_rate_error" == name)
 		return 0.0000009;
-	bug_unreachable("unhandled settingF %s", name_);
+	PceSystem::log.error("unhandled settingF {}", name_);
+	unreachable();
 }
 
 bool MDFN_GetSettingB(const char *name_)
@@ -281,7 +272,8 @@ bool MDFN_GetSettingB(const char *name_)
 		return false;
 	if("filesys.untrusted_fip_check" == name)
 		return 0;
-	bug_unreachable("unhandled settingB %s", name_);
+	PceSystem::log.error("unhandled settingB {}", name_);
+	unreachable();
 }
 
 std::string MDFN_GetSettingS(const char *name_)
@@ -291,7 +283,8 @@ std::string MDFN_GetSettingS(const char *name_)
 		return {};
 	if("pce.gecdbios" == name)
 		return {};
-	bug_unreachable("unhandled settingS %s", name_);
+	PceSystem::log.error("unhandled settingS {}", name_);
+	unreachable();
 }
 
 std::string MDFN_MakeFName(MakeFName_Type type, int id1, const char *cd1)
@@ -301,16 +294,15 @@ std::string MDFN_MakeFName(MakeFName_Type type, int id1, const char *cd1)
 		case MDFNMKF_STATE:
 		case MDFNMKF_SAV:
 		case MDFNMKF_SAVBACK:
-			return savePathMDFN(id1, cd1);
+			return savePathMDFN(static_cast<PceApp&>(EmuEx::gApp()), id1, cd1);
 		case MDFNMKF_FIRMWARE:
 		{
 			// pce-specific
 			auto &sys = static_cast<PceSystem&>(gSystem());
-			logMsg("system card path:%s", sys.sysCardPath.data());
+			PceSystem::log.info("system card path:{}", sys.sysCardPath);
 			return std::string{sys.sysCardPath};
 		}
-		default:
-			bug_unreachable("type == %d", type);
+		default: unreachable();
 	}
 }
 

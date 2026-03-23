@@ -13,20 +13,19 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/gfx/RendererCommands.hh>
+#include <imagine/config/macros.h>
 #include <imagine/gfx/RendererTask.hh>
 #include <imagine/gfx/Renderer.hh>
 #include <imagine/gfx/Texture.hh>
-#include <imagine/base/Screen.hh>
-#include <imagine/base/Window.hh>
-#include <imagine/thread/Thread.hh>
-#include "internalDefs.hh"
-#include "utils.hh"
+#include <imagine/util/opengl/glUtils.hh>
+#include <imagine/logger/SystemLogger.hh>
+#include <imagine/util/opengl/glHeaders.h>
+import imagine.internal.gfxOpengl;
 
 namespace IG::Gfx
 {
 
-constexpr SystemLogger log{"RendererTask"};
+static SystemLogger log{"RendererTask"};
 
 GLRendererTask::GLRendererTask(ApplicationContext ctx, Renderer &r):
 	GLRendererTask{ctx, {}, r} {}
@@ -49,7 +48,7 @@ void GLRendererTask::initDefaultFramebuffer()
 
 GLuint GLRendererTask::bindFramebuffer(Texture &tex)
 {
-	assert(tex);
+	assume(tex);
 	if(!fbo) [[unlikely]]
 	{
 		glGenFramebuffers(1, &fbo);
@@ -77,7 +76,7 @@ void GLRendererTask::doPreDraw(Window &win, WindowDrawParams winParams, DrawPara
 		log.warn("draw() called without context");
 		return;
 	}
-	assumeExpr(winData(win).drawable);
+	assume(winData(win).drawable);
 	if(params.asyncMode == DrawAsyncMode::AUTO)
 	{
 		params.asyncMode = DrawAsyncMode::PRESENT;
@@ -192,10 +191,10 @@ void GLRendererTask::runInitialCommandsInGL(TaskContext ctx, DrawContextSupport 
 	}
 	if(!support.hasVAOFuncs())
 	{
-		runGLCheckedVerbose([&]()
+		GL::runChecked([&]()
 		{
 			glEnableVertexAttribArray(VATTR_POS);
-		}, "glEnableVertexAttribArray(VATTR_POS)");
+		}, log, Renderer::checkGLErrorsVerbose, "glEnableVertexAttribArray(VATTR_POS)");
 	}
 	glClearColor(0., 0., 0., 1.);
 	if constexpr((bool)Config::Gfx::OPENGL_ES)
@@ -214,7 +213,7 @@ void GLRendererTask::verifyCurrentContext() const
 	auto currentCtx = GLManager::currentContext();
 	if(currentCtx != glContext()) [[unlikely]]
 	{
-		bug_unreachable("expected GL context:%p but current is:%p", (NativeGLContext)glContext(), currentCtx);
+		log.error("expected GL context:{} but current is:{}", (void*)(NativeGLContext)glContext(), (void*)currentCtx);
 	}
 }
 
@@ -235,7 +234,7 @@ void RendererTask::deleteSyncFence(SyncFence fence)
 {
 	if(!fence.sync)
 		return;
-	assumeExpr(r->support.hasSyncFences());
+	assume(r->support.hasSyncFences());
 	const bool canPerformInCurrentThread = Config::GL_PLATFORM_EGL;
 	if(canPerformInCurrentThread)
 	{
@@ -256,7 +255,7 @@ void RendererTask::clientWaitSync(SyncFence fence, int flags, std::chrono::nanos
 {
 	if(!fence.sync)
 		return;
-	assumeExpr(r->support.hasSyncFences());
+	assume(r->support.hasSyncFences());
 	const bool canPerformInCurrentThread = Config::GL_PLATFORM_EGL && !flags;
 	if(canPerformInCurrentThread)
 	{
@@ -287,7 +286,7 @@ void RendererTask::waitSync(SyncFence fence)
 {
 	if(!fence.sync)
 		return;
-	assumeExpr(r->support.hasSyncFences());
+	assume(r->support.hasSyncFences());
 	GLTask::run(
 		[&support = r->support, sync = fence.sync](TaskContext ctx)
 		{

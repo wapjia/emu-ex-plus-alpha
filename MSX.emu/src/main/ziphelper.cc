@@ -13,29 +13,17 @@
 	You should have received a copy of the GNU General Public License
 	along with MSX.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "main"
+module;
 #include <archive.h>
 #include <archive_entry.h>
-#include <imagine/fs/ArchiveFS.hh>
-#include <imagine/io/IO.hh>
-#include <imagine/io/FileIO.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/util/string.h>
-#include <imagine/util/ScopeGuard.hh>
 #include "ziphelper.h"
-#include "MainSystem.hh"
-#include <cstdlib>
 
-namespace EmuEx
-{
-IG::ApplicationContext gAppContext();
+module system;
 
-constexpr SystemLogger log{"MSX.emu"};
-}
-
+using namespace IG;
 using namespace EmuEx;
 
-static struct archive *writeArch{};
+static archive* writeArch{};
 static FS::ArchiveIterator cachedZipIt{};
 static FS::PathString cachedZipName{};
 static uint8_t *buffData{};
@@ -53,12 +41,12 @@ static void unsetCachedReadZip()
 {
 	cachedZipIt = {};
 	cachedZipName = {};
-	EmuEx::log.info("unset cached read zip archive");
+	MsxSystem::log.info("unset cached read zip archive");
 }
 
-void zipCacheReadOnlyZip(const char* zipName_)
+extern "C" void zipCacheReadOnlyZip(const char* zipName_)
 {
-	if(!zipName_ || !strlen(zipName_))
+	if(!zipName_ || !std::strlen(zipName_))
 	{
 		unsetCachedReadZip();
 		return;
@@ -69,19 +57,19 @@ void zipCacheReadOnlyZip(const char* zipName_)
 		cachedZipName = zipName;
 		if(zipName == ":::B")
 		{
-			EmuEx::log.info("using memory buffer as cached read zip archive");
+			MsxSystem::log.info("using memory buffer as cached read zip archive");
 			std::span buff{buffData, buffSize};
 			cachedZipIt = IO{buff};
 		}
 		else
 		{
-			EmuEx::log.info("setting cached read zip archive:{}", zipName);
+			MsxSystem::log.info("setting cached read zip archive:{}", zipName);
 			cachedZipIt = {EmuEx::gAppContext().openFileUri(zipName)};
 		}
 	}
 }
 
-static void *loadFromArchiveIt(FS::ArchiveIterator &it, const char* zipName, const char* fileName, int* size)
+static void* loadFromArchiveIt(FS::ArchiveIterator& it, const char* zipName, const char* fileName, int* size)
 {
 	for(auto &entry : it)
 	{
@@ -93,18 +81,18 @@ static void *loadFromArchiveIt(FS::ArchiveIterator &it, const char* zipName, con
 		if(entry.name() == fileName)
 		{
 			int fileSize = entry.size();
-			void *buff = malloc(fileSize);
+			void *buff = std::malloc(fileSize);
 			entry.read(buff, fileSize);
 			*size = fileSize;
 			return buff;
 		}
 	}
-	logErr("file %s not in %sarchive:%s", fileName,
+	MsxSystem::log.error("file {} not in {}archive:{}", fileName,
 		cachedZipIt.hasEntry() && cachedZipName == zipName ? "cached " : "", zipName);
 	return nullptr;
 }
 
-void* zipLoadFile(const char* zipName, const char* fileName, int* size)
+extern "C" void* zipLoadFile(const char* zipName, const char* fileName, int* size)
 {
 	try
 	{
@@ -121,19 +109,19 @@ void* zipLoadFile(const char* zipName, const char* fileName, int* size)
 	}
 	catch(...)
 	{
-		logErr("error opening archive:%s", zipName);
+		MsxSystem::log.error("error opening archive:{}", zipName);
 		return nullptr;
 	}
 }
 
 bool zipStartWrite(const char *fileName)
 {
-	assert(!writeArch);
+	assume(!writeArch);
 	writeArch = archive_write_new();
 	archive_write_set_format_zip(writeArch);
 	if(std::string_view{fileName} == ":::B")
 	{
-		EmuEx::log.info("using memory buffer for zip write");
+		MsxSystem::log.info("using memory buffer for zip write");
 		if(archive_write_open_memory(writeArch, buffData, buffSize, &buffSize) != ARCHIVE_OK)
 		{
 			archive_write_free(writeArch);
@@ -143,7 +131,7 @@ bool zipStartWrite(const char *fileName)
 	}
 	else
 	{
-		int fd = EmuEx::gAppContext().openFileUriFd(fileName, IG::OpenFlags::testNewFile()).release();
+		int fd = EmuEx::gAppContext().openFileUriFd(fileName, OpenFlags::testNewFile()).release();
 		if(archive_write_open_fd(writeArch, fd) != ARCHIVE_OK)
 		{
 			archive_write_free(writeArch);
@@ -156,23 +144,23 @@ bool zipStartWrite(const char *fileName)
 	return true;
 }
 
-int zipSaveFile(const char* zipName, const char* fileName, int append, const void* buffer, int size)
+extern "C" int zipSaveFile(const char* zipName, const char* fileName, int append, const void* buffer, int size)
 {
-	assert(writeArch);
+	assume(writeArch);
 	auto entry = archive_entry_new();
-	auto freeEntry = IG::scopeGuard([&](){ archive_entry_free(entry); });
+	auto freeEntry = scopeGuard([&](){ archive_entry_free(entry); });
 	archive_entry_set_pathname(entry, fileName);
 	archive_entry_set_size(entry, size);
 	archive_entry_set_filetype(entry, AE_IFREG);
 	archive_entry_set_perm(entry, 0644);
 	if(archive_write_header(writeArch, entry) < ARCHIVE_OK)
 	{
-		logErr("error writing archive header: %s", archive_error_string(writeArch));
+		MsxSystem::log.error("error writing archive header: {}", archive_error_string(writeArch));
 		return 0;
 	}
 	if(archive_write_data(writeArch, buffer, size) < ARCHIVE_OK)
 	{
-		logErr("error writing archive data: %s", archive_error_string(writeArch));
+		MsxSystem::log.error("error writing archive data: {}", archive_error_string(writeArch));
 		return 0;
 	}
 	return 1;
@@ -180,13 +168,13 @@ int zipSaveFile(const char* zipName, const char* fileName, int append, const voi
 
 void zipEndWrite()
 {
-	assert(writeArch);
+	assume(writeArch);
 	archive_write_close(writeArch);
 	archive_write_free(writeArch);
 	writeArch = {};
 }
 
-FILE *fopenHelper(const char* filename, const char* mode)
+extern "C" FILE* fopenHelper(const char* filename, const char* mode)
 {
 	return FileUtils::fopenUri(EmuEx::gAppContext(), filename, mode);
 }

@@ -14,16 +14,10 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/ButtonConfigView.hh>
-#include <emuframework/AppKeyCode.hh>
 #include <emuframework/EmuApp.hh>
 #include "InputManagerView.hh"
-#include "../InputDeviceConfig.hh"
 #include "../InputDeviceData.hh"
-#include <imagine/gfx/RendererCommands.hh>
-#include <imagine/gui/AlertView.hh>
-#include <imagine/util/variant.hh>
-#include <imagine/logger/logger.h>
-#include <format>
+import imagine;
 
 namespace EmuEx
 {
@@ -309,7 +303,7 @@ void ButtonConfigSetView::finalize()
 
 void ButtonConfigSetView::draw(Gfx::RendererCommands&__restrict__ cmds, ViewDrawParams) const
 {
-	using namespace IG::Gfx;
+	using namespace Gfx;
 	auto &basicEffect = cmds.basicEffect();
 	cmds.set(BlendMode::OFF);
 	basicEffect.disableTexture(cmds);

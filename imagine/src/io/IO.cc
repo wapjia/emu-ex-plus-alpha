@@ -15,10 +15,10 @@
 
 #include <imagine/io/IO.hh>
 #include <imagine/io/FileIO.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/util/format.hh>
-#include <imagine/util/variant.hh>
 #include <imagine/io/IOUtils-impl.hh>
+#include <imagine/util/format.hh>
+#include <sys/types.h>
+import imagine.internal.io;
 
 namespace IG
 {

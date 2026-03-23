@@ -19,18 +19,21 @@
 #include <imagine/pixmap/PixmapDesc.hh>
 #include "gralloc.h"
 #include <EGL/egl.h>
+#ifndef IG_USE_MODULE_STD
 #include <string_view>
+#endif
+
+namespace IG
+{
+class ApplicationContext;
+struct PixmapDesc;
+}
 
 // Wrapper for ANativeWindowBuffer (android_native_buffer_t)
 // similar to GraphicBuffer class in Android frameworks
 
-struct android_native_buffer_t;
-
 namespace IG
 {
-
-class ApplicationContext;
-struct PixmapDesc;
 
 class GraphicBuffer : public android_native_buffer_t
 {

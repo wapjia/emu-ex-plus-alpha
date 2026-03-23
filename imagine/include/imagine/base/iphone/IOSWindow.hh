@@ -18,8 +18,7 @@
 #include <imagine/config/defs.hh>
 #include <imagine/base/BaseWindow.hh>
 #include <imagine/util/rectangle2.h>
-#import <CoreGraphics/CGBase.h>
-
+#include <CoreGraphics/CGBase.h>
 #ifdef __OBJC__
 #import <UIKit/UIKit.h>
 #endif

@@ -39,11 +39,6 @@ typedef void (GL_APIENTRY *GLDEBUGPROCKHR)(GLenum, GLenum, GLuint, GLenum, GLsiz
 #define GL_DEBUG_OUTPUT GL_DEBUG_OUTPUT_KHR
 #endif
 
-using GLDEBUGPROC = GLDEBUGPROCKHR;
+typedef GLDEBUGPROCKHR GLDEBUGPROC;
 
-namespace IG
-{
-
-constexpr auto glDebugMessageCallbackName = "glDebugMessageCallbackKHR";
-
-}
+#define GL_DEBUG_MESSAGE_CALLBACK_NAME "glDebugMessageCallbackKHR"

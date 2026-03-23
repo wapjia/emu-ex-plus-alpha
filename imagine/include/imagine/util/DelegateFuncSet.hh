@@ -18,7 +18,9 @@
 #include <imagine/util/DelegateFunc.hh>
 #include <imagine/util/algorithm.h>
 #include <imagine/util/concepts.hh>
+#ifndef IG_USE_MODULE_STD
 #include <flat_set>
+#endif
 
 namespace IG
 {

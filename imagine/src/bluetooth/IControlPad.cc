@@ -13,21 +13,21 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "ICP"
 #include <imagine/bluetooth/IControlPad.hh>
-#include <imagine/base/Application.hh>
 #include <imagine/input/bluetoothInputDefs.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/time/Time.hh>
-#include <imagine/util/bit.hh>
+#include <imagine/base/Application.hh>
 #include <imagine/util/ranges.hh>
-#include "../input/PackedInputAccess.hh"
-#include <algorithm>
+#include <imagine/util/variant.hh>
+#include <imagine/logger/SystemLogger.hh>
+import std;
+import packedInputAccess;
 
 namespace IG
 {
 
 using namespace IG::Input;
+
+static SystemLogger log{"iCP"};
 
 constexpr PackedInputAccess iCPDataAccess[]
 {
@@ -117,7 +117,7 @@ const char *IControlPad::keyName(Key k) const
 
 bool IControlPad::open(BluetoothAdapter &adapter, Input::Device &dev)
 {
-	logMsg("connecting to iCP");
+	log.info("connecting to iCP");
 	sock.onData =
 		[&dev](const char *packet, size_t size)
 		{
@@ -131,7 +131,7 @@ bool IControlPad::open(BluetoothAdapter &adapter, Input::Device &dev)
 	if(auto err = sock.openRfcomm(adapter, addr, 1);
 		err.code())
 	{
-		logErr("error opening socket");
+		log.error("error opening socket");
 		return false;
 	}
 	return true;
@@ -146,7 +146,7 @@ uint32_t IControlPad::statusHandler(Input::Device &dev, BluetoothSocket &sock, B
 {
 	if(status == BluetoothSocketState::Opened)
 	{
-		logMsg("iCP opened successfully");
+		log.info("iCP opened successfully");
 		ctx.application().bluetoothInputDeviceStatus(ctx, dev, status);
 		sock.write(setLEDPulseInverse, sizeof setLEDPulseInverse);
 		function = FUNC_SET_LED_MODE;
@@ -154,12 +154,12 @@ uint32_t IControlPad::statusHandler(Input::Device &dev, BluetoothSocket &sock, B
 	}
 	else if(status == BluetoothSocketState::ConnectError)
 	{
-		logErr("iCP connection error");
+		log.error("iCP connection error");
 		ctx.application().bluetoothInputDeviceStatus(ctx, dev, status);
 	}
 	else if(status == BluetoothSocketState::ReadError)
 	{
-		logErr("iCP read error, disconnecting");
+		log.error("iCP read error, disconnecting");
 		ctx.application().bluetoothInputDeviceStatus(ctx, dev, status);
 	}
 	return 0;
@@ -176,14 +176,14 @@ bool IControlPad::dataHandler(Input::Device &dev, const char *packetPtr, size_t 
 		{
 			if(packet[size-bytesLeft] != RESP_OKAY)
 			{
-				logErr("error: iCP didn't respond with OK");
+				log.error("error: iCP didn't respond with OK");
 				ctx.application().bluetoothInputDeviceStatus(ctx, dev, BluetoothSocketState::ReadError);
 				return 0;
 			}
-			logMsg("got OK reply");
+			log.info("got OK reply");
 			if(function == FUNC_SET_LED_MODE)
 			{
-				logMsg("turning on GP_REPORTS");
+				log.info("turning on GP_REPORTS");
 				sock.write(turnOnReports, sizeof turnOnReports);
 				function = FUNC_GP_REPORTS;
 				return 1;
@@ -194,16 +194,16 @@ bool IControlPad::dataHandler(Input::Device &dev, const char *packetPtr, size_t 
 		else // handle GP_REPORT
 		{
 			uint32_t processBytes = std::min(bytesLeft, uint32_t(sizeof inputBuffer - inputBufferPos));
-			memcpy(&inputBuffer[inputBufferPos], &packet[size-bytesLeft], processBytes);
+			std::memcpy(&inputBuffer[inputBufferPos], &packet[size-bytesLeft], processBytes);
 			//logDMsg("read %d bytes from iCP", len);
 			inputBufferPos += processBytes;
-			assert(inputBufferPos <= 6);
+			assume(inputBufferPos <= 6);
 
 			// check if inputBuffer is complete
 			if(inputBufferPos == 6)
 			{
 				auto time = SteadyClock::now();
-				for(auto i : iotaCount(4))
+				for(auto i: iotaCount(4))
 				{
 					if(axis[i].dispatchInputEvent(inputBuffer[i], Input::Map::ICONTROLPAD, time, dev, ctx.mainWindow()))
 						ctx.endIdleByUserActivity();
@@ -234,7 +234,7 @@ void IControlPad::processBtnReport(Input::Device &dev, const char *btnData, Stea
 			ctx.application().dispatchRepeatableKeyInputEvent(event);
 		}
 	}
-	memcpy(prevBtnData, btnData, sizeof(prevBtnData));
+	std::memcpy(prevBtnData, btnData, sizeof(prevBtnData));
 }
 
 bool IControlPad::isSupportedClass(std::array<uint8_t, 3> devClass)

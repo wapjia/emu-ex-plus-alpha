@@ -16,7 +16,9 @@
 #pragma once
 
 #include <imagine/io/IOUtils.hh>
+#ifndef IG_USE_MODULE_STD
 #include <span>
+#endif
 
 namespace IG
 {

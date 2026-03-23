@@ -13,9 +13,7 @@
 	You should have received a copy of the GNU General Public License
 	along with GBC.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include "Palette.hh"
-#include <imagine/util/string.h>
-#include <array>
+module system;
 
 namespace EmuEx
 {

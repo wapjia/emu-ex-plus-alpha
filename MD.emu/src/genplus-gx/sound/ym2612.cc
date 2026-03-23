@@ -132,7 +132,8 @@
 #include <math.h>
 
 #include "shared.h"
-#include <imagine/util/ranges.hh>
+
+import imagine;
 
 /* compiler dependence */
 #ifndef INLINE

@@ -1,7 +1,8 @@
-libcxxVersion := 21.1.0
-libcxxSrcDir := $(tempDir)/llvm-project-$(libcxxVersion).src/libcxx
-libcxxabiSrcDir := $(tempDir)/llvm-project-$(libcxxVersion).src/libcxxabi
-libcSrcDir := $(tempDir)/llvm-project-$(libcxxVersion).src/libc
+libcxxVersion := 22.1.0
+llvmSrcDir := $(tempDir)/llvm-project-$(libcxxVersion).src
+libcxxSrcDir := $(llvmSrcDir)/libcxx
+libcxxabiSrcDir := $(llvmSrcDir)/libcxxabi
+libcSrcDir := $(llvmSrcDir)/libc
 # Archive containing the libcxx & libcxxabi directories along with a minimal set of cmake support files
 libcxxSrcArchive := llvm-project-libcxx-$(libcxxVersion).src.tar.xz
 
@@ -9,12 +10,15 @@ makeFile := $(buildDir)/Makefile
 outputLibFile := $(buildDir)/lib/libc++.a
 outputLibcxxabiFile := $(buildDir)/lib/libc++abi.a
 installIncludeDir := $(installDir)/include/c++/v1
+installModulesSrcDir := $(installDir)/share/libc++/v1
 
 # Extract libc++ before setting VPATH
 ifeq ($(wildcard $(libcxxabiSrcDir)/src),)
  $(info Extracting libc++...)
  $(shell mkdir -p $(tempDir))
  $(shell tar -mxJf $(libcxxSrcArchive) -C $(tempDir))
+ $(shell patch -s -d $(llvmSrcDir) -p1 -i $(CURDIR)/unwind.patch)
+ $(if $(filter-out 0,$(.SHELLSTATUS)), $(error patch failed with exit status $(.SHELLSTATUS)))
 endif
 
 VPATH += $(libcxxabiSrcDir)/src
@@ -42,10 +46,13 @@ all : $(outputLibFile) $(outputLibcxxabiFile)
 
 install : $(outputLibFile) $(outputLibcxxabiFile)
 	@echo "Installing libc++ to: $(installDir)"
-	@mkdir -p $(installIncludeDir) $(installDir)/lib
-	cp $(outputLibFile) $(outputLibcxxabiFile) $(buildDir)/lib/libc++experimental.a $(installDir)/lib/
+	@mkdir -p $(installIncludeDir) $(installModulesSrcDir) $(installDir)/lib
+	cp $(outputLibFile) $(outputLibcxxabiFile) $(buildDir)/lib/libc++experimental.a $(buildDir)/lib/libc++.modules.json $(installDir)/lib/
 	cp -r $(buildDir)/include/c++/v1/* $(installIncludeDir)/
+	cp -r $(buildDir)/modules/c++/v1/* $(installModulesSrcDir)/
 	cp -r $(libcxxabiSrcDir)/include/* $(installIncludeDir)/
+	cp -r std/* $(installModulesSrcDir)/std/
+	cp -r std.compat/* $(installModulesSrcDir)/std.compat/
 
 .PHONY : all install
 

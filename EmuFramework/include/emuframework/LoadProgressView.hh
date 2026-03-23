@@ -17,8 +17,10 @@
 
 #include <emuframework/EmuApp.hh>
 #include <emuframework/EmuAppHelper.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/base/MessagePort.hh>
 #include <imagine/gfx/Quads.hh>
+#endif
 
 namespace EmuEx
 {
@@ -28,7 +30,7 @@ using namespace IG;
 class LoadProgressView : public View, public EmuAppHelper
 {
 public:
-	using MessagePortType = IG::MessagePort<EmuSystem::LoadProgressMessage>;
+	using MessagePortType = MessagePort<EmuSystem::LoadProgressMessage>;
 
 	LoadProgressView(ViewAttachParams, const Input::Event &, EmuApp::CreateSystemCompleteDelegate);
 	void setMax(int val);

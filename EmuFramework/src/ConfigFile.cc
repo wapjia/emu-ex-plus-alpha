@@ -13,15 +13,11 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <imagine/config/macros.h>
 #include <emuframework/EmuApp.hh>
 #include <emuframework/Option.hh>
-#include <emuframework/EmuOptions.hh>
-#include "configFile.hh"
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/io/FileIO.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/bluetooth/BluetoothAdapter.hh>
-#include <imagine/util/ScopeGuard.hh>
+import configFile;
+import imagine;
 
 namespace EmuEx
 {
@@ -42,7 +38,7 @@ void EmuApp::saveConfigFile(FileIO &io)
 	}
 	writeConfigHeader(io);
 	recentContent.writeConfig(io);
-	if(!handlesRecentContent)
+	if(!AppMeta::handlesRecentContent)
 	{
 		recentContent.writeContent(io);
 	}
@@ -117,7 +113,7 @@ void EmuApp::saveConfigFile(FileIO &io)
 	writeOptionValueIfNotDefault(io, lowLatencyVideo);
 }
 
-EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
+EmuApp::ConfigParams EmuApp::loadConfigFile(ApplicationContext ctx)
 {
 	auto configFilePath = FS::pathString(ctx.supportPath(), "config");
 	// move config files from old locations
@@ -134,7 +130,7 @@ EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
 	if(ctx.isSystemApp())
 	{
 		const char *oldConfigDir = "/User/Library/Preferences/explusalpha.com";
-		auto oldConfigFilePath = FS::pathString(oldConfigDir, EmuSystem::configFilename);
+		auto oldConfigFilePath = FS::pathString(oldConfigDir, AppMeta::configFilename);
 		if(FS::exists(oldConfigFilePath))
 		{
 			log.info("moving config file from prefs path to support path");
@@ -175,7 +171,7 @@ EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
 					return false;
 				}
 				case CFGKEY_RECENT_CONTENT_V2:
-					return handlesRecentContent ? system().readConfig(ConfigType::MAIN, io, key) : recentContent.readContent(io, system());
+					return AppMeta::handlesRecentContent ? system().readConfig(ConfigType::MAIN, io, key) : recentContent.readContent(io, system());
 				case CFGKEY_FRAME_INTERVAL: return readOptionValue(io, frameInterval);
 				case CFGKEY_FRAME_RATE: return readOptionValue<FrameDuration>(io, [&](auto &&val){outputTimingManager.setFrameRateOption(VideoSystem::NATIVE_NTSC, val);});
 				case CFGKEY_FRAME_RATE_PAL: return readOptionValue<FrameDuration>(io, [&](auto &&val){outputTimingManager.setFrameRateOption(VideoSystem::PAL, val);});
@@ -226,7 +222,7 @@ EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
 				case CFGKEY_SAVE_PATH:
 					return readStringOptionValue<FS::PathString>(io, [&](auto &&path){system().setUserSaveDirectory(path);});
 				case CFGKEY_SCREENSHOTS_PATH: return readStringOptionValue(io, userScreenshotPath);
-				case CFGKEY_SHOW_BUNDLED_GAMES: return EmuSystem::hasBundledGames ? readOptionValue(io, showsBundledGames) : false;
+				case CFGKEY_SHOW_BUNDLED_GAMES: return AppMeta::hasBundledGames() ? readOptionValue(io, showsBundledGames) : false;
 				case CFGKEY_WINDOW_PIXEL_FORMAT: return readOptionValue(io, pendingWindowDrawableConf.pixelFormat, windowPixelFormatIsValid);
 				case CFGKEY_VIDEO_COLOR_SPACE: return readOptionValue(io, pendingWindowDrawableConf.colorSpace, colorSpaceIsValid);
 				case CFGKEY_SHOW_HIDDEN_FILES: return readOptionValue(io, showHiddenFilesInPicker);
@@ -248,7 +244,7 @@ EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
 	// apply any pending read options
 	if(pendingWindowDrawableConf)
 	{
-		if(pendingWindowDrawableConf.colorSpace != Gfx::ColorSpace{} && pendingWindowDrawableConf.pixelFormat != IG::PixelFmtRGBA8888)
+		if(pendingWindowDrawableConf.colorSpace != Gfx::ColorSpace{} && pendingWindowDrawableConf.pixelFormat != PixelFmtRGBA8888)
 			pendingWindowDrawableConf.colorSpace = {};
 		windowDrawableConfig = pendingWindowDrawableConf;
 	}
@@ -256,7 +252,7 @@ EmuApp::ConfigParams EmuApp::loadConfigFile(IG::ApplicationContext ctx)
 	return appConfig;
 }
 
-void EmuApp::saveConfigFile(IG::ApplicationContext ctx)
+void EmuApp::saveConfigFile(ApplicationContext ctx)
 {
 	auto configFilePath = FS::pathString(ctx.supportPath(), "config");
 	try

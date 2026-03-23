@@ -16,7 +16,9 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/io/ioDefs.hh>
+#ifndef IG_USE_MODULE_STD
 #include <cstdio>
+#endif
 
 // Functions to wrap basic stdio functionality
 

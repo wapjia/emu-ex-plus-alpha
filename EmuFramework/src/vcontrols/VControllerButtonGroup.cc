@@ -15,12 +15,8 @@
 
 #include <emuframework/VController.hh>
 #include <emuframework/EmuInput.hh>
-#include <imagine/base/Window.hh>
-#include <imagine/gfx/Renderer.hh>
-#include <imagine/gfx/RendererCommands.hh>
-#include <imagine/gfx/BasicEffect.hh>
-#include <imagine/gui/View.hh>
-#include <imagine/util/math.hh>
+#include <emuframework/InputManager.hh>
+import imagine;
 
 namespace EmuEx
 {
@@ -180,7 +176,7 @@ void VControllerButtonGroup::transposeKeysForPlayer(const InputManager &mgr, int
 
 int VControllerButtonGroup::rows() const
 {
-	assert(layout.rowItems);
+	assume(layout.rowItems);
 	return divRoundUp(buttonsToLayout(buttons), layout.rowItems);
 }
 
@@ -299,7 +295,7 @@ void VControllerUIButtonGroup::setButtonSize(int sizePx)
 
 int VControllerUIButtonGroup::rows() const
 {
-	assert(layout.rowItems);
+	assume(layout.rowItems);
 	return divRoundUp(buttonsToLayout(buttons), layout.rowItems);
 }
 
@@ -355,7 +351,7 @@ template<class Group>
 void BaseVControllerButtonGroup<Group>::updateSprite(VControllerButton &b)
 {
 	auto &g = static_cast<Group&>(*this);
-	assert(b.spriteIdx < g.quads.size());
+	assume(b.spriteIdx < g.quads.size());
 	if constexpr(requires {g.boundQuads;})
 		b.updateSprite(g.quads, g.boundQuads);
 	else

@@ -17,7 +17,9 @@
 
 #include <imagine/config/defs.hh>
 #include "defs.hh"
+#ifndef IG_USE_MODULE_STD
 #include <chrono>
+#endif
 
 namespace IG::Gfx
 {

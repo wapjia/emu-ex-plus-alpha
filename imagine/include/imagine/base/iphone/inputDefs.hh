@@ -15,8 +15,8 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#if !defined __ARM_ARCH_6K__
-#define CONFIG_INPUT_APPLE_GAME_CONTROLLER 1
+#ifndef IG_USE_MODULE_STD
+#include <cstdint>
 #endif
 
 namespace IG::Input
@@ -26,9 +26,8 @@ using PointerIdImpl = void*;
 
 using Key = uint16_t;
 
-	namespace Keycode
-	{
-
+struct Keycode
+{
 	static constexpr Key
 	A = 4,
 	B = 5,
@@ -177,11 +176,10 @@ using Key = uint16_t;
 
 	static constexpr Key LAST_KEY = JS_BRAKE_AXIS;
 	static constexpr uint32_t COUNT = LAST_KEY + 1;
+};
 
-	}
-
-	namespace Pointer
-	{
+struct Pointer
+{
 	// fake keycodes, no actual mouse support
 	static constexpr Key
 	LBUTTON = 1,
@@ -189,10 +187,10 @@ using Key = uint16_t;
 	RBUTTON = 4,
 	DOWN_BUTTON = 8,
 	UP_BUTTON = 16;
-	};
+};
 
-	namespace AppleGC
-	{
+struct AppleGC
+{
 	static constexpr Key
 	A = Keycode::GAME_A,
 	B = Keycode::GAME_B,
@@ -209,26 +207,26 @@ using Key = uint16_t;
 	LSTICK_DOWN =  Keycode::JS1_YAXIS_POS, LSTICK_UP =   Keycode::JS1_YAXIS_NEG,
 	RSTICK_RIGHT = Keycode::JS2_XAXIS_POS, RSTICK_LEFT = Keycode::JS2_XAXIS_NEG,
 	RSTICK_DOWN =  Keycode::JS2_YAXIS_POS, RSTICK_UP =   Keycode::JS2_YAXIS_NEG;
-	}
+};
 
-	namespace Meta
-	{
-		// TODO
-		static constexpr uint32_t
-		ALT = 0x1,
-		ALT_L = 0x1,
-		ALT_R = 0x1,
-		SHIFT = 0x1,
-		SHIFT_L = 0x1,
-		SHIFT_R = 0x1,
-		CTRL = 0x1,
-		CTRL_L = 0x1,
-		CTRL_R = 0x1,
-		META = 0x1,
-		META_L = 0x1,
-		META_R = 0x1,
-		CAPS_LOCK = 0x1;
-	}
+struct Meta
+{
+	// TODO
+	static constexpr uint32_t
+	ALT = 0x1,
+	ALT_L = 0x1,
+	ALT_R = 0x1,
+	SHIFT = 0x1,
+	SHIFT_L = 0x1,
+	SHIFT_R = 0x1,
+	CTRL = 0x1,
+	CTRL_L = 0x1,
+	CTRL_R = 0x1,
+	META = 0x1,
+	META_L = 0x1,
+	META_R = 0x1,
+	CAPS_LOCK = 0x1;
+};
 
 enum class AxisId : uint8_t
 {

@@ -25,9 +25,12 @@
 #include <imagine/thread/WorkThread.hh>
 #include <imagine/util/DelegateFunc.hh>
 #include <imagine/util/string/CStringView.hh>
+#ifndef IG_USE_MODULE_STD
 #include <vector>
 #include <string>
 #include <string_view>
+#include <utility>
+#endif
 
 namespace IG::FS
 {

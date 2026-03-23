@@ -23,6 +23,8 @@
 #include <imagine/base/android/AndroidApplicationContext.hh>
 #elif defined CONFIG_OS_IOS
 #include <imagine/base/iphone/IOSApplicationContext.hh>
+#else
+#error Missing application configuration macro
 #endif
 
 #include <imagine/base/baseDefs.hh>
@@ -30,13 +32,15 @@
 #include <imagine/fs/FSDefs.hh>
 #include <imagine/time/Time.hh>
 #include <imagine/thread/Thread.hh>
-#include <imagine/util/utility.h>
 #include <imagine/util/string/CStringView.hh>
 #include <imagine/util/memory/UniqueFileDescriptor.hh>
+#ifndef IG_USE_MODULE_STD
 #include <vector>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
+#endif
 #include <list>
 #include <imagine/util/rectangle2.h>
 #include <imagine/util/memory/DynArray.hh>
@@ -79,18 +83,20 @@ struct SystemUIStyleFlags
 	constexpr bool operator ==(SystemUIStyleFlags const &) const = default;
 };
 
+struct ApplicationMeta
+{
+	// defined in user code
+	static const char *const name;
+	static const char *const id;
+
+	// Called on app startup via dispatchOnInit() to create the Application object, defined in user code
+	[[gnu::cold]] static void onInit(ApplicationInitParams, ApplicationContext&);
+};
 
 class ApplicationContext : public ApplicationContextImpl
 {
 public:
 	using ApplicationContextImpl::ApplicationContextImpl;
-
-	// defined in user code
-	static const char *const applicationName;
-	static const char *const applicationId;
-
-	// Called on app startup via dispatchOnInit() to create the Application object, defined in user code
-	[[gnu::cold]] void onInit(ApplicationInitParams);
 
 	// Calls onInit() and handles displaying error messages from any exceptions
 	[[gnu::cold]] void dispatchOnInit(ApplicationInitParams);
@@ -98,9 +104,9 @@ public:
 	// Initialize the main Application object with a user-defined class,
 	// must be called first in onInit() before using any other methods
 	template<class T>
-	T &initApplication(auto &&... args)
+	T &initApplication(ApplicationInitParams& initParams, auto &&... args)
 	{
-		return *new T{IG_forward(args)...}; // Application constructor assigns this pointer to ApplicationContext and frees it when the app exits
+		return *new T{initParams, *this, IG_forward(args)...}; // Application constructor assigns this pointer to ApplicationContext and frees it when the app exits
 	}
 
 	Application &application() const;
@@ -152,25 +158,25 @@ public:
 	bool isExiting() const;
 
 	// Inter-process messages
-	bool registerInstance(ApplicationInitParams, const char *appId = applicationId);
-	void setAcceptIPC(bool on, const char *appId = applicationId);
+	bool registerInstance(ApplicationInitParams, const char *appId = ApplicationMeta::id);
+	void setAcceptIPC(bool on, const char *appId = ApplicationMeta::id);
 
 	// external services
 	void openURL(CStringView url) const;
 	bool packageIsInstalled(CStringView name) const;
 
 	// file system paths & asset loading, thread-safe
-	FS::PathString assetPath(const char *appName = applicationName) const;
-	FS::PathString libPath(const char *appName = applicationName) const;
-	FS::PathString supportPath(const char *appName = applicationName) const;
-	FS::PathString storagePath(const char *appName = applicationName) const;
-	FS::PathString cachePath(const char *appName = applicationName) const;
+	FS::PathString assetPath(const char *appName = ApplicationMeta::name) const;
+	FS::PathString libPath(const char *appName = ApplicationMeta::name) const;
+	FS::PathString supportPath(const char *appName = ApplicationMeta::name) const;
+	FS::PathString storagePath(const char *appName = ApplicationMeta::name) const;
+	FS::PathString cachePath(const char *appName = ApplicationMeta::name) const;
 	FS::PathString sharedStoragePath() const;
 	FS::PathLocation sharedStoragePathLocation() const;
 	std::vector<FS::PathLocation> rootFileLocations() const;
 	FS::RootPathInfo rootPathInfo(std::string_view path) const;
-	AssetIO openAsset(CStringView name, OpenFlags oFlags = {}, const char *appName = applicationName) const;
-	FS::AssetDirectoryIterator openAssetDirectory(CStringView path, const char *appName = applicationName);
+	AssetIO openAsset(CStringView name, OpenFlags oFlags = {}, const char *appName = ApplicationMeta::name) const;
+	FS::AssetDirectoryIterator openAssetDirectory(CStringView path, const char *appName = ApplicationMeta::name);
 
 	// path/file access using OS-specific URIs such as those in the Android Storage Access Framework,
 	// backwards compatible with regular file system paths, all thread-safe except for picker functions

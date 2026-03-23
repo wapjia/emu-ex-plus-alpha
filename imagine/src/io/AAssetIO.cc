@@ -13,19 +13,20 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "AAssetIO"
 #include <imagine/io/AAssetIO.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
-#include "utils.hh"
 #include <imagine/io/IOUtils-impl.hh>
+#include <imagine/base/ApplicationContext.hh>
+#include <imagine/logger/SystemLogger.hh>
+#include <imagine/util/format.hh>
 #include <android/asset_manager.h>
 #include <unistd.h>
 #include <sys/mman.h>
+import imagine.internal.io;
 
 namespace IG
 {
+
+static SystemLogger log{"AAssetIO"};
 
 template class IOUtils<AAssetIO>;
 
@@ -46,13 +47,13 @@ AAssetIO::AAssetIO(ApplicationContext ctx, CStringView name, OpenFlags openFlags
 	auto access = openFlags.accessHint;
 	if(!asset) [[unlikely]]
 	{
-		logErr("error in AAssetManager_open(%s, %s)", name.data(), asString(access));
+		log.error("error in AAssetManager_open({}, {})", name.data(), asString(access));
 		if(openFlags.test)
 			return;
 		else
 			throw std::runtime_error{std::format("Error opening asset: {}", name)};
 	}
-	logMsg("opened asset:%p name:%s access:%s", asset.get(), name.data(), asString(access));
+	log.info("opened asset:{} name:{} access:{}", (void*)asset.get(), name.data(), asString(access));
 	if(access == IOAccessHint::All)
 		makeMapIO();
 }
@@ -138,7 +139,7 @@ bool AAssetIO::makeMapIO()
 	const void *buff = AAsset_getBuffer(asset.get());
 	if(!buff)
 	{
-		logErr("error in AAsset_getBuffer(%p)", asset.get());
+		log.error("error in AAsset_getBuffer({})", (void*)asset.get());
 		return false;
 	}
 	auto size = AAsset_getLength(asset.get());
@@ -151,11 +152,11 @@ IOBuffer AAssetIO::releaseBuffer()
 	if(!makeMapIO())
 		return {};
 	auto map = mapIO.map();
-	logMsg("releasing asset:%p with buffer:%p (%zu bytes)", asset.get(), map.data(), map.size());
+	log.info("releasing asset:{} with buffer:{} ({} bytes)", (void*)asset.get(), (void*)map.data(), map.size());
 	return {map, {},
 		[asset = asset.release()](const uint8_t*, size_t)
 		{
-			logMsg("closing released asset:%p", asset);
+			log.info("closing released asset:{}", (void*)asset);
 			AAsset_close(asset);
 		}
 	};
@@ -165,7 +166,7 @@ void AAssetIO::closeAAsset(AAsset *asset)
 {
 	if(!asset)
 		return;
-	logMsg("closing asset:%p", asset);
+	log.info("closing asset:{}", (void*)asset);
 	AAsset_close(asset);
 }
 

@@ -17,13 +17,14 @@
 #include <imagine/base/Application.hh>
 #include <imagine/fs/FS.hh>
 #include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
 #include <sys/stat.h>
+#include <glib.h>
 
 namespace IG
 {
 
-constexpr SystemLogger log{"AppCtx"};
+static SystemLogger log{"AppCtx"};
 constexpr mode_t defaultDirMode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
 
 void ApplicationContext::exit(int returnVal)

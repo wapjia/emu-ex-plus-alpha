@@ -18,18 +18,18 @@
 #include <imagine/config/defs.hh>
 #include <imagine/base/linux/LinuxApplication.hh>
 #include <imagine/base/EventLoop.hh>
+#include <xcb/xinput.h>
+#include <xcb/xproto.h>
+#include <xkbcommon/xkbcommon.h>
+#ifndef IG_USE_MODULE_STD
 #include <string>
 #include <array>
+#endif
 
-struct xcb_connection_t;
-struct xcb_screen_t;
-struct xcb_input_xi_device_info_t;
-struct xcb_ge_generic_event_t;
-struct xkb_state;
 
 namespace Config
 {
-static constexpr bool XDND = !Config::MACHINE_IS_PANDORA;
+inline constexpr bool XDND = !Config::MACHINE_IS_PANDORA;
 }
 
 namespace IG
@@ -44,11 +44,11 @@ enum class SupportedFrameTimer : uint8_t
 	FBDEV
 };
 
+using XdndAtoms = std::array<uint32_t, 11>;
+
 class XApplication : public LinuxApplication
 {
 public:
-	using XdndAtoms = std::array<uint32_t, 11>;
-
 	XApplication(ApplicationInitParams);
 	~XApplication();
 	FDEventSource makeXDisplayConnection(EventLoop);
@@ -91,6 +91,8 @@ private:
 	bool initXdnd();
 	bool xdndIsInit() const;
 	void sendDNDFinished(uint32_t win, uint32_t srcWin, uint32_t action);
+	void handleXDNDEvent(xcb_connection_t&, XdndAtoms, const xcb_client_message_event_t&,
+		xcb_window_t win, xcb_window_t& draggerWin, xcb_atom_t& dragAction);
 };
 
 using ApplicationImpl = XApplication;

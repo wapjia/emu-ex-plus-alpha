@@ -13,6 +13,8 @@ class EmuAudio;
 class EmuSystemTaskContext;
 }
 
+struct GBALCD;
+
 enum IMAGE_TYPE {
     IMAGE_UNKNOWN = -1,
     IMAGE_GBA = 0,
@@ -89,7 +91,7 @@ extern void log(const char*, ...);
 extern bool systemPauseOnFrame();
 extern void systemGbPrint(uint8_t*, int, int, int, int, int);
 extern void systemScreenCapture(int);
-extern void systemDrawScreen(EmuEx::EmuSystemTaskContext, EmuEx::EmuVideo &);
+extern void systemDrawScreen(const GBALCD&, EmuEx::EmuSystemTaskContext, EmuEx::EmuVideo &);
 extern void systemSendScreen();
 // updates the joystick data
 extern bool systemReadJoypads();
@@ -117,16 +119,9 @@ extern void systemGbBorderOn();
 extern void (*dbgOutput)(const char* s, uint32_t addr);
 extern void (*dbgSignal)(int sig, int number);
 extern uint8_t  systemColorMap8[0x10000];
-
-union SystemColorMap
-{
-	uint32_t map32[0x10000];
-	uint16_t map16[0x10000];
-};
-extern SystemColorMap systemColorMap;
 extern uint16_t systemGbPalette[24];
+inline constexpr int systemVerbose = 0;
 extern int systemFrameSkip;
-constexpr int systemVerbose = 0;
 extern int systemSaveUpdateCounter;
 extern int systemSpeed;
 

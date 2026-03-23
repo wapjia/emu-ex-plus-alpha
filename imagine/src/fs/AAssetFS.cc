@@ -13,15 +13,15 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "AAssetFS"
 #include <imagine/fs/AAssetFS.hh>
-#include <imagine/fs/FS.hh>
 #include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
 #include <android/asset_manager.h>
 
 namespace IG::FS
 {
+
+static SystemLogger log{"AAsset"};
 
 AAssetDirectory::AAssetDirectory(AAssetManager *mgr, CStringView path):
 	dir{AAssetManager_openDir(mgr, path)}
@@ -29,10 +29,10 @@ AAssetDirectory::AAssetDirectory(AAssetManager *mgr, CStringView path):
 	if(!dir) [[unlikely]]
 	{
 		if(Config::DEBUG_BUILD)
-			logErr("AAssetManager_openDir(%p, %s) error", mgr, path.data());
+			log.error("AAssetManager_openDir({}, {}) error", (void*)mgr, path.data());
 		throw std::runtime_error{std::format("error opening asset directory: {}", path)};
 	}
-	logMsg("opened asset directory:%s", path.data());
+	log.info("opened asset directory:{}", path);
 	basePath = path;
 	readNextDir(); // go to first entry
 }
@@ -44,7 +44,7 @@ bool AAssetDirectory::readNextDir()
 	entryName = AAssetDir_getNextFileName(dir.get());
 	if(!entryName)
 	{
-		logMsg("no more filenames in directory");
+		log.info("no more filenames in directory");
 		return false;
 	}
 	return true;
@@ -57,7 +57,7 @@ bool AAssetDirectory::hasEntry() const
 
 std::string_view AAssetDirectory::name() const
 {
-	assumeExpr(entryName);
+	assume(entryName);
 	return entryName;
 }
 
@@ -101,7 +101,7 @@ AAssetDirectory* AAssetIterator::operator->()
 
 void AAssetIterator::operator++()
 {
-	assumeExpr(impl); // incrementing end-iterator is undefined
+	assume(impl); // incrementing end-iterator is undefined
 	if(!impl->readNextDir())
 		impl.reset();
 }

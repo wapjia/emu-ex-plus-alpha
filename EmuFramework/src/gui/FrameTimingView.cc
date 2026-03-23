@@ -15,14 +15,7 @@
 
 #include "FrameTimingView.hh"
 #include <emuframework/EmuApp.hh>
-#include <emuframework/EmuAppHelper.hh>
-#include <emuframework/EmuViewController.hh>
 #include <emuframework/viewUtils.hh>
-#include <imagine/base/Screen.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/gfx/Renderer.hh>
-#include <imagine/gfx/RendererCommands.hh>
-#include <format>
 
 namespace EmuEx
 {
@@ -166,7 +159,7 @@ FrameTimingView::FrameTimingView(ViewAttachParams attach):
 		{
 			.onSetDisplayString = [this](auto, Gfx::Text& t)
 			{
-				t.resetString(wise_enum::to_string(app().effectiveFrameClockSource()));
+				t.resetString(enumName(app().effectiveFrameClockSource()));
 				return true;
 			},
 			.defaultItemOnSelect = [this](TextMenuItem &item)
@@ -191,7 +184,7 @@ FrameTimingView::FrameTimingView(ViewAttachParams attach):
 		{
 			.onSetDisplayString = [this](auto, Gfx::Text& t)
 			{
-				t.resetString(wise_enum::to_string(app().effectiveOutputFrameRateMode()));
+				t.resetString(enumName(app().effectiveOutputFrameRateMode()));
 				return true;
 			},
 			.defaultItemOnSelect = [this](TextMenuItem &item)
@@ -266,7 +259,7 @@ void FrameTimingView::loadStockItems()
 {
 	item.emplace_back(&frameInterval);
 	item.emplace_back(&frameRate);
-	if(EmuSystem::hasPALVideoSystem)
+	if(AppMeta::hasPALVideoSystem)
 	{
 		item.emplace_back(&frameRatePAL);
 	}

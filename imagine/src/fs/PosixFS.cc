@@ -13,21 +13,24 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "PosixFS"
+#include <imagine/fs/PosixFS.hh>
 #include <imagine/fs/FS.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/util/utility.h>
+#include <imagine/util/format.hh>
+#include <imagine/logger/SystemLogger.hh>
 #ifdef __APPLE__
 #include <imagine/util/string/apple.h>
+#include <limits.h>
 #endif
-#include <cerrno>
 #include <sys/stat.h>
-#include <cstdlib>
-#include <cstring>
-#include <system_error>
+#include <dirent.h>
+#include <unistd.h>
+#include <errno.h>
+import std;
 
 namespace IG::FS
 {
+
+static SystemLogger log{"FS"};
 
 static file_type makeDirType(int type)
 {
@@ -55,13 +58,13 @@ DirectoryStream::DirectoryStream(CStringView path, DirOpenFlags flags):
 	if(!dir)
 	{
 		if(Config::DEBUG_BUILD)
-			logErr("opendir(%s) error:%s", path.data(), strerror(errno));
+			log.error("opendir({}) error:{}", path, std::strerror(errno));
 		if(flags.test)
 			return;
 		else
 			throw std::system_error{errno, std::generic_category(), path};
 	}
-	logMsg("opened directory:%s", path.data());
+	log.info("opened directory:{}", path);
 	basePath = path;
 	readNextDir(); // go to first entry
 }
@@ -74,7 +77,7 @@ bool DirectoryStream::readNextDir()
 	struct dirent *ent{};
 	while((ent = readdir(dir.get())))
 	{
-		//logMsg("reading entry:%s", dirent.d_name);
+		//log.debug("reading entry:{}", dirent.d_name);
 		if(!isDotName(ent->d_name))
 		{
 			#ifdef __APPLE__
@@ -88,7 +91,7 @@ bool DirectoryStream::readNextDir()
 	}
 	// handle error or end of directory
 	if(Config::DEBUG_BUILD && errno)
-		logErr("readdir error: %s", strerror(errno));
+		log.error("readdir error:{}", std::strerror(errno));
 	entry_ = {};
 	return false;
 }
@@ -100,11 +103,11 @@ bool DirectoryStream::hasEntry() const
 
 void DirectoryStream::closeDirectoryStream(DIR *dir)
 {
-	//logDMsg("closing dir:%p", dir);
+	//log.debug("closing dir:{}", (void*)dir);
 	auto dirAddr = (size_t)dir;
 	if(::closedir(dir) == -1 && Config::DEBUG_BUILD) [[unlikely]]
 	{
-		logErr("closedir(0x%zX) error: %s", dirAddr, strerror(errno));
+		log.error("closedir({:X}) error:{}", dirAddr, std::strerror(errno));
 	}
 }
 
@@ -116,7 +119,6 @@ std::string_view directory_entry::name() const
 	}
 	else
 	{
-		assumeExpr(dirent_);
 		return dirent_->d_name;
 	}
 }
@@ -125,7 +127,6 @@ file_type directory_entry::type() const
 {
 	if(type_ == file_type::none)
 	{
-		assumeExpr(dirent_);
 		type_ = makeDirType(dirent_->d_type);
 		if(type_ == file_type::unknown || type_ == file_type::symlink)
 		{
@@ -142,7 +143,7 @@ file_type directory_entry::symlink_type() const
 		linkType_ = type();
 		if(linkType_ == file_type::symlink)
 		{
-			logMsg("checking symlink type for:%s", path_.data());
+			log.info("checking symlink type for:{}", path_);
 			linkType_ = symlink_status(path_).type();
 		}
 	}
@@ -151,7 +152,7 @@ file_type directory_entry::symlink_type() const
 
 static std::shared_ptr<DirectoryStream> makeDirectoryStream(CStringView path)
 {
-	auto streamPtr = std::make_shared<DirectoryStream>(path);
+	auto streamPtr = std::make_shared<DirectoryStream>(path, DirOpenFlags{});
 	return streamPtr->hasEntry() ? streamPtr : nullptr;
 }
 
@@ -170,7 +171,7 @@ directory_entry* directory_iterator::operator->()
 
 void directory_iterator::operator++()
 {
-	assumeExpr(impl); // incrementing end-iterator is undefined
+	assume(impl); // incrementing end-iterator is undefined
 	if(!impl->readNextDir())
 		impl.reset();
 }
@@ -205,7 +206,7 @@ PathString current_path()
 	if(!getcwd(wDir.data(), sizeof(wDir))) [[unlikely]]
 	{
 		if(Config::DEBUG_BUILD)
-			logErr("getcwd error:%s", strerror(errno));
+			log.error("getcwd error:{}", std::strerror(errno));
 		return {};
 	}
 	#ifdef __APPLE__
@@ -221,7 +222,7 @@ void current_path(CStringView path)
 	if(chdir(path) == -1) [[unlikely]]
 	{
 		if(Config::DEBUG_BUILD)
-			logErr("chdir(%s) error:%s", path.data(), strerror(errno));
+			log.error("chdir({}) error:{}", path, std::strerror(errno));
 	}
 }
 
@@ -246,7 +247,7 @@ file_status status(CStringView path)
 	if(stat(path, &s) == -1)
 	{
 		if(Config::DEBUG_BUILD)
-			logErr("stat(%s) error:%s", path.data(), strerror(errno));
+			log.error("stat({}) error:{}", path, std::strerror(errno));
 		if(errno == ENOENT)
 			return {file_type::not_found, {}, {}};
 		else
@@ -261,7 +262,7 @@ file_status symlink_status(CStringView path)
 	if(lstat(path, &s) == -1)
 	{
 		if(Config::DEBUG_BUILD)
-			logErr("lstat(%s) error:%s", path.data(), strerror(errno));
+			log.error("lstat({}) error:{}", path, std::strerror(errno));
 		if(errno == ENOENT)
 			return {file_type::not_found, {}, {}};
 		else
@@ -275,7 +276,7 @@ void chown(CStringView path, uid_t owner, gid_t group)
 	if(::chown(path, owner, group) == -1) [[unlikely]]
 	{
 		if(Config::DEBUG_BUILD)
-			logErr("chown(%s) error:%s", path.data(), strerror(errno));
+			log.error("chown({}) error:{}", path, std::strerror(errno));
 		return;
 	}
 }
@@ -287,23 +288,23 @@ bool access(CStringView path, acc type)
 		if(errno != ENOENT) [[unlikely]]
 		{
 			if(Config::DEBUG_BUILD)
-				logErr("access(%s) error:%s", path.data(), strerror(errno));
+				log.error("access({}) error:{}", path, std::strerror(errno));
 		}
 		return false;
 	}
-	logMsg("file exists:%s", path.data());
+	log.info("file exists:{}", path);
 	return true;
 }
 
 bool remove(CStringView path)
 {
-	if(::remove(path) == -1) [[unlikely]]
+	if(std::remove(path) == -1) [[unlikely]]
 	{
 		if(Config::DEBUG_BUILD)
-			logErr("remove(%s) error:%s", path.data(), strerror(errno));
+			log.error("remove({}) error:{}", path, std::strerror(errno));
 		return false;
 	}
-	logErr("removed:%s", path.data());
+	log.info("removed:{}", path);
 	return true;
 }
 
@@ -320,23 +321,23 @@ bool create_directory(CStringView path)
 		else [[unlikely]]
 		{
 			if(Config::DEBUG_BUILD)
-				logErr("mkdir(%s) error:%s", path.data(), strerror(err));
+				log.error("mkdir({}) error:{}", path, std::strerror(err));
 			throw std::system_error(err, std::generic_category(), path);
 		}
 	}
-	logMsg("made directory:%s", path.data());
+	log.info("made directory:{}", path);
 	return true;
 }
 
 bool rename(CStringView oldPath, CStringView newPath)
 {
-	if(::rename(oldPath, newPath) == -1) [[unlikely]]
+	if(std::rename(oldPath, newPath) == -1) [[unlikely]]
 	{
 		if(Config::DEBUG_BUILD)
-			logErr("rename(%s, %s) error:%s", oldPath.data(), newPath.data(), strerror(errno));
+			log.error("rename({}, {}) error:{}", oldPath, newPath, std::strerror(errno));
 		return false;
 	}
-	logMsg("renamed:%s -> %s", oldPath.data(), newPath.data());
+	log.info("renamed:{} -> {}", oldPath, newPath);
 	return true;
 }
 

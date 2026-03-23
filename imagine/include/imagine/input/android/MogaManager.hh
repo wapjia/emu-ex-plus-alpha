@@ -20,8 +20,11 @@
 
 namespace IG::Input
 {
-
 class AndroidInputDevice;
+}
+
+namespace IG::Input
+{
 
 class MogaManager
 {

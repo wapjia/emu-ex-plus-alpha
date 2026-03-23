@@ -22,8 +22,13 @@ static_assert(__has_feature(objc_arc), "This file requires ARC");
 #include <imagine/input/TextField.hh>
 #include <imagine/input/Device.hh>
 #include <imagine/time/Time.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
 #include "ios.hh"
+
+namespace IG
+{
+static SystemLogger log{"Input"};
+}
 
 @interface UIEvent ()
 - (NSInteger*)_gsEvent;
@@ -50,21 +55,21 @@ static_assert(__has_feature(objc_arc), "This file requires ARC");
 
 - (BOOL)textFieldShouldReturn:(UITextField *)textField
 {
-	logMsg("pushed return");
+	IG::log.info("pushed return");
 	[textField resignFirstResponder];
 	return YES;
 }
 
 - (void)textFieldDidEndEditing:(UITextField *)textField
 {
-	logMsg("editing ended");
+	IG::log.info("editing ended");
 	auto delegate = std::exchange(textDelegate, {});
 	std::string text{[textField.text UTF8String]};
 	[textField removeFromSuperview];
 	uiTextField = nil;
 	if(delegate)
 	{
-		logMsg("running text entry callback");
+		IG::log.info("running text entry callback");
 		delegate(text.data());
 	}
 }
@@ -110,7 +115,7 @@ static CGRect toCGRect(const Window &win, const IG::WindowRect &rect)
 	int x2 = rect.xSize(), y2 = rect.ySize();
 	if(win.softOrientation() == Rotation::RIGHT || win.softOrientation() == Rotation::LEFT)
 		std::swap(x2, y2);
-	logMsg("made CGRect %f,%f size %f,%f", x / win.pointScale, y / win.pointScale,
+	log.info("made CGRect {},{} size {},{}", x / win.pointScale, y / win.pointScale,
 			x2 / win.pointScale, y2 / win.pointScale);
 	return CGRectMake(x / win.pointScale, y / win.pointScale, x2 / win.pointScale, y2 / win.pointScale);
 }
@@ -145,7 +150,7 @@ static void setupTextView(ApplicationContext ctx, UITextField *vkbdField, NSStri
 	//[ vkbdField setEnabled: YES ];
 	if(!Config::SYSTEM_ROTATES_WINDOWS)
 		vkbdField.transform = makeTransformForOrientation(ctx.deviceWindow()->softOrientation());
-	logMsg("init vkeyboard");
+	log.info("init vkeyboard");
 }
 
 UIKitTextField::UIKitTextField(ApplicationContext ctx, TextFieldDelegate del, CStringView initialText,
@@ -158,7 +163,7 @@ UIKitTextField::UIKitTextField(ApplicationContext ctx, TextFieldDelegate del, CS
 	uiTextField.delegate = appTextField;
 	textField_ = (void*)CFBridgingRetain(appTextField);
 	[ctx.deviceWindow()->uiWin().rootViewController.view addSubview: uiTextField];
-	logMsg("starting system text input");
+	log.info("starting system text input");
 	[uiTextField becomeFirstResponder];
 }
 
@@ -183,7 +188,7 @@ void TextField::cancel()
 {
 	if(!textField().uiTextField)
 		return;
-	logMsg("canceled system text input");
+	log.info("canceled system text input");
 	textField().textDelegate = {};
 	[textField().uiTextField resignFirstResponder];
 }
@@ -192,7 +197,7 @@ void TextField::finish()
 {
 	if(!textField().uiTextField)
 		return;
-	logMsg("finished system text input");
+	log.info("finished system text input");
 	[textField().uiTextField resignFirstResponder];
 }
 
@@ -240,12 +245,12 @@ void init(ApplicationContext ctx)
 	{
 		hardwareKBAttached = GSEventIsHardwareKeyboardAttached();
 		if(hardwareKBAttached)
-			logMsg("hardware keyboard present");
+			log.info("hardware keyboard present");
 		CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), std::bit_cast<void*>(ctx),
 			[](CFNotificationCenterRef, void *observer, CFStringRef, const void *, CFDictionaryRef)
 			{
 				hardwareKBAttached = GSEventIsHardwareKeyboardAttached();
-				logMsg("hardware keyboard %s", hardwareKBAttached ? "attached" : "detached");
+				log.info("hardware keyboard {}", hardwareKBAttached ? "attached" : "detached");
 				auto change = hardwareKBAttached ? DeviceChange::shown : DeviceChange::hidden;
 				auto ctx = std::bit_cast<ApplicationContext>(observer);
 				ctx.application().dispatchInputDeviceChange(ctx, *keyDevPtr, change);

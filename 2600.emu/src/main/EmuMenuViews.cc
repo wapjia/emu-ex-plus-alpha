@@ -13,25 +13,18 @@
 	You should have received a copy of the GNU General Public License
 	along with 2600.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <OSystem.hxx>
-#include <SoundEmuEx.hh>
+#include <stella/emucore/Props.hxx>
+#include <stella/emucore/Control.hxx>
 #include <stella/emucore/Paddles.hxx>
-// TODO: Some Stella types collide with MacTypes.h
-#define Debugger DebuggerMac
-#include <emuframework/AudioOptionView.hh>
-#include <emuframework/VideoOptionView.hh>
-#include <emuframework/SystemActionsView.hh>
-#include <emuframework/viewUtils.hh>
-#undef Debugger
-#include "MainApp.hh"
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
+#include <SoundEmuEx.hh>
+import system;
+import emuex;
+import imagine;
 
 namespace EmuEx
 {
 
-constexpr SystemLogger log{"2600.emu"};
-
+using namespace IG;
 using MainAppHelper = EmuAppHelperBase<MainApp>;
 
 class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
@@ -42,7 +35,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 	{
 		return [this](TextMenuItem &item)
 		{
-			log.info("set resampling quality:{}", item.id.val);
+			A2600System::log.info("set resampling quality:{}", item.id.val);
 			system().optionAudioResampleQuality = AudioSettings::ResamplingQuality(item.id.val);
 			system().osystem.soundEmuEx().setResampleQuality(system().optionAudioResampleQuality);
 		};
@@ -99,7 +92,7 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper
 	}
 
 public:
-	CustomVideoOptionView(ViewAttachParams attach, EmuVideoLayer &layer): VideoOptionView{attach, layer, true}
+	CustomVideoOptionView(ViewAttachParams attach, EmuVideoLayer& layer): VideoOptionView{attach, layer, true}
 	{
 		loadStockItems();
 		item.emplace_back(&systemSpecificHeading);
@@ -201,7 +194,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 		MenuId{system().optionInputPort1.value()},
 		inputPortsItem,
 		{
-			.onSetDisplayString = [this](auto idx, Gfx::Text &t)
+			.onSetDisplayString = [this](auto idx, Gfx::Text& t)
 			{
 				if(idx == 0 && system().osystem.hasConsole())
 				{
@@ -326,7 +319,7 @@ class VCSSwitchesView : public TableView, public MainAppHelper
 		"Left (P1) Difficulty", attachParams(),
 		system().p1DiffB,
 		"A", "B",
-		[this](BoolMenuItem &item)
+		[this](BoolMenuItem& item)
 		{
 			system().p1DiffB = item.flipBoolValue(*this);
 		}
@@ -337,7 +330,7 @@ class VCSSwitchesView : public TableView, public MainAppHelper
 		"Right (P2) Difficulty", attachParams(),
 		system().p2DiffB,
 		"A", "B",
-		[this](BoolMenuItem &item)
+		[this](BoolMenuItem& item)
 		{
 			system().p2DiffB = item.flipBoolValue(*this);
 		}
@@ -347,7 +340,7 @@ class VCSSwitchesView : public TableView, public MainAppHelper
 	{
 		"Color", attachParams(),
 		system().vcsColor,
-		[this](BoolMenuItem &item)
+		[this](BoolMenuItem& item)
 		{
 			system().vcsColor = item.flipBoolValue(*this);
 		}

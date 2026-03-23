@@ -60,7 +60,7 @@ public:
 	using PixmapReaderImpl::PixmapReaderImpl;
 	PixmapImage load(IO, PixmapReaderParams p = {}) const;
 	PixmapImage load(const char *name, PixmapReaderParams p = {}) const;
-	PixmapImage loadAsset(const char *name, PixmapReaderParams p = {}, const char *appName = ApplicationContext::applicationName) const;
+	PixmapImage loadAsset(const char *name, PixmapReaderParams p = {}, const char *appName = ApplicationMeta::name) const;
 };
 
 }

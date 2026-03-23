@@ -18,10 +18,11 @@
 #include <imagine/config/defs.hh>
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/pixmap/Pixmap.hh>
+#define PNG_SKIP_SETJMP_CHECK
+#include <png.h>
+#ifndef IG_USE_MODULE_STD
 #include <system_error>
-
-struct png_struct_def;
-struct png_info_def;
+#endif
 
 namespace IG
 {
@@ -30,8 +31,11 @@ class IO;
 
 namespace IG::Data
 {
-
 struct PixmapReaderParams;
+}
+
+namespace IG::Data
+{
 
 class PngImage
 {

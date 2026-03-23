@@ -13,21 +13,18 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "BitmapFactory"
-
 #include <imagine/data-type/image/PixmapReader.hh>
 #include <imagine/data-type/image/PixmapWriter.hh>
 #include <imagine/data-type/image/PixmapSource.hh>
-#include "../../base/android/android.hh"
-#include <imagine/base/ApplicationContext.hh>
 #include <imagine/base/Application.hh>
-#include <imagine/pixmap/Pixmap.hh>
-#include <imagine/util/jni.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
 #include <android/bitmap.h>
+import imagine.internal.android;
 
 namespace IG::Data
 {
+
+static SystemLogger log{"BitmapData"};
 
 BitmapFactoryReader::BitmapFactoryReader(ApplicationContext ctx):
 	appPtr{&ctx.application()},
@@ -56,7 +53,7 @@ PixmapImage PixmapReader::load(const char *name, PixmapReaderParams) const
 	env->DeleteLocalRef(nameJStr);
 	if(!bitmap)
 	{
-		logErr("couldn't decode file:%s", name);
+		log.error("couldn't decode file:{}", name);
 		return {};
 	}
 	return makePixmapImage(env, bitmap, jRecycleBitmap);
@@ -64,14 +61,14 @@ PixmapImage PixmapReader::load(const char *name, PixmapReaderParams) const
 
 PixmapImage PixmapReader::loadAsset(const char *name, PixmapReaderParams, const char *) const
 {
-	logMsg("loading asset: %s", name);
+	log.info("loading asset:{}", name);
 	auto env = app().thisThreadJniEnv();
 	auto nameJStr = env->NewStringUTF(name);
 	auto bitmap = jDecodeAsset(env, baseActivity, nameJStr);
 	env->DeleteLocalRef(nameJStr);
 	if(!bitmap)
 	{
-		logErr("couldn't decode asset:%s", name);
+		log.error("couldn't decode asset:{}", name);
 		return {};
 	}
 	return makePixmapImage(env, bitmap, jRecycleBitmap);
@@ -119,7 +116,7 @@ bool PixmapWriter::writeToFile(PixmapView pix, const char *path) const
 	auto bitmap = jMakeBitmap(env, baseActivity, pix.w(), pix.h(), aFormat);
 	if(!bitmap)
 	{
-		logErr("error allocating bitmap");
+		log.error("error allocating bitmap");
 		return false;
 	}
 	void *buffer;
@@ -130,7 +127,7 @@ bool PixmapWriter::writeToFile(PixmapView pix, const char *path) const
 	auto writeOK = jWritePNG(env, baseActivity, bitmap, pathJStr);
 	if(!writeOK)
 	{
-		logErr("error writing PNG");
+		log.error("error writing PNG");
 		return false;
 	}
 	return true;

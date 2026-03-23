@@ -13,17 +13,16 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/gfx/Renderer.hh>
-#include <imagine/gfx/opengl/GLRendererTask.hh>
-#include <imagine/thread/Thread.hh>
-#include <imagine/logger/logger.h>
-#include "internalDefs.hh"
-#include <cassert>
+#include <imagine/config/macros.h>
+#include <imagine/gfx/opengl/GLTask.hh>
+#include <imagine/logger/SystemLogger.hh>
+#include <imagine/util/opengl/glHeaders.h>
+import imagine.internal.gfxOpengl;
 
 namespace IG::Gfx
 {
 
-constexpr SystemLogger log{"GLTask"};
+static SystemLogger log{"GLTask"};
 
 GLTask::GLTask(ApplicationContext ctx):
 	GLTask{ctx, {}} {}
@@ -95,10 +94,10 @@ GLTask::~GLTask()
 
 void GLTask::runFunc(FuncDelegate del, std::span<const uint8_t> extBuff, MessageReplyMode mode)
 {
-	assert(context);
+	assume(context);
 	if(extBuff.size())
 	{
-		assert(mode == MessageReplyMode::none);
+		assume(mode == MessageReplyMode::none);
 		commandPort.sendWithExtraData({.func = del}, extBuff);
 	}
 	else
@@ -138,8 +137,6 @@ void GLTask::deinit()
 
 void GLTask::TaskContext::notifySemaphore()
 {
-	assumeExpr(semaphorePtr);
-	assumeExpr(semaphoreNeedsNotifyPtr);
 	semaphorePtr->release();
 	markSemaphoreNotified();
 }

@@ -14,21 +14,20 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/io/MapIO.hh>
-#include <imagine/config/defs.hh>
-#include <imagine/logger/logger.h>
-#include "utils.hh"
 #include <imagine/io/IOUtils-impl.hh>
-#include <cerrno>
-#include <cstring>
+#include <imagine/vmem/memory.hh>
+#include <imagine/logger/SystemLogger.hh>
 #if defined __linux__ || defined __APPLE__
 #include <sys/mman.h>
-#include <imagine/vmem/memory.hh>
 #endif
+#include <errno.h>
+import imagine.internal.io;
+import std;
 
 namespace IG
 {
 
-constexpr SystemLogger log{"MapIO"};
+static SystemLogger log{"MapIO"};
 
 template class IOUtils<MapIO>;
 
@@ -83,7 +82,7 @@ void MapIO::advise(off_t offset, size_t bytes, Advice advice)
 	if(madvise(pageSrcAddr, bytes, adviceToMAdv(advice)) != 0)
 	{
 		log.warn("madvise({}, {}, {}) failed:{}",
-			pageSrcAddr, bytes, asString(advice), Config::DEBUG_BUILD ? strerror(errno) : "");
+			pageSrcAddr, bytes, asString(advice), Config::DEBUG_BUILD ? std::strerror(errno) : "");
 	}
 }
 #endif
@@ -108,13 +107,13 @@ ssize_t MapIO::copyBuffer(auto *buff, size_t bytes, std::optional<off_t> offset)
 	if(!span.data())
 		return 0;
 	if constexpr(std::is_const_v<std::remove_pointer_t<decltype(buff)>>)
-		memcpy(span.data(), buff, span.size_bytes()); // write from provided buffer
+		std::memcpy(span.data(), buff, span.size_bytes()); // write from provided buffer
 	else
-		memcpy(buff, span.data(), span.size_bytes()); // read to provided buffer
+		std::memcpy(buff, span.data(), span.size_bytes()); // read to provided buffer
 	if(!offset)
 	{
 		currPos += span.size_bytes();
-		assert(currPos <= size());
+		assume(currPos <= size());
 	}
 	return span.size_bytes();
 }

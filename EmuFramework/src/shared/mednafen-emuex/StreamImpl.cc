@@ -17,17 +17,13 @@
 #include <mednafen/FileStream.h>
 #include <mednafen/MemoryStream.h>
 #include <mednafen/mednafen.h>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/util/utility.h>
-#include <system_error>
-
-namespace EmuEx
-{
-IG::ApplicationContext gAppContext();
-}
+#include <emuframework/EmuApp.hh>
+import std;
 
 namespace Mednafen
 {
+
+using namespace IG;
 
 std::pair<IG::OpenFlags, uint8_t> modeToAttribs(uint32 mode)
 {
@@ -59,7 +55,7 @@ try:
 	io{EmuEx::gAppContext().openFileUri(path, modeToAttribs(mode).first)},
  attribs{modeToAttribs(mode).second}
 {
- assert(!do_lock);
+	IG::assume(!do_lock);
 }
 catch(std::system_error &err)
 {
@@ -178,13 +174,13 @@ uint64 MemoryStream::readAtPos(void *data, uint64 count, uint64 pos)
 
 void MemoryStream::setSize(size_t size)
 {
-	assert(size <= data_buffer_alloced);
+	IG::assume(size <= data_buffer_alloced);
 	data_buffer_size = size;
 }
 
 uint64 Stream::readAtPos(void*, [[maybe_unused]] uint64 count, [[maybe_unused]] uint64 pos)
 {
-	bug_unreachable("Stream::readAtPos not implemented");
+	IG::unreachable();
 	return 0;
 }
 

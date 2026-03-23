@@ -16,9 +16,11 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/vmem/memory.hh>
-#include <cassert>
+#include <imagine/util/utility.hh>
+#ifndef IG_USE_MODULE_STD
 #include <cstddef>
 #include <iterator>
+#endif
 
 namespace IG
 {
@@ -68,7 +70,7 @@ public:
 
 	T &at(size_t idx)
 	{
-		assert(idx < size());
+		assume(idx < size());
 		return (*this)[idx];
 	}
 

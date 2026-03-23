@@ -18,7 +18,9 @@
 #include <imagine/input/inputDefs.hh>
 #include <imagine/base/Window.hh>
 #include <imagine/time/Time.hh>
+#ifndef IG_USE_MODULE_STD
 #include <utility>
+#endif
 
 namespace IG::Input
 {

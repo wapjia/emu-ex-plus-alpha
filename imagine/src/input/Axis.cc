@@ -14,7 +14,6 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/input/Axis.hh>
-#include <imagine/input/Device.hh>
 
 namespace IG::Input
 {

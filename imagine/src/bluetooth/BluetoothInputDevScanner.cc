@@ -13,21 +13,23 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "BTInput"
+#include <imagine/config/macros.h>
+#include <imagine/bluetooth/BluetoothInputDevice.hh>
 #include <imagine/bluetooth/BluetoothAdapter.hh>
 #include <imagine/bluetooth/Wiimote.hh>
-#include <imagine/bluetooth/Zeemote.hh>
 #include <imagine/bluetooth/IControlPad.hh>
-#include <imagine/base/Application.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/base/Timer.hh>
-#ifdef CONFIG_BLUETOOTH_SERVER
+#include <imagine/bluetooth/Zeemote.hh>
 #include <imagine/bluetooth/PS3Controller.hh>
-#endif
+#include <imagine/base/Application.hh>
+#include <imagine/base/Timer.hh>
+#include <imagine/util/variant.hh>
+#include <imagine/logger/SystemLogger.hh>
+import std;
 
 namespace IG::Bluetooth
 {
 
+static SystemLogger log{"BTInput"};
 static std::vector<std::unique_ptr<Input::Device>> btInputDevPendingList;
 static bool hidServiceActive = false;
 
@@ -48,7 +50,7 @@ static bool testSupportedBTDevClasses(std::array<uint8_t, 3> devClass)
 static void removePendingDevs()
 {
 	if(btInputDevPendingList.size())
-		logMsg("removing %d devices in pending list", (int)btInputDevPendingList.size());
+		log.info("removing {} devices in pending list", btInputDevPendingList.size());
 	btInputDevPendingList.clear();
 }
 
@@ -70,13 +72,13 @@ bool listenForDevices(ApplicationContext ctx, BluetoothAdapter &bta, const Bluet
 			}
 			else if(pending.channel() == 0x13 && pendingPS3Controller)
 			{
-				logMsg("request for PSM 0x13");
+				log.info("request for PSM 0x13");
 				getAs<PS3Controller>(*pendingPS3Controller).open2Int(bta, pending);
 				pendingPS3Controller = {};
 			}
 			else if(pending.channel() == 0x11)
 			{
-				logMsg("request for PSM 0x11");
+				log.info("request for PSM 0x11");
 				pendingSocket = pending;
 				pending.requestName(bta,
 					[ctx](BluetoothAdapter &bta, const char *name, BluetoothAddr addr)
@@ -87,15 +89,15 @@ bool listenForDevices(ApplicationContext ctx, BluetoothAdapter &bta, const Bluet
 							pendingSocket = {};
 							return;
 						}
-						logMsg("name: %s", name);
+						log.info("name:{}", name);
 						if(pendingSocket)
 						{
-							if(strstr(name, "PLAYSTATION(R)3"))
+							if(std::strstr(name, "PLAYSTATION(R)3"))
 							{
 								auto dev = std::make_unique<Input::Device>(std::in_place_type<PS3Controller>, ctx, addr);
 								if(!dev)
 								{
-									logErr("out of memory");
+									log.error("out of memory");
 									return;
 								}
 								getAs<PS3Controller>(*dev).open1Ctl(bta, pendingSocket, *dev);
@@ -108,12 +110,12 @@ bool listenForDevices(ApplicationContext ctx, BluetoothAdapter &bta, const Bluet
 			}
 			else
 			{
-				logMsg("unknown request for PSM 0x%X", pending.channel());
+				log.info("unknown request for PSM {:X}", pending.channel());
 				pending.close();
 			}
 		};
 
-	logMsg("registering HID PSMs");
+	log.info("registering HID PSMs");
 	hidServiceActive = true;
 	bta.setL2capService(0x13, true,
 		[](BluetoothAdapter& bta, BluetoothScanState state, int)
@@ -124,7 +126,7 @@ bool listenForDevices(ApplicationContext ctx, BluetoothAdapter &bta, const Bluet
 				onServerStatus(bta, BluetoothScanState::InitFailed, 0);
 				return;
 			}
-			logMsg("INT PSM registered");
+			log.info("INT PSM registered");
 			// now register the 2nd PSM
 			bta.setL2capService(0x11, true,
 				[](BluetoothAdapter& bta, BluetoothScanState state, int)
@@ -136,7 +138,7 @@ bool listenForDevices(ApplicationContext ctx, BluetoothAdapter &bta, const Bluet
 						onServerStatus(bta, BluetoothScanState::InitFailed, 0);
 						return;
 					}
-					logMsg("CTL PSM registered");
+					log.info("CTL PSM registered");
 					onServerStatus(bta, BluetoothScanState::Complete, 0);
 					// both PSMs are registered
 					if(!unregisterHIDServiceCallback)
@@ -144,7 +146,7 @@ bool listenForDevices(ApplicationContext ctx, BluetoothAdapter &bta, const Bluet
 						unregisterHIDServiceCallback.emplace(TimerDesc{.debugLabel = "unregisterHIDServiceCallback"},
 							[&bta]
 							{
-								logMsg("unregistering HID PSMs from timeout");
+								log.info("unregistering HID PSMs from timeout");
 								bta.setL2capService(0x11, false, {});
 								bta.setL2capService(0x13, false, {});
 								hidServiceActive = false;
@@ -168,7 +170,7 @@ bool scanForDevices(ApplicationContext ctx, BluetoothAdapter &bta, BluetoothAdap
 		return bta.startScan(onScanStatus,
 			[](BluetoothAdapter &, std::array<uint8_t, 3> devClass) // on device class
 			{
-				logMsg("class: %X:%X:%X", devClass[0], devClass[1], devClass[2]);
+				log.info("class: {}:{}:{}", devClass[0], devClass[1], devClass[2]);
 				return testSupportedBTDevClasses(devClass);
 			},
 			[&onScanStatus, ctx](BluetoothAdapter &bta, const char *name, BluetoothAddr addr) // on device name
@@ -178,15 +180,15 @@ bool scanForDevices(ApplicationContext ctx, BluetoothAdapter &bta, BluetoothAdap
 					onScanStatus(bta, BluetoothScanState::NameFailed, 0);
 					return;
 				}
-				if(strstr(name, "Nintendo RVL-CNT-01"))
+				if(std::strstr(name, "Nintendo RVL-CNT-01"))
 				{
 					btInputDevPendingList.emplace_back(std::make_unique<Input::Device>(std::in_place_type<Wiimote>, ctx, addr));
 				}
-				else if(strstr(name, "iControlPad-"))
+				else if(std::strstr(name, "iControlPad-"))
 				{
 					btInputDevPendingList.emplace_back(std::make_unique<Input::Device>(std::in_place_type<IControlPad>, ctx, addr));
 				}
-				else if(strstr(name, "Zeemote JS1"))
+				else if(std::strstr(name, "Zeemote JS1"))
 				{
 					btInputDevPendingList.emplace_back(std::make_unique<Input::Device>(std::in_place_type<Zeemote>, ctx, addr));
 				}
@@ -200,7 +202,7 @@ void closeDevices(BluetoothAdapter& bta)
 {
 	if(!bta.isOpen())
 		return; // Bluetooth was never used
-	logMsg("closing all BT input devs");
+	log.info("closing all BT input devs");
 	auto ctx = bta.appContext();
 	auto &app = ctx.application();
 	app.removeInputDevices(ctx, Input::Map::WIIMOTE);
@@ -219,7 +221,7 @@ size_t pendingDevs()
 
 void connectPendingDevs(BluetoothAdapter& bta)
 {
-	logMsg("connecting to %d devices", (int)btInputDevPendingList.size());
+	log.info("connecting to {} devices", btInputDevPendingList.size());
 	for(auto &e : btInputDevPendingList)
 	{
 		visit([&](auto &btDev)
@@ -236,7 +238,7 @@ void closeBT(BluetoothAdapter& bta)
 		return; // Bluetooth was never used
 	if(bta.isInScan())
 	{
-		logMsg("keeping BT active due to scan");
+		log.info("keeping BT active due to scan");
 		return;
 	}
 	removePendingDevs();
@@ -287,9 +289,9 @@ void BaseApplication::bluetoothInputDeviceStatus(ApplicationContext ctx, Input::
 			break;
 		case BluetoothSocketState::Opened:
 		{
-			logMsg("back %p, param %p", btInputDevPendingList.back().get(), &dev);
+			log.info("back {}, param {}", (void*)btInputDevPendingList.back().get(), (void*)&dev);
 			auto devPtr = moveOut(btInputDevPendingList, [&](auto &devPtr){ return devPtr.get() == &dev; });
-			logMsg("moving %p", devPtr.get());
+			log.info("moving {}", (void*)devPtr.get());
 			if(devPtr)
 			{
 				addInputDevice(ctx, std::move(devPtr), true);

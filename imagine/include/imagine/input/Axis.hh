@@ -30,7 +30,7 @@ namespace IG::Input
 using AxisPair = std::pair<AxisId, AxisId>;
 std::string_view toString(AxisId);
 
-constexpr AxisPair toAxisIds(AxisSetId id)
+inline constexpr AxisPair toAxisIds(AxisSetId id)
 {
 	using enum AxisSetId;
 	switch(id)

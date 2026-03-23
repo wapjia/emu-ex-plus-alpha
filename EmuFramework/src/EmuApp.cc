@@ -14,43 +14,22 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/EmuApp.hh>
-#include <emuframework/EmuSystem.hh>
-#include <emuframework/EmuView.hh>
-#include <emuframework/LoadProgressView.hh>
-#include <emuframework/EmuVideoLayer.hh>
-#include <emuframework/EmuVideo.hh>
-#include <emuframework/EmuAudio.hh>
-#include <emuframework/FilePicker.hh>
 #include <emuframework/MainMenuView.hh>
+#include <emuframework/LoadProgressView.hh>
 #include <emuframework/SystemActionsView.hh>
 #include <emuframework/SystemOptionView.hh>
-#include <emuframework/GUIOptionView.hh>
-#include <emuframework/AudioOptionView.hh>
 #include <emuframework/VideoOptionView.hh>
+#include <emuframework/AudioOptionView.hh>
+#include <emuframework/GUIOptionView.hh>
 #include <emuframework/FilePathOptionView.hh>
-#include <emuframework/AppKeyCode.hh>
+#include <emuframework/FilePicker.hh>
+#include <emuframework/Option.hh>
 #include "gui/AutosaveSlotView.hh"
-#include "InputDeviceData.hh"
 #include "WindowData.hh"
-#include "configFile.hh"
-#include "pathUtils.hh"
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/base/Application.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/fs/ArchiveFS.hh>
-#include <imagine/io/IO.hh>
-#include <imagine/gfx/Renderer.hh>
-#include <imagine/gfx/RendererTask.hh>
-#include <imagine/gui/ToastView.hh>
-#include <imagine/gui/AlertView.hh>
-#include <imagine/util/utility.h>
-#include <imagine/util/ScopeGuard.hh>
-#include <imagine/util/format.hh>
-#include <imagine/util/string.h>
-#include <imagine/thread/Thread.hh>
-#include <imagine/bluetooth/BluetoothInputDevice.hh>
-#include <imagine/input/android/MogaManager.hh>
-#include <cmath>
+#include "InputDeviceData.hh"
+import imagine;
+import configFile;
+import pathUtils;
 
 #include <string>
 #include <stdexcept>
@@ -60,11 +39,10 @@
 namespace EmuEx
 {
 
+using namespace IG;
+
 constexpr SystemLogger log{"App"};
 static EmuApp *gAppPtr{};
-[[gnu::weak]] bool EmuApp::hasIcon = true;
-[[gnu::weak]] bool EmuApp::needsGlobalInstance = false;
-[[gnu::weak]] bool EmuApp::handlesRecentContent = false;
 constexpr float pausedVideoBrightnessScale = .75f;
 
 EmuApp::EmuApp(ApplicationInitParams initParams, ApplicationContext &ctx):
@@ -86,8 +64,9 @@ EmuApp::EmuApp(ApplicationInitParams initParams, ApplicationContext &ctx):
 		ctx.exit();
 		return;
 	}
-	if(needsGlobalInstance)
+	if(AppMeta::needsGlobalInstance)
 		gAppPtr = this;
+	log.info("SET PTR:{}", (void*)gAppPtr);
 	ctx.setAcceptIPC(true);
 	onEvent = [this](ApplicationContext, const ApplicationEvent& appEvent)
 	{
@@ -139,12 +118,12 @@ public:
 
 EmuViewController &EmuApp::viewController() { return mainWindowData().viewController; }
 const EmuViewController &EmuApp::viewController() const { return mainWindowData().viewController; }
-IG::ToastView &EmuApp::toastView() { return viewController().popup; }
+ToastView &EmuApp::toastView() { return viewController().popup; }
 const Screen &EmuApp::emuScreen() const { return *viewController().emuWindowScreen(); }
 Window &EmuApp::emuWindow() { return viewController().emuWindow(); }
 const Window &EmuApp::emuWindow() const { return viewController().emuWindow(); }
 
-void EmuApp::setCPUNeedsLowLatency(IG::ApplicationContext ctx, bool needed)
+void EmuApp::setCPUNeedsLowLatency(ApplicationContext ctx, bool needed)
 {
 	#ifdef __ANDROID__
 	if(useNoopThread)
@@ -179,7 +158,7 @@ void EmuApp::closeSystemWithoutSave()
 	closeSystem();
 }
 
-void EmuApp::applyOSNavStyle(IG::ApplicationContext ctx, bool inEmu)
+void EmuApp::applyOSNavStyle(ApplicationContext ctx, bool inEmu)
 {
 	SystemUIStyleFlags flags;
 	if(lowProfileOSNav > (inEmu ? InEmuTristate::Off : InEmuTristate::InEmu))
@@ -217,7 +196,7 @@ void EmuApp::showExitAlert(ViewAttachParams attach, const Input::Event &e)
 	showEmulation();
 }
 
-static const char *parseCommandArgs(IG::CommandArgs arg)
+static const char *parseCommandArgs(CommandArgs arg)
 {
 	if(arg.c < 2)
 	{
@@ -241,7 +220,7 @@ bool EmuApp::setWindowDrawableConfig(Gfx::DrawableConfig conf)
 	return true;
 }
 
-IG::PixelFormat EmuApp::windowPixelFormat() const
+PixelFormat EmuApp::windowPixelFormat() const
 {
 	auto fmt = windowDrawableConfig.pixelFormat.value();
 	if(fmt)
@@ -249,7 +228,7 @@ IG::PixelFormat EmuApp::windowPixelFormat() const
 	return appContext().defaultWindowPixelFormat();
 }
 
-void EmuApp::setRenderPixelFormat(IG::PixelFormat fmt)
+void EmuApp::setRenderPixelFormat(PixelFormat fmt)
 {
 	renderPixelFormat = fmt;
 	applyRenderPixelFormat();
@@ -262,10 +241,10 @@ void EmuApp::applyRenderPixelFormat()
 	auto fmt = renderPixelFormat.value();
 	if(!fmt)
 		fmt = windowPixelFormat();
-	if(!EmuSystem::canRenderRGBA8888 && fmt != IG::PixelFmtRGB565)
+	if(!AppMeta::canRenderRGBA8888 && fmt != PixelFmtRGB565)
 	{
 		log.info("Using RGB565 render format since emulated system can't render RGBA8888");
-		fmt = IG::PixelFmtRGB565;
+		fmt = PixelFmtRGB565;
 	}
 	videoLayer.setFormat(system(), fmt, videoEffectPixelFormat(), windowDrawableConfig.colorSpace);
 }
@@ -286,7 +265,7 @@ void EmuApp::startAudio()
 	audio.start(system().frameRate().duration());
 }
 
-void EmuApp::updateLegacySavePath(IG::ApplicationContext ctx, CStringView path)
+void EmuApp::updateLegacySavePath(ApplicationContext ctx, CStringView path)
 {
 	auto oldSaveSubDirs = subDirectoryStrings(ctx, path);
 	if(oldSaveSubDirs.empty())
@@ -297,33 +276,33 @@ void EmuApp::updateLegacySavePath(IG::ApplicationContext ctx, CStringView path)
 	flattenSubDirectories(ctx, oldSaveSubDirs, path);
 }
 
-static bool hasExtraWindow(IG::ApplicationContext ctx)
+static bool hasExtraWindow(ApplicationContext ctx)
 {
 	return ctx.windows().size() == 2;
 }
 
-static void dismissExtraWindow(IG::ApplicationContext ctx)
+static void dismissExtraWindow(ApplicationContext ctx)
 {
 	if(!hasExtraWindow(ctx))
 		return;
 	ctx.windows()[1]->dismiss();
 }
 
-static bool extraWindowIsFocused(IG::ApplicationContext ctx)
+static bool extraWindowIsFocused(ApplicationContext ctx)
 {
 	if(!hasExtraWindow(ctx))
 		return false;
 	return windowData(*ctx.windows()[1]).focused;
 }
 
-static IG::Screen *extraWindowScreen(IG::ApplicationContext ctx)
+static Screen *extraWindowScreen(ApplicationContext ctx)
 {
 	if(!hasExtraWindow(ctx))
 		return nullptr;
 	return ctx.windows()[1]->screen();
 }
 
-void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::ApplicationContext ctx)
+void EmuApp::mainInitCommon(ApplicationInitParams initParams, ApplicationContext ctx)
 {
 	ConfigParams configParams = loadConfigFile(ctx);
 	system().onOptionsLoaded();
@@ -355,7 +334,7 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 	applyOSNavStyle(ctx, false);
 
 	ctx.addOnResume(
-		[this](IG::ApplicationContext, [[maybe_unused]] bool focused)
+		[this](ApplicationContext, [[maybe_unused]] bool focused)
 		{
 			audio.manager.startSession();
 			audio.open();
@@ -363,14 +342,14 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 		});
 
 	ctx.addOnExit(
-		[this](IG::ApplicationContext ctx, bool backgrounded)
+		[this](ApplicationContext ctx, bool backgrounded)
 		{
 			if(backgrounded)
 			{
 				suspendEmulation(*this);
 				if(showsNotificationIcon)
 				{
-					auto title = std::format("{} was suspended", ctx.applicationName);
+					auto title = std::format("{} was suspended", ApplicationMeta::name);
 					ctx.addNotification(title, title, system().contentDisplayName());
 				}
 			}
@@ -384,10 +363,10 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 			return true;
 		});
 
-	IG::WindowConfig winConf{ .title = ctx.applicationName };
+	WindowConfig winConf{ .title = ApplicationMeta::name };
 	winConf.setFormat(windowDrawableConfig.pixelFormat);
 	ctx.makeWindow(winConf,
-		[this](IG::ApplicationContext ctx, IG::Window &win)
+		[this](ApplicationContext ctx, Window &win)
 		{
 			renderer.initMainTask(&win, windowDrawableConfig);
 			textureBufferMode = renderer.validateTextureBufferMode(textureBufferMode);
@@ -401,7 +380,7 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 			renderer.setWindowValidOrientations(win, menuOrientation);
 			inputManager.updateInputDevices(ctx);
 			vController.configure(win, renderer, viewManager.defaultFace);
-			if(EmuSystem::inputHasKeyboard)
+			if(AppMeta::inputHasKeyboard)
 			{
 				vController.setKeyboardImage(asset(AssetID::keyboardOverlay));
 			}
@@ -531,7 +510,7 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 			};
 
 			ctx.addOnExit(
-				[this](IG::ApplicationContext ctx, bool backgrounded)
+				[this](ApplicationContext ctx, bool backgrounded)
 				{
 					if(backgrounded)
 					{
@@ -542,7 +521,7 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 						}
 						viewController().onHide();
 						ctx.addOnResume(
-							[this](IG::ApplicationContext, bool focused)
+							[this](ApplicationContext, bool focused)
 							{
 								configureSecondaryScreens();
 								viewController().prepareDraw();
@@ -573,16 +552,16 @@ void EmuApp::mainInitCommon(IG::ApplicationInitParams initParams, IG::Applicatio
 		});
 }
 
-IG::Viewport EmuApp::makeViewport(const IG::Window &win) const
+Viewport EmuApp::makeViewport(const Window &win) const
 {
 	return win.viewport(layoutBehindSystemUI ? win.bounds() : win.contentBounds());
 }
 
-void WindowData::updateWindowViewport(const IG::Window &win, IG::Viewport viewport, const IG::Gfx::Renderer &r)
+void WindowData::updateWindowViewport(const Window &win, Viewport viewport, const Gfx::Renderer &r)
 {
 	windowRect = viewport.bounds();
 	contentRect = viewport.bounds().intersection(win.contentBounds());
-	projM = Gfx::Mat4::makePerspectiveFovRH(M_PI/4.0, viewport.realAspectRatio(), .1f, 100.f)
+	projM = Gfx::Mat4::makePerspectiveFovRH(std::numbers::pi / 4.0, viewport.realAspectRatio(), .1f, 100.f)
 		.projectionPlane(viewport, .5f, r.projectionRollAngle(win));
 }
 
@@ -811,12 +790,14 @@ void EmuApp::printScreenshotResult(bool success)
 		appContext().formatDateAndTime(WallClock::now())));
 }
 
+[[gnu::weak]] bool EmuApp::willCreateSystem(ViewAttachParams, const Input::Event&) { return true; }
+
 void EmuApp::createSystemWithMedia(IO io, CStringView path, std::string_view displayName,
 	const Input::Event &e, EmuSystemCreateParams params, ViewAttachParams attachParams,
 	CreateSystemCompleteDelegate onComplete)
 {
-	assert(strlen(path));
-	if(!EmuApp::hasArchiveExtension(displayName) && !EmuSystem::defaultFsFilter(displayName))
+	assume(std::strlen(path));
+	if(!EmuApp::hasArchiveExtension(displayName) && !AppMeta::defaultFsFilter(displayName))
 	{
 		postErrorMessage("文件没有有效的扩展名");
 		return;
@@ -829,7 +810,7 @@ void EmuApp::createSystemWithMedia(IO io, CStringView path, std::string_view dis
 	auto loadProgressView = std::make_unique<LoadProgressView>(attachParams, e, onComplete);
 	auto &msgPort = loadProgressView->messagePort();
 	pushAndShowModalView(std::move(loadProgressView), e);
-	IG::makeDetachedThread(
+	makeDetachedThread(
 		[this, io{std::move(io)}, pathStr = FS::PathString{path}, nameStr = FS::FileString{displayName}, &msgPort, params]() mutable
 		{
 			log.info("starting loader thread");
@@ -894,7 +875,7 @@ void EmuApp::readState(std::span<uint8_t> buff)
 {
 	auto suspendCtx = suspendEmulationThread();
 	system().readState(*this, buff);
-	system().clearInputBuffers(viewController().inputView);
+	system().clearInputBuffers();
 	autosaveManager.resetTimer();
 }
 
@@ -965,7 +946,7 @@ bool EmuApp::loadState(CStringView path)
 
 bool EmuApp::loadStateWithSlot(int slot)
 {
-	assert(slot != -1);
+	assume(slot != -1);
 	return loadState(system().statePath(slot));
 }
 
@@ -982,8 +963,6 @@ FS::PathString EmuApp::validSearchPath(const FS::PathString &path) const
 }
 
 [[gnu::weak]] void EmuApp::onMainWindowCreated(ViewAttachParams, const Input::Event &) {}
-
-[[gnu::weak]] void EmuApp::onCustomizeNavView(EmuApp::NavView &) {}
 
 [[gnu::weak]] std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams, EmuApp::ViewID)
 {
@@ -1013,7 +992,7 @@ void EmuApp::resetInput()
 
 void EmuApp::setRunSpeed(double speed)
 {
-	assumeExpr(speed > 0.);
+	assume(speed > 0.);
 	auto _ = suspendEmulationThread();
 	system().frameRateMultiplier = speed;
 	audio.setSpeedMultiplier(speed);
@@ -1033,6 +1012,7 @@ bool EmuApp::hasSavedSessionOptions()
 void EmuApp::resetSessionOptions()
 {
 	inputManager.resetSessionOptions(appContext());
+	saveStateSlot.reset();
 	system().resetSessionOptions(*this);
 }
 
@@ -1058,6 +1038,7 @@ void EmuApp::saveSessionOptions()
 		auto configFile = ctx.openFileUri(configFilePath, OpenFlags::newFile());
 		writeConfigHeader(configFile);
 		system().writeConfig(ConfigType::SESSION, configFile);
+		writeOptionValueIfNotDefault(configFile, saveStateSlot);
 		inputManager.writeSessionConfig(configFile);
 		system().resetSessionOptionsSet();
 		if(configFile.size() == 1)
@@ -1083,8 +1064,13 @@ void EmuApp::loadSessionOptions()
 	resetSessionOptions();
 	auto ctx = appContext();
 	if(readConfigKeys(FileUtils::bufferFromUri(ctx, sessionConfigPath(), {.test = true}),
-		[this, ctx](auto key, auto &io) -> bool
+		[this, ctx](auto key, auto& io) -> bool
 		{
+			if(key == CFGKEY_SAVE_STATE_SLOT)
+			{
+				readOptionValue(io, saveStateSlot);
+				return true;
+			}
 			if(inputManager.readSessionConfig(ctx, io, key))
 				return true;
 			if(system().readConfig(ConfigType::SESSION, io, key))
@@ -1146,7 +1132,7 @@ EmuSystemTask::SuspendContext EmuApp::suspendEmulationThread() { return systemTa
 
 void EmuApp::updateFrameRate() { systemTask.updateSystemFrameRate(); }
 
-bool EmuApp::writeScreenshot(IG::PixmapView pix, CStringView path)
+bool EmuApp::writeScreenshot(PixmapView pix, CStringView path)
 {
 	return pixmapWriter.writeToFile(pix, path);
 }
@@ -1163,7 +1149,7 @@ FS::PathString EmuApp::makeNextScreenshotFilename()
 
 void EmuApp::setMogaManagerActive(bool on, bool notify)
 {
-	IG::doIfUsed(mogaManagerPtr,
+	doIfUsed(mogaManagerPtr,
 		[&](auto &mogaManagerPtr)
 		{
 			if(on)
@@ -1218,17 +1204,17 @@ bool EmuApp::allWindowsAreFocused() const
 	return windowData(appContext().mainWindow()).focused && (!hasExtraWindow(appContext()) || extraWindowIsFocused(appContext()));
 }
 
-void EmuApp::setEmuViewOnExtraWindow(bool on, IG::Screen &screen)
+void EmuApp::setEmuViewOnExtraWindow(bool on, Screen &screen)
 {
 	auto ctx = appContext();
 	if(on && !hasExtraWindow(ctx))
 	{
 		log.info("setting emu view on extra window");
-		IG::WindowConfig winConf{ .title = ctx.applicationName };
+		WindowConfig winConf{ .title = ApplicationMeta::name };
 		winConf.setScreen(screen);
 		winConf.setFormat(windowDrawableConfig.pixelFormat);
 		auto extraWin = ctx.makeWindow(winConf,
-			[this](IG::ApplicationContext, IG::Window &win)
+			[this](ApplicationContext, Window &win)
 			{
 				renderer.attachWindow(win, windowDrawableConfig);
 				auto &extraWinData = win.makeAppData<WindowData>();
@@ -1407,7 +1393,7 @@ std::unique_ptr<View> EmuApp::makeView(ViewAttachParams attach, ViewID id)
 		case ViewID::SYSTEM_OPTIONS: return std::make_unique<SystemOptionView>(attach);
 		case ViewID::FILE_PATH_OPTIONS: return std::make_unique<FilePathOptionView>(attach);
 		case ViewID::GUI_OPTIONS: return std::make_unique<GUIOptionView>(attach);
-		default: bug_unreachable("Tried to make non-existing view ID:%d", (int)id);
+		default: unreachable();
 	}
 }
 
@@ -1426,14 +1412,14 @@ MainWindowData &EmuApp::mainWindowData() const
 	return EmuEx::mainWindowData(appContext().mainWindow());
 }
 
-EmuApp &EmuApp::get(IG::ApplicationContext ctx)
+EmuApp &EmuApp::get(ApplicationContext ctx)
 {
 	return ctx.applicationAs<EmuApp>();
 }
 
 EmuApp &gApp() { return *gAppPtr; }
 
-IG::ApplicationContext gAppContext() { return gApp().appContext(); }
+ApplicationContext gAppContext() { return gApp().appContext(); }
 
 void pushAndShowModalView(std::unique_ptr<View> v, const Input::Event &e)
 {

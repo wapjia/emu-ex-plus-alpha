@@ -26,15 +26,10 @@
 #include <stella/common/AudioSettings.hxx>
 #include <stella/common/TimerManager.hxx>
 #include <stella/emucore/M6532.hxx>
-// TODO: Some Stella types collide with MacTypes.h
-#define Debugger DebuggerMac
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/logger/logger.h>
-#include <emuframework/EmuSystem.hh>
-#include <emuframework/EmuApp.hh>
-#undef Debugger
+import emuex;
+import imagine;
 
-OSystem::OSystem(EmuEx::EmuApp &app):
+OSystem::OSystem(EmuEx::EmuApp& app):
 	appPtr{&app},
 	myRandom{uInt32(TimerManager::getTicks())}
 {
@@ -45,7 +40,7 @@ OSystem::OSystem(EmuEx::EmuApp &app):
 	mySettings.setValue(AudioSettings::SETTING_VOLUME, 100);
 }
 
-void OSystem::makeConsole(unique_ptr<Cartridge>& cart, const Properties& props, const char *gamePath)
+void OSystem::makeConsole(unique_ptr<Cartridge>& cart, const Properties& props, const char* gamePath)
 {
 	myRomFile = FSNode{gamePath};
 	myConsole.emplace(*this, cart, props, myAudioSettings);
@@ -78,9 +73,4 @@ FSNode OSystem::nvramDir(std::string_view name) const
 FSNode OSystem::baseDir(std::string_view name) const
 {
 	return FSNode{std::string{appPtr->system().contentFilePath(name)}};
-}
-
-EmuEx::EmuApp &OSystem::app()
-{
-	return *appPtr;
 }

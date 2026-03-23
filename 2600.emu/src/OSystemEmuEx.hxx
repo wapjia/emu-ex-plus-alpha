@@ -49,7 +49,7 @@ public:
 	auto& soundEmuEx(this auto&& self) { return self.mySound; }
 	auto& console(this auto&& self) { return *self.myConsole; }
 	bool hasConsole() const { return (bool)myConsole; }
-	void makeConsole(unique_ptr<Cartridge>& cart, const Properties& props, const char *gamePath);
+	void makeConsole(unique_ptr<Cartridge>& cart, const Properties& props, const char* gamePath);
 	void deleteConsole();
 	void setSoundMixRate(int mixRate);
 
@@ -73,10 +73,10 @@ public:
 
 	void resetFps() {}
 
-	EmuEx::EmuApp &app();
+	auto& app(this auto&& self) { return *self.appPtr; }
 
 protected:
-	EmuEx::EmuApp *appPtr{};
+	EmuEx::EmuApp* appPtr{};
 	std::optional<Console> myConsole{};
 	Settings mySettings{};
 	AudioSettings myAudioSettings{mySettings};

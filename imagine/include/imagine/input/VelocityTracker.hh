@@ -17,9 +17,11 @@
 
 #include <imagine/config/defs.hh>
 #include <imagine/util/ranges.hh>
+#ifndef IG_USE_MODULE_STD
 #include <concepts>
 #include <chrono>
 #include <array>
+#endif
 
 namespace IG::Input
 {

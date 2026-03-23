@@ -15,10 +15,14 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/EmuInput.hh>
+#include <emuframework/inputDefs.hh>
 #include <emuframework/EmuSystem.hh>
+#ifdef IG_USE_MODULES
+import std;
+#else
 #include <array>
 #include <string_view>
+#endif
 
 namespace EmuEx
 {
@@ -48,7 +52,7 @@ enum class AppKeyCode : KeyCode
 	closeContent,
 };
 
-constexpr struct AppKeys
+inline constexpr struct AppKeys
 {
 	KeyInfo
 	openMenu = KeyInfo::appKey(AppKeyCode::openMenu),
@@ -75,28 +79,26 @@ constexpr struct AppKeys
 	static constexpr size_t size() { return sizeof(AppKeys) / sizeof(KeyInfo); }
 } appKeys;
 
-constexpr KeyCategory appKeyCategory{"In-Emulation Actions", appKeys};
-
-constexpr std::array genericGamepadAppKeyCodeMap
+inline constexpr std::array genericGamepadAppKeyCodeMap
 {
 	KeyMapping{appKeys.openSystemActions, Input::Keycode::GAME_MODE},
 	KeyMapping{appKeys.fastForward, Input::Keycode::GAME_R2},
 	KeyMapping{appKeys.openMenu, Input::Keycode::BACK},
 };
 
-constexpr std::array genericGamepadModifierAppKeyCodeMap
+inline constexpr std::array genericGamepadModifierAppKeyCodeMap
 {
 	KeyMapping{appKeys.openSystemActions, Input::Keycode::GAME_MODE},
 	KeyMapping{appKeys.fastForward, {Input::Keycode::GAME_R2, Input::Keycode::JS2_XAXIS_POS}},
 	KeyMapping{appKeys.openMenu, Input::Keycode::BACK},
 };
 
-constexpr std::array genericWiimoteAppKeyCodeMap
+inline constexpr std::array genericWiimoteAppKeyCodeMap
 {
 	KeyMapping{appKeys.openSystemActions, Input::Keycode::GAME_MODE},
 };
 
-constexpr std::array genericKeyboardAppKeyCodeMap
+inline constexpr std::array genericKeyboardAppKeyCodeMap
 {
 	KeyMapping{appKeys.openContent, {Input::Keycode::LCTRL, Input::Keycode::_2}},
 	KeyMapping{appKeys.openSystemActions, Input::Keycode::MENU},
@@ -109,14 +111,14 @@ constexpr std::array genericKeyboardAppKeyCodeMap
 	KeyMapping{appKeys.openMenu, Input::Keycode::BACK_KEY},
 };
 
-constexpr std::array rightUIKeys{appKeys.openMenu};
-constexpr std::array leftUIKeys{appKeys.toggleFastForward, appKeys.rewind};
+inline constexpr std::array rightUIKeys{appKeys.openMenu};
+inline constexpr std::array leftUIKeys{appKeys.toggleFastForward, appKeys.rewind};
 
-constexpr InputComponentDesc rightUIComponents{"Open Menu", rightUIKeys, InputComponent::ui, RT2DO};
-constexpr InputComponentDesc leftUIComponents{"Fast-forward/Rewind", leftUIKeys, InputComponent::ui, LT2DO};
+inline constexpr InputComponentDesc rightUIComponents{"Open Menu", rightUIKeys, InputComponent::ui, RT2DO};
+inline constexpr InputComponentDesc leftUIComponents{"Fast-forward/Rewind", leftUIKeys, InputComponent::ui, LT2DO};
 
 std::string_view toString(AppKeyCode);
 
-constexpr std::array playerNumStrings{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"};
+inline constexpr std::array playerNumStrings{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"};
 
 }

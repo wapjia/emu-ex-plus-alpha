@@ -23,6 +23,8 @@
 #include <imagine/base/android/AndroidApplication.hh>
 #elif defined CONFIG_OS_IOS
 #include <imagine/base/iphone/IOSApplication.hh>
+#else
+#error Missing application configuration macro
 #endif
 
 namespace IG

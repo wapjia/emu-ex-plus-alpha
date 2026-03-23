@@ -16,33 +16,30 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/EmuOptions.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/audio/OutputStream.hh>
 #include <imagine/audio/Manager.hh>
 #include <imagine/time/Time.hh>
 #include <imagine/util/container/RingBuffer.hh>
 #include <imagine/util/used.hh>
+#endif
+#ifndef IG_USE_MODULE_STD
 #include <memory>
 #include <atomic>
+#endif
 
+#ifndef IG_USE_MODULE_IMAGINE
 namespace IG
 {
 class MapIO;
 class FileIO;
 }
+#endif
 
 namespace EmuEx
 {
 
 using namespace IG;
-
-struct AudioStats
-{
-	int underruns{};
-	int overruns{};
-	int callbacks{};
-	double avgCallbackFrames{};
-	int frames{};
-};
 
 struct AudioFlags
 {
@@ -53,7 +50,7 @@ struct AudioFlags
 	constexpr bool operator ==(AudioFlags const &) const = default;
 };
 
-constexpr AudioFlags defaultAudioFlags{.enabled = 1, .enabledDuringAltSpeed = 1};
+inline constexpr AudioFlags defaultAudioFlags{.enabled = 1, .enabledDuringAltSpeed = 1};
 
 class EmuAudio
 {
@@ -66,7 +63,7 @@ public:
 		MULTI_UNDERRUN
 	};
 
-	EmuAudio(IG::ApplicationContext);
+	EmuAudio(ApplicationContext);
 	void open();
 	void start(FloatSeconds bufferDuration);
 	void stop();
@@ -81,20 +78,20 @@ public:
 	float volume() const { return currentVolume; }
 	bool setMaxVolume(int8_t vol);
 	int8_t maxVolume() const { return std::round(maxVolume_ * 100.f); }
-	void setOutputAPI(IG::Audio::Api);
-	IG::Audio::Api outputAPI() const { return audioAPI; }
+	void setOutputAPI(Audio::Api);
+	Audio::Api outputAPI() const { return audioAPI; }
 	void setEnabled(bool on);
 	bool isEnabled() const;
 	void setEnabledDuringAltSpeed(bool on);
 	bool isEnabledDuringAltSpeed() const;
-	IG::Audio::Format format() const;
+	Audio::Format format() const;
 	explicit operator bool() const { return bool(rBuff.capacity()); }
 	void writeConfig(FileIO &) const;
 	bool readConfig(MapIO &, unsigned key);
 
-	IG::Audio::Manager manager;
+	Audio::Manager manager;
 protected:
-	IG::Audio::OutputStream audioStream;
+	Audio::OutputStream audioStream;
 	RingBuffer<uint8_t, RingBufferConf{.mirrored = true}> rBuff;
 	SteadyClockTimePoint lastUnderrunTime{};
 	double speedMultiplier{1.};
@@ -107,12 +104,14 @@ protected:
 	std::atomic<AudioWriteState> audioWriteState{AudioWriteState::BUFFER};
 	int8_t channels{2};
 	AudioFlags flags{defaultAudioFlags};
-	ConditionalMember<IG::Audio::Config::MULTIPLE_SYSTEM_APIS, IG::Audio::Api> audioAPI{};
+	ConditionalMember<Audio::Config::MULTIPLE_SYSTEM_APIS, Audio::Api> audioAPI{};
 	bool addSoundBuffersOnUnderrun{};
 public:
 	bool addSoundBuffersOnUnderrunSetting{};
 	Property<int8_t, CFGKEY_SOUND_BUFFERS,
-		{.defaultValue = 2, .isValid = isValidWithMinMax<1, 7, int8_t>}> soundBuffers;
+	{
+		.defaultValue = 2, .isValid = isValidWithMinMax<1, 7>
+	}> soundBuffers;
 
 	size_t framesFree() const;
 	size_t framesWritten() const;

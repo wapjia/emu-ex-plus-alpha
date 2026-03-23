@@ -17,13 +17,15 @@
 
 #include <imagine/gfx/Texture.hh>
 #include <jni.h>
-
-struct ANativeWindow;
+#include <android/native_window.h>
 
 namespace IG::Gfx
 {
-
 class Renderer;
+}
+
+namespace IG::Gfx
+{
 
 class SurfaceTextureStorage final: public Texture
 {

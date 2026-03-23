@@ -19,8 +19,10 @@
 #include <imagine/base/EventLoop.hh>
 #include <imagine/util/container/ArrayList.hh>
 #include <imagine/util/memory/UniqueFileDescriptor.hh>
+#ifndef IG_USE_MODULE_STD
 #include <array>
 #include <span>
+#endif
 
 namespace IG
 {

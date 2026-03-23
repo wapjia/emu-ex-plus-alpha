@@ -15,8 +15,10 @@
 
 #pragma once
 
+#ifndef IG_USE_MODULE_STD
 #include <concepts>
 #include <utility>
+#endif
 
 namespace IG
 {

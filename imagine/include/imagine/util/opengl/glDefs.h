@@ -16,9 +16,4 @@
 #define GL_APIENTRY GLAPIENTRY
 #endif
 
-namespace IG
-{
-
-constexpr auto glDebugMessageCallbackName = "glDebugMessageCallback";
-
-}
+#define GL_DEBUG_MESSAGE_CALLBACK_NAME "glDebugMessageCallback"

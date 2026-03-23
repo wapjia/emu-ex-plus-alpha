@@ -21,7 +21,7 @@
 #include "wswan.h"
 #include "eeprom.h"
 #include "memory.h"
-#include <emuframework/EmuSystem.hh>
+import emuex;
 
 namespace MDFN_IEN_WSWAN
 {

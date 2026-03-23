@@ -15,11 +15,12 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/input/DragTracker.hh>
+#include <emuframework/EmuAppHelper.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/gui/View.hh>
 #include <imagine/gfx/GfxText.hh>
-#include <imagine/gfx/Quads.hh>
-#include <emuframework/EmuAppHelper.hh>
+#include <imagine/input/DragTracker.hh>
+#endif
 
 namespace EmuEx
 {

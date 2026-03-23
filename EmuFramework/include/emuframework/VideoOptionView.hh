@@ -15,11 +15,13 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/config.hh>
+#include <emuframework/defs.hh>
 #include <emuframework/EmuAppHelper.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/gui/TableView.hh>
 #include <imagine/gui/MenuItem.hh>
 #include <imagine/util/container/ArrayList.hh>
+#endif
 
 namespace EmuEx
 {
@@ -38,11 +40,11 @@ public:
 	void loadStockItems();
 
 protected:
-	static constexpr int MAX_ASPECT_RATIO_ITEMS = 5;
+	static constexpr size_t maxAspectRatioItems = 5;
 	EmuVideoLayer &videoLayer;
 	StaticArrayList<TextMenuItem, 5> textureBufferModeItem;
 	MultiChoiceMenuItem textureBufferMode;
-	StaticArrayList<TextMenuItem, MAX_ASPECT_RATIO_ITEMS> aspectRatioItem;
+	StaticArrayList<TextMenuItem, maxAspectRatioItems> aspectRatioItem;
 	MultiChoiceMenuItem aspectRatio;
 	TextMenuItem contentScaleItems[6];
 	MultiChoiceMenuItem contentScale;

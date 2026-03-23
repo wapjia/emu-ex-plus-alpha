@@ -13,27 +13,18 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/gfx/Renderer.hh>
+#include <imagine/config/macros.h>
 #include <imagine/gfx/Buffer.hh>
-#include "internalDefs.hh"
-#include <imagine/logger/logger.h>
-
-#ifndef GL_MAP_INVALIDATE_RANGE_BIT
-#define GL_MAP_INVALIDATE_RANGE_BIT 0x0004
-#endif
-
-#ifndef GL_MAP_INVALIDATE_BUFFER_BIT
-#define GL_MAP_INVALIDATE_BUFFER_BIT 0x0008
-#endif
-
-#ifndef GL_MAP_WRITE_BIT
-#define GL_MAP_WRITE_BIT 0x0002
-#endif
+#include <imagine/gfx/Renderer.hh>
+#include <imagine/gfx/RendererTask.hh>
+#include <imagine/logger/SystemLogger.hh>
+#include <imagine/util/opengl/glHeaders.h>
+import imagine.internal.gfxOpengl;
 
 namespace IG::Gfx
 {
 
-constexpr SystemLogger log{"GLBuffer"};
+static SystemLogger log{"GLBuffer"};
 
 constexpr GLenum toGLEnum(BufferType type)
 {
@@ -79,7 +70,6 @@ static void allocBufferData(GLenum target, GLuint name, GLsizeiptr size, GLenum 
 template<BufferType type>
 void GLBuffer<type>::reset(ByteBufferConfig config)
 {
-	assumeExpr(taskPtr());
 	if(name() && sizeBytes_ == config.size)
 		return;
 	sizeBytes_ = config.size;
@@ -109,10 +99,9 @@ void GLBuffer<type>::reset(ByteBufferConfig config)
 template<BufferType type>
 MappedByteBuffer GLBuffer<type>::map(ssize_t offset, size_t size, BufferMapMode mode)
 {
-	assumeExpr(taskPtr());
 	if(!size)
 		size = sizeBytes() - offset;
-	assert(offset + size <= sizeBytes());
+	assume(offset + size <= sizeBytes());
 	if(!size)
 		return {};
 	if(mode == BufferMapMode::unset)
@@ -183,7 +172,6 @@ template class GLBuffer<BufferType::index>;
 
 void GLVertexArray::initArray(GLBufferRef vbo, GLBufferRef ibo, int stride, VertexLayoutDesc layoutDesc)
 {
-	assumeExpr(taskPtr());
 	if(!task().renderer().support.hasVAOFuncs())
 	{
 		arr.get() = ibo;

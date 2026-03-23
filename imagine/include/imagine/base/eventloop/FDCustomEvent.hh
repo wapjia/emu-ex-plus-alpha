@@ -17,10 +17,12 @@
 
 #include <imagine/base/EventLoop.hh>
 #include <imagine/util/used.hh>
-#include <imagine/util/utility.h>
+#ifndef IG_USE_MODULE_STD
 #include <concepts>
 #include <optional>
 #include <string_view>
+#include <utility>
+#endif
 
 namespace IG
 {

@@ -15,11 +15,13 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/util/utility.h>
 #include <imagine/util/algorithm.h>
+#ifndef IG_USE_MODULE_STD
 #include <concepts>
 #include <string>
 #include <string_view>
+#include <utility>
+#endif
 
 namespace IG
 {
@@ -33,7 +35,7 @@ namespace IG
  * left as-is for anyone who may want to do such conversion, which was
  * allowed in earlier algorithms.
  */
-constexpr size_t trailingBytesForUTF8[256]
+inline constexpr size_t trailingBytesForUTF8[256]
 {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -50,7 +52,7 @@ constexpr size_t trailingBytesForUTF8[256]
  * This table contains as many values as there might be trailing bytes
  * in a UTF-8 sequence.
  */
-constexpr uint32_t offsetsFromUTF8[4]
+inline constexpr uint32_t offsetsFromUTF8[4]
 {
 	0x00000000UL, 0x00003080UL, 0x000E2080UL, 0x03C82080UL
 };
@@ -65,7 +67,7 @@ public:
 		extraSize = srcStr.size() - 1;
 		switch(srcStr.size())
 		{
-			default: bug_unreachable("invalid UTF8CodeUnit string size");
+			default: unreachable();
 			case 1: copy_n(srcStr.data(), 1, c.data()); break;
 			case 2: copy_n(srcStr.data(), 2, c.data()); break;
 			case 3: copy_n(srcStr.data(), 3, c.data()); break;
@@ -83,7 +85,7 @@ public:
 		uint32_t utf32{};
 		switch(extraSize)
 		{
-			default: bug_unreachable("invalid UTF8CodeUnit string size");
+			default: unreachable();
 			case 0:
 				utf32 += c[0]; break;
 			case 1:
@@ -162,7 +164,7 @@ private:
 };
 
 [[nodiscard]]
-static constexpr std::u16string toUTF16String(std::string_view strView)
+inline constexpr std::u16string toUTF16String(std::string_view strView)
 {
 	std::u16string u16String;
 	u16String.reserve(strView.size());

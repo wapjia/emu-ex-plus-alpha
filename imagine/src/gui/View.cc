@@ -16,17 +16,14 @@
 #include <imagine/gui/View.hh>
 #include <imagine/gui/ViewManager.hh>
 #include <imagine/gui/MenuItem.hh>
-#include <imagine/gfx/Renderer.hh>
-#include <imagine/gfx/RendererTask.hh>
 #include <imagine/base/Window.hh>
-#include <imagine/input/Event.hh>
-#include <imagine/util/math.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/gfx/RendererTask.hh>
+#include <imagine/logger/SystemLogger.hh>
 
 namespace IG
 {
 
-constexpr SystemLogger log{"View"};
+static SystemLogger log{"View"};
 
 void ViewI::prepareDraw() {}
 
@@ -126,7 +123,6 @@ void ViewManager::setTableXIndentToDefault(const Window &win)
 
 void View::pushAndShow(std::unique_ptr<View> v, const Input::Event &e, bool needsNavView, bool isModal)
 {
-	assumeExpr(controller_);
 	controller_->pushAndShow(std::move(v), e, needsNavView, isModal);
 }
 
@@ -137,7 +133,6 @@ void View::pushAndShowModal(std::unique_ptr<View> v, const Input::Event &e, bool
 
 void View::popTo(View &v)
 {
-	assumeExpr(controller_);
 	controller_->popTo(v);
 }
 
@@ -200,19 +195,16 @@ void View::postDraw()
 
 Window &View::window() const
 {
-	assumeExpr(win);
 	return *win;
 }
 
 Gfx::Renderer &View::renderer() const
 {
-	assumeExpr(rendererTask_);
 	return rendererTask_->renderer();
 }
 
 Gfx::RendererTask &View::rendererTask() const
 {
-	assumeExpr(rendererTask_);
 	return *rendererTask_;
 }
 
@@ -303,7 +295,7 @@ WindowRect View::displayInsetRect(Direction d, WindowRect viewRect, WindowRect d
 		case Direction::BOTTOM: return {{displayRect.x, viewRect.y2}, displayRect.pos(RB2DO)};
 		case Direction::LEFT: return {displayRect.pos(LT2DO), {viewRect.x, displayRect.y2}};
 	}
-	bug_unreachable("Direction == %d", (int)d);
+	unreachable();
 }
 
 bool View::pointIsInView(WPt pos)

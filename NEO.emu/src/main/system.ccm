@@ -1,0 +1,142 @@
+/*  This file is part of NEO.emu.
+
+	NEO.emu is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	NEO.emu is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with NEO.emu.  If not, see <http://www.gnu.org/licenses/> */
+
+module;
+extern "C"
+{
+	#include <gngeo/emu.h>
+}
+
+export module system;
+import emuex;
+import imagine;
+import std;
+
+namespace EmuEx
+{
+
+using namespace IG;
+
+export enum class NeoKey : KeyCode
+{
+	Up = 1,
+	Right = 4,
+	Down = 2,
+	Left = 3,
+	A = 5,
+	B = 6,
+	C = 7,
+	D = 8,
+	Select = 9,
+	Start = 10,
+	TestSwitch = 11
+};
+
+enum NeoConfigKey
+{
+	CFGKEY_LIST_ALL_GAMES = 275, CFGKEY_BIOS_TYPE = 276,
+	CFGKEY_MVS_COUNTRY = 277, CFGKEY_TIMER_INT = 278,
+	CFGKEY_CREATE_USE_CACHE = 279,
+	CFGKEY_NEOGEOKEY_TEST_SWITCH = 280, CFGKEY_STRICT_ROM_CHECKING = 281
+};
+
+constexpr EmuSystem::BackupMemoryDirtyFlags SRAM_DIRTY_BIT{bit(0)};
+constexpr EmuSystem::BackupMemoryDirtyFlags MEMCARD_DIRTY_BIT{bit(1)};
+
+constexpr bool systemEnumIsValid(auto const& v) { return v < SYS_MAX; }
+constexpr bool countryEnumIsValid(auto const& v) { return v < CTY_MAX; }
+
+export class NeoSystem final: public EmuSystem
+{
+public:
+	static constexpr auto pixFmt = PixelFmtRGB565;
+	static constexpr int FBResX{352};
+	size_t saveStateSize{};
+	FileIO nvramFileIO;
+	FileIO memcardFileIO;
+	GN_Surface sdlSurf{};
+	alignas(8) uint16_t screenBuff[FBResX*256]{};
+	FS::PathString datafilePath;
+	EmuSystem::OnLoadProgressDelegate onLoadProgress{};
+	Property<bool, CFGKEY_LIST_ALL_GAMES> optionListAllGames;
+	Property<uint8_t, CFGKEY_BIOS_TYPE,
+	{
+		.defaultValue = SYS_UNIBIOS, .isValid = systemEnumIsValid
+	}> optionBIOSType;
+	Property<uint8_t, CFGKEY_MVS_COUNTRY,
+	{
+		.defaultValue = CTY_USA, .isValid = countryEnumIsValid
+	}> optionMVSCountry;
+	Property<uint8_t, CFGKEY_TIMER_INT,
+	{
+		.defaultValue = 2, .isValid = isValidWithMax<2>
+	}> optionTimerInt;
+	Property<bool, CFGKEY_CREATE_USE_CACHE> optionCreateAndUseCache;
+	Property<bool, CFGKEY_STRICT_ROM_CHECKING> optionStrictROMChecking;
+	static constexpr FrameRate neogeoFrameRate{15625. / 264.}; // ~59.18Hz
+	static constexpr SystemLogger log{"NEO.emu"};
+
+	NeoSystem(ApplicationContext ctx);
+	void setTimerIntOption();
+	PixmapView videoPixmap()
+	{
+		// start image on y 16, x 24, size 304x224, 48 pixel padding on the right
+		return {{{304, 224}, pixFmt}, screenBuff + (16*FBResX) + (24), {FBResX, PixmapView::Units::PIXEL}};
+	}
+
+	// required API functions
+	void loadContent(IO&, EmuSystemCreateParams, OnLoadProgressDelegate);
+	[[gnu::hot]] void runFrame(EmuSystemTaskContext, EmuVideo*, EmuAudio*);
+	FS::FileString stateFilename(int slot, std::string_view name) const;
+	std::string_view stateFilenameExt() const { return ".sta"; }
+	size_t stateSize();
+	void readState(EmuApp&, std::span<uint8_t> buff);
+	size_t writeState(std::span<uint8_t> buff, SaveStateFlags = {});
+	bool readConfig(ConfigType, MapIO&, unsigned key);
+	void writeConfig(ConfigType, FileIO&);
+	void reset(EmuApp&, ResetMode mode);
+	void clearInputBuffers();
+	void handleInputAction(EmuApp*, InputAction);
+	FrameRate frameRate() const { return neogeoFrameRate; }
+	void configAudioRate(FrameRate outputFrameRate, int outputRate);
+
+	// optional API functions
+	void closeSystem();
+	void renderFramebuffer(EmuVideo&);
+	void onOptionsLoaded();
+	bool resetSessionOptions(EmuApp&);
+	void loadBackupMemory(EmuApp&);
+	void onFlushBackupMemory(EmuApp&, BackupMemoryDirtyFlags);
+	WallClockTimePoint backupMemoryLastWriteTime(const EmuApp&) const;
+	FS::FileString contentDisplayNameForPath(CStringView) const;
+};
+
+export using MainSystem = NeoSystem;
+
+class NeoApp final: public EmuApp
+{
+public:
+	NeoApp(ApplicationInitParams initParams, ApplicationContext& ctx):
+		EmuApp{initParams, ctx}, system_{ctx} {}
+
+	auto& system(this auto&& self) { return self.system_; }
+
+private:
+	NeoSystem system_;
+};
+
+export using MainApp = NeoApp;
+
+}

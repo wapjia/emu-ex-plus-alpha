@@ -13,25 +13,15 @@
 	You should have received a copy of the GNU General Public License
 	along with PCE.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/EmuViewController.hh>
-#include <emuframework/SystemOptionView.hh>
-#include <emuframework/AudioOptionView.hh>
-#include <emuframework/VideoOptionView.hh>
-#include <emuframework/FilePathOptionView.hh>
-#include <emuframework/DataPathSelectView.hh>
-#include <emuframework/SystemActionsView.hh>
-#include <emuframework/EmuInput.hh>
-#include <emuframework/viewUtils.hh>
-#include <mednafen-emuex/MDFNUtils.hh>
-#include "MainApp.hh"
-#include <imagine/fs/FS.hh>
-#include <imagine/gui/AlertView.hh>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
+import system;
+import emuex;
+import imagine;
+import std;
 
 namespace EmuEx
 {
 
+using namespace IG;
 using MainAppHelper = EmuAppHelperBase<MainApp>;
 
 constexpr std::string_view pceFastText{"pce_fast(默认使用)"};
@@ -202,7 +192,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 					}else{
 						system().sysCardPath = path;
 					}
-					logMsg("set system card:%s", system().sysCardPath.data());
+					PceSystem::log.info("set system card:%s", system().sysCardPath.data());
 					sysCardPath.compile(biosMenuEntryStr(system().sysCardPath));
 					return true;
 				}, hasHuCardExtension), e);
@@ -224,8 +214,8 @@ public:
 
 class CustomVideoOptionView : public VideoOptionView, public MainAppHelper
 {
-	using  MainAppHelper::app;
-	using  MainAppHelper::system;
+	using MainAppHelper::app;
+	using MainAppHelper::system;
 
 	BoolMenuItem spriteLimit
 	{
@@ -385,7 +375,7 @@ class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 			case VolumeType::CDDA: return {"CD-DA音量", 0};
 			case VolumeType::ADPCM: return {"ADPCM音量", 1};
 		}
-		bug_unreachable("invalid VolumeType");
+		unreachable();
 	}
 
 	using VolumeChoiceItemArr = std::array<TextMenuItem, 3>;

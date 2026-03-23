@@ -16,8 +16,7 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/input/inputDefs.hh>
-
-struct xcb_input_xi_device_info_t;
+#include <xcb/xinput.h>
 
 namespace IG
 {

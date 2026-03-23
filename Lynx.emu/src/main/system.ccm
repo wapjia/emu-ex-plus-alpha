@@ -1,0 +1,124 @@
+/*  This file is part of Lynx.emu.
+
+	Lynx.emu is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	Lynx.emu is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with Lynx.emu.  If not, see <http://www.gnu.org/licenses/> */
+
+module;
+#include <mednafen/mednafen.h>
+
+export module system;
+import emuex;
+import imagine;
+import std;
+
+extern "C++" const Mednafen::MDFNGI EmulatedLynx;
+
+namespace EmuEx
+{
+
+using namespace IG;
+
+export enum class LynxKey: KeyCode
+{
+	Up = 7,
+	Right = 6,
+	Down = 8,
+	Left = 5,
+	Option1 = 4,
+	Option2 = 3,
+	Pause = 9,
+	A = 2,
+	B = 1,
+};
+
+enum LynxConfigKey
+{
+	CFGKEY_BIOS = 256, CFGKEY_LYNX_ROTATION = 257,
+	CFGKEY_LOWPASS_FILTER = 258, CFGKEY_NO_MD5_FILENAMES = 259,
+};
+
+export enum class LynxRotation: uint8_t
+{
+	Auto,
+	Horizontal,
+	VerticalLeft,
+	VerticalRight
+};
+
+export class LynxSystem final: public EmuSystem
+{
+public:
+	Mednafen::MDFNGI mdfnGameInfo{EmulatedLynx};
+	uint16_t inputBuff{};
+	MutablePixmapView mSurfacePix{};
+	static constexpr WSize vidBufferPx{160, 102};
+	alignas(8) uint32_t pixBuff[vidBufferPx.x * vidBufferPx.y]{};
+	uint8_t configuredHCount{};
+	LynxRotation rotation{};
+	bool lowpassFilter{};
+	bool noMD5InFilenames{};
+	FS::PathString biosPath;
+	static constexpr SystemLogger log{"Lynx.emu"};
+
+	LynxSystem(ApplicationContext ctx):
+		EmuSystem{ctx}
+	{
+		Mednafen::MDFNGameInfo = &mdfnGameInfo;
+	}
+
+	void setRotation(LynxRotation);
+	void setLowpassFilter(bool on);
+
+	// required API functions
+	void loadContent(IO&, EmuSystemCreateParams, OnLoadProgressDelegate);
+	[[gnu::hot]] void runFrame(EmuSystemTaskContext, EmuVideo*, EmuAudio*);
+	FS::FileString stateFilename(int slot, std::string_view name) const;
+	std::string_view stateFilenameExt() const { return ".mca"; }
+	size_t stateSize();
+	void readState(EmuApp&, std::span<uint8_t> buff);
+	size_t writeState(std::span<uint8_t> buff, SaveStateFlags);
+	bool readConfig(ConfigType, MapIO&, unsigned key);
+	void writeConfig(ConfigType, FileIO&);
+	void reset(EmuApp&, ResetMode mode);
+	void clearInputBuffers();
+	void handleInputAction(EmuApp*, InputAction);
+	FrameRate frameRate() const;
+	void configAudioRate(FrameRate outputFrameRate, int outputRate);
+
+	// optional API functions
+	void closeSystem();
+	bool onVideoRenderFormatChange(EmuVideo&, PixelFormat);
+	Rotation contentRotation() const;
+	bool resetSessionOptions(EmuApp&);
+
+private:
+	LynxKey rotateDPadKeycode(LynxKey) const;
+};
+
+export using MainSystem = LynxSystem;
+
+export class LynxApp final: public EmuApp
+{
+public:
+	LynxApp(ApplicationInitParams initParams, ApplicationContext& ctx):
+		EmuApp{initParams, ctx}, system_{ctx} {}
+
+	auto& system(this auto&& self) { return self.system_; }
+
+private:
+	LynxSystem system_;
+};
+
+export using MainApp = LynxApp;
+
+}

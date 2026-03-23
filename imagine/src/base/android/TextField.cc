@@ -13,15 +13,15 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "TextInput"
 #include <imagine/input/TextField.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/base/Application.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
+#include <jni.h>
 
 namespace IG::Input
 {
 
+static SystemLogger log{"TextInput"};
 static JNI::InstMethod<jobject(jstring, jstring, jint, jint, jint, jint, jint, jlong)> jNewTextEntry{};
 static JNI::InstMethod<void(jboolean)> jFinishTextInput{};
 static JNI::InstMethod<void(jint, jint, jint, jint)> jPlaceTextInput{};
@@ -40,7 +40,7 @@ AndroidTextField::AndroidTextField(ApplicationContext ctx, TextFieldDelegate del
 	auto env = ctx.mainThreadJniEnv();
 	auto baseActivity = ctx.baseActivityObject();
 	setupBaseActivityJni(env, baseActivity);
-	logMsg("starting system text input");
+	log.info("starting system text input");
 	jTextEntry = {env, jNewTextEntry(env, baseActivity, env->NewStringUTF(initialText), env->NewStringUTF(promptText),
 		textRect.x, textRect.y, textRect.xSize(), textRect.ySize(), fontSizePixels, (jlong)this)};
 	setupTextEntryJni(env, jTextEntry);
@@ -55,7 +55,7 @@ void AndroidTextField::setupTextEntryJni(JNIEnv* env, jobject textEntry)
 {
 	if(jFinishTextInput) [[likely]]
 		return;
-	logMsg("setting up text input JNI");
+	log.info("setting up text input JNI");
 	auto textEntryClass = env->GetObjectClass(textEntry);
 	jFinishTextInput = {env, textEntryClass, "finish", "(Z)V"};
 	jPlaceTextInput = {env, textEntryClass, "place", "(IIII)V"};
@@ -76,19 +76,19 @@ void AndroidTextField::setupTextEntryJni(JNIEnv* env, jobject textEntry)
 					if(jStr)
 					{
 						const char *str = env->GetStringUTFChars(jStr, nullptr);
-						logMsg("running text entry callback with text: %s", str);
+						log.info("running text entry callback with text:{}", str);
 						delegate(str);
 						env->ReleaseStringUTFChars(jStr, str);
 					}
 					else
 					{
-						logMsg("canceled text entry callback");
+						log.info("canceled text entry callback");
 						delegate(nullptr);
 					}
 				}
 				else
 				{
-					logMsg("text entry has no callback");
+					log.info("text entry has no callback");
 				}
 			}
 		}
@@ -120,7 +120,7 @@ void TextField::place(WindowRect rect)
 	if(!jTextEntry)
 		return;
 	textRect = rect;
-	logMsg("placing text edit box at %d,%d with size %d,%d", rect.x, rect.y, rect.xSize(), rect.ySize());
+	log.info("placing text edit box at {},{} with size {},{}", rect.x, rect.y, rect.xSize(), rect.ySize());
 	jPlaceTextInput(ctx.mainThreadJniEnv(), jTextEntry, rect.x, rect.y, rect.xSize(), rect.ySize());
 }
 

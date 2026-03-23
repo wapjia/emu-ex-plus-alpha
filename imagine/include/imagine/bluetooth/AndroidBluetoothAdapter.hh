@@ -19,8 +19,10 @@
 #include <imagine/base/EventLoop.hh>
 #include <imagine/base/ApplicationContext.hh>
 #include <jni.h>
+#ifndef IG_USE_MODULE_STD
 #include <semaphore>
 #include <system_error>
+#endif
 
 namespace IG
 {
@@ -64,7 +66,7 @@ public:
 protected:
 	jobject socket{}, outStream{};
 	ApplicationContext ctx{};
-	std::binary_semaphore connectSem{0};
+	binary_semaphore connectSem{0};
 	FDEventSource fdSrc{};
 	int nativeFd = -1;
 	uint32_t channel{};

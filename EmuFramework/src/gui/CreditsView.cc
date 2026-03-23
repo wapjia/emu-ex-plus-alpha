@@ -15,10 +15,6 @@
 
 #include <emuframework/CreditsView.hh>
 #include <emuframework/EmuApp.hh>
-#include <imagine/base/Window.hh>
-#include <imagine/gfx/RendererCommands.hh>
-#include <imagine/util/math.hh>
-#include <imagine/util/variant.hh>
 
 namespace EmuEx
 {
@@ -28,7 +24,7 @@ CreditsView::CreditsView(ViewAttachParams attach, UTF16String str):
 	text{attach.rendererTask, std::move(str), &defaultFace()},
 	animate
 	{
-		[this](IG::FrameParams params)
+		[this](FrameParams params)
 		{
 			window().setNeedsDraw(true);
 			return fade.update(params.time);
@@ -47,7 +43,7 @@ void CreditsView::prepareDraw()
 
 void CreditsView::draw(Gfx::RendererCommands&__restrict__ cmds, ViewDrawParams) const
 {
-	using namespace IG::Gfx;
+	using namespace Gfx;
 	cmds.basicEffect().enableAlphaTexture(cmds);
 	text.draw(cmds, viewRect().pos(C2DO), C2DO, Color{1., 1., 1., fade});
 }
@@ -78,7 +74,7 @@ CreditsView::~CreditsView()
 
 std::u16string_view CreditsView::name() const
 {
-	return EmuApp::mainViewName();
+	return AppMeta::mainViewName;
 }
 
 }

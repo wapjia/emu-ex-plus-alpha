@@ -15,15 +15,14 @@
 
 #include <imagine/gui/TextEntry.hh>
 #include <imagine/gui/ViewManager.hh>
-#include <imagine/gui/TableView.hh>
-#include <imagine/gfx/Renderer.hh>
-#include <imagine/gfx/RendererCommands.hh>
+#include <imagine/gfx/BasicEffect.hh>
 #include <imagine/gfx/GlyphTextureSet.hh>
-#include <imagine/util/variant.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
 
 namespace IG
 {
+
+static SystemLogger log{"TextEntry"};
 
 TextEntry::TextEntry(const char *initText, ViewAttachParams attach, Gfx::GlyphTextureSet *face):
 	bgQuads{attach.rendererTask, {.size = 1}},
@@ -37,11 +36,11 @@ void TextEntry::setAcceptingInput(bool on)
 {
 	if(on)
 	{
-		logMsg("accepting input");
+		log.info("accepting input");
 	}
 	else
 	{
-		logMsg("stopped accepting input");
+		log.info("stopped accepting input");
 	}
 	acceptingInput = on;
 }
@@ -169,13 +168,13 @@ CollectTextInputView::CollectTextInputView(ViewAttachParams attach, CStringView 
 		{
 			if(!str)
 			{
-				logMsg("text collection canceled by external source");
+				log.info("text collection canceled by external source");
 				dismiss();
 				return;
 			}
 			if(onTextD(*this, str))
 			{
-				logMsg("text collection canceled by text delegate");
+				log.info("text collection canceled by text delegate");
 				dismiss();
 			}
 		},
@@ -251,7 +250,7 @@ bool CollectTextInputView::inputEvent(const Input::Event& e, ViewInputEventParam
 			bool handled = textEntry.inputEvent(*this, e);
 			if(!textEntry.isAcceptingInput() && acceptingInput)
 			{
-				logMsg("calling on-text delegate");
+				log.info("calling on-text delegate");
 				if(onTextD.callCopy(*this, textEntry.textStr()))
 				{
 					textEntry.setAcceptingInput(1);

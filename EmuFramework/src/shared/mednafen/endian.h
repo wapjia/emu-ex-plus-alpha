@@ -83,7 +83,7 @@ static INLINE void BitsIntract(uint8* ptr, const size_t bit_offset, const size_t
  this is being done).
 */
 
-static INLINE uint16 MDFN_bswap16(uint16 v)
+INLINE uint16 MDFN_bswap16(uint16 v)
 {
 #if defined(_MSC_VER)
  return _byteswap_ushort(v);
@@ -92,7 +92,7 @@ static INLINE uint16 MDFN_bswap16(uint16 v)
 #endif
 }
 
-static INLINE uint32 MDFN_bswap32(uint32 v)
+INLINE uint32 MDFN_bswap32(uint32 v)
 {
 #if defined(_MSC_VER)
  return _byteswap_ulong(v);
@@ -101,7 +101,7 @@ static INLINE uint32 MDFN_bswap32(uint32 v)
 #endif
 }
 
-static INLINE uint64 MDFN_bswap64(uint64 v)
+INLINE uint64 MDFN_bswap64(uint64 v)
 {
 #if defined(_MSC_VER)
  return _byteswap_uint64(v);
@@ -114,7 +114,7 @@ static INLINE uint64 MDFN_bswap64(uint64 v)
 // X endian.
 //
 template<int isbigendian, typename T, bool aligned>
-static INLINE T MDFN_deXsb(const void* ptr)
+INLINE T MDFN_deXsb(const void* ptr)
 {
  T tmp;
 
@@ -148,7 +148,7 @@ static INLINE T MDFN_densb(const void* ptr)
 // Little endian.
 //
 template<typename T, bool aligned = false>
-static INLINE T MDFN_delsb(const void* ptr)
+INLINE T MDFN_delsb(const void* ptr)
 {
  return MDFN_deXsb<0, T, aligned>(ptr);
 }
@@ -167,7 +167,7 @@ static INLINE uint32 MDFN_de24lsb(const void* ptr)
 }
 
 template<bool aligned = false>
-static INLINE uint32 MDFN_de32lsb(const void* ptr)
+INLINE uint32 MDFN_de32lsb(const void* ptr)
 {
  return MDFN_delsb<uint32, aligned>(ptr);
 }
@@ -225,7 +225,7 @@ static INLINE uint64 MDFN_de64msb(const void* ptr)
 // X endian.
 //
 template<int isbigendian, typename T, bool aligned>
-static INLINE void MDFN_enXsb(void* ptr, T value)
+INLINE void MDFN_enXsb(void* ptr, T value)
 {
  T tmp = value;
 
@@ -257,7 +257,7 @@ static INLINE void MDFN_ennsb(void* ptr, T value)
 // Little endian.
 //
 template<typename T, bool aligned = false>
-static INLINE void MDFN_enlsb(void* ptr, T value)
+INLINE void MDFN_enlsb(void* ptr, T value)
 {
  MDFN_enXsb<0, T, aligned>(ptr, value);
 }

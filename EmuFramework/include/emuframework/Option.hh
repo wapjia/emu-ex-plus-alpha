@@ -15,16 +15,20 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/io/MapIO.hh>
 #include <imagine/io/FileIO.hh>
 #include <imagine/util/concepts.hh>
 #include <imagine/util/optional.hh>
 #include <imagine/util/used.hh>
 #include <imagine/util/Property.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
+#endif
+#ifndef IG_USE_MODULE_STD
 #include <array>
 #include <cstring>
 #include <string_view>
+#endif
 
 namespace EmuEx
 {
@@ -45,12 +49,12 @@ concept PropertyOption =
 	};
 
 template <class T>
-inline std::optional<T> readOptionValue(Readable auto &io, std::predicate<T> auto &&isValid)
+inline std::optional<T> readOptionValue(Readable auto &io, std::predicate<T> auto &&isValid, SystemLogger log = {})
 {
 	size_t bytesToRead = io.size();
 	if(bytesToRead != sizeof(T))
 	{
-		logMsg("skipping %zu byte option value, expected %zu bytes", bytesToRead, sizeof(T));
+		log.info("skipping {} byte option value, expected {} bytes", bytesToRead, sizeof(T));
 		return {};
 	}
 	auto val = io.template get<T>();
@@ -60,68 +64,68 @@ inline std::optional<T> readOptionValue(Readable auto &io, std::predicate<T> aut
 }
 
 template <class T>
-inline std::optional<T> readOptionValue(Readable auto &io)
+inline std::optional<T> readOptionValue(Readable auto &io, SystemLogger log = {})
 {
-	return readOptionValue<T>(io, isAlwaysValid<T>);
+	return readOptionValue<T>(io, isAlwaysValid<T>, log);
 }
 
 template <class T>
-inline bool readOptionValue(Readable auto &io, Callable<void, T> auto &&func, std::predicate<T> auto &&isValid)
+inline bool readOptionValue(Readable auto &io, Callable<void, T> auto &&func, std::predicate<T> auto &&isValid, SystemLogger log = {})
 {
-	return doOptionally(readOptionValue<T>(io, IG_forward(isValid)), IG_forward(func));
+	return doOptionally(readOptionValue<T>(io, IG_forward(isValid), log), IG_forward(func));
 }
 
 template <class T>
-inline bool readOptionValue(Readable auto &io, Callable<void, T> auto &&func)
+inline bool readOptionValue(Readable auto &io, Callable<void, T> auto &&func, SystemLogger log = {})
 {
-	return readOptionValue<T>(io, IG_forward(func), isAlwaysValid<T>);
+	return readOptionValue<T>(io, IG_forward(func), isAlwaysValid<T>, log);
 }
 
 template <class T>
-inline bool readOptionValue(Readable auto &io, T &output, std::predicate<T> auto &&isValid)
+inline bool readOptionValue(Readable auto &io, T &output, std::predicate<T> auto &&isValid, SystemLogger log = {})
 {
 	if(!used(output))
 		return false;
 	return readOptionValue<T>(io,
-		[&](auto &&val){ output = IG_forward(val); }, IG_forward(isValid));
+		[&](auto &&val){ output = IG_forward(val); }, IG_forward(isValid), log);
 }
 
 template <class T>
-inline bool readOptionValue(Readable auto &io, T &output)
+inline bool readOptionValue(Readable auto &io, T &output, SystemLogger log = {})
 {
 	if(!used(output))
 		return false;
-	return readOptionValue<T>(io, output, isAlwaysValid<T>);
+	return readOptionValue<T>(io, output, isAlwaysValid<T>, log);
 }
 
 template<PropertyOption Prop>
-inline bool readOptionValue(Readable auto &io, Prop &output)
+inline bool readOptionValue(Readable auto &io, Prop &output, SystemLogger log = {})
 {
 	using T = Prop::SerializedType;
 	auto bytesToRead = io.size();
 	if(bytesToRead != sizeof(T))
 	{
-		logMsg("skipping %zu byte option value, expected %zu bytes", bytesToRead, sizeof(T));
+		log.info("skipping {} byte option value, expected {} bytes", bytesToRead, sizeof(T));
 		return false;
 	}
 	return output.unserialize(io.template get<T>());
 }
 
 template <Container T>
-inline std::optional<T> readStringOptionValue(Readable auto &io)
+inline std::optional<T> readStringOptionValue(Readable auto &io, SystemLogger log = {})
 {
 	T val{};
 	size_t bytesToRead = io.size();
 	const auto destStringSize = val.max_size() - 1;
 	if(bytesToRead > destStringSize)
 	{
-		logMsg("skipping %zu byte string option value, too large for %zu bytes", bytesToRead, destStringSize);
+		log.info("skipping {} byte string option value, too large for {} bytes", bytesToRead, destStringSize);
 		return {};
 	}
 	auto size = io.readSized(val, bytesToRead);
 	if(size == -1) [[unlikely]]
 	{
-		logErr("error reading %zu byte string option", bytesToRead);
+		log.error("error reading {} byte string option", bytesToRead);
 		return {};
 	}
 	return val;
@@ -139,10 +143,10 @@ inline bool readStringOptionValue(Readable auto &io, T &output)
 	return readStringOptionValue<T>(io, [&](auto &&val){ output = IG_forward(val); });
 }
 
-inline void writeOptionValueHeader(Writable auto &io, uint16_t key, uint16_t optSize)
+inline void writeOptionValueHeader(Writable auto &io, uint16_t key, uint16_t optSize, SystemLogger log = {})
 {
 	optSize += sizeof key;
-	logMsg("writing option key:%u with size:%u", key, optSize);
+	log.info("writing option key:{} with size:{}", key, optSize);
 	io.put(optSize);
 	io.put(key);
 }

@@ -4,8 +4,8 @@
 
 #include "scd.h"
 #include "pcm.h"
-#include <imagine/logger/logger.h>
 #include <imagine/util/mayAliasInt.h>
+import imagine;
 
 static unsigned int g_rate = 0; // 18.14 fixed point
 

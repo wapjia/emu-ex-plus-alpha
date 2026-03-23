@@ -13,16 +13,17 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/base/ApplicationContext.hh>
 #include <imagine/base/PerformanceHintManager.hh>
+#include <imagine/base/ApplicationContext.hh>
 #include <imagine/base/sharedLibrary.hh>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <android/performance_hint.h>
-#include <imagine/logger/logger.h>
 
 namespace IG
 {
 
-[[maybe_unused]] constexpr SystemLogger log{"PerfHint"};
+[[maybe_unused]] static SystemLogger log{"PerfHint"};
 
 static APerformanceHintSession* (*APerformanceHint_createSession)(APerformanceHintManager*,
 	const int32_t* threadIds, size_t size, int64_t initialTargetWorkDurationNanos);
@@ -66,7 +67,7 @@ void PerformanceHintSession::updateTargetWorkDuration(Nanoseconds targetTime)
 	if(!sessionPtr)
 		return;
 	if(APerformanceHint_updateTargetWorkDuration(sessionPtr.get(), targetTime.count()))
-		logErr("error in APerformanceHint_updateTargetWorkDuration(%p, %lld)", sessionPtr.get(), (long long)targetTime.count());
+		log.error("error in APerformanceHint_updateTargetWorkDuration({}, {})", (void*)sessionPtr.get(), targetTime.count());
 }
 
 void PerformanceHintSession::reportActualWorkDuration(Nanoseconds actualTime)
@@ -74,7 +75,7 @@ void PerformanceHintSession::reportActualWorkDuration(Nanoseconds actualTime)
 	if(!sessionPtr)
 		return;
 	if(APerformanceHint_reportActualWorkDuration(sessionPtr.get(), actualTime.count()))
-		logErr("error in APerformanceHint_reportActualWorkDuration(%p, %lld)", sessionPtr.get(), (long long)actualTime.count());
+		log.error("error in APerformanceHint_reportActualWorkDuration({}, {})", (void*)sessionPtr.get(), actualTime.count());
 }
 
 PerformanceHintSession::operator bool() const { return bool(sessionPtr); }

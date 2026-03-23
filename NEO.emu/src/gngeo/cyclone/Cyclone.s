@@ -30,6 +30,22 @@
   .global Op6601
   .global Op6701
 
+  .type CycloneInit, %function
+  .type CycloneReset, %function
+  .type CycloneRun, %function
+  .type CycloneSetSr, %function
+  .type CycloneGetSr, %function
+  .type CycloneFlushIrq, %function
+  .type CyclonePack, %function
+  .type CycloneUnpack, %function
+  .type CycloneSetRealTAS, %function
+  .type CycloneDoInterrupt, %function
+  .type CycloneDoTrace, %function
+  .type Op____, %function
+  .type Op6001, %function
+  .type Op6601, %function
+  .type Op6701, %function
+
 .macro LOAD_GLOBAL_VAR_ADDR reg prefix name
 	ldr \reg, .L\prefix\()_addr_\name
 .L\prefix\()_offset_\name :

@@ -1,0 +1,279 @@
+/*  This file is part of NES.emu.
+
+	NES.emu is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	NES.emu is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with NES.emu.  If not, see <http://www.gnu.org/licenses/> */
+
+module;
+#include <fceu/driver.h>
+#include <fceu/palette.h>
+#include <fceu/state.h>
+#include <fceu/cheat.h>
+
+export module system;
+import emuex;
+import imagine;
+import std;
+
+export extern "C++" bool replaceP2StartWithMicrophone;
+export extern "C++" int pal_emulation;
+
+namespace EmuEx
+{
+
+using namespace IG;
+
+export enum class NesKey: KeyCode
+{
+	Up = 5,
+	Right = 8,
+	Down = 6,
+	Left = 7,
+	Select = 3,
+	Start = 4,
+	A = 1,
+	B = 2,
+
+	toggleDiskSide = 255,
+};
+
+extern "C++" class Cheat: public CHEATF
+{
+public:
+	Cheat(std::string_view name): CHEATF{.name = std::string{name}} {}
+};
+
+extern "C++" class CheatCode: public CHEATCODE
+{
+public:
+	CheatCode(uint16 addr, uint8 val, int compare, int type):
+		CHEATCODE{.addr = addr, .val = val, .compare = compare, .type = type} {}
+};
+
+enum NesConfigKey
+{
+	CFGKEY_FDS_BIOS_PATH = 270, CFGKEY_FOUR_SCORE = 271,
+	CFGKEY_VIDEO_SYSTEM = 272, CFGKEY_SPRITE_LIMIT = 273,
+	CFGKEY_SOUND_QUALITY = 274, CFGKEY_INPUT_PORT_1 = 275,
+	CFGKEY_INPUT_PORT_2 = 276, CFGKEY_DEFAULT_PALETTE_PATH = 277,
+	CFGKEY_DEFAULT_VIDEO_SYSTEM = 278, CFGKEY_COMPATIBLE_FRAMESKIP = 279,
+	CFGKEY_DEFAULT_SOUND_LOW_PASS_FILTER = 280, CFGKEY_SWAP_DUTY_CYCLES = 281,
+	CFGKEY_START_VIDEO_LINE = 282, CFGKEY_VISIBLE_VIDEO_LINES = 283,
+	CFGKEY_HORIZONTAL_VIDEO_CROP = 284, CFGKEY_CORRECT_LINE_ASPECT = 285,
+	CFGKEY_FF_DURING_FDS_ACCESS = 286, CFGKEY_CHEATS_PATH = 287,
+	CFGKEY_PATCHES_PATH = 288, CFGKEY_PALETTE_PATH = 289,
+	CFGKEY_OVERCLOCKING = 290, CFGKEY_OVERCLOCK_EXTRA_LINES = 291,
+	CFGKEY_OVERCLOCK_VBLANK_MULTIPLIER = 292, CFGKEY_P2_START_AS_FC_MIC = 293,
+};
+
+export constexpr int maxExtraLinesPerFrame{30000};
+export constexpr int maxVBlankMultiplier{16};
+
+constexpr bool isSupportedStartingLine(const auto &line)
+{
+	switch(line)
+	{
+		case 0:
+		case 8:
+			return true;
+	}
+	return false;
+}
+
+constexpr bool isSupportedLineCount(const auto &lines)
+{
+	switch(lines)
+	{
+		case 224:
+		case 232:
+		case 240:
+			return true;
+	}
+	return false;
+}
+
+const char* regionToStr(int region);
+export void emulateSound(EmuAudio*);
+export void setRegion(int region, int defaultRegion, int detectedRegion);
+export bool hasFDSBIOSExtension(std::string_view name) { return endsWithAnyCaseless(name, ".rom", ".bin"); }
+bool hasFDSExtension(std::string_view name) { return endsWithAnyCaseless(name, ".fds"); }
+bool hasROMExtension(std::string_view name) { return endsWithAnyCaseless(name, ".nes", ".unf", ".unif"); }
+export unsigned parseHex(const char*);
+export std::string toGGString(const CheatCode&);
+export void saveCheats();
+export void syncCheats();
+
+export bool hasNESExtension(std::string_view name)
+{
+	return hasROMExtension(name) || hasFDSExtension(name) || endsWithAnyCaseless(name, ".nsf");
+}
+
+export class NesSystem: public EmuSystem
+{
+public:
+	using PalArray = std::array<pal, 512>;
+
+	size_t saveStateSize{};
+	uint32 padData{};
+	uint32 zapperData[3]{};
+	uint8_t fcExtData{};
+	bool usingZapper{};
+	uint8_t autoDetectedRegion{};
+	PixelFormat pixFmt{};
+	PalArray defaultPal{};
+	union
+	{
+		uint16_t col16[256];
+		uint32_t col32[256];
+	} nativeCol;
+	alignas(16) uint8 XBufData[256 * 256 + 16]{};
+	std::string cheatsDir;
+	std::string patchesDir;
+	std::string palettesDir;
+	std::string defaultPalettePath;
+	std::string fdsBiosPath;
+	std::string loaderErrorString;
+	Property<bool, CFGKEY_FF_DURING_FDS_ACCESS,
+	{
+		.defaultValue = true
+	}> fastForwardDuringFdsAccess;
+	bool fdsIsAccessing{};
+	Property<bool, CFGKEY_FOUR_SCORE> optionFourScore;
+	Property<ESI, CFGKEY_INPUT_PORT_1,
+	{
+		.defaultValue = SI_UNSET
+	}, int8_t> inputPort1;
+	Property<ESI, CFGKEY_INPUT_PORT_2,
+	{
+		.defaultValue = SI_UNSET
+	}, int8_t> inputPort2;
+	Property<uint8_t, CFGKEY_VIDEO_SYSTEM,
+	{
+		.isValid = isValidWithMax<3>
+	}> optionVideoSystem;
+	Property<uint8_t, CFGKEY_DEFAULT_VIDEO_SYSTEM,
+	{
+		.isValid = isValidWithMax<3>
+	}> optionDefaultVideoSystem;
+	Property<bool, CFGKEY_SPRITE_LIMIT,
+	{
+		.defaultValue = true
+	}> optionSpriteLimit;
+	Property<uint8_t, CFGKEY_SOUND_QUALITY, // default to "High" (1) as "Normal" (0) has low accuracy affecting samples per frame
+	{
+		.defaultValue = 1, .isValid = isValidWithMax<2>
+	}> optionSoundQuality;
+	Property<bool, CFGKEY_COMPATIBLE_FRAMESKIP> optionCompatibleFrameskip;
+	Property<uint8_t, CFGKEY_START_VIDEO_LINE,
+	{
+		.defaultValue = 8, .isValid = isSupportedStartingLine
+	}> optionDefaultStartVideoLine;
+	Property<uint8_t, CFGKEY_VISIBLE_VIDEO_LINES,
+	{
+		.defaultValue = 224, .isValid = isSupportedLineCount
+	}> optionDefaultVisibleVideoLines;
+	Property<uint8_t, CFGKEY_START_VIDEO_LINE,
+	{
+		.defaultValue = 8, .isValid = isSupportedStartingLine
+	}> optionStartVideoLine;
+	Property<uint8_t, CFGKEY_VISIBLE_VIDEO_LINES,
+	{
+		.defaultValue = 224, .isValid = isSupportedLineCount
+	}> optionVisibleVideoLines;
+	Property<bool, CFGKEY_HORIZONTAL_VIDEO_CROP> optionHorizontalVideoCrop;
+	Property<bool, CFGKEY_CORRECT_LINE_ASPECT> optionCorrectLineAspect;
+	static constexpr FrameRate ntscFrameRate{1008307711. / 16777215.}; // ~60.099Hz
+	static constexpr FrameRate palFrameRate{838977920. / 16777215.}; // ~50.00Hz
+	static constexpr SystemLogger log{"NES.emu"};
+
+	NesSystem(ApplicationContext);
+	void connectNESInput(int port, ESI type);
+	void setupNESInputPorts();
+	void setupNESFourScore();
+	void updateVideoPixmap(EmuVideo&, bool horizontalCrop, int lines);
+	void setDefaultPalette(ApplicationContext, CStringView palPath);
+	void renderVideo(EmuSystemTaskContext, EmuVideo&, uint8* buf);
+
+	// required API functions
+	void loadContent(IO&, EmuSystemCreateParams, OnLoadProgressDelegate);
+	[[gnu::hot]] void runFrame(EmuSystemTaskContext, EmuVideo*, EmuAudio*);
+	FS::FileString stateFilename(int slot, std::string_view name) const;
+	std::string_view stateFilenameExt() const { return ".fcs"; }
+	size_t stateSize() { return saveStateSize; }
+	void readState(EmuApp&, std::span<uint8_t> buff);
+	size_t writeState(std::span<uint8_t> buff, SaveStateFlags);
+	bool readConfig(ConfigType, MapIO&, unsigned key);
+	void writeConfig(ConfigType, FileIO&);
+	void reset(EmuApp&, ResetMode);
+	void clearInputBuffers();
+	void handleInputAction(EmuApp*, InputAction);
+	FrameRate frameRate() const { return videoSystem() == VideoSystem::PAL ? palFrameRate : ntscFrameRate; }
+	void configAudioRate(FrameRate outputFrameRate, int outputRate);
+
+	// optional API functions
+	void closeSystem();
+	void renderFramebuffer(EmuVideo&);
+	void onOptionsLoaded();
+	void onSessionOptionsLoaded(EmuApp&);
+	bool resetSessionOptions(EmuApp&);
+	void loadBackupMemory(EmuApp&);
+	void onFlushBackupMemory(EmuApp&, BackupMemoryDirtyFlags);
+	WallClockTimePoint backupMemoryLastWriteTime(const EmuApp&) const;
+	bool onPointerInputStart(const Input::MotionEvent&, Input::DragTrackerState, WindowRect gameRect);
+	bool onPointerInputEnd(const Input::MotionEvent&, Input::DragTrackerState, WindowRect gameRect);
+	VideoSystem videoSystem() const;
+	double videoAspectRatioScale() const;
+	bool onVideoRenderFormatChange(EmuVideo&, PixelFormat);
+	bool shouldFastForward() const;
+	Cheat* newCheat(EmuApp&, const char* name, CheatCodeDesc);
+	bool setCheatName(Cheat&, const char* name);
+	std::string_view cheatName(const Cheat&) const;
+	void setCheatEnabled(Cheat&, bool on);
+	bool isCheatEnabled(const Cheat&) const;
+	bool addCheatCode(EmuApp&, Cheat*&, CheatCodeDesc);
+	bool modifyCheatCode(EmuApp&, Cheat&, CheatCode&, CheatCodeDesc);
+	Cheat* removeCheatCode(Cheat&, CheatCode&);
+	bool removeCheat(Cheat&);
+	void forEachCheat(DelegateFunc<bool(Cheat&, std::string_view)>);
+	void forEachCheatCode(Cheat&, DelegateFunc<bool(CheatCode&, std::string_view)>);
+	//region 爱吾修改
+	void setCheatListAiWu(const std::list<std::string>& cheatList);
+	std::string getSystemSettingValueAiWu(std::string_view key);
+	void setSystemSettingValueAiWu(std::string_view key, std::string_view value);
+	//endregion
+private:
+	void cacheUsingZapper();
+	void setDefaultPalette(IO&);
+};
+
+export using MainSystem = NesSystem;
+
+export extern "C++" class NesSystemHolder final: public NesSystem{};
+
+class NesApp final: public EmuApp
+{
+public:
+	NesApp(ApplicationInitParams initParams, ApplicationContext& ctx):
+		EmuApp{initParams, ctx}, system_{ctx}
+	{
+		audio.setStereo(false);
+	}
+
+	auto& system(this auto&& self) { return self.system_; }
+
+private:
+	NesSystem system_;
+};
+
+export using MainApp = NesApp;
+
+}

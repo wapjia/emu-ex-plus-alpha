@@ -20,14 +20,16 @@
 #include <imagine/base/Animation.hh>
 #include <imagine/util/rectangle2.h>
 #include <imagine/util/jni.hh>
-
-struct ANativeWindow;
-struct ANativeActivity;
+#include <android/native_activity.h>
+#include <android/native_window.h>
 
 namespace IG
 {
-
 class ApplicationContext;
+}
+
+namespace IG
+{
 
 using NativeWindowFormat = int32_t;
 using NativeWindow = ANativeWindow*;

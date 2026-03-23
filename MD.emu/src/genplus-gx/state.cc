@@ -21,10 +21,8 @@
  ****************************************************************************************/
 
 #include "shared.h"
-#include <imagine/logger/logger.h>
-#include <system_error>
-#include <memory>
-#include <format>
+import imagine;
+import std;
 
 static unsigned oldStateSizeAfterZ80Regs()
 {
@@ -272,7 +270,7 @@ void state_load(const unsigned char *buffer)
   load_param(&Z80, sizeof(Z80_Regs));
   if(exVersion < 2)
   {
-  	assumeExpr(ptrSize == 4 || ptrSize == 8);
+  	IG::assume(ptrSize == 4 || ptrSize == 8);
   	logMsg("skipping extra Z80 regs data in state");
   	bufferptr += ptrSize * 2;
   }

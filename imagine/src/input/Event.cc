@@ -13,9 +13,10 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <imagine/config/macros.h>
 #include <imagine/input/Event.hh>
+#include <imagine/input/Device.hh>
 #include <imagine/input/bluetoothInputDefs.hh>
-#include <imagine/base/Application.hh>
 
 namespace IG::Input
 {
@@ -87,7 +88,7 @@ bool KeyEvent::isDefaultConfirmButton(uint32_t swapped) const
 		#ifdef CONFIG_MACHINE_PANDORA
 		case DeviceSubtype::PANDORA_HANDHELD:
 			return key() == Input::Keycode::ENTER ||
-				(swapped ? isDefaultCancelButton(0) : key() == Keycode::Pandora::X);
+				(swapped ? isDefaultCancelButton(0) : key() == PandoraKey::X);
 		#endif
 		default: break;
 	}
@@ -106,7 +107,7 @@ bool KeyEvent::isDefaultCancelButton(uint32_t swapped) const
 		case DeviceSubtype::PANDORA_HANDHELD:
 			// TODO: can't call isDefaultConfirmButton(0) since it doesn't check whether the source was
 			// a gamepad or keyboard
-			return swapped ? (key() == Keycode::Pandora::X) : (key() == Keycode::Pandora::B);
+			return swapped ? (key() == PandoraKey::X) : (key() == PandoraKey::B);
 		#endif
 		default: break;
 	}
@@ -167,15 +168,15 @@ bool KeyEvent::isDefaultPageUpButton() const
 {
 	switch(map())
 	{
-		#ifdef CONFIG_INPUT_BLUETOOTH
-		case Map::WIIMOTE: return key() == Input::WiimoteKey::PLUS;
-		#endif
+		case Map::WIIMOTE:
+			if(!Config::Input::BLUETOOTH) { unreachable(); }
+			return key() == Input::WiimoteKey::PLUS;
 		default:
 			switch(device()->subtype())
 			{
 				#ifdef CONFIG_MACHINE_PANDORA
 				case DeviceSubtype::PANDORA_HANDHELD:
-					return key() == Keycode::Pandora::L;
+					return key() == PandoraKey::L;
 				#endif
 				default: break;
 			}
@@ -188,15 +189,15 @@ bool KeyEvent::isDefaultPageDownButton() const
 {
 	switch(map())
 	{
-		#ifdef CONFIG_INPUT_BLUETOOTH
-		case Map::WIIMOTE: return key() == Input::WiimoteKey::MINUS;
-		#endif
+		case Map::WIIMOTE:
+			if(!Config::Input::BLUETOOTH) { unreachable(); }
+			return key() == Input::WiimoteKey::MINUS;
 		default:
 			switch(device()->subtype())
 			{
 				#ifdef CONFIG_MACHINE_PANDORA
 				case DeviceSubtype::PANDORA_HANDHELD:
-					return key() == Keycode::Pandora::R;
+					return key() == PandoraKey::R;
 				#endif
 				default: break;
 			}

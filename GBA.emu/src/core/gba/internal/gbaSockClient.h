@@ -7,7 +7,7 @@
 
 #include <cstdint>
 
-#include <SFML/Network.hpp>
+#include "../../../../third_party/sfml/include/SFML/Network.hpp"
 
 class GBASockClient {
 public:
@@ -24,7 +24,7 @@ public:
     bool IsDisconnected();
 
 private:
-    sf::IpAddress server_addr;
+    sf::IpAddress server_addr{0};
     sf::TcpSocket client;
     sf::TcpSocket clock_client;
 

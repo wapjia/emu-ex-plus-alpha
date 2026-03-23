@@ -15,17 +15,15 @@
 
 #include <imagine/gui/NavView.hh>
 #include <imagine/gui/ViewManager.hh>
-#include <imagine/gui/TableView.hh>
-#include <imagine/gfx/Renderer.hh>
-#include <imagine/gfx/RendererCommands.hh>
+#include <imagine/gfx/BasicEffect.hh>
 #include <imagine/gfx/Mat4.hh>
-#include <imagine/util/variant.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/gfx/Renderer.hh>
+#include <imagine/logger/SystemLogger.hh>
 
 namespace IG
 {
 
-constexpr SystemLogger log;
+static SystemLogger log{"NavView"};
 
 NavView::NavView(ViewAttachParams attach, Gfx::GlyphTextureSet *face):
 	View{attach},
@@ -52,7 +50,7 @@ bool NavView::selectNextLeftButton()
 	if(selected == -1)
 		selected = 1;
 	int elem = IG::wrapMinMax(selected - 1, 0, controls);
-	for([[maybe_unused]] auto i : iotaCount(controls))
+	for([[maybe_unused]] auto i: iotaCount(controls))
 	{
 		if(control[elem].isActive)
 		{
@@ -70,7 +68,7 @@ bool NavView::selectNextRightButton()
 	if(selected == -1)
 		selected = controls - 2;
 	int elem = IG::wrapMinMax(selected + 1, 0, controls);
-	for([[maybe_unused]] auto i : iotaCount(controls))
+	for([[maybe_unused]] auto i: iotaCount(controls))
 	{
 		if(control[elem].isActive)
 		{

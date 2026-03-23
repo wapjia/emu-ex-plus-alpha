@@ -13,30 +13,23 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/util/bit.hh>
-#include <imagine/util/math.hh>
-#include <imagine/util/fd-utils.h>
-#include <imagine/fs/FS.hh>
-#include <imagine/input/evdev/EvdevInputDevice.hh>
-#include <imagine/input/Event.hh>
-#include <imagine/input/AxisKeyEmu.hh>
-#include <imagine/time/Time.hh>
 #include <imagine/base/Application.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/fs/FS.hh>
+#include <imagine/util/format.hh>
+#include <imagine/logger/SystemLogger.hh>
+#include <imagine/util/fd-utils.h>
 #include <linux/input.h>
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <vector>
-#include <algorithm>
+#include <errno.h>
 
 #define DEV_NODE_PATH "/dev/input"
-static constexpr uint32_t MAX_STICK_AXES = 6; // 6 possible axes defined in key codes
 
 namespace IG::Input
 {
 
-constexpr SystemLogger log{"Evdev"};
+static SystemLogger log{"Evdev"};
 
 static Key toSysKey(Key key)
 {
@@ -183,7 +176,7 @@ bool EvdevInputDevice::setupJoystickBits()
 			struct input_absinfo info;
 			if(ioctl(fd(), EVIOCGABS((int)axisId), &info) < 0)
 			{
-				logErr("error getting absinfo");
+				log.error("error getting absinfo");
 				continue;
 			}
 			auto rangeSize = info.maximum - info.minimum;
@@ -206,7 +199,7 @@ bool EvdevInputDevice::setupJoystickBits()
 void EvdevInputDevice::addPollEvent(Device &dev, LinuxApplication &app)
 {
 	auto &evDev = getAs<EvdevInputDevice>(dev);
-	assert(evDev.fd() >= 0);
+	assume(evDev.fd() >= 0);
 	evDev.fdSrc.setCallback([&dev, &app](int fd, int pollEvents)
 	{
 		if(pollEvents & pollEventError) [[unlikely]]
@@ -264,7 +257,7 @@ static bool processDevNode(LinuxApplication &app, CStringView path, int id, bool
 {
 	if(access(path, R_OK) != 0)
 	{
-		logMsg("no access to %s", path.data());
+		log.info("no access to {}", path);
 		return false;
 	}
 
@@ -272,7 +265,7 @@ static bool processDevNode(LinuxApplication &app, CStringView path, int id, bool
 	{
 		if(isEvdevInputDevice(*e) && e->id() == id)
 		{
-			logMsg("id %d is already present", id);
+			log.info("id {} is already present", id);
 			return false;
 		}
 	}
@@ -280,26 +273,26 @@ static bool processDevNode(LinuxApplication &app, CStringView path, int id, bool
 	auto fd = open(path, O_RDONLY, 0);
 	if(fd == -1)
 	{
-		logMsg("error opening %s", path.data());
+		log.info("error opening {}", path);
 		return false;
 	}
 
-	logMsg("checking device @ %s", path.data());
+	log.info("checking device @ {}", path);
 	if(!devIsGamepad(fd))
 	{
-		logMsg("%s isn't a gamepad", path.data());
+		log.info("{} isn't a gamepad", path);
 		close(fd);
 		return false;
 	}
 	std::array<char, 80> nameStr{"Unknown"};
 	if(ioctl(fd, EVIOCGNAME(sizeof(nameStr)), nameStr.data()) < 0)
 	{
-		logWarn("unable to get device name");
+		log.warn("unable to get device name");
 	}
 	struct input_id devInfo{};
 	if(ioctl(fd, EVIOCGID, &devInfo) < 0)
 	{
-		logWarn("unable to get device info");
+		log.warn("unable to get device info");
 	}
 	auto vendorProductId = ((devInfo.vendor & 0xFFFF) << 16) | (devInfo.product & 0xFFFF);
 	auto evDev = std::make_unique<Device>(std::in_place_type<EvdevInputDevice>, id, fd, DeviceTypeFlags{.gamepad = true}, nameStr.data(), vendorProductId);
@@ -312,7 +305,7 @@ static bool processDevNode(LinuxApplication &app, CStringView path, int id, bool
 static bool processDevNodeName(CStringView name, uint32_t &id)
 {
 	// extract id number from "event*" name and get the full path
-	if(sscanf(name, "event%u", &id) != 1)
+	if(std::sscanf(name, "event%u", &id) != 1)
 	{
 		//logWarn("couldn't extract numeric part of node name: %s", name);
 		return false;
@@ -325,9 +318,11 @@ static bool processDevNodeName(CStringView name, uint32_t &id)
 namespace IG
 {
 
+static SystemLogger log{"Evdev"};
+
 void LinuxApplication::initEvdev(EventLoop loop)
 {
-	logMsg("setting up inotify for hotplug");
+	log.info("setting up inotify for hotplug");
 	{
 		int inputDevNotifyFd = inotify_init();
 		if(inputDevNotifyFd >= 0)
@@ -344,7 +339,7 @@ void LinuxApplication::initEvdev(EventLoop loop)
 						//logMsg("read %d bytes from inotify fd %d", len, inputDevNotifyFd);
 						auto inotifyEv = (struct inotify_event*)&event[0];
 						uint32_t inotifyEvSize = sizeof(struct inotify_event) + inotifyEv->len;
-						logMsg("inotify event @%p with size %u, mask 0x%X", inotifyEv, inotifyEvSize, inotifyEv->mask);
+						log.info("inotify event @{} with size {}, mask {:X}", (void*)inotifyEv, inotifyEvSize, inotifyEv->mask);
 						do
 						{
 							if(inotifyEv->len > 1)
@@ -361,7 +356,7 @@ void LinuxApplication::initEvdev(EventLoop loop)
 							{
 								inotifyEv = (struct inotify_event*)(((char*)inotifyEv) + inotifyEvSize);
 								inotifyEvSize = sizeof(struct inotify_event) + inotifyEv->len;
-								logMsg("next inotify event @%p with size %u, mask 0x%X", inotifyEv, inotifyEvSize, inotifyEv->mask);
+								log.info("next inotify event @{} with size {}, mask {:X}", (void*)inotifyEv, inotifyEvSize, inotifyEv->mask);
 							}
 						} while(len);
 					}
@@ -371,11 +366,11 @@ void LinuxApplication::initEvdev(EventLoop loop)
 		}
 		else
 		{
-			logErr("can't create inotify instance, hotplug won't function");
+			log.error("can't create inotify instance, hotplug won't function");
 		}
 	}
 
-	logMsg("checking device nodes");
+	log.info("checking device nodes");
 	try
 	{
 		for(auto &entry : FS::directory_iterator{DEV_NODE_PATH})
@@ -392,7 +387,7 @@ void LinuxApplication::initEvdev(EventLoop loop)
 	}
 	catch(...)
 	{
-		logErr("can't open " DEV_NODE_PATH);
+		log.error("can't open " DEV_NODE_PATH);
 		return;
 	}
 }

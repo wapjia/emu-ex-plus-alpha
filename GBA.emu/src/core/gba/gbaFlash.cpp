@@ -10,8 +10,8 @@
 #include "core/gba/gbaRtc.h"
 #include "core/gba/internal/gbaSram.h"
 
-#include <imagine/util/algorithm.h>
-#include <imagine/logger/logger.h>
+import imagine;
+import system;
 
 #define FLASH_READ_ARRAY 0
 #define FLASH_CMD_1 1
@@ -306,7 +306,7 @@ void flashReadGame(const uint8_t*& data)
   utilReadDataMem(data, flashSaveData3(flashSaveMemoryTemp, flashSizeTemp).data());
   if(flashSizeTemp != g_flashSize)
   {
-      logWarn("expected flash size:%d but got %d from state", g_flashSize, flashSizeTemp);
+    EmuEx::GbaSystem::log.warn("expected flash size:{} but got {} from state", g_flashSize, flashSizeTemp);
   }
   IG::copy_n(flashSaveMemoryTemp, flashSaveMemory.size(), flashSaveMemory.data());
 }
@@ -334,6 +334,7 @@ static auto flashSaveData2(uint8_t *flashSaveMemory, int &flashSize)
   }};
 };
 
+#if 0
 void flashSaveGame(gzFile gzFile)
 {
     uint8_t flashSaveMemoryTemp[SIZE_FLASH1M]{};
@@ -355,7 +356,7 @@ void flashReadGame(gzFile gzFile, int version)
     }
     if(flashSizeTemp != g_flashSize)
     {
-        logWarn("expected flash size:%d but got %d from state", g_flashSize, flashSizeTemp);
+    	EmuEx::log.warn("expected flash size:{} but got {} from state", g_flashSize, flashSizeTemp);
     }
     IG::copy_n(flashSaveMemoryTemp, flashSaveMemory.size(), flashSaveMemory.data());
 }
@@ -373,3 +374,4 @@ void flashReadGameSkip(gzFile gzFile, int version)
         utilReadDataSkip(gzFile, flashSaveData3(flashSaveMemoryTemp, flashSizeTemp).data());
     }
 }
+#endif

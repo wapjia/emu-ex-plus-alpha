@@ -31,9 +31,10 @@
 #include <mednafen/hash/md5.h>
 #include <mednafen/FileStream.h>
 #include <mednafen/sound/OwlResampler.h>
-#include <imagine/util/string.h>
 
 #include <zlib.h>
+
+import imagine;
 
 #define PCE_DEBUG(x, ...) {  /* printf(x, ## __VA_ARGS__); */ }
 

@@ -15,8 +15,8 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <imagine/config/defs.hh>
 #include <imagine/util/concepts.hh>
-#include <type_traits>
 
 namespace IG
 {
@@ -29,12 +29,15 @@ struct OpenSharedLibraryFlags
 	resolveAllSymbols:1{};
 };
 
+[[nodiscard]]
 SharedLibraryRef openSharedLibrary(const char *name, OpenSharedLibraryFlags flags = {});
 void closeSharedLibrary(SharedLibraryRef lib);
+[[nodiscard]]
 void *loadSymbol(SharedLibraryRef lib, const char *name);
+[[nodiscard]]
 const char *lastOpenSharedLibraryError();
 
-static bool loadSymbol(Pointer auto &symPtr, SharedLibraryRef lib, const char *name)
+inline bool loadSymbol(Pointer auto &symPtr, SharedLibraryRef lib, const char *name)
 {
 	symPtr = reinterpret_cast<std::remove_reference_t<decltype(symPtr)>>(loadSymbol(lib, name));
 	return symPtr;

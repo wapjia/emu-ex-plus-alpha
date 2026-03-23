@@ -13,18 +13,17 @@
 	You should have received a copy of the GNU General Public License
 	along with Swan.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/SystemOptionView.hh>
-#include <emuframework/SystemActionsView.hh>
-#include <emuframework/viewUtils.hh>
-#include <mednafen-emuex/MDFNUtils.hh>
-#include "MainApp.hh"
 #include <wswan/wswan.h>
+import system;
+import emuex;
+import imagine;
+import std;
 
 namespace EmuEx
 {
 
+using namespace IG;
 using namespace MDFN_IEN_WSWAN;
-
 using MainAppHelper = EmuAppHelperBase<MainApp>;
 
 class CustomSystemOptionView : public SystemOptionView, public MainAppHelper

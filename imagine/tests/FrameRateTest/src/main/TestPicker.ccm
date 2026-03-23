@@ -1,0 +1,71 @@
+/*  This file is part of Imagine.
+
+	Imagine is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	Imagine is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
+
+export module gui;
+import imagine;
+import tests;
+import std;
+
+export namespace frameRateTest
+{
+
+class TestPicker : public TableView
+{
+public:
+	TestPicker(ViewAttachParams attach):
+		TableView{attach,	testEntry} {}
+
+	template<class App>
+	void setTests(std::span<const TestDesc> testDescs)
+	{
+		testEntry.clear();
+		testEntry.reserve(testDescs.size());
+		testParam.clear();
+		testParam.reserve(testDescs.size());
+		for(auto [i, desc] : std::views::zip(std::views::iota(0), testDescs))
+		{
+			testEntry.emplace_back(desc.name, u"", attachParams(),
+				[this, i]
+				{
+					auto &app = appContext().applicationAs<App>();
+					auto test = app.startTest(window(), testParam[i]);
+					test->onTestFinished =
+						[this, i](TestFramework &test)
+						{
+							auto diff = test.endTime - test.startTime;
+							log.info("ran {} frames from {} to {}, took {}",
+								test.frames,
+								test.startTime.time_since_epoch(),
+								test.endTime.time_since_epoch(),
+								diff);
+							auto &entry = testEntry[i];
+							auto fps = double(test.frames-1) / duration_cast<FloatSeconds>(diff).count();
+							entry.set2ndName(std::format("{:.2f}", fps).data());
+							entry.text2Color = test.droppedFrames ? Gfx::ColorName::RED : Gfx::ColorName::WHITE;
+						};
+				});
+			testParam.emplace_back(desc.params);
+		}
+		if(appContext().keyInputIsPresent())
+			highlightCell(0);
+	}
+
+private:
+	static constexpr SystemLogger log{"TestPicker"};
+	std::vector<DualTextMenuItem> testEntry;
+	std::vector<TestParams> testParam;
+};
+
+}

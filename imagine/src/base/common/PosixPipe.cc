@@ -14,17 +14,15 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/base/Pipe.hh>
+#include <imagine/util/utility.hh>
 #include <imagine/util/fd-utils.h>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
-#include <cstring>
+#include <imagine/logger/SystemLogger.hh>
 #include <fcntl.h>
-#include <cerrno>
 
 namespace IG
 {
 
-constexpr SystemLogger log{"Pipe"};
+static SystemLogger log{"Pipe"};
 
 static auto makePipe()
 {

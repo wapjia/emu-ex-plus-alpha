@@ -13,76 +13,41 @@
 	You should have received a copy of the GNU General Public License
 	along with Saturn.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "main"
-#include <emuframework/EmuSystemInlines.hh>
-#include <emuframework/EmuAppInlines.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/fs/ArchiveFS.hh>
-#include <imagine/io/IOStream.hh>
-#include <imagine/util/ScopeGuard.hh>
-#include <imagine/util/format.hh>
-#include <imagine/util/string.h>
+module;
+#include <mednafen/mednafen.h>
 #include <mednafen/cdrom/CDInterface.h>
 #include <mednafen/state-driver.h>
 #include <mednafen/hash/md5.h>
+#include <ss/ss.h>
 #include <ss/cdb.h>
 #include <ss/cart.h>
 #include <ss/stvio.h>
 #include <ss/smpc.h>
 #include <ss/vdp2.h>
-#include <mednafen-emuex/MDFNUtils.hh>
-#include <mednafen-emuex/ArchiveVFS.hh>
-#include <imagine/logger/logger.h>
+#include "mdfnDefs.hh"
 
-namespace MDFN_IEN_SS
+module system;
+
+extern "C++" namespace MDFN_IEN_SS
 {
-
 extern bool ResetPending;
 
 void SaveBackupRAM(IG::FileIO&);
 void LoadBackupRAM(IG::FileIO&);
-
 }
 
 namespace EmuEx
 {
-
-constexpr SystemLogger log{"Saturnemu"};
-const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2025\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nMednafen Team\nmednafen.github.io";
-bool EmuSystem::handlesArchiveFiles = true;
-bool EmuSystem::hasResetModes = true;
-bool EmuSystem::hasRectangularPixels = true;
-bool EmuSystem::hasPALVideoSystem = true;
-bool EmuSystem::canRenderRGB565 = false;
-bool EmuSystem::stateSizeChangesAtRuntime = true;
-bool EmuApp::needsGlobalInstance = true;
 
 constexpr EmuSystem::BackupMemoryDirtyFlags sramDirtyBit = bit(0);
 constexpr EmuSystem::BackupMemoryDirtyFlags nvramDirtyBit = bit(1);
 constexpr EmuSystem::BackupMemoryDirtyFlags rtcDirtyBit = bit(2);
 constexpr EmuSystem::BackupMemoryDirtyFlags eepromDirtyBit = bit(3);
 
-SaturnApp::SaturnApp(ApplicationInitParams initParams, ApplicationContext &ctx):
-	EmuApp{initParams, ctx}, saturnSystem{ctx} {}
+extern "C++" std::string_view EmuSystem::shortSystemName() const { return "Saturn"; }
+extern "C++" std::string_view EmuSystem::systemName() const { return "Sega Saturn"; }
 
-static bool hasCDExtension(std::string_view name)
-{
-	return endsWithAnyCaseless(name, ".toc", ".cue", ".ccd", ".chd", ".m3u");
-}
-
-const char *EmuSystem::shortSystemName() const
-{
-	return "Saturn";
-}
-
-const char *EmuSystem::systemName() const
-{
-	return "Sega Saturn";
-}
-
-EmuSystem::NameFilterFunc EmuSystem::defaultFsFilter = hasCDExtension;
-
-void SaturnSystem::loadCartNV(EmuApp &app, FileIO &io)
+void SaturnSystem::loadCartNV(EmuApp& app, FileIO& io)
 {
 	using namespace MDFN_IEN_SS;
 	const char* ext = nullptr;
@@ -150,7 +115,7 @@ void SaturnSystem::saveCartNV(FileIO &io)
 void SaturnSystem::loadBackupMemory(EmuApp &app)
 {
 	using namespace MDFN_IEN_SS;
-	logMsg("loading backup memory");
+	log.info("loading backup memory");
 	if(ActiveCartType == CART_STV)
 	{
 		app.setupStaticBackupMemoryFile(stvEepromFileIO, saveExtMDFN("seep", noMD5InFilenames), 0x80);
@@ -168,7 +133,7 @@ void SaturnSystem::onFlushBackupMemory(EmuApp &, BackupMemoryDirtyFlags flags)
 	using namespace MDFN_IEN_SS;
 	if(!hasContent())
 		return;
-	logMsg("saving backup memory");
+	log.info("saving backup memory");
 	if(flags & sramDirtyBit && backupRamFileIO)
 		SaveBackupRAM(backupRamFileIO);
 	if(flags & nvramDirtyBit && cartRamFileIO)
@@ -246,13 +211,13 @@ static ArchiveIO scanCDImages(ArchiveIO arch)
 	bool hasM3U = FS::seekFileInArchive(arch, [](auto &entry) { return isM3U(entry.name()); });
 	if(hasM3U)
 	{
-		log.info("found M3U:{}", arch.name());
+		SaturnSystem::log.info("found M3U:{}", arch.name());
 		return arch;
 	}
 	else
 	{
 		arch.rewind();
-		return FS::findFileInArchive(std::move(arch), [](auto &entry) { return EmuSystem::defaultFsFilter(entry.name()); });
+		return FS::findFileInArchive(std::move(arch), [](auto &entry) { return AppMeta::defaultFsFilter(entry.name()); });
 	}
 }
 
@@ -325,13 +290,13 @@ void SaturnSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDele
 	frameRate_ = makeFrameRate(MDFN_IEN_SS::VDP2::InterlaceMode);
 }
 
-bool SaturnSystem::onVideoRenderFormatChange(EmuVideo &, IG::PixelFormat fmt)
+bool SaturnSystem::onVideoRenderFormatChange(EmuVideo&, PixelFormat fmt)
 {
 	updatePixmap(fmt);
 	return false;
 }
 
-void SaturnSystem::updatePixmap(IG::PixelFormat fmt)
+void SaturnSystem::updatePixmap(PixelFormat fmt)
 {
 	mSurfacePix = {{{mdfnGameInfo.fb_width, mdfnGameInfo.fb_height}, fmt}, pixBuff};
 }
@@ -345,7 +310,7 @@ void SaturnSystem::configAudioRate(FrameRate outputFrameRate, int outputRate)
 
 void SaturnSystem::runFrame(EmuSystemTaskContext taskCtx, EmuVideo *video, EmuAudio *audio)
 {
-	static constexpr size_t maxAudioFrames = 48000 / minFrameRate;
+	static constexpr size_t maxAudioFrames = 48000 / AppMeta::minFrameRate;
 	static constexpr size_t maxLineWidths = maxFrameBuffHeight;
 	using namespace Mednafen;
 	int16 audioBuff[maxAudioFrames * 2];
@@ -372,7 +337,7 @@ void SaturnSystem::runFrame(EmuSystemTaskContext taskCtx, EmuVideo *video, EmuAu
 
 void SaturnSystem::reset(EmuApp &, ResetMode mode)
 {
-	assert(hasContent());
+	assume(hasContent());
 	if(mode == ResetMode::SOFT)
 	{
 		MDFN_IEN_SS::ResetPending = true;
@@ -419,7 +384,7 @@ double SaturnSystem::videoAspectRatioScale() const
 	const double widescreenScaler = 4. / 3.; // scale 4:3 to 16:9
 	const bool isWidescreen = widescreenMode == WidescreenMode::On;
 	const double baseLines = 224.;
-	assumeExpr(videoLines.size() != 0);
+	assume(videoLines.size() != 0);
 	const double lineAspectScaler = baseLines / videoLines.size();
 	return (correctLineAspect ? lineAspectScaler : 1.)
 		* (showHOverscan ? horizontalScaler : 1.)
@@ -430,21 +395,9 @@ size_t SaturnSystem::stateSize() { return currStateSize; }
 void SaturnSystem::readState(EmuApp&, std::span<uint8_t> buff) { readStateMDFN(buff); }
 size_t SaturnSystem::writeState(std::span<uint8_t> buff, SaveStateFlags flags) { return writeStateMDFN(buff, flags); }
 
-void EmuApp::onCustomizeNavView(EmuApp::NavView &view)
-{
-	const Gfx::LGradientStopDesc navViewGrad[] =
-	{
-		{ .0, Gfx::PackedColor::format.build((103./255.) * .7, (176./255.) * .7, (255./255.) * .7, 1.) },
-		{ .3, Gfx::PackedColor::format.build((103./255.) * .7, (176./255.) * .7, (255./255.) * .7, 1.) },
-		{ .97, Gfx::PackedColor::format.build((103./255.) * .4, (176./255.) * .4, (255./255.) * .4, 1.) },
-		{ 1., view.separatorColor() },
-	};
-	view.setBackgroundGradient(navViewGrad);
 }
 
-}
-
-namespace Mednafen
+extern "C++" namespace Mednafen
 {
 
 void MDFN_MidSync(EmulateSpecStruct *espec, const unsigned flags)

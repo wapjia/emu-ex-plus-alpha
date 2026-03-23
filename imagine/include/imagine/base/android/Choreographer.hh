@@ -19,9 +19,10 @@
 #include <imagine/base/baseDefs.hh>
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/util/jni.hh>
+#include <android/choreographer.h>
+#ifndef IG_USE_MODULE_STD
 #include <variant>
-
-struct AChoreographer;
+#endif
 
 namespace IG
 {

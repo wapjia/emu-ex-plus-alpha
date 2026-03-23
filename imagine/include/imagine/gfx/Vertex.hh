@@ -16,9 +16,9 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/gfx/defs.hh>
+#include <imagine/util/bit.hh>
 #include <imagine/glm/ext/vector_float2.hpp>
 #include <imagine/glm/ext/vector_int2_sized.hpp>
-#include <imagine/util/bit.hh>
 
 namespace IG::Gfx
 {

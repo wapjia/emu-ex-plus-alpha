@@ -13,17 +13,15 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/base/Timer.hh>
-#include <imagine/base/sharedLibrary.hh>
+#include <imagine/config/macros.h>
 #include <imagine/base/Application.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/util/algorithm.h>
-#include <imagine/util/bit.hh>
-#include <imagine/base/android/AndroidInputDevice.hh>
+#include <imagine/base/sharedLibrary.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <android/configuration.h>
 #include <android/input.h>
+#include <android/native_activity.h>
 #include <sys/inotify.h>
-#include <optional>
+#include <unistd.h>
 
 [[maybe_unused]] static float (*AMotionEvent_getAxisValueFunc)(const AInputEvent* motion_event, int32_t axis, size_t pointer_index){};
 [[maybe_unused]] static float (*AMotionEvent_getButtonStateFunc)(const AInputEvent *motion_event){};
@@ -31,7 +29,6 @@
 #if ANDROID_MIN_API == 9
 CLINK float AMotionEvent_getAxisValue(const AInputEvent* motion_event, int32_t axis, size_t pointer_index)
 {
-	assumeExpr(AMotionEvent_getAxisValueFunc);
 	return AMotionEvent_getAxisValueFunc(motion_event, axis, pointer_index);
 }
 
@@ -46,7 +43,7 @@ CLINK int32_t AMotionEvent_getButtonState(const AInputEvent *motion_event)
 namespace IG::Input
 {
 
-constexpr SystemLogger log{"InputConfig"};
+static SystemLogger log{"InputConfig"};
 
 // Note: values must remain in sync with Java code
 constexpr inline int DEVICE_ADDED = 0;
@@ -159,7 +156,7 @@ AndroidInputDevice::AndroidInputDevice(int osId, int src, std::string devName,
 			}
 			log.info("joystick axis:{}", (int)axisId);
 			axis.emplace_back(axisId);
-			assert(!axis.isFull());
+			assume(!axis.isFull());
 		}
 		// check trigger axes
 		static constexpr AxisId triggerAxes[]{AxisId::LTRIGGER, AxisId::RTRIGGER, AxisId::GAS, AxisId::BRAKE};
@@ -175,7 +172,7 @@ AndroidInputDevice::AndroidInputDevice(int osId, int src, std::string devName,
 			}
 			log.info("trigger axis:{}", (int)axisId);
 			axis.emplace_back(axisId);
-			assert(!axis.isFull());
+			assume(!axis.isFull());
 			addedTriggers |= triggerAxisBits;
 			if(addedTriggers == AxisFlags{.lTrigger = true, .rTrigger = true})
 				break; // don't parse Gas/Brake if triggers are present to avoid duplicate events
@@ -249,7 +246,7 @@ bool hasGetAxisValue()
 namespace IG
 {
 
-constexpr SystemLogger log{"InputConfig"};
+static SystemLogger log{"InputConfig"};
 
 int32_t (*AMotionEvent_getActionButton_)(const AInputEvent* motion_event){};
 
@@ -273,13 +270,15 @@ void AndroidApplication::initInput(ApplicationContext ctx, JNIEnv *env, jobject 
 			// load AMotionEvent_getAxisValue dynamically
 			if(!loadSymbol(AMotionEvent_getAxisValueFunc, {}, "AMotionEvent_getAxisValue"))
 			{
-				bug_unreachable("AMotionEvent_getAxisValue not found even though using SDK level >= 12");
+				log.error("AMotionEvent_getAxisValue not found even though using SDK level >= 12");
+				unreachable();
 			}
 			if(androidSDK >= 14)
 			{
 				if(!loadSymbol(AMotionEvent_getButtonStateFunc, {}, "AMotionEvent_getButtonState"))
 				{
-					bug_unreachable("AMotionEvent_getButtonState not found even though using SDK level >= 14");
+					log.error("AMotionEvent_getButtonState not found even though using SDK level >= 14");
+					unreachable();
 				}
 			}
 		}
@@ -287,7 +286,8 @@ void AndroidApplication::initInput(ApplicationContext ctx, JNIEnv *env, jobject 
 		{
 			if(!loadSymbol(AMotionEvent_getActionButton_, {}, "AMotionEvent_getActionButton"))
 			{
-				bug_unreachable("AMotionEvent_getActionButton not found even though using SDK level >= 33");
+				log.error("AMotionEvent_getActionButton not found even though using SDK level >= 33");
+				unreachable();
 			}
 		}
 

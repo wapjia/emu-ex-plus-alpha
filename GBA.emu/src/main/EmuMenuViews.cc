@@ -13,30 +13,19 @@
 	You should have received a copy of the GNU General Public License
 	along with GBA.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/EmuApp.hh>
-#include <emuframework/SystemOptionView.hh>
-#include <emuframework/AudioOptionView.hh>
-#include <emuframework/FilePathOptionView.hh>
-#include <emuframework/UserPathSelectView.hh>
-#include <emuframework/SystemActionsView.hh>
-#include <emuframework/DataPathSelectView.hh>
-#include <emuframework/viewUtils.hh>
-#include "MainApp.hh"
 #include "GBASys.hh"
-#include <imagine/gui/AlertView.hh>
-#include <imagine/util/format.hh>
-#include <imagine/util/string.h>
 #include <core/gba/gba.h>
 #include <core/gba/gbaRtc.h>
 #include <core/gba/gbaSound.h>
-#include <format>
-#include <imagine/logger/logger.h>
+import system;
+import emuex;
+import imagine;
+import std;
 
 namespace EmuEx
 {
 
-constexpr SystemLogger log{"GBA.emu"};
-
+using namespace IG;
 using MainAppHelper = EmuAppHelperBase<MainApp>;
 
 class ConsoleOptionView : public TableView, public MainAppHelper
@@ -170,7 +159,7 @@ class ConsoleOptionView : public TableView, public MainAppHelper
 			{
 				if(idx == 0)
 				{
-					t.resetString(wise_enum::to_string(system().detectedSensorType));
+					t.resetString(enumName(system().detectedSensorType));
 					return true;
 				}
 				return false;
@@ -471,7 +460,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 			pushAndShow(makeViewWithName<UserPathSelectView>("Cheats", system().userPath(system().cheatsDir),
 				[this](CStringView path)
 				{
-					logMsg("set cheats path:%s", path.data());
+					GbaSystem::log.info("set cheats path:{}", path);
 					system().cheatsDir = path;
 					cheatsPath.compile(cheatsMenuName(appContext(), path));
 				}), e);
@@ -486,7 +475,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 			pushAndShow(makeViewWithName<UserPathSelectView>("补丁", system().userPath(system().patchesDir),
 				[this](CStringView path)
 				{
-					logMsg("set patches path:%s", path.data());
+					GbaSystem::log.info("set patches path:{}", path);
 					system().patchesDir = path;
 					patchesPath.compile(patchesMenuName(appContext(), path));
 				}), e);
@@ -503,7 +492,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 				[this](CStringView path, FS::file_type type)
 				{
 					system().biosPath = path;
-					log.info("set BIOS:{}", system().biosPath);
+					GbaSystem::log.info("set BIOS:{}", system().biosPath);
 					biosPath.compile(biosMenuEntryStr(path));
 					return true;
 				}, hasBiosExtension), e);
@@ -530,6 +519,103 @@ public:
 	}
 };
 
+static auto cheatInputString(bool isGSv3)
+{
+	return isGSv3 ? "Input xxxxxxxx yyyyyyyy" : "Input xxxxxxxx yyyyyyyy (GS) or xxxxxxxx yyyy (AR)";
+}
+
+class EditCheatView : public BaseEditCheatView
+{
+public:
+	EditCheatView(ViewAttachParams attach, Cheat& cheat, BaseEditCheatsView& editCheatsView):
+		BaseEditCheatView
+		{
+			"Edit Cheat",
+			attach,
+			cheat,
+			editCheatsView
+		},
+		addGS12CBCode
+		{
+			"Add Another GS v1-2/CB Code", attach,
+			[this](const Input::Event& e) { addNewCheatCode(cheatInputString(false), e, 0); }
+		},
+		addGS3Code
+		{
+			"Add Another GS v3 Code", attach,
+			[this](const Input::Event& e) { addNewCheatCode(cheatInputString(true), e, 1); }
+		}
+	{
+		loadItems();
+	}
+
+	void loadItems()
+	{
+		codes.clear();
+		system().forEachCheatCode(*cheatPtr, [this](CheatCode& c, std::string_view code)
+		{
+			codes.emplace_back("Code", c.codestring, attachParams(), [this, &c](const Input::Event& e)
+			{
+				pushAndShowModal(makeView<YesNoAlertView>("Really delete this code?",
+					YesNoAlertView::Delegates{.onYes = [this, &c]{ removeCheatCode(c); }}), e);
+			});
+			return true;
+		});
+		items.clear();
+		items.emplace_back(&name);
+		for(auto& c: codes)
+		{
+			items.emplace_back(&c);
+		}
+		items.emplace_back(&addGS12CBCode);
+		items.emplace_back(&addGS3Code);
+		items.emplace_back(&remove);
+	}
+
+private:
+	TextMenuItem addGS12CBCode, addGS3Code;
+};
+
+class EditCheatsView : public BaseEditCheatsView
+{
+public:
+	EditCheatsView(ViewAttachParams attach, CheatsView& cheatsView):
+		BaseEditCheatsView
+		{
+			attach,
+			cheatsView,
+			[this](ItemMessage msg) -> ItemReply
+			{
+				return msg.visit(overloaded
+				{
+					[&](const ItemsMessage &m) -> ItemReply { return 2 + cheats.size(); },
+					[&](const GetItemMessage &m) -> ItemReply
+					{
+						switch(m.idx)
+						{
+							case 0: return &addGS12CBCode;
+							case 1: return &addGS3Code;
+							default: return &cheats[m.idx - 2];
+						}
+					},
+				});
+			}
+		},
+		addGS12CBCode
+		{
+			"Add Game Shark v1-2/Code Breaker Code", attach,
+			[this](const Input::Event& e) { addNewCheat(cheatInputString(false), e, 0); }
+		},
+		addGS3Code
+		{
+			"Add Game Shark v3 Code", attach,
+			[this](const Input::Event& e) { addNewCheat(cheatInputString(true), e, 1); }
+		} {}
+
+private:
+		TextMenuItem addGS12CBCode, addGS3Code;
+};
+
 std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
 {
 	switch(id)
@@ -541,5 +627,8 @@ std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
 		default: return nullptr;
 	}
 }
+
+std::unique_ptr<View> AppMeta::makeEditCheatsView(ViewAttachParams attach, CheatsView& view) { return std::make_unique<EditCheatsView>(attach, view); }
+std::unique_ptr<View> AppMeta::makeEditCheatView(ViewAttachParams attach, Cheat& c, BaseEditCheatsView& baseView) { return std::make_unique<EditCheatView>(attach, c, baseView); }
 
 }

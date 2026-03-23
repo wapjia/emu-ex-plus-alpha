@@ -17,12 +17,12 @@ void rtcEnableRumble(bool e);
 bool rtcIsEnabled();
 void rtcReset();
 
-
+#if 1
 void rtcReadGame(const uint8_t*& data);
 void rtcSaveGame(uint8_t*& data);
-
+#else  // !defined(__LIBRETRO__)
 void rtcReadGame(gzFile gzFile);
 void rtcSaveGame(gzFile gzFile);
-
+#endif  // defined(__LIBRETRO__)
 
 #endif // VBAM_CORE_GBA_GBARTC_H_

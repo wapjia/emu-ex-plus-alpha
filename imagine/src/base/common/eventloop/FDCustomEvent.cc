@@ -14,24 +14,25 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/base/CustomEvent.hh>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
-
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
+// select between eventfd or kqueue
 #ifdef __linux__
+#define USE_EVENTFD
 #include <unistd.h>
 #include <sys/eventfd.h>
 #include <sys/errno.h>
-#define USE_EVENTFD
 #else
-// kqueue
 #include <sys/event.h>
-static constexpr uintptr_t CUSTOM_IDENT = 1;
 #endif
 
 namespace IG
 {
 
-constexpr SystemLogger log{"CustomEvent"};
+static SystemLogger log{"CustomEvent"};
+#ifndef USE_EVENTFD
+constexpr uintptr_t CUSTOM_IDENT = 1;
+#endif
 
 static IG::UniqueFileDescriptor makeEventFD()
 {

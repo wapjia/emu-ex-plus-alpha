@@ -15,13 +15,15 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/util/utility.h>
+#include <imagine/util/utility.hh>
 #include <imagine/util/algorithm.h>
+#ifndef IG_USE_MODULE_STD
 #include <cstdint>
 #include <array>
 #include <span>
 #include <tuple>
-#include <cassert>
+#include <utility>
+#endif
 
 namespace IG
 {
@@ -51,13 +53,13 @@ public:
 
 	constexpr void push_back(const T &val)
 	{
-		assert(size() < capacity());
+		assume(size() < capacity());
 		this->data()[size()] = val;
 	}
 
 	constexpr iterator insert(const_iterator position, const T &val)
 	{
-		assert(size() < maxSize);
+		assume(size() < maxSize);
 		iterator p{this->data() + (position - this->cbegin())};
 		if(p == end())
 		{
@@ -102,7 +104,7 @@ private:
 	size_t writeIdx{};
 };
 
-constexpr auto toArray = [](auto &&...vals){ return std::array{IG_forward(vals)...}; };
+inline constexpr auto toArray = [](auto &&...vals){ return std::array{IG_forward(vals)...}; };
 
 constexpr auto concatToArray(auto &&...vals)
 {
@@ -110,7 +112,7 @@ constexpr auto concatToArray(auto &&...vals)
 }
 
 template <auto ...vals>
-static constexpr auto concatToArrayNow = concatToArray(vals...);
+constexpr auto concatToArrayNow = concatToArray(vals...);
 
 template <typename Type, typename... Values>
 constexpr auto makeArray(Values &&... v) -> std::array <Type, sizeof...(Values)>

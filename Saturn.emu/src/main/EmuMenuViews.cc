@@ -13,29 +13,23 @@
 	You should have received a copy of the GNU General Public License
 	along with Saturn.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/EmuViewController.hh>
-#include <emuframework/SystemOptionView.hh>
-#include <emuframework/AudioOptionView.hh>
-#include <emuframework/VideoOptionView.hh>
-#include <emuframework/FilePathOptionView.hh>
-#include <emuframework/DataPathSelectView.hh>
-#include <emuframework/SystemActionsView.hh>
-#include <emuframework/EmuInput.hh>
-#include <mednafen-emuex/MDFNUtils.hh>
-#include "MainApp.hh"
-#include <imagine/fs/FS.hh>
-#include <imagine/gui/AlertView.hh>
-#include <imagine/util/format.hh>
+#include <mednafen/types.h>
+#include <mednafen/Stream.h>
+#include <ss/ss.h>
 #include <ss/cart.h>
-#include <imagine/logger/logger.h>
+#include <ss/smpc.h>
+#include "mdfnDefs.hh"
+import system;
+import emuex;
+import imagine;
+import std;
 
 namespace EmuEx
 {
 
-using MainAppHelper = EmuAppHelperBase<MainApp>;
+using namespace IG;
 using namespace MDFN_IEN_SS;
-
-constexpr SystemLogger log{"Saturn.emu"};
+using MainAppHelper = EmuAppHelperBase<MainApp>;
 
 static bool hasBIOSExtension(std::string_view name)
 {
@@ -63,7 +57,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 					}else{
 						system().naBiosPath = path;
 					}
-					log.info("set bios:{}", system().naBiosPath);
+					SaturnSystem::log.info("set bios:{}", system().naBiosPath);
 					naBiosPath.compile(naBiosMenuEntryStr(system().naBiosPath));
 					return true;
 				}, hasBIOSExtension), e);
@@ -91,7 +85,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 					}else{
 						system().jpBiosPath = path;
 					}
-					log.info("set bios:{}", system().jpBiosPath);
+					SaturnSystem::log.info("set bios:{}", system().jpBiosPath);
 					jpBiosPath.compile(jpBiosMenuEntryStr(system().jpBiosPath));
 					return true;
 				}, hasBIOSExtension), e);
@@ -119,7 +113,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 					}else{
 						system().kof95ROMPath = path;
 					}
-					log.info("set bios:{}", system().kof95ROMPath);
+					SaturnSystem::log.info("set bios:{}", system().kof95ROMPath);
 					kof95ROMPath.compile(kof95MenuEntryStr(system().kof95ROMPath));
 					return true;
 				}, hasBIOSExtension), e);
@@ -147,7 +141,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 					}else{
 						system().ultramanROMPath = path;
 					}
-					log.info("set bios:{}", system().ultramanROMPath);
+					SaturnSystem::log.info("set bios:{}", system().ultramanROMPath);
 					ultramanROMPath.compile(ultramanMenuEntryStr(system().ultramanROMPath));
 					return true;
 				}, hasBIOSExtension), e);
@@ -505,7 +499,7 @@ public:
 				auto discItems = DynArray<TextMenuItem>{system.CDInterfaces.size() + 1};
 				discItems[0] = {"弹出", attachParams(), setDiscDel(), {.id = -1}};
 				const char *numStrings[] {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14" , "15", "16"};
-				for(auto i : iotaCount(system.CDInterfaces.size()))
+				for(auto i: iotaCount(system.CDInterfaces.size()))
 				{
 					discItems[i + 1] = {numStrings[i], attachParams(), setDiscDel(), {.id = i}};
 				}

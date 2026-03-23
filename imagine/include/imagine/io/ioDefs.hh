@@ -17,8 +17,10 @@
 
 #include <unistd.h> // for SEEK_*
 #include <sys/uio.h>
+#ifndef IG_USE_MODULE_STD
 #include <cstdint>
 #include <span>
+#endif
 
 namespace IG
 {

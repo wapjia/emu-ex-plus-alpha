@@ -1,25 +1,25 @@
-#include <imagine/gui/TextEntry.hh>
-#include <imagine/util/string.h>
-#include <imagine/logger/logger.h>
-#include <emuframework/Cheats.hh>
-#include <emuframework/EmuApp.hh>
-#include <emuframework/viewUtils.hh>
-#include "EmuCheatViews.hh"
-#include "MainSystem.hh"
-#include <cheats.h>
-#include <imagine/util/format.hh>
+/*  This file is part of Snes9x EX.
 
+	Please see COPYING file in root directory for license information. */
+
+module;
+#include <snes9x.h>
+#include <cheats.h>
+
+module system;
+
+extern "C++"
+{
 void S9xEnableCheat(SCheat&);
 void S9xDisableCheat(SCheat&);
 SCheat S9xTextToCheat(const std::string&);
 std::string S9xCheatToText(const SCheat&);
+}
 
 namespace EmuEx
 {
 
-constexpr SystemLogger log{"Cheats"};
-
-static unsigned parseHex(const char* str) { return strtoul(str, nullptr, 16); }
+unsigned parseHex(const char* str) { return strtoul(str, nullptr, 16); }
 
 int numCheats()
 {
@@ -38,9 +38,9 @@ static FS::PathString cheatsFilename(Snes9xSystem& sys)
 void Snes9xSystem::writeCheatFile()
 {
 	if(!numCheats())
-		logMsg("no cheats present, removing .cht file if present");
+		Snes9xSystem::log.info("no cheats present, removing .cht file if present");
 	else
-		logMsg("saving %u cheat(s)", numCheats());
+		Snes9xSystem::log.info("saving {} cheat(s)", numCheats());
 	S9xSaveCheatFile(cheatsFilename(*this).data());
 }
 
@@ -59,7 +59,7 @@ static bool tryDisableCheatCode(CheatCode& c)
 	return isEnabled;
 }
 
-static void setCheatAddress(CheatCode& cheat, uint32_t a)
+void setCheatAddress(CheatCode& cheat, uint32_t a)
 {
 	auto isEnabled = tryDisableCheatCode(cheat);
 	cheat.address = a;
@@ -67,7 +67,7 @@ static void setCheatAddress(CheatCode& cheat, uint32_t a)
 	static_cast<Snes9xSystem&>(EmuEx::gSystem()).writeCheatFile();
 }
 
-static void setCheatValue(CheatCode& cheat, uint8 v)
+void setCheatValue(CheatCode& cheat, uint8 v)
 {
 	auto isEnabled = tryDisableCheatCode(cheat);
 	cheat.byte = v;
@@ -75,7 +75,7 @@ static void setCheatValue(CheatCode& cheat, uint8 v)
 	static_cast<Snes9xSystem&>(EmuEx::gSystem()).writeCheatFile();
 }
 
-static void setCheatConditionalValue(CheatCode& cheat, bool conditional, uint8 v)
+void setCheatConditionalValue(CheatCode& cheat, bool conditional, uint8 v)
 {
 	auto isEnabled = tryDisableCheatCode(cheat);
 	#ifndef SNES9X_VERSION_1_4
@@ -89,7 +89,7 @@ static void setCheatConditionalValue(CheatCode& cheat, bool conditional, uint8 v
 	static_cast<Snes9xSystem&>(EmuEx::gSystem()).writeCheatFile();
 }
 
-static void setCheatConditionalValue(CheatCode& cheat, int v)
+void setCheatConditionalValue(CheatCode& cheat, int v)
 {
 	if(v >= 0 && v <= 0xFF)
 	{
@@ -110,7 +110,7 @@ static std::pair<bool, uint8> cheatConditionalValue(CheatCode& c)
 	#endif
 }
 
-static std::string codeConditionalToString(CheatCode& c)
+std::string codeConditionalToString(CheatCode& c)
 {
 	auto [cond, byte] = cheatConditionalValue(c);
 	return cond ? std::format("{:x}", byte) : std::string{};
@@ -124,7 +124,7 @@ Cheat* Snes9xSystem::newCheat(EmuApp& app, const char* name, CheatCodeDesc desc)
 		app.postMessage(true, "Invalid code");
 		return {};
 	}
-	log.info("added new cheat, {} total", ::Cheat.group.size());
+	Snes9xSystem::log.info("added new cheat, {} total", ::Cheat.group.size());
 	writeCheatFile();
 	return static_cast<Cheat*>(&::Cheat.group.back());
 	#else
@@ -145,7 +145,7 @@ Cheat* Snes9xSystem::newCheat(EmuApp& app, const char* name, CheatCodeDesc desc)
 	}
 	else if(!S9xGoldFingerToRaw(desc.str, address, sram, numBytes, bytes))
 	{
-		for(auto i : iotaCount(numBytes))
+		for(auto i: iotaCount(numBytes))
 			S9xAddCheat(false, true, address + i, bytes[i]);
 		// TODO: handle cheat names for multiple codes added at once
 		return static_cast<Cheat*>(&::Cheat.c[numCheats() - 1]);
@@ -252,191 +252,6 @@ void Snes9xSystem::forEachCheatCode(Cheat& cheat, DelegateFunc<bool(CheatCode&, 
 	#endif
 }
 
-EditRamCheatView::EditRamCheatView(ViewAttachParams attach, CheatCode& code_, EditCheatView& editCheatView_):
-	TableView
-	{
-		"Edit Memory Patch",
-		attach,
-		[this](ItemMessage msg) -> ItemReply
-		{
-			return msg.visit(overloaded
-			{
-				[&](const ItemsMessage&) -> ItemReply { return 4u; },
-				[&](const GetItemMessage& m) -> ItemReply
-				{
-					switch(m.idx)
-					{
-						case 0: return &addr;
-						case 1: return &value;
-						case 2: return &conditional;
-						case 3: return &remove;
-						default: std::unreachable();
-					}
-				},
-			});
-		}
-	},
-	code{code_},
-	editCheatView{editCheatView_},
-	addr
-	{
-		"Address",
-		std::format("{:x}", code_.address),
-		attach,
-		[this](const Input::Event& e)
-		{
-			pushAndShowNewCollectValueInputView<const char*>(attachParams(), e, "Input 6-digit hex", std::format("{:x}", code.address),
-				[this](CollectTextInputView&, auto str)
-				{
-					unsigned a = parseHex(str);
-					if(a > 0xFFFFFF)
-					{
-						app().postMessage(true, "value must be <= FFFFFF");
-						return false;
-					}
-					setCheatAddress(code, a);
-					addr.set2ndName(str);
-					addr.place();
-					editCheatView.loadItems();
-					return true;
-				});
-		}
-	},
-	value
-	{
-		"Value",
-		std::format("{:x}", code_.byte),
-		attach,
-		[this](const Input::Event& e)
-		{
-			pushAndShowNewCollectValueInputView<const char*>(attachParams(), e, "Input 2-digit hex", std::format("{:x}", code.byte),
-				[this](CollectTextInputView&, auto str)
-				{
-					unsigned a = parseHex(str);
-					if(a > 0xFF)
-					{
-						app().postMessage(true, "value must be <= FF");
-						return false;
-					}
-					setCheatValue(code, a);
-					value.set2ndName(str);
-					value.place();
-					editCheatView.loadItems();
-					return true;
-				});
-		}
-	},
-	conditional
-	{
-		#ifndef SNES9X_VERSION_1_4
-		"Conditional Value",
-		#else
-		"Saved Value",
-		#endif
-		codeConditionalToString(code_),
-		attach,
-		[this](const Input::Event& e)
-		{
-			pushAndShowNewCollectValueInputView<const char*, ScanValueMode::AllowBlank>(attachParams(), e, "Input 2-digit hex or blank", codeConditionalToString(code),
-				[this](CollectTextInputView &, const char *str)
-				{
-					int a = -1;
-					if(strlen(str))
-					{
-						a = parseHex(str);
-						if(a > 0xFF)
-						{
-							app().postMessage(true, "value must be <= FF");
-							return true;
-						}
-					}
-					setCheatConditionalValue(code, a);
-					conditional.set2ndName(str);
-					conditional.place();
-					editCheatView.loadItems();
-					return true;
-				});
-		}
-	},
-	remove
-	{
-		"Delete", attach,
-		[this](const Input::Event& e)
-		{
-			pushAndShowModal(makeView<YesNoAlertView>("Really delete this patch?",
-				YesNoAlertView::Delegates{.onYes = [this]{ editCheatView.removeCheatCode(code); dismiss(); }}), e);
-		}
-	} {}
-
-EditCheatView::EditCheatView(ViewAttachParams attach, Cheat& cheat, BaseEditCheatsView& editCheatsView):
-	BaseEditCheatView
-	{
-		"Edit Cheat",
-		attach,
-		cheat,
-		editCheatsView
-	}
-	#ifndef SNES9X_VERSION_1_4
-	,addCode
-	{
-		"Add Another Code", attach,
-		[this](const Input::Event& e) { addNewCheatCode("Input xxxx-xxxx (GG), xxxxxxxx (AR), GF code, or blank", e); }
-	}
-	#endif
-{
-	loadItems();
-}
-
-void EditCheatView::loadItems()
-{
-	codes.clear();
-	system().forEachCheatCode(*cheatPtr, [this](CheatCode& c, std::string_view code)
-	{
-		codes.emplace_back("Code", code, attachParams(), [this, &c](const Input::Event& e)
-		{
-			pushAndShow(makeView<EditRamCheatView>(c, *this), e);
-		});
-		return true;
-	});
-	items.clear();
-	items.emplace_back(&name);
-	for(auto& c: codes)
-	{
-		items.emplace_back(&c);
-	}
-	#ifndef SNES9X_VERSION_1_4
-	items.emplace_back(&addCode);
-	#endif
-	items.emplace_back(&remove);
-}
-
-EditCheatsView::EditCheatsView(ViewAttachParams attach, CheatsView& cheatsView):
-	BaseEditCheatsView
-	{
-		attach,
-		cheatsView,
-		[this](ItemMessage msg) -> ItemReply
-		{
-			return msg.visit(overloaded
-			{
-				[&](const ItemsMessage&) -> ItemReply { return 1 + cheats.size(); },
-				[&](const GetItemMessage& m) -> ItemReply
-				{
-					switch(m.idx)
-					{
-						case 0: return &addCode;
-						default: return &cheats[m.idx - 1];
-					}
-				},
-			});
-		}
-	},
-	addCode
-	{
-		"Add Game Genie/Action Replay/Gold Finger Code", attach,
-		[this](const Input::Event& e) { addNewCheat("Input xxxx-xxxx (GG), xxxxxxxx (AR), or GF code", e); }
-	} {}
-
 //爱吾修改
 void Snes9xSystem::setCheatListAiWu(const std::list<std::string>& cheatList)
 {
@@ -455,6 +270,6 @@ void Snes9xSystem::setCheatListAiWu(const std::list<std::string>& cheatList)
 		//启用金手指
 		S9xEnableCheatGroup(index);
 	}
-	log.info("new cheat count:{}", ::Cheat.group.size());
+	Snes9xSystem::log.info("new cheat count:{}", ::Cheat.group.size());
 }
 }

@@ -13,36 +13,23 @@
 	You should have received a copy of the GNU General Public License
 	along with MSX.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/SystemOptionView.hh>
-#include <emuframework/AudioOptionView.hh>
-#include <emuframework/FilePathOptionView.hh>
-#include <emuframework/DataPathSelectView.hh>
-#include <emuframework/SystemActionsView.hh>
-#include <emuframework/FilePicker.hh>
-#include <emuframework/viewUtils.hh>
-#include <imagine/gui/AlertView.hh>
-#include <imagine/gui/TextTableView.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/fs/AssetFS.hh>
-#include <imagine/fs/ArchiveFS.hh>
-#include <imagine/util/format.hh>
-#include <imagine/util/string.h>
-#include "MainApp.hh"
-#include <imagine/logger/logger.h>
-
 extern "C"
 {
 	#include <blueMSX/IoDevice/Disk.h>
+	#include <blueMSX/Board/Board.h>
 }
+import system;
+import emuex;
+import imagine;
+import std;
 
 namespace EmuEx
 {
 
+using namespace IG;
 using MainAppHelper = EmuAppHelperBase<MainApp>;
 
-constexpr SystemLogger log{"MSX.emu"};
-
-static std::vector<FS::FileString> readMachinesNames(IG::ApplicationContext ctx, std::string_view firmwarePath)
+static std::vector<FS::FileString> readMachinesNames(ApplicationContext ctx, std::string_view firmwarePath)
 {
 	std::vector<FS::FileString> machineNames;
 	try
@@ -55,7 +42,7 @@ static std::vector<FS::FileString> readMachinesNames(IG::ApplicationContext ctx,
 				{
 					auto name = FS::basename(FS::dirname(entry.name()));
 					machineNames.emplace_back(name);
-					log.info("found machine:{}", name);
+					MsxSystem::log.info("found machine:{}", name);
 				}
 			}
 		}
@@ -71,14 +58,14 @@ static std::vector<FS::FileString> readMachinesNames(IG::ApplicationContext ctx,
 					return true;
 				}
 				machineNames.emplace_back(entry.name());
-				log.info("found machine:{}", entry.name());
+				MsxSystem::log.info("found machine:{}", entry.name());
 				return true;
 			});
 		}
 	}
 	catch(...)
 	{
-		log.warn("no machines in:{}", firmwarePath);
+		MsxSystem::log.warn("no machines in:{}", firmwarePath);
 	}
 	if constexpr(Config::envIsAndroid)
 	{
@@ -94,12 +81,12 @@ static std::vector<FS::FileString> readMachinesNames(IG::ApplicationContext ctx,
 			for(auto &entry : ctx.openAssetDirectory("Machines"))
 			{
 				machineNames.emplace_back(entry.name());
-				log.info("added asset path machine:{}", entry.name());
+				MsxSystem::log.info("added asset path machine:{}", entry.name());
 			}
 		}
 		catch(...)
 		{
-			log.error("error opening asset directory");
+			MsxSystem::log.error("error opening asset directory");
 		}
 	}
 	std::ranges::sort(machineNames, caselessLexCompare);
@@ -136,7 +123,7 @@ class CustomSystemOptionView : public SystemOptionView, public MainAppHelper
 			{
 				if(!machineItems.size())
 				{
-					log.error("no machine definitions are present");
+					MsxSystem::log.error("no machine definitions are present");
 					return;
 				}
 				for(auto &&[idx, i] : enumerate(machineItems))
@@ -207,7 +194,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 	using MainAppHelper::system;
 	friend class FilePathOptionView;
 
-	std::string machinePathMenuEntryStr(IG::CStringView path) const
+	std::string machinePathMenuEntryStr(CStringView path) const
 	{
 		return std::format("BIOS: {}", appContext().fileUriDisplayName(path));
 	}
@@ -257,9 +244,9 @@ class MsxMediaFilePicker
 public:
 	enum { ROM, DISK, TAPE };
 
-	static EmuSystem::NameFilterFunc fsFilter(unsigned type)
+	static NameFilterFunc fsFilter(unsigned type)
 	{
-		EmuSystem::NameFilterFunc filter = hasMSXROMExtension;
+		NameFilterFunc filter = hasMSXROMExtension;
 		if(type == DISK)
 			filter = hasMSXDiskExtension;
 		else if(type == TAPE)
@@ -304,7 +291,7 @@ public:
 			[this, slot, dismissPreviousView](FSPicker &picker, std::string_view path, std::string_view name, Input::Event e)
 			{
 				auto id = diskGetHdDriveId(slot / 2, slot % 2);
-				log.info("inserting hard drive id:{}", id);
+				MsxSystem::log.info("inserting hard drive id:{}", id);
 				if(insertDisk(app(), name.data(), id))
 				{
 					onHDMediaChange(name.data(), slot);
@@ -453,7 +440,7 @@ public:
 			MsxMediaFilePicker::fsFilter(MsxMediaFilePicker::DISK),
 			[this, slot, dismissPreviousView](FSPicker &picker, std::string_view path, std::string_view name, Input::Event e)
 			{
-				log.info("inserting disk in slot:{}", slot);
+				MsxSystem::log.info("inserting disk in slot:{}", slot);
 				if(insertDisk(app(), name.data(), slot))
 				{
 					onDiskMediaChange(name.data(), slot);
@@ -508,19 +495,19 @@ public:
 			item
 		}
 	{
-		for(auto slot : iotaCount(2))
+		for(auto slot: iotaCount(2))
 		{
 			updateROMText(slot);
 			romSlot[slot].setActive((int)slot < boardInfo.cartridgeCount);
 			item.emplace_back(&romSlot[slot]);
 		}
-		for(auto slot : iotaCount(2))
+		for(auto slot: iotaCount(2))
 		{
 			updateDiskText(slot);
 			diskSlot[slot].setActive((int)slot < boardInfo.diskdriveCount);
 			item.emplace_back(&diskSlot[slot]);
 		}
-		for(auto slot : iotaCount(4))
+		for(auto slot: iotaCount(4))
 		{
 			updateHDText(slot);
 			hdSlot[slot].setActive(boardGetHdType(slot/2) == HD_SUNRISEIDE);
@@ -905,7 +892,7 @@ protected:
 	};
 };
 
-std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
+extern "C++" std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
 {
 	switch(id)
 	{

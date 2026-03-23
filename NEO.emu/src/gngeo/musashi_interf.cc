@@ -13,7 +13,7 @@ extern "C"
 #undef WRITE_BYTE
 #include <musashi/m68k.h>
 #include "InstructionCycleTable.hh"
-#include <imagine/util/utility.h>
+#include <imagine/util/utility.hh>
 
 static M68KCPU mm68k(m68ki_cycles, true);
 

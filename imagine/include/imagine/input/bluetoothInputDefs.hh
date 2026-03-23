@@ -19,9 +19,9 @@
 
 namespace IG::Input
 {
-	namespace PS3Key
+	struct PS3BtKey
 	{
-	constexpr Key CROSS = Keycode::GAME_A,
+	static constexpr Key CROSS = Keycode::GAME_A,
 	CIRCLE = Keycode::GAME_B,
 	SQUARE = Keycode::GAME_X,
 	TRIANGLE = Keycode::GAME_Y,
@@ -41,11 +41,11 @@ namespace IG::Input
 	RSTICK_RIGHT = Keycode::JS2_XAXIS_POS, RSTICK_LEFT = Keycode::JS2_XAXIS_NEG,
 	RSTICK_DOWN =  Keycode::JS2_YAXIS_POS, RSTICK_UP =   Keycode::JS2_YAXIS_NEG
 	;
-	}
+	};
 
-	namespace WiimoteKey
+	struct WiimoteKey
 	{
-	constexpr Key PLUS = Keycode::GAME_START,
+	static constexpr Key PLUS = Keycode::GAME_START,
 	MINUS = Keycode::GAME_SELECT,
 	HOME = Keycode::GAME_MODE,
 	LEFT = Keycode::LEFT, RIGHT = Keycode::RIGHT,
@@ -59,11 +59,11 @@ namespace IG::Input
 	NUN_STICK_LEFT = Keycode::JS1_XAXIS_NEG, NUN_STICK_RIGHT = Keycode::JS1_XAXIS_POS,
 	NUN_STICK_UP = Keycode::JS1_YAXIS_NEG, NUN_STICK_DOWN = Keycode::JS1_YAXIS_POS
 	;
-	}
+	};
 
-	namespace WiiCCKey
+	struct WiiCCKey
 	{
-	constexpr Key PLUS = Keycode::GAME_START,
+	static constexpr Key PLUS = Keycode::GAME_START,
 	MINUS = Keycode::GAME_SELECT,
 	HOME = Keycode::GAME_MODE,
 	LEFT = Keycode::LEFT, RIGHT = Keycode::RIGHT,
@@ -78,11 +78,11 @@ namespace IG::Input
 	RSTICK_DOWN =  Keycode::JS2_YAXIS_POS, RSTICK_UP =   Keycode::JS2_YAXIS_NEG,
 	LH = Keycode::GAME_LEFT_THUMB, RH = Keycode::GAME_RIGHT_THUMB
 	;
-	}
+	};
 
-	namespace iControlPadKey
+	struct iControlPadKey
 	{
-	constexpr Key A = Keycode::GAME_X,
+	static constexpr Key A = Keycode::GAME_X,
 	B = Keycode::GAME_B,
 	X = Keycode::GAME_A,
 	Y = Keycode::GAME_Y,
@@ -97,11 +97,11 @@ namespace IG::Input
 	LEFT = Keycode::LEFT, RIGHT = Keycode::RIGHT,
 	UP = Keycode::UP, DOWN = Keycode::DOWN
 	;
-	}
+	};
 
-	namespace ZeemoteKey
+	struct ZeemoteKey
 	{
-	constexpr Key A = Keycode::GAME_X,
+	static constexpr Key A = Keycode::GAME_X,
 	B = Keycode::GAME_A,
 	C = Keycode::GAME_B,
 	POWER = Keycode::GAME_Y,
@@ -109,6 +109,6 @@ namespace IG::Input
 	LEFT = Keycode::LEFT, RIGHT = Keycode::RIGHT,
 	UP = Keycode::UP, DOWN = Keycode::DOWN
 	;
-	}
+	};
 
 }

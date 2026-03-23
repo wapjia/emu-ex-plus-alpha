@@ -17,7 +17,11 @@
 
 #include <imagine/base/baseDefs.hh>
 #include <imagine/util/Interpolator.hh>
+#include <imagine/util/utility.hh>
+#ifndef IG_USE_MODULE_STD
 #include <concepts>
+#include <utility>
+#endif
 
 namespace IG
 {
@@ -80,7 +84,6 @@ public:
 		animator.finish();
 		if(animate)
 		{
-			assert(clock);
 			clock->removeOnFrame(animate);
 			animate = {};
 		}

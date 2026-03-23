@@ -15,8 +15,6 @@
 
 #include "PlaceVideoView.hh"
 #include <emuframework/EmuApp.hh>
-#include <emuframework/EmuViewController.hh>
-#include <imagine/gfx/RendererCommands.hh>
 
 namespace EmuEx
 {
@@ -155,7 +153,7 @@ bool PlaceVideoView::inputEvent(const Input::Event& e, ViewInputEventParams)
 
 void PlaceVideoView::draw(Gfx::RendererCommands&__restrict__ cmds, ViewDrawParams) const
 {
-	using namespace IG::Gfx;
+	using namespace Gfx;
 	vController.draw(cmds, true);
 	cmds.setColor({.5, .5, .5});
 	auto &basicEffect = cmds.basicEffect();

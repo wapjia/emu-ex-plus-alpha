@@ -20,10 +20,12 @@
 #include <mednafen/movie.h>
 #include <mednafen/cputest/cputest.h>
 #include <imagine/logger/logger.h>
-#include <imagine/config/defs.hh>
+import imagine;
 
 namespace Mednafen
 {
+
+using namespace IG;
 
 MDFNGI *MDFNGameInfo{};
 int MDFNnetplay{};
@@ -35,7 +37,7 @@ void MDFN_DoSimpleCommand(int cmd)
 
 void MDFN_printf(const char *format, ...) noexcept
 {
-	if(!Config::DEBUG_BUILD || !logger_isEnabled())
+	if(!Config::DEBUG_BUILD || !Log::isEnabled())
 		return;
 	va_list args;
 	va_start( args, format );
@@ -45,7 +47,7 @@ void MDFN_printf(const char *format, ...) noexcept
 
 void MDFN_Notify(MDFN_NoticeType t, const char* format, ...) noexcept
 {
-	if(!Config::DEBUG_BUILD || !logger_isEnabled())
+	if(!Config::DEBUG_BUILD || !Log::isEnabled())
 		return;
 	va_list args;
 	va_start( args, format );
@@ -55,7 +57,7 @@ void MDFN_Notify(MDFN_NoticeType t, const char* format, ...) noexcept
 
 void MDFND_OutputNotice(MDFN_NoticeType t, const char* s) noexcept
 {
-	if(!Config::DEBUG_BUILD || !logger_isEnabled())
+	if(!Config::DEBUG_BUILD || !Log::isEnabled())
 		return;
 	logMsg("%s", s);
 }

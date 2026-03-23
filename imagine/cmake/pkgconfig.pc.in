@@ -1,0 +1,11 @@
+prefix=${pcfiledir}/../..
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: @PROJECT_NAME@
+Description: @PROJECT_DESCRIPTION@
+Version: @PROJECT_VERSION@
+Requires: @PKG_CONFIG_REQUIRES@
+Libs: -L${libdir} @PKG_CONFIG_LIBS@
+Cflags: -I${includedir}

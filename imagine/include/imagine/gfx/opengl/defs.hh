@@ -19,47 +19,34 @@
 #include <imagine/base/GLContext.hh>
 #include <imagine/util/memory/UniqueResource.hh>
 #include <imagine/util/used.hh>
+#include <imagine/util/rectangle2.h>
+#include <imagine/util/math.hh>
+#include <imagine/util/opengl/glHeaders.h>
+#ifndef IG_USE_MODULE_STD
 #include <variant>
 #include <span>
+#endif
 
-namespace Config
+namespace Config::Gfx
 {
-	namespace Gfx
-	{
-	#ifndef CONFIG_GFX_OPENGL_ES
-		#if defined CONFIG_OS_IOS || defined __ANDROID__ || defined CONFIG_MACHINE_PANDORA
-		#define CONFIG_GFX_OPENGL_ES 2
-		#endif
-	#endif
-
 	#ifdef CONFIG_GFX_OPENGL_ES
-	static constexpr int OPENGL_ES = CONFIG_GFX_OPENGL_ES;
+	inline constexpr int OPENGL_ES = CONFIG_GFX_OPENGL_ES;
 	#else
-	static constexpr int OPENGL_ES = 0;
+	inline constexpr int OPENGL_ES = 0;
 	#endif
 
 	#ifdef CONFIG_GFX_ANDROID_SURFACE_TEXTURE
-	#define CONFIG_GFX_OPENGL_TEXTURE_TARGET_EXTERNAL
-	static constexpr bool OPENGL_TEXTURE_TARGET_EXTERNAL = true;
+	inline constexpr bool OPENGL_TEXTURE_TARGET_EXTERNAL = true;
 	#else
-	static constexpr bool OPENGL_TEXTURE_TARGET_EXTERNAL = false;
+	inline constexpr bool OPENGL_TEXTURE_TARGET_EXTERNAL = false;
 	#endif
 
 	#if defined CONFIG_OS_IOS
-	static constexpr bool GLDRAWABLE_NEEDS_FRAMEBUFFER = true;
+	inline constexpr bool GLDRAWABLE_NEEDS_FRAMEBUFFER = true;
 	#else
-	static constexpr bool GLDRAWABLE_NEEDS_FRAMEBUFFER = false;
+	inline constexpr bool GLDRAWABLE_NEEDS_FRAMEBUFFER = false;
 	#endif
-	}
 }
-
-// Header Locations For Platform
-
-#if defined CONFIG_GFX_OPENGL_ES
-#include <imagine/util/opengl/glesDefs.h>
-#else
-#include <imagine/util/opengl/glDefs.h>
-#endif
 
 namespace IG::Gfx
 {
@@ -70,25 +57,25 @@ using TextureRef = GLuint;
 
 using VertexIndexSpan = std::variant<std::span<const uint8_t>, std::span<const uint16_t>>;
 
-static constexpr int TRIANGLE_IMPL = GL_TRIANGLES;
-static constexpr int TRIANGLE_STRIP_IMPL = GL_TRIANGLE_STRIP;
+inline constexpr int TRIANGLE_IMPL = GL_TRIANGLES;
+inline constexpr int TRIANGLE_STRIP_IMPL = GL_TRIANGLE_STRIP;
 
-static constexpr int ZERO_IMPL = GL_ZERO;
-static constexpr int ONE_IMPL = GL_ONE;
-static constexpr int SRC_COLOR_IMPL = GL_SRC_COLOR;
-static constexpr int ONE_MINUS_SRC_COLOR_IMPL = GL_ONE_MINUS_SRC_COLOR;
-static constexpr int DST_COLOR_IMPL = GL_DST_COLOR;
-static constexpr int ONE_MINUS_DST_COLOR_IMPL = GL_ONE_MINUS_DST_COLOR;
-static constexpr int SRC_ALPHA_IMPL = GL_SRC_ALPHA;
-static constexpr int ONE_MINUS_SRC_ALPHA_IMPL = GL_ONE_MINUS_SRC_ALPHA;
-static constexpr int DST_ALPHA_IMPL = GL_DST_ALPHA;
-static constexpr int ONE_MINUS_DST_ALPHA_IMPL = GL_ONE_MINUS_DST_ALPHA;
-static constexpr int CONSTANT_COLOR_IMPL = GL_CONSTANT_COLOR;
-static constexpr int ONE_MINUS_CONSTANT_COLOR_IMPL = GL_ONE_MINUS_CONSTANT_COLOR;
-static constexpr int CONSTANT_ALPHA_IMPL = GL_CONSTANT_ALPHA;
-static constexpr int ONE_MINUS_CONSTANT_ALPHA_IMPL = GL_ONE_MINUS_CONSTANT_ALPHA;
+inline constexpr int ZERO_IMPL = GL_ZERO;
+inline constexpr int ONE_IMPL = GL_ONE;
+inline constexpr int SRC_COLOR_IMPL = GL_SRC_COLOR;
+inline constexpr int ONE_MINUS_SRC_COLOR_IMPL = GL_ONE_MINUS_SRC_COLOR;
+inline constexpr int DST_COLOR_IMPL = GL_DST_COLOR;
+inline constexpr int ONE_MINUS_DST_COLOR_IMPL = GL_ONE_MINUS_DST_COLOR;
+inline constexpr int SRC_ALPHA_IMPL = GL_SRC_ALPHA;
+inline constexpr int ONE_MINUS_SRC_ALPHA_IMPL = GL_ONE_MINUS_SRC_ALPHA;
+inline constexpr int DST_ALPHA_IMPL = GL_DST_ALPHA;
+inline constexpr int ONE_MINUS_DST_ALPHA_IMPL = GL_ONE_MINUS_DST_ALPHA;
+inline constexpr int CONSTANT_COLOR_IMPL = GL_CONSTANT_COLOR;
+inline constexpr int ONE_MINUS_CONSTANT_COLOR_IMPL = GL_ONE_MINUS_CONSTANT_COLOR;
+inline constexpr int CONSTANT_ALPHA_IMPL = GL_CONSTANT_ALPHA;
+inline constexpr int ONE_MINUS_CONSTANT_ALPHA_IMPL = GL_ONE_MINUS_CONSTANT_ALPHA;
 
-static constexpr int SYNC_FLUSH_COMMANDS_BIT = GL_SYNC_FLUSH_COMMANDS_BIT;
+inline constexpr int SYNC_FLUSH_COMMANDS_BIT = GL_SYNC_FLUSH_COMMANDS_BIT;
 
 using ClipRect = WRect;
 using Drawable = NativeGLDrawable;

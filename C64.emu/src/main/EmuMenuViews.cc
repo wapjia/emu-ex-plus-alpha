@@ -13,26 +13,7 @@
 	You should have received a copy of the GNU General Public License
 	along with C64.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/SystemOptionView.hh>
-#include <emuframework/AudioOptionView.hh>
-#include <emuframework/VideoOptionView.hh>
-#include <emuframework/FilePathOptionView.hh>
-#include <emuframework/DataPathSelectView.hh>
-#include <emuframework/SystemActionsView.hh>
-#include <emuframework/MainMenuView.hh>
-#include <emuframework/FilePicker.hh>
-#include <emuframework/viewUtils.hh>
-#include "MainApp.hh"
-#include "VicePlugin.hh"
-#include <imagine/gui/TextEntry.hh>
-#include <imagine/gui/TextTableView.hh>
-#include <imagine/gui/AlertView.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/io/IO.hh>
-#include <imagine/util/string.h>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
-
+#include <cstdlib>
 extern "C"
 {
 	#include "cartridge.h"
@@ -50,12 +31,16 @@ extern "C"
 	#include "plus4model.h"
 	#include "vic20model.h"
 }
+import system;
+import plugin;
+import emuex;
+import imagine;
+import std;
 
 namespace EmuEx
 {
 
-constexpr SystemLogger log{"C64.emu"};
-
+using namespace IG;
 using MainAppHelper = EmuAppHelperBase<MainApp>;
 
 constexpr std::string_view driveMenuPrefix[4]
@@ -103,9 +88,9 @@ constexpr int defaultPALModel[]
 constexpr size_t maxModels = std::max({int(C64MODEL_NUM), int(DTVMODEL_NUM), int(C128MODEL_NUM),
 	int(CBM2MODEL_NUM), PETMODEL_NUM, PLUS4MODEL_NUM, VIC20MODEL_NUM});
 
-static int tapeCounter = 0;
+static int tapeCounter{};
 
-static std::span<const drive_type_info_t> driveInfoList(C64System &sys)
+static std::span<const drive_type_info_t> driveInfoList(C64System& sys)
 {
 	auto infoList = sys.plugin.machine_drive_get_type_info_list();
 	size_t size{};
@@ -162,7 +147,7 @@ class CustomVideoOptionView : public VideoOptionView, public MainAppHelper
 			if(system().defaultPaletteName.empty())
 				return 0;
 			else
-				return IG::findIndex(paletteName, system().defaultPaletteName) + 1;
+				return findIndex(paletteName, system().defaultPaletteName) + 1;
 		}(),
 		paletteItem
 	};
@@ -211,7 +196,7 @@ public:
 			});
 		for(const auto &name : paletteName)
 		{
-			paletteItem.emplace_back(IG::withoutDotExtension(name), attachParams(),
+			paletteItem.emplace_back(withoutDotExtension(name), attachParams(),
 				[this, name = name.data()]()
 				{
 					system().defaultPaletteName = name;
@@ -395,7 +380,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		}
 	};
 
-	std::string sysPathMenuEntryStr(IG::CStringView path)
+	std::string sysPathMenuEntryStr(CStringView path)
 	{
 		return std::format("VICE System Files: {}", appContext().fileUriDisplayName(path));
 	}
@@ -553,7 +538,7 @@ public:
 	{
 		app().pushAndShowModalView(
 			FilePicker::forMediaChange(attachParams(), e, hasC64TapeExtension,
-			[this, dismissPreviousView](FSPicker& picker, IG::CStringView path, std::string_view name, const Input::Event& e)
+			[this, dismissPreviousView](FSPicker& picker, CStringView path, std::string_view name, const Input::Event& e)
 			{
 				system().enterCPUTrap();
 				if(system().plugin.tape_image_attach(1, path.data()) == 0)
@@ -628,7 +613,7 @@ public:
 	{
 		app().pushAndShowModalView(
 			FilePicker::forMediaChange(attachParams(), e, hasC64CartExtension,
-			[this, dismissPreviousView](FSPicker& picker, IG::CStringView path, std::string_view name, const Input::Event& e)
+			[this, dismissPreviousView](FSPicker& picker, CStringView path, std::string_view name, const Input::Event& e)
 			{
 				system().enterCPUTrap();
 				if(system().plugin.cartridge_attach_image(systemCartType(system().currSystem), path.data()) == 0)
@@ -689,9 +674,9 @@ private:
 	{
 		app().pushAndShowModalView(
 			FilePicker::forMediaChange(attachParams(), e, hasC64DiskExtension,
-			[this, slot, dismissPreviousView](FSPicker& picker, IG::CStringView path, std::string_view name, const Input::Event& e)
+			[this, slot, dismissPreviousView](FSPicker& picker, CStringView path, std::string_view name, const Input::Event& e)
 			{
-				log.info("inserting disk in unit:{}", slot+8);
+				C64System::log.info("inserting disk in unit:{}", slot+8);
 				system().enterCPUTrap();
 				if(system().plugin.file_system_attach_disk(slot+8, 0, path.data()) == 0)
 				{
@@ -822,7 +807,7 @@ public:
 					items.emplace_back(entry.name, attachParams(), [this](TextMenuItem &item)
 					{
 						auto slot = currDriveTypeSlot;
-						assumeExpr(slot < 4);
+						assume(slot < 4);
 						system().sessionOptionSet();
 						system().setDriveType(slot + 8, item.id);
 						onDiskMediaChange(slot);
@@ -837,7 +822,7 @@ public:
 			updateROMText();
 			item.emplace_back(&romSlot);
 		}
-		for(auto slot : iotaCount(4))
+		for(auto slot: iotaCount(4))
 		{
 			updateDiskText(slot);
 			item.emplace_back(&diskSlot[slot]);
@@ -1009,7 +994,7 @@ class MachineOptionView : public TableView, public MainAppHelper
 			if(!system().usingExternalPalette())
 				return 0;
 			else
-				return IG::findIndex(paletteName, system().externalPaletteName()) + 1;
+				return findIndex(paletteName, system().externalPaletteName()) + 1;
 		}(),
 		paletteItem
 	};
@@ -1087,16 +1072,16 @@ public:
 			{
 				system().sessionOptionSet();
 				system().setPaletteResources({});
-				log.info("set internal palette");
+				C64System::log.info("set internal palette");
 			});
 		for(const auto &name : paletteName)
 		{
-			paletteItem.emplace_back(IG::withoutDotExtension(name), attachParams(),
+			paletteItem.emplace_back(withoutDotExtension(name), attachParams(),
 				[this, name = name.data()]()
 				{
 					system().sessionOptionSet();
 					system().setPaletteResources(name);
-					log.info("set palette:{}", name);
+					C64System::log.info("set palette:{}", name);
 				});
 		}
 		menuItem.emplace_back(&palette);
@@ -1274,7 +1259,7 @@ class CustomMainMenuView : public MainMenuView, public MainAppHelper
 		[this](TextMenuItem& item, const Input::Event& e)
 		{
 			auto multiChoiceView = makeViewWithName<TextTableView>(item, VicePlugin::SYSTEMS);
-			for(auto i : iotaCount(VicePlugin::SYSTEMS))
+			for(auto i: iotaCount(VicePlugin::SYSTEMS))
 			{
 				multiChoiceView->appendItem(VicePlugin::systemName(ViceSystem(i)),
 					[this, i](View& view, const Input::Event& e)
@@ -1360,7 +1345,7 @@ class CustomMainMenuView : public MainMenuView, public MainAppHelper
 	void createDiskAndLaunch(const char *diskPath, std::string_view diskName, const Input::Event& e)
 	{
 		if(system().plugin.vdrive_internal_create_format_disk_image(diskPath,
-			IG::format<FS::FileString>("{},dsk", diskName).data(),
+			format<FS::FileString>("{},dsk", diskName).data(),
 			DISK_IMAGE_TYPE_D64) == -1)
 		{
 			app().postMessage(true, "Error creating disk image");
@@ -1479,8 +1464,8 @@ std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
 
 }
 
-CLINK void ui_display_tape_counter(int port, int counter)
+extern "C" void ui_display_tape_counter(int port, int counter)
 {
-	//log.info("tape counter:{}", counter);
+	//EmuEx::C64System::log.info("tape counter:{}", counter);
 	EmuEx::tapeCounter = counter;
 }

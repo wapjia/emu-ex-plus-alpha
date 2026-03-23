@@ -13,17 +13,8 @@
 	You should have received a copy of the GNU General Public License
 	along with C64.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "sysfile"
-#include <array>
-#include <emuframework/EmuApp.hh>
-#include <emuframework/FilePicker.hh>
-#include "MainSystem.hh"
-#include <imagine/io/IO.hh>
-#include <imagine/fs/ArchiveFS.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
-
+module;
+#include <cstring>
 extern "C"
 {
 	#include "sysfile.h"
@@ -31,12 +22,12 @@ extern "C"
 	#include "archdep.h"
 }
 
+module system;
+
 namespace EmuEx
 {
 
-constexpr SystemLogger log{"C64.emu"};
-
-static int loadSysFile(Readable auto &file, const char *name, uint8_t *dest, int minsize, int maxsize)
+static int loadSysFile(Readable auto& file, const char* name, uint8_t* dest, int minsize, int maxsize)
 {
 	//log.debug("loading system file:{}", name);
 	ssize_t rsize = file.size();
@@ -52,12 +43,12 @@ static int loadSysFile(Readable auto &file, const char *name, uint8_t *dest, int
 	}
 	if(rsize < (minsize))
 	{
-		log.error("ROM {}: short file, expected minimum:{} got:{}", name, minsize, rsize);
+		C64System::log.error("ROM {}: short file, expected minimum:{} got:{}", name, minsize, rsize);
 		return -1;
 	}
 	if(rsize == (maxsize + 2))
 	{
-		log.warn("ROM {}: two bytes too large - removing assumed start address", name);
+		C64System::log.warn("ROM {}: two bytes too large - removing assumed start address", name);
 		if(file.read((char*)dest, 2) < 2)
 		{
 			return -1;
@@ -70,7 +61,7 @@ static int loadSysFile(Readable auto &file, const char *name, uint8_t *dest, int
 	}
 	else if(rsize > (maxsize))
 	{
-		log.warn("ROM {}: long file, discarding end.", name);
+		C64System::log.warn("ROM {}: long file, discarding end.", name);
 		rsize = maxsize;
 	}
 	if((rsize = file.read((char *)dest, rsize)) < minsize)
@@ -79,22 +70,22 @@ static int loadSysFile(Readable auto &file, const char *name, uint8_t *dest, int
 	return (int)rsize;
 }
 
-static ArchiveIO *archiveIOForSysFile(C64System &system, IG::CStringView archivePath, std::string_view sysFileName, std::string_view subPath, char **complete_path_return)
+static ArchiveIO* archiveIOForSysFile(C64System& system, CStringView archivePath, std::string_view sysFileName, std::string_view subPath, char** complete_path_return)
 {
 	auto sysFilePath = FS::pathString(subPath, sysFileName);
 	try
 	{
 		auto &arch = system.firmwareArchive(archivePath);
-		if(FS::seekFileInArchive(arch, [&](auto &entry)
+		if(FS::seekFileInArchive(arch, [&](auto& entry)
 		{
 			auto name = entry.name();
 			if(!name.ends_with(sysFilePath))
 				return false;
-			log.info("found file in archive:{}", name);
+			C64System::log.info("found file in archive:{}", name);
 			if(complete_path_return)
 			{
 				*complete_path_return = strdup(name.data());
-				assert(*complete_path_return);
+				assume(*complete_path_return);
 			}
 			return true;
 		}))
@@ -103,17 +94,17 @@ static ArchiveIO *archiveIOForSysFile(C64System &system, IG::CStringView archive
 		}
 		else
 		{
-			log.error("not found in archive:{}", archivePath);
+			C64System::log.error("not found in archive:{}", archivePath);
 		}
 	}
 	catch(...)
 	{
-		log.error("error opening archive:{}", archivePath);
+		C64System::log.error("error opening archive:{}", archivePath);
 	}
 	return {};
 }
 
-static AssetIO assetIOForSysFile(IG::ApplicationContext ctx, std::string_view sysFileName, std::string_view subPath, char **complete_path_return)
+static AssetIO assetIOForSysFile(ApplicationContext ctx, std::string_view sysFileName, std::string_view subPath, char** complete_path_return)
 {
 	auto fullPath = FS::pathString(subPath, sysFileName);
 	auto file = ctx.openAsset(fullPath, {.test = true, .accessHint = IOAccessHint::All});
@@ -122,7 +113,7 @@ static AssetIO assetIOForSysFile(IG::ApplicationContext ctx, std::string_view sy
 	if(complete_path_return)
 	{
 		*complete_path_return = strdup(fullPath.c_str());
-		assert(*complete_path_return);
+		assume(*complete_path_return);
 	}
 	return file;
 }
@@ -131,7 +122,7 @@ ArchiveIO &C64System::firmwareArchive(CStringView path) const
 {
 	if(!firmwareArch)
 	{
-		log.info("{} not cached, opening archive", path);
+		C64System::log.info("{} not cached, opening archive", path);
 		firmwareArch = {appContext().openFileUri(path)};
 	}
 	else
@@ -143,13 +134,13 @@ ArchiveIO &C64System::firmwareArchive(CStringView path) const
 
 static bool archiveHasDrivesDirectory(ApplicationContext ctx, CStringView path)
 {
-	return bool(FS::findDirectoryInArchive(ctx.openFileUri(path), [&](auto &entry){ return entry.name().ends_with("DRIVES/"); }));
+	return bool(FS::findDirectoryInArchive(ctx.openFileUri(path), [&](auto& entry){ return entry.name().ends_with("DRIVES/"); }));
 }
 
 void C64System::setSystemFilesPath(CStringView path, FS::file_type type)
 {
 	auto ctx = appContext();
-	log.info("set firmware path:{}", path);
+	C64System::log.info("set firmware path:{}", path);
 	if((type == FS::file_type::directory && !ctx.fileUriExists(FS::uriString(path, "DRIVES")))
 		|| (FS::hasArchiveExtension(path) && !archiveHasDrivesDirectory(ctx, path)))
 	{
@@ -159,9 +150,9 @@ void C64System::setSystemFilesPath(CStringView path, FS::file_type type)
 	firmwareArch = {};
 }
 
-std::vector<std::string> C64System::systemFilesWithExtension(const char *ext) const
+std::vector<std::string> C64System::systemFilesWithExtension(const char* ext) const
 {
-	log.info("looking for system files with extension:{}", ext);
+	C64System::log.info("looking for system files with extension:{}", ext);
 	std::vector<std::string> filenames{};
 	try
 	{
@@ -174,7 +165,7 @@ std::vector<std::string> C64System::systemFilesWithExtension(const char *ext) co
 				continue;
 			if(EmuApp::hasArchiveExtension(displayName))
 			{
-				firmwareArchive(basePath).forAllEntries([&](auto &entry)
+				firmwareArchive(basePath).forAllEntries([&](auto& entry)
 				{
 					auto name = entry.name();
 					if(entry.type() == FS::file_type::directory
@@ -190,12 +181,12 @@ std::vector<std::string> C64System::systemFilesWithExtension(const char *ext) co
 			else
 			{
 				appContext().forEachInDirectoryUri(FS::uriString(basePath, sysFileDir),
-					[&filenames, ext](auto &entry)
+					[&filenames, ext](auto& entry)
 					{
 						auto name = entry.name();
 						if(name.ends_with(ext))
 						{
-							log.info("found file:{}", name);
+							C64System::log.info("found file:{}", name);
 							filenames.emplace_back(name);
 						}
 						return true;
@@ -205,7 +196,7 @@ std::vector<std::string> C64System::systemFilesWithExtension(const char *ext) co
 	}
 	catch(...)
 	{
-		log.error("error while getting system files");
+		C64System::log.error("error while getting system files");
 	}
 	std::sort(filenames.begin(), filenames.end());
 	return filenames;
@@ -215,15 +206,18 @@ std::vector<std::string> C64System::systemFilesWithExtension(const char *ext) co
 
 using namespace EmuEx;
 
-CLINK int sysfile_init(const char *emu_id)
+extern "C"
+{
+
+int sysfile_init(const char* emu_id)
 {
 	static_cast<C64System&>(gSystem()).sysFileDir = emu_id;
 	return 0;
 }
 
-CLINK FILE *sysfile_open(const char *name, const char *subPath, char **complete_path_return, const char *open_mode)
+FILE* sysfile_open(const char* name, const char* subPath, char** complete_path_return, const char* open_mode)
 {
-	EmuEx::log.info("sysfile open:{} subPath:{}", name, subPath);
+	C64System::log.info("sysfile open:{} subPath:{}", name, subPath);
 	auto appContext = gAppContext();
 	auto &system = static_cast<C64System&>(gSystem());
 	for(const auto &basePath : system.sysFilePath)
@@ -250,7 +244,7 @@ CLINK FILE *sysfile_open(const char *name, const char *subPath, char **complete_
 			if(complete_path_return)
 			{
 				*complete_path_return = strdup(fullPath.c_str());
-				assert(*complete_path_return);
+				assume(*complete_path_return);
 			}
 			return file;
 		}
@@ -263,14 +257,14 @@ CLINK FILE *sysfile_open(const char *name, const char *subPath, char **complete_
 			return io.toFileStream(open_mode);
 		}
 	}
-	EmuEx::log.error("can't open {} in system paths", name);
+	C64System::log.error("can't open {} in system paths", name);
 	system.lastMissingSysFile = name;
 	return nullptr;
 }
 
-CLINK int sysfile_locate(const char *name, const char *subPath, char **complete_path_return)
+int sysfile_locate(const char* name, const char* subPath, char** complete_path_return)
 {
-	EmuEx::log.info("sysfile locate:{} subPath:{}", name, subPath);
+	C64System::log.info("sysfile locate:{} subPath:{}", name, subPath);
 	auto appContext = gAppContext();
 	auto &system = static_cast<C64System&>(gSystem());
 	for(const auto &basePath : system.sysFilePath)
@@ -308,7 +302,7 @@ CLINK int sysfile_locate(const char *name, const char *subPath, char **complete_
 			return 0;
 		}
 	}
-	EmuEx::log.error("{} not found in system paths", name);
+	C64System::log.error("{} not found in system paths", name);
 	if(complete_path_return)
 	{
 		*complete_path_return = nullptr;
@@ -316,9 +310,9 @@ CLINK int sysfile_locate(const char *name, const char *subPath, char **complete_
 	return -1;
 }
 
-CLINK int sysfile_load(const char *name, const char *subPath, uint8_t *dest, int minsize, int maxsize)
+int sysfile_load(const char* name, const char* subPath, uint8_t* dest, int minsize, int maxsize)
 {
-	EmuEx::log.info("sysfile load:{} subPath:{}", name, subPath);
+	C64System::log.info("sysfile load:{} subPath:{}", name, subPath);
 	auto appContext = gAppContext();
 	auto &system = static_cast<C64System&>(gSystem());
 	for(const auto &basePath : system.sysFilePath)
@@ -336,7 +330,7 @@ CLINK int sysfile_load(const char *name, const char *subPath, uint8_t *dest, int
 			auto size = loadSysFile(*ioPtr, name, dest, minsize, maxsize);
 			if(size == -1)
 			{
-				EmuEx::log.error("failed loading system file:{} from:{}", name, basePath);
+				C64System::log.error("failed loading system file:{} from:{}", name, basePath);
 				return -1;
 			}
 			return size;
@@ -349,18 +343,20 @@ CLINK int sysfile_load(const char *name, const char *subPath, uint8_t *dest, int
 			auto size = loadSysFile(file, name, dest, minsize, maxsize);
 			if(size == -1)
 			{
-				EmuEx::log.error("failed loading system file:{} from:{}", name, basePath);
+				C64System::log.error("failed loading system file:{} from:{}", name, basePath);
 				continue;
 			}
 			return size;
 		}
 	}
-	EmuEx::log.error("can't load {} in system paths", name);
+	C64System::log.error("can't load {} in system paths", name);
 	system.lastMissingSysFile = name;
 	return -1;
 }
 
-CLINK char *archdep_default_rtc_file_name(void)
+char *archdep_default_rtc_file_name(void)
 {
 	return strdup(FS::pathString(gAppContext().supportPath(), "vice.rtc").data());
+}
+
 }

@@ -43,7 +43,6 @@
 #define CPUUndefinedException cpu.undefinedException
 #define CPUUpdateCPSR cpu.updateCPSR
 #define CPUReadMemory(address) CPUReadMemory(cpu, address)
-#define CPUReadHalfWord(address) CPUReadHalfWord(cpu, address)
 #define CPUReadHalfWordSigned(address) CPUReadHalfWordSigned(cpu, address)
 #define CPUReadByte(address) CPUReadByte(cpu, address)
 #define CPUWriteMemory(address, value) CPUWriteMemory(cpu, address, value)
@@ -55,6 +54,8 @@
 #define dataTicksAccess32(address) dataTicksAccess32(cpu, address)
 #define codeTicksAccessSeq16(address) codeTicksAccessSeq16(cpu, address)
 #define codeTicksAccess16(address) codeTicksAccess16(cpu, address)
+#undef INSN_REGPARM
+#define INSN_REGPARM
 
 static INSN_REGPARM void armUnknownInsn(ARM7TDMI &cpu, uint32_t opcode, int &clockTicks)
 {
@@ -1552,7 +1553,7 @@ static INSN_REGPARM void arm121(ARM7TDMI &cpu, uint32_t opcode, int &clockTicks)
 #define OP_LDR    reg[dest].I = CPUReadMemory(address)
 #define OP_LDRH   reg[dest].I = CPUReadHalfWord(address)
 #define OP_LDRB   reg[dest].I = CPUReadByte(address)
-#define OP_LDRSH  reg[dest].I = (uint32_t)CPUReadHalfWordSigned(address)
+#define OP_LDRSH  reg[dest].I = CPUReadHalfWordSigned(address)
 #define OP_LDRSB  reg[dest].I = (int8_t)CPUReadByte(address)
 
 #define WRITEBACK_NONE     /*nothing*/
@@ -2869,7 +2870,7 @@ int armExecute(ARM7TDMI &cpu)
 	int &cpuTotalTicks = cpu.cpuTotalTicks;
     do {
 		if (coreOptions.cheatsEnabled) {
-			cpuMasterCodeCheck(cpu);
+			cpuMasterCodeCheck();
 		}
 
         if ((armNextPC & 0x0803FFFF) == 0x08020000)
@@ -2952,15 +2953,17 @@ int armExecute(ARM7TDMI &cpu)
               case 0x0D: // LE
                 cond_res = Z_FLAG || (N_FLAG != V_FLAG);
                 break;
-              /*case 0x0E: // AL (impossible, checked above)
+              case 0x0E: // AL (impossible, checked above)
                 cond_res = true;
-                break;*/
+                IG::unreachable();
+                break;
               case 0x0F:
               	cond_res = false;
               	break;
               default:
                 // ???
-              	bug_unreachable("invalid condition:0x%X", cond);
+              	cond_res = false;
+                IG::unreachable();
                 break;
             }
         }

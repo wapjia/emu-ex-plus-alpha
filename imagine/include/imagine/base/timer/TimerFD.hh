@@ -20,7 +20,9 @@
 #include <imagine/time/Time.hh>
 #include <imagine/util/used.hh>
 #include <time.h>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
+#endif
 
 namespace IG
 {

@@ -1,0 +1,252 @@
+/*  This file is part of Snes9x EX.
+
+	Please see COPYING file in root directory for license information. */
+
+module;
+#include <snes9x.h>
+#include <memmap.h>
+#include <cheats.h>
+#ifndef SNES9X_VERSION_1_4
+#include <controls.h>
+#include <apu/apu.h>
+#include <fxemu.h>
+#else
+#include <apu.h>
+#endif
+
+export module system;
+import emuex;
+import imagine;
+import std;
+
+#ifndef SNES9X_VERSION_1_4
+extern "C++"
+{
+uint16* S9xGetJoypadBits(unsigned idx);
+uint8* S9xGetMouseBits(unsigned idx);
+uint8* S9xGetMouseDeltaBits(unsigned idx);
+int16* S9xGetMousePosBits(unsigned idx);
+uint8* S9xGetSuperscopeBits();
+uint8* S9xGetJustifierBits();
+bool8 S9xReadMousePosition(int which, int& x, int& y, uint32& buttons);
+void DoGunLatch(int, int);
+}
+#endif
+
+namespace EmuEx
+{
+
+using namespace IG;
+
+export enum class SnesKey: KeyCode
+{
+	Up = 11,
+	Right = 8,
+	Down = 10,
+	Left = 9,
+	Select = 13,
+	Start = 12,
+	A = 7,
+	B = 15,
+	X = 6,
+	Y = 14,
+	L = 5,
+	R = 4,
+};
+
+#ifdef SNES9X_VERSION_1_4
+export constexpr bool IS_SNES9X_VERSION_1_4 = true;
+export extern "C++" class Cheat: public SCheat {};
+#else
+export constexpr bool IS_SNES9X_VERSION_1_4 = false;
+export extern "C++" class Cheat: public SCheatGroup {};
+#endif
+
+export extern "C++" class CheatCode: public SCheat {};
+
+enum Snes9xConfigKey
+{
+	CFGKEY_MULTITAP = 276, CFGKEY_BLOCK_INVALID_VRAM_ACCESS = 277,
+	CFGKEY_VIDEO_SYSTEM = 278, CFGKEY_INPUT_PORT = 279,
+	CFGKEY_AUDIO_DSP_INTERPOLATON = 280, CFGKEY_SEPARATE_ECHO_BUFFER = 281,
+	CFGKEY_SUPERFX_CLOCK_MULTIPLIER = 282, CFGKEY_ALLOW_EXTENDED_VIDEO_LINES = 283,
+	CFGKEY_CHEATS_PATH = 284, CFGKEY_PATCHES_PATH = 285,
+	CFGKEY_SATELLAVIEW_PATH = 286, CFGKEY_SUFAMI_BIOS_PATH = 287,
+	CFGKEY_BSX_BIOS_PATH = 288, CFGKEY_DEINTERLACE_MODE = 289,
+};
+
+constexpr int inputPortMinVal = IS_SNES9X_VERSION_1_4 ? 0 : -1;
+
+#ifndef SNES9X_VERSION_1_4
+export constexpr int SNES_AUTO_INPUT = -1;
+export constexpr int SNES_JOYPAD = CTL_JOYPAD;
+export constexpr int SNES_MOUSE_SWAPPED = CTL_MOUSE;
+export constexpr int SNES_SUPERSCOPE = CTL_SUPERSCOPE;
+export constexpr int SNES_JUSTIFIER = CTL_JUSTIFIER;
+#endif
+
+export void setSuperFXSpeedMultiplier(unsigned val)
+{
+	#ifndef SNES9X_VERSION_1_4
+	Settings.SuperFXClockMultiplier = val;
+	S9xSetSuperFXTiming(val);
+	#endif
+}
+
+export unsigned parseHex(const char*);
+export void setCheatAddress(CheatCode&, uint32_t a);
+export void setCheatValue(CheatCode&, uint8 v);
+export void setCheatConditionalValue(CheatCode&, bool conditional, uint8 v);
+export void setCheatConditionalValue(CheatCode&, int v);
+export std::string codeConditionalToString(CheatCode&);
+
+export class Snes9xSystem final: public EmuSystem
+{
+public:
+	std::string cheatsDir;
+	std::string patchesDir;
+	std::string satDir{optionUserPathContentToken};
+	std::string sufamiBiosPath;
+	std::string bsxBiosPath;
+	size_t saveStateSize{};
+	#ifndef SNES9X_VERSION_1_4
+	int snesInputPort = SNES_AUTO_INPUT;
+	int snesActiveInputPort = SNES_JOYPAD;
+	#else
+	union
+	{
+		int snesInputPort = SNES_JOYPAD;
+		int snesActiveInputPort;
+	};
+	uint16 joypadData[5]{};
+	#endif
+	int snesPointerX{}, snesPointerY{}, snesPointerBtns{}, snesMouseClick{};
+	int snesMouseX{}, snesMouseY{};
+	int doubleClickFrames{}, rightClickFrames{};
+	Input::PointerId mousePointerId{Input::NULL_POINTER_ID};
+	bool dragWithButton{}; // true to start next mouse drag with a button held
+	DeinterlaceMode deinterlaceMode{DeinterlaceMode::Bob};
+	Property<bool, CFGKEY_MULTITAP> optionMultitap;
+	Property<int8_t, CFGKEY_INPUT_PORT,
+	{
+		.defaultValue = inputPortMinVal, .isValid = isValidWithMinMax<inputPortMinVal, SNES_JUSTIFIER>
+	}> optionInputPort;
+	Property<uint8_t, CFGKEY_VIDEO_SYSTEM,
+	{
+		.isValid = isValidWithMax<3>
+	}> optionVideoSystem;
+	Property<bool, CFGKEY_ALLOW_EXTENDED_VIDEO_LINES,
+	{
+		.defaultValue = !IS_SNES9X_VERSION_1_4
+	}> optionAllowExtendedVideoLines;
+	#ifndef SNES9X_VERSION_1_4
+	Property<bool, CFGKEY_BLOCK_INVALID_VRAM_ACCESS,
+	{
+		.defaultValue = true
+	}> optionBlockInvalidVRAMAccess;
+	Property<bool, CFGKEY_SEPARATE_ECHO_BUFFER> optionSeparateEchoBuffer;
+	Property<uint8_t, CFGKEY_SUPERFX_CLOCK_MULTIPLIER,
+	{
+		.defaultValue = 100, .isValid = isValidWithMinMax<5, 250>
+	}> optionSuperFXClockMultiplier;
+	Property<uint8_t, CFGKEY_AUDIO_DSP_INTERPOLATON,
+	{
+		.defaultValue = DSP_INTERPOLATION_GAUSSIAN, .isValid = isValidWithMax<4>
+	}> optionAudioDSPInterpolation;
+	#endif
+	static constexpr FrameRate ntscFrameRate{21477272. / 357366.}; // ~60.098Hz
+	static constexpr FrameRate palFrameRate{21281370. / 425568.}; // ~50.00Hz
+	static constexpr SystemLogger log{"Snes9x"};
+
+	Snes9xSystem(ApplicationContext ctx):
+		EmuSystem{ctx}
+	{
+		#ifdef SNES9X_VERSION_1_4
+		alignas(8) static uint16 screenBuff[512*478];
+		GFX.Screen = (uint8*)screenBuff;
+		#endif
+		Memory.Init();
+		S9xGraphicsInit();
+		S9xInitAPU();
+		assume(Settings.Stereo == TRUE);
+		#ifndef SNES9X_VERSION_1_4
+		S9xInitSound(0);
+		S9xUnmapAllControls();
+		S9xCheatsEnable();
+		#else
+		S9xInitSound(Settings.SoundPlaybackRate, Settings.Stereo, 0);
+		assume(Settings.H_Max == SNES_CYCLES_PER_SCANLINE);
+		assume(Settings.HBlankStart == (256 * Settings.H_Max) / SNES_HCOUNTER_MAX);
+		#endif
+	}
+	void setupSNESInput(VController&);
+	static bool hasBiosExtension(std::string_view name);
+	MutablePixmapView fbPixmapView(WSize, bool useInterlaceFields);
+	void writeCheatFile();
+
+	// required API functions
+	void loadContent(IO &, EmuSystemCreateParams, OnLoadProgressDelegate);
+	[[gnu::hot]] void runFrame(EmuSystemTaskContext, EmuVideo*, EmuAudio*);
+	FS::FileString stateFilename(int slot, std::string_view name) const;
+	std::string_view stateFilenameExt() const;
+	size_t stateSize();
+	void readState(EmuApp&, std::span<uint8_t> buff);
+	size_t writeState(std::span<uint8_t> buff, SaveStateFlags);
+	bool readConfig(ConfigType, MapIO&, unsigned key);
+	void writeConfig(ConfigType, FileIO&);
+	void reset(EmuApp&, ResetMode mode);
+	void clearInputBuffers();
+	void handleInputAction(EmuApp*, InputAction);
+	FrameRate frameRate() const { return videoSystem() == VideoSystem::PAL ? palFrameRate : ntscFrameRate; }
+	void configAudioRate(FrameRate outputFrameRate, int outputRate);
+
+	// optional API functions
+	void loadBackupMemory(EmuApp&);
+	void onFlushBackupMemory(EmuApp&, BackupMemoryDirtyFlags);
+	WallClockTimePoint backupMemoryLastWriteTime(const EmuApp&) const;
+	void renderFramebuffer(EmuVideo&);
+	WSize multiresVideoBaseSize() const;
+	void onOptionsLoaded();
+	void onSessionOptionsLoaded(EmuApp&);
+	bool resetSessionOptions(EmuApp&);
+	VideoSystem videoSystem() const;
+	bool onPointerInputStart(const Input::MotionEvent&, Input::DragTrackerState, WindowRect gameRect);
+	bool onPointerInputUpdate(const Input::MotionEvent&, Input::DragTrackerState,
+		Input::DragTrackerState prevDragState, WindowRect gameRect);
+	bool onPointerInputEnd(const Input::MotionEvent&, Input::DragTrackerState, WindowRect gameRect);
+	Cheat* newCheat(EmuApp&, const char* name, CheatCodeDesc);
+	bool setCheatName(Cheat&, const char* name);
+	std::string_view cheatName(const Cheat&) const;
+	void setCheatEnabled(Cheat&, bool on);
+	bool isCheatEnabled(const Cheat&) const;
+	bool addCheatCode(EmuApp&, Cheat*&, CheatCodeDesc);
+	Cheat* removeCheatCode(Cheat&, CheatCode&);
+	bool removeCheat(Cheat&);
+	void forEachCheat(DelegateFunc<bool(Cheat&, std::string_view)>);
+	void forEachCheatCode(Cheat&, DelegateFunc<bool(CheatCode&, std::string_view)>);
+
+protected:
+	void applyInputPortOption(int portVal, VController&);
+	WPt updateAbsolutePointerPosition(WRect gameRect, WPt pos);
+	IOBuffer readSufamiTurboBios() const;
+};
+
+export using MainSystem = Snes9xSystem;
+
+class Snes9xApp final: public EmuApp
+{
+public:
+	Snes9xApp(ApplicationInitParams initParams, ApplicationContext& ctx):
+		EmuApp{initParams, ctx}, system_{ctx} {}
+
+	auto& system(this auto&& self) { return self.system_; }
+
+private:
+	Snes9xSystem system_;
+};
+
+export using MainApp = Snes9xApp;
+
+export Snes9xSystem &gSnes9xSystem() { return static_cast<Snes9xSystem&>(gSystem()); }
+
+}

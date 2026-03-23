@@ -15,13 +15,13 @@
 
 #include <imagine/base/SimpleFrameTimer.hh>
 #include <imagine/base/Screen.hh>
-#include <imagine/time/Time.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
 
 namespace IG
 {
 
-constexpr SystemLogger log{"SimpleFrameTimer"};
+static SystemLogger log{"SimpleFrameTimer"};
 
 SimpleFrameTimer::SimpleFrameTimer(Screen &screen, EventLoop loop):
 	timer
@@ -53,7 +53,7 @@ void SimpleFrameTimer::scheduleVSync()
 	{
 		return;
 	}
-	assert(rate.hz());
+	assume(rate.hz());
 	timer.runIn(Nanoseconds{1}, rate.duration());
 }
 

@@ -17,16 +17,12 @@
 #include <imagine/audio/Manager.hh>
 #include <imagine/audio/defs.hh>
 #include <imagine/base/ApplicationContext.hh>
-#include <imagine/logger/logger.h>
-
-static void handleEndInterruption()
-{
-	logMsg("re-activating audio session");
-	[[AVAudioSession sharedInstance] setActive:YES error:nil];
-}
+#include <imagine/logger/SystemLogger.hh>
 
 namespace IG::Audio
 {
+
+static SystemLogger log{"AudioManager"};
 	
 AvfManager::AvfManager(ApplicationContext) {}
 
@@ -49,7 +45,7 @@ void Manager::setSoloMix(std::optional<bool> opt)
 {
 	if(!opt || soloMix_ == *opt)
 		return;
-	logMsg("setting solo mix:%s", *opt ? "on" : "off");
+	log.info("setting solo mix:{}", *opt ? "on" : "off");
 	soloMix_ = *opt;
 	auto category = *opt ? AVAudioSessionCategorySoloAmbient : AVAudioSessionCategoryAmbient;
 	[[AVAudioSession sharedInstance] setCategory:category error:nil];
@@ -69,7 +65,7 @@ void Manager::startSession()
 	AVAudioSession *session = [AVAudioSession sharedInstance];
 	if(![session setActive:YES error:nil])
 	{
-		logWarn("error in setActive()");
+		log.warn("error in setActive()");
 	}
 	NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
 	sessionInterruptionObserver = [center addObserverForName:AVAudioSessionInterruptionNotification object:nil
@@ -79,7 +75,8 @@ void Manager::startSession()
 			auto type = [note.userInfo[AVAudioSessionInterruptionTypeKey] unsignedIntegerValue];
 			if(type == AVAudioSessionInterruptionTypeEnded)
 			{
-				handleEndInterruption();
+				log.info("re-activating audio session");
+				[[AVAudioSession sharedInstance] setActive:YES error:nil];
 			}
 		}];
 	sessionActive = true;
@@ -92,7 +89,7 @@ void Manager::endSession()
 	AVAudioSession *session = [AVAudioSession sharedInstance];
 	if(![session setActive:NO error:nil])
 	{
-		logWarn("error in setActive()");
+		log.warn("error in setActive()");
 	}
 	NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
 	[center removeObserver:sessionInterruptionObserver];

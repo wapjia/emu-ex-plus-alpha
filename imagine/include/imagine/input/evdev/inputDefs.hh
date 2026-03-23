@@ -16,15 +16,22 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <linux/input.h>
+#ifndef IG_USE_MODULE_STD
+#include <cstdint>
+#endif
 
 namespace IG::Input
 {
 
+using std::uint8_t;
+using std::uint16_t;
+using std::uint32_t;
+
 using Key = uint16_t;
 
-namespace Evdev
+struct Evdev
 {
-	static const uint32_t
+	static constexpr uint32_t
 
 	F1 = KEY_F1,
 	F2 = KEY_F2,
@@ -104,9 +111,9 @@ namespace Evdev
 	JS_POV_XAXIS_POS = KEY_MAX+15, JS_POV_XAXIS_NEG = KEY_MAX+16,
 	JS_POV_YAXIS_POS = KEY_MAX+17, JS_POV_YAXIS_NEG = KEY_MAX+18;
 
-	static const uint32_t EX_KEYS = 18;
-	static const uint32_t COUNT = KEY_CNT + EX_KEYS;
-}
+	static constexpr uint32_t EX_KEYS = 18;
+	static constexpr uint32_t COUNT = KEY_CNT + EX_KEYS;
+};
 
 enum class AxisId : uint8_t
 {

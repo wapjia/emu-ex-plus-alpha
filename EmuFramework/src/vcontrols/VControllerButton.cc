@@ -15,10 +15,12 @@
 
 #include <emuframework/VController.hh>
 #include <emuframework/EmuInput.hh>
-#include <imagine/gfx/RendererCommands.hh>
+#include <emuframework/InputManager.hh>
 
 namespace EmuEx
 {
+
+using namespace IG;
 
 void VControllerButton::setPos(WPt pos, WRect viewBounds, _2DOrigin o)
 {

@@ -13,15 +13,6 @@
 	You should have received a copy of the GNU General Public License
 	along with MSX.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "blueMSXApi"
-
-#include <imagine/logger/logger.h>
-#include <imagine/fs/FS.hh>
-#include <imagine/time/Time.hh>
-#include <assert.h>
-#include <stdlib.h>
-#include <string.h>
-
 extern "C"
 {
 	#include <blueMSX/Arch/ArchTimer.h>
@@ -45,12 +36,16 @@ extern "C"
 	#include <blueMSX/Emulator/AppConfig.h>
 	#include <blueMSX/Z80/R800Debug.h>
 }
+import system;
+import imagine;
+import std;
 
 using namespace IG;
+using namespace EmuEx;
 
 int archCreateDirectory(const char* pathname)
 {
-    if(!IG::FS::create_directory(pathname))
+    if(!FS::create_directory(pathname))
     	return -1;
     return 0;
 }
@@ -58,7 +53,7 @@ int archCreateDirectory(const char* pathname)
 // needed by machineGetAvailable(), should never be called
 const char* appConfigGetString(const char* key, const char* defVal)
 {
-	assert(0);
+	unreachable();
 	return 0;
 }
 
@@ -77,24 +72,24 @@ UInt32 archGetHiresTimer()
 	return std::chrono::duration_cast<Milliseconds>(SteadyClock::now().time_since_epoch()).count();
 }
 
-Properties* propGetGlobalProperties() { assert(0); return 0; }; // TODO: needed in Casette.c
+Properties* propGetGlobalProperties() { unreachable(); return 0; }; // TODO: needed in Casette.c
 
-ArchGlob* archGlob(const char* pattern, int flags) { assert(0); return 0; } //TODO
+ArchGlob* archGlob(const char* pattern, int flags) { unreachable(); return 0; } //TODO
 void archGlobFree(ArchGlob* globHandle) { }
 
-void archVideoOutputChange() { logMsg("called archVideoOutputChange"); }
+void archVideoOutputChange() { MsxSystem::log.info("called archVideoOutputChange"); }
 
 void* archSemaphoreCreate(int initCount) { return 0; }
-void archSemaphoreWait(void* semaphore, int timeout) { assert(0); }
-void archSemaphoreSignal(void* semaphore) { assert(0); }
+void archSemaphoreWait(void* semaphore, int timeout) { unreachable(); }
+void archSemaphoreSignal(void* semaphore) { unreachable(); }
 void archSemaphoreDestroy(void* semaphore) { }
 
 int archMidiGetNoteOn() { return 0; }
 void archMidiUpdateVolume(int left, int right) {}
-ArchMidi* archMidiInCreate(int device, ArchMidiInCb cb, void* ref) { assert(0); return NULL; }
+ArchMidi* archMidiInCreate(int device, ArchMidiInCb cb, void* ref) { unreachable(); return NULL; }
 void archMidiInDestroy(ArchMidi* archMidi) {}
 int archMidiInGetNoteOn(ArchMidi* archMidi, int note) { return 0; }
-ArchMidi* archMidiOutCreate(int device) { assert(0); return NULL; }
+ArchMidi* archMidiOutCreate(int device) { unreachable(); return NULL; }
 void archMidiOutDestroy(ArchMidi* archMidi) {}
 void archMidiOutTransmit(ArchMidi* archMidi, UInt8 value) {}
 void archMidiLoadState(void) {}
@@ -133,7 +128,7 @@ int debuggerCheckVramAccess(void)
 
 const char* stripPath(const char* filename)
 {
-	const char* ptr = filename + strlen(filename) - 1;
+	const char* ptr = filename + std::strlen(filename) - 1;
 
 	while (--ptr >= filename)
 	{

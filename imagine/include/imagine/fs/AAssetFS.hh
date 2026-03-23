@@ -18,11 +18,11 @@
 #include <imagine/config/defs.hh>
 #include <imagine/fs/FSDefs.hh>
 #include <imagine/util/string/CStringView.hh>
+#include <android/asset_manager.h>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
 #include <string_view>
-
-struct AAssetManager;
-struct AAssetDir;
+#endif
 
 namespace IG::FS
 {

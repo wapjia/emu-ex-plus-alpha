@@ -15,23 +15,30 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/gfx/Texture.hh>
 #include <imagine/gfx/Quads.hh>
-#include <imagine/util/enum.hh>
+#endif
+#ifndef IG_USE_MODULE_GLM
+#include <imagine/glm/ext/vector_int2_sized.hpp>
+#include <imagine/glm/ext/vector_float2.hpp>
+#endif
 
 namespace EmuEx
 {
 
 using namespace IG;
 
-WISE_ENUM_CLASS((ImageOverlayId, uint8_t),
-	(SCANLINES, 1),
-	(SCANLINES_2, 2),
-	(LCD, 10),
-	(CRT_MASK, 20),
-	(CRT_MASK_2, 21),
-	(CRT_GRILLE, 30),
-	(CRT_GRILLE_2, 31));
+enum class ImageOverlayId: uint8_t
+{
+	SCANLINES = 1,
+	SCANLINES_2 = 2,
+	LCD = 10,
+	CRT_MASK = 20,
+	CRT_MASK_2 = 21,
+	CRT_GRILLE = 30,
+	CRT_GRILLE_2 = 31
+};
 
 class VideoImageOverlay
 {

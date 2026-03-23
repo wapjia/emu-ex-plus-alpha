@@ -17,7 +17,9 @@
 
 #include <imagine/gfx/defs.hh>
 #include <imagine/util/used.hh>
+#ifndef IG_USE_MODULE_STD
 #include <string_view>
+#endif
 
 namespace IG::Gfx
 {
@@ -40,24 +42,24 @@ public:
 	namespace SamplerConfigs
 	{
 
-	constexpr TextureSamplerConfig clamp
+	inline constexpr TextureSamplerConfig clamp
 	{
 		.debugLabel = "Clamp"
 	};
 
-	constexpr TextureSamplerConfig nearestMipClamp
+	inline constexpr TextureSamplerConfig nearestMipClamp
 	{
 		.mipFilter = MipFilter::NEAREST,
 		.debugLabel = "NearestMipClamp"
 	};
 
-	constexpr TextureSamplerConfig noMipClamp
+	inline constexpr TextureSamplerConfig noMipClamp
 	{
 		.mipFilter = MipFilter::NONE,
 		.debugLabel = "NoMipClamp"
 	};
 
-	constexpr TextureSamplerConfig noLinearNoMipClamp
+	inline constexpr TextureSamplerConfig noLinearNoMipClamp
 	{
 		.minLinearFilter = false,
 		.magLinearFilter = false,
@@ -65,14 +67,14 @@ public:
 		.debugLabel = "NoLinearNoMipClamp"
 	};
 
-	constexpr TextureSamplerConfig repeat
+	inline constexpr TextureSamplerConfig repeat
 	{
 		.xWrapMode = WrapMode::REPEAT,
 		.yWrapMode = WrapMode::REPEAT,
 		.debugLabel = "Repeat"
 	};
 
-	constexpr TextureSamplerConfig nearestMipRepeat
+	inline constexpr TextureSamplerConfig nearestMipRepeat
 	{
 		.mipFilter = MipFilter::NEAREST,
 		.xWrapMode = WrapMode::REPEAT,

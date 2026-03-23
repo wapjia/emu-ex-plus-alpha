@@ -19,17 +19,20 @@
 #include <imagine/base/Pipe.hh>
 #include <imagine/thread/Semaphore.hh>
 #include <imagine/util/concepts.hh>
-#include <imagine/util/utility.h>
+#include <imagine/util/utility.hh>
+#ifndef IG_USE_MODULE_STD
 #include <cstring>
 #include <span>
 #include <string_view>
+#include <utility>
+#endif
 
 namespace IG
 {
 
 template <class MsgType>
 concept ReplySemaphoreSettableMessage =
-	requires (MsgType msg, std::binary_semaphore *sem){ msg.setReplySemaphore(sem); };
+	requires (MsgType msg, binary_semaphore* sem){ msg.setReplySemaphore(sem); };
 
 enum class MessageReplyMode
 {
@@ -150,7 +153,7 @@ public:
 	{
 		if(mode == MessageReplyMode::wait)
 		{
-			std::binary_semaphore replySemaphore{0};
+			binary_semaphore replySemaphore{0};
 			return send(msg, &replySemaphore);
 		}
 		else
@@ -159,7 +162,7 @@ public:
 		}
 	}
 
-	bool send(ReplySemaphoreSettableMessage auto msg, std::binary_semaphore *semPtr)
+	bool send(ReplySemaphoreSettableMessage auto msg, binary_semaphore* semPtr)
 	{
 		if(semPtr)
 		{
@@ -188,7 +191,7 @@ public:
 	{
 		if(span.empty())
 			return send(msg);
-		assert(span.size_bytes() < PIPE_BUF);
+		assume(span.size_bytes() < PIPE_BUF);
 		OutVector buffs[2]{std::span<const MsgType>{&msg, 1}, span};
 		return pipe.sink().writeVector(buffs) != -1;
 	}

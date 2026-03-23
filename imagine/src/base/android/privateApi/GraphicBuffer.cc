@@ -13,16 +13,15 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "GraphicBuff"
-#include "../android.hh"
 #include <imagine/base/android/GraphicBuffer.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/pixmap/PixmapDesc.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
+#include <EGL/egl.h>
+import imagine.internal.android;
 
 namespace IG
 {
 
+static SystemLogger log{"GBuffer"};
 static gralloc_module_t const *grallocMod{};
 static alloc_device_t *allocDev{};
 static bool testPassed_ = false;
@@ -33,31 +32,31 @@ static void initAllocDev()
 		return;
 	if(!libhardware_dl())
 	{
-		logErr("Incompatible libhardware.so");
+		log.error("Incompatible libhardware.so");
 		return;
 	}
 	if(hw_get_module(GRALLOC_HARDWARE_MODULE_ID, (hw_module_t const**)&grallocMod) != 0)
 	{
-		logErr("Can't load gralloc module");
+		log.error("Can't load gralloc module");
 		return;
 	}
 	gralloc_open((const hw_module_t*)grallocMod, &allocDev);
 	if(!allocDev)
 	{
-		logErr("Can't load allocator device");
+		log.error("Can't load allocator device");
 		return;
 	}
 	if(!allocDev->alloc || !allocDev->free)
 	{
-		logErr("Missing alloc/free functions");
+		log.error("Missing alloc/free functions");
 		if(allocDev->common.close)
 			gralloc_close(allocDev);
 		else
-			logWarn("Missing device close function");
+			log.warn("Missing device close function");
 		allocDev = {};
 		return;
 	}
-	logMsg("alloc device:%p", allocDev);
+	log.info("alloc device:{}", (void*)allocDev);
 }
 
 GraphicBuffer::GraphicBuffer()
@@ -87,7 +86,7 @@ GraphicBuffer::GraphicBuffer(uint32_t w, uint32_t h, uint32_t f, uint32_t reqUsa
 	if(auto err = allocDev->alloc(allocDev, w, h, f, reqUsage, &handle, &stride);
 		err)
 	{
-		logErr("alloc buffer failed: %s", strerror(-err));
+		log.error("alloc buffer failed:{}", std::strerror(-err));
 		return;
 	}
 	width = w;
@@ -136,8 +135,9 @@ bool GraphicBuffer::lock(uint32_t usage, IG::WindowRect rect, void **vaddr)
 		if((rect.x < 0 || rect.x2 > (int)width ||
 			rect.y < 0 || rect.y2 > (int)height)) [[unlikely]]
 		{
-			bug_unreachable("locking pixels:[%d:%d:%d:%d] outside of buffer:%d,%d",
+			log.error("locking pixels:[%d:%d:%d:%d] outside of buffer:%d,%d",
 				rect.x, rect.y, rect.x2, rect.y2, width, height);
+			unreachable();
 		}
 	}
 	auto err = grallocMod->lock(grallocMod, handle, usage, rect.x, rect.y, rect.xSize(), rect.ySize(), vaddr);
@@ -234,24 +234,24 @@ bool GraphicBuffer::testSupport()
 	GraphicBuffer gb{256, 256, HAL_PIXEL_FORMAT_RGB_565, allocateUsage};
 	if(!gb.hasBufferMapper())
 	{
-		logErr("failed GraphicBuffer mapper initialization");
+		log.error("failed GraphicBuffer mapper initialization");
 		return false;
 	}
 	if(!gb)
 	{
-		logErr("failed GraphicBuffer allocation test");
+		log.error("failed GraphicBuffer allocation test");
 		return false;
 	}
 	static constexpr uint32_t lockUsage = GRALLOC_USAGE_SW_WRITE_OFTEN;
 	void *addr;
 	if(!gb.lock(lockUsage, &addr))
 	{
-		logErr("failed GraphicBuffer lock test");
+		log.error("failed GraphicBuffer lock test");
 		return false;
 	}
 	gb.unlock();
 	testPassed_ = true;
-	logMsg("Android GraphicBuffer test passed");
+	log.info("Android GraphicBuffer test passed");
 	return true;
 }
 

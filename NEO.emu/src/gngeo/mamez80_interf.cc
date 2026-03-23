@@ -18,7 +18,7 @@
 
 
 #include <gngeo-config.h>
-#include <imagine/util/utility.h>
+#include <imagine/util/utility.hh>
 
 extern "C"
 {

@@ -19,13 +19,15 @@
 #include <imagine/util/used.hh>
 #include <imagine/util/memory/UniqueFileDescriptor.hh>
 #include <CoreFoundation/CoreFoundation.h>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
 #include <utility>
+#endif
 
 namespace IG
 {
 
-constexpr int pollEventInput = kCFFileDescriptorReadCallBack, pollEventOutput = kCFFileDescriptorWriteCallBack,
+inline constexpr int pollEventInput = kCFFileDescriptorReadCallBack, pollEventOutput = kCFFileDescriptorWriteCallBack,
 	pollEventError = 0, pollEventHangUp = 0;
 
 struct CFFDEventSourceInfo

@@ -13,28 +13,18 @@
 	You should have received a copy of the GNU General Public License
 	along with GBC.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/gui/TextEntry.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/util/string.h>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
-#include <emuframework/Cheats.hh>
-#include <emuframework/EmuApp.hh>
-#include <emuframework/viewUtils.hh>
-#include <emuframework/Option.hh>
-#include "EmuCheatViews.hh"
-#include "MainSystem.hh"
+module;
 #include <gambatte.h>
+
+module system;
 
 namespace EmuEx
 {
 
-constexpr SystemLogger log{"GBC.emu"};
-
 static bool strIsGGCode(const char *str)
 {
 	int hex;
-	return strlen(str) == 11 &&
+	return std::strlen(str) == 11 &&
 		sscanf(str, "%1x%1x%1x-%1x%1x%1x-%1x%1x%1x",
 			&hex, &hex, &hex, &hex, &hex, &hex, &hex, &hex, &hex) == 9;
 }
@@ -42,7 +32,7 @@ static bool strIsGGCode(const char *str)
 static bool strIsGSCode(const char *str)
 {
 	int hex;
-	return strlen(str) == 8 &&
+	return std::strlen(str) == 8 &&
 		sscanf(str, "%1x%1x%1x%1x%1x%1x%1x%1x",
 			&hex, &hex, &hex, &hex, &hex, &hex, &hex, &hex) == 8;
 }
@@ -120,12 +110,12 @@ void GbcSystem::readCheatFile()
 	{
 		return;
 	}
-	logMsg("reading cheats file:%s", path.data());
+	log.info("reading cheats file:{}", path);
 
 	const auto version = file.get<int8_t>();
 	if(version > 1)
 	{
-		logMsg("skipping due to version code %d", version);
+		log.info("skipping due to version code:{}", version);
 		return;
 	}
 	auto size = file.get<uint16_t>();
@@ -251,72 +241,6 @@ void GbcSystem::forEachCheatCode(Cheat& cheat, DelegateFunc<bool(CheatCode&, std
 			break;
 	}
 }
-
-EditCheatView::EditCheatView(ViewAttachParams attach, Cheat& cheat, BaseEditCheatsView& editCheatsView):
-	BaseEditCheatView
-	{
-		"Edit Cheat",
-		attach,
-		cheat,
-		editCheatsView
-	},
-	addGGGS
-	{
-		"Add Another Code", attach,
-		[this](const Input::Event& e) { addNewCheatCode("Input xxxxxxxx (GS) or xxx-xxx-xxx (GG) code", e); }
-	}
-{
-	loadItems();
-}
-
-void EditCheatView::loadItems()
-{
-	codes.clear();
-	for(auto& c: cheatPtr->codes)
-	{
-		codes.emplace_back("Code", c, attachParams(), [this, &c](const Input::Event& e)
-		{
-			pushAndShowNewCollectValueInputView<const char*, ScanValueMode::AllowBlank>(attachParams(), e,
-				"Input xxxxxxxx (GS) or xxx-xxx-xxx (GG) code, or blank to delete", c,
-				[this, &c](CollectTextInputView&, auto str) { return modifyCheatCode(c, {str}); });
-		});
-	};
-	items.clear();
-	items.emplace_back(&name);
-	for(auto& c: codes)
-	{
-		items.emplace_back(&c);
-	}
-	items.emplace_back(&addGGGS);
-	items.emplace_back(&remove);
-}
-
-EditCheatsView::EditCheatsView(ViewAttachParams attach, CheatsView& cheatsView):
-	BaseEditCheatsView
-	{
-		attach,
-		cheatsView,
-		[this](ItemMessage msg) -> ItemReply
-		{
-			return msg.visit(overloaded
-			{
-				[&](const ItemsMessage&) -> ItemReply { return 1 + cheats.size(); },
-				[&](const GetItemMessage& m) -> ItemReply
-				{
-					switch(m.idx)
-					{
-						case 0: return &addGGGS;
-						default: return &cheats[m.idx - 1];
-					}
-				},
-			});
-		}
-	},
-	addGGGS
-	{
-		"Add Game Genie / GameShark Code", attach,
-		[this](const Input::Event& e) { addNewCheat("Input xxxxxxxx (GS) or xxx-xxx-xxx (GG) code", e); }
-	} {}
 
 //region 爱吾修改
 void GbcSystem::setCheatListAiWu(const std::list<std::string>& cheatList)

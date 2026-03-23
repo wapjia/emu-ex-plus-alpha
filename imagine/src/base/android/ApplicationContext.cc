@@ -13,19 +13,24 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <imagine/config/macros.h>
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/base/Application.hh>
-#include <imagine/fs/FSUtils.hh>
+#include <imagine/base/Timer.hh>
+#include <imagine/io/PosixIO.hh>
 #include <imagine/io/FileIO.hh>
+#include <imagine/fs/FSUtils.hh>
+#include <imagine/util/jni.hh>
 #include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
-#include "android.hh"
-#include <sys/resource.h>
+#include <imagine/logger/SystemLogger.hh>
+#include <android/asset_manager.h>
+#include <unistd.h>
+import imagine.internal.android;
 
 namespace IG
 {
 
-constexpr SystemLogger log{"AppCtx"};
+static SystemLogger log{"AppCtx"};
 static NoopThread noopThread;
 
 FS::PathString ApplicationContext::assetPath(const char *) const { return {}; }
@@ -267,7 +272,7 @@ bool ApplicationContext::requestPermission(Permission p)
 
 JNIEnv *AndroidApplicationContext::mainThreadJniEnv() const
 {
-	assert(mainThreadId == gettid());
+	assume(mainThreadId == gettid());
 	return act->env;
 }
 
@@ -375,7 +380,7 @@ SensorValues ApplicationContext::remapSensorValuesForDeviceRotation(SensorValues
 		case Rotation::DOWN: return {v[0], -v[1], v[2]};
 		case Rotation::LEFT: return {v[1], v[0], v[2]};
 	}
-	bug_unreachable("invalid Rotation");
+	unreachable();
 }
 
 std::string AndroidApplicationContext::androidBuildDevice() const
@@ -398,7 +403,7 @@ void ApplicationContext::exitWithMessage(int exitVal, const char *msg)
 	auto baseActivity = baseActivityObject();
 	JNI::InstMethod<void(jstring)> jMakeErrorPopup{env, baseActivity, "makeErrorPopup", "(Ljava/lang/String;)V"};
 	jMakeErrorPopup(env, baseActivity, env->NewStringUTF(msg));
-	auto exitTimer = new Timer{{.debugLabel = "exitTimer"}, [=]{ ::exit(exitVal); }};
+	auto exitTimer = new Timer{{.debugLabel = "exitTimer"}, [=]{ std::exit(exitVal); }};
 	exitTimer->runIn(Seconds{3});
 }
 
@@ -454,34 +459,5 @@ bool ApplicationContext::showSystemCreateDocumentPicker()
 }
 
 void ApplicationContext::setAcceptIPC(bool on, const char *) { application().acceptsIntents = on; }
-
-void NoopThread::start()
-{
-	if(isRunning.load(std::memory_order_relaxed))
-		return;
-	isRunning.store(true, std::memory_order_relaxed);
-	makeDetachedThread(
-		[this]()
-		{
-			// keep cpu governor busy by running a low priority thread executing no-op instructions
-			setpriority(PRIO_PROCESS, 0, 19);
-			log.info("started no-op thread");
-			while(isRunning.load(std::memory_order_relaxed))
-			{
-				for([[maybe_unused]] auto i : iotaCount(16))
-				{
-					asm("nop");
-				}
-			}
-			log.info("ended no-op thread");
-		});
-}
-
-void NoopThread::stop()
-{
-	if(!isRunning.load(std::memory_order_relaxed))
-		return;
-	isRunning.store(false, std::memory_order_relaxed);
-}
 
 }

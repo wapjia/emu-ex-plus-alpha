@@ -15,11 +15,13 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <imagine/config/defs.hh>
 #include <imagine/util/rectangle2.h>
 #include <EGL/egl.h>
+#include <android/hardware_buffer.h>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
-
-struct AHardwareBuffer;
+#endif
 
 namespace IG
 {

@@ -15,38 +15,33 @@
 
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/base/Application.hh>
+#include <imagine/base/PerformanceHintManager.hh>
 #include <imagine/base/VibrationManager.hh>
 #include <imagine/base/Sensor.hh>
-#include <imagine/base/PerformanceHintManager.hh>
-#include <imagine/input/Event.hh>
 #include <imagine/fs/FS.hh>
 #include <imagine/fs/FSUtils.hh>
 #include <imagine/fs/AssetFS.hh>
 #include <imagine/fs/ArchiveFS.hh>
-#ifdef __ANDROID__
-#include <imagine/fs/AAssetFS.hh>
-#endif
 #include <imagine/io/FileIO.hh>
-#include <imagine/io/IO.hh>
-#include <imagine/util/ScopeGuard.hh>
-#include <imagine/util/format.hh>
 #include <imagine/util/ranges.hh>
-#include <imagine/util/container/ArrayList.hh>
+#include <imagine/util/format.hh>
 #include <imagine/util/memory/UniqueFileStream.hh>
-#include <imagine/util/bit.hh>
-#include <imagine/logger/logger.h>
-#include <cstring>
+#include <imagine/util/container/ArrayList.hh>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
+#include <unistd.h>
+#include <time.h>
 
 namespace IG
 {
 
-constexpr SystemLogger log{"AppContext"};
+static SystemLogger log{"AppContext"};
 
 void ApplicationContext::dispatchOnInit(ApplicationInitParams initParams)
 {
 	try
 	{
-		onInit(initParams);
+		ApplicationMeta::onInit(initParams, *this);
 	}
 	catch(std::exception &err)
 	{
@@ -73,7 +68,7 @@ Window *ApplicationContext::makeWindow(WindowConfig config, WindowInitDelegate o
 {
 	if(!Config::BASE_MULTI_WINDOW && windows().size())
 	{
-		bug_unreachable("no multi-window support");
+		unreachable();
 	}
 	auto winPtr = std::make_unique<Window>(*this, config, onInit);
 	if(!*winPtr)
@@ -404,11 +399,11 @@ void ApplicationContext::setSwappedConfirmKeys(std::optional<bool> opt)
 [[gnu::weak]] int ApplicationContext::maxCPUFrequencyKHz([[maybe_unused]] int cpuIdx) const
 {
 	#ifdef __linux__
-	auto maxFreqFile = UniqueFileStream{fopen(std::format("/sys/devices/system/cpu/cpu{}/cpufreq/cpuinfo_max_freq", cpuIdx).c_str(), "r")};
+	auto maxFreqFile = UniqueFileStream{std::fopen(std::format("/sys/devices/system/cpu/cpu{}/cpufreq/cpuinfo_max_freq", cpuIdx).c_str(), "r")};
 	if(!maxFreqFile)
 		return 0;
 	int freq{};
-	[[maybe_unused]] auto items = fscanf(maxFreqFile.get(), "%d", &freq);
+	[[maybe_unused]] auto items = std::fscanf(maxFreqFile.get(), "%d", &freq);
 	return freq;
 	#else
 	return 0;
@@ -422,7 +417,7 @@ void ApplicationContext::setSwappedConfirmKeys(std::optional<bool> opt)
 		return 0;
 	struct CPUFreqInfo{int freq, cpuIdx;};
 	StaticArrayList<CPUFreqInfo, maxCPUs> cpuFreqInfos;
-	for(int i : iotaCount(cpus))
+	for(int i: iotaCount(cpus))
 	{
 		auto freq = maxCPUFrequencyKHz(i);
 		if(freq > 0)
@@ -445,10 +440,7 @@ void ApplicationContext::setSwappedConfirmKeys(std::optional<bool> opt)
 
 [[gnu::weak]] bool ApplicationContext::packageIsInstalled(CStringView) const { return false; }
 
-[[gnu::weak]] int32_t ApplicationContext::androidSDK() const
-{
-	bug_unreachable("Invalid platform-specific function");
-}
+[[gnu::weak]] int32_t ApplicationContext::androidSDK() const { return 0; }
 
 [[gnu::weak]] bool ApplicationContext::hasSustainedPerformanceMode() const { return false; }
 [[gnu::weak]] void ApplicationContext::setSustainedPerformanceMode(bool) {}
@@ -459,7 +451,7 @@ void ApplicationContext::setSwappedConfirmKeys(std::optional<bool> opt)
 		return {};
 	std::tm localTime;
 	time_t secs = duration_cast<Seconds>(time.time_since_epoch()).count();
-	if(!localtime_r(&secs, &localTime)) [[unlikely]]
+	if(!::localtime_r(&secs, &localTime)) [[unlikely]]
 	{
 		log.error("localtime_r failed");
 		return {};
@@ -605,11 +597,11 @@ IOBuffer rwBufferFromUri(ApplicationContext ctx, CStringView uri, OpenFlags extr
 	return buff;
 }
 
-FILE *fopenUri(ApplicationContext ctx, CStringView path, CStringView mode)
+std::FILE *fopenUri(ApplicationContext ctx, CStringView path, CStringView mode)
 {
 	if(isUri(path))
 	{
-		assert(!mode.contains('a')); //append mode not supported
+		assume(!mode.contains('a')); //append mode not supported
 		OpenFlags openFlags{.test = true};
 		if(mode.contains('r'))
 			openFlags.read = true;
@@ -621,7 +613,7 @@ FILE *fopenUri(ApplicationContext ctx, CStringView path, CStringView mode)
 	}
 	else
 	{
-		return ::fopen(path, mode);
+		return std::fopen(path, mode);
 	}
 }
 

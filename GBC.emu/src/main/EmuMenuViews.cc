@@ -13,23 +13,19 @@
 	You should have received a copy of the GNU General Public License
 	along with GBC.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/EmuApp.hh>
-#include <emuframework/AudioOptionView.hh>
-#include <emuframework/VideoOptionView.hh>
-#include <emuframework/FilePathOptionView.hh>
-#include <emuframework/UserPathSelectView.hh>
-#include <emuframework/SystemActionsView.hh>
-#include "Palette.hh"
-#include "MainApp.hh"
 #include <resample/resamplerinfo.h>
-#include <imagine/logger/logger.h>
+import system;
+import emuex;
+import imagine;
+import std;
 
 namespace EmuEx
 {
 
+using namespace IG;
 using MainAppHelper = EmuAppHelperBase<MainApp>;
 
-static constexpr size_t MAX_RESAMPLERS = 4;
+constexpr size_t MAX_RESAMPLERS{4};
 
 class CustomAudioOptionView : public AudioOptionView, public MainAppHelper
 {
@@ -49,12 +45,12 @@ public:
 	CustomAudioOptionView(ViewAttachParams attach, EmuAudio& audio): AudioOptionView{attach, audio, true}
 	{
 		loadStockItems();
-		logMsg("%d resamplers", (int)ResamplerInfo::num());
+		GbcSystem::log.info("{} resamplers", ResamplerInfo::num());
 		auto resamplers = std::min(ResamplerInfo::num(), MAX_RESAMPLERS);
-		for(auto i : iotaCount(resamplers))
+		for(auto i: iotaCount(resamplers))
 		{
 			ResamplerInfo r = ResamplerInfo::get(i);
-			logMsg("%zu %s", i, r.desc);
+			GbcSystem::log.info("{} {}", i, r.desc);
 			resamplerItem.emplace_back(r.desc, attachParams(),
 				[this, i](){ system().optionAudioResampler = i; });
 		}
@@ -200,7 +196,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 			pushAndShow(makeViewWithName<UserPathSelectView>("Cheats", system().userPath(system().cheatsDir),
 				[this](CStringView path)
 				{
-					logMsg("set cheats path:%s", path.data());
+					GbcSystem::log.info("set cheats path:{}", path);
 					system().cheatsDir = path;
 					cheatsPath.compile(cheatsMenuName(appContext(), path));
 				}), e);
@@ -215,6 +211,86 @@ public:
 	}
 };
 
+class EditCheatView : public BaseEditCheatView
+{
+public:
+	EditCheatView(ViewAttachParams attach, Cheat& cheat, BaseEditCheatsView& editCheatsView):
+		BaseEditCheatView
+		{
+			"Edit Cheat",
+			attach,
+			cheat,
+			editCheatsView
+		},
+		addGGGS
+		{
+			"Add Another Code", attach,
+			[this](const Input::Event& e) { addNewCheatCode("Input xxxxxxxx (GS) or xxx-xxx-xxx (GG) code", e); }
+		}
+	{
+		loadItems();
+	}
+
+	void loadItems()
+	{
+		codes.clear();
+		for(auto& c: cheatPtr->codes)
+		{
+			codes.emplace_back("Code", c, attachParams(), [this, &c](const Input::Event& e)
+			{
+				pushAndShowNewCollectValueInputView<const char*, ScanValueMode::AllowBlank>(attachParams(), e,
+					"Input xxxxxxxx (GS) or xxx-xxx-xxx (GG) code, or blank to delete", c,
+					[this, &c](CollectTextInputView&, auto str) { return modifyCheatCode(c, {str}); });
+			});
+		};
+		items.clear();
+		items.emplace_back(&name);
+		for(auto& c: codes)
+		{
+			items.emplace_back(&c);
+		}
+		items.emplace_back(&addGGGS);
+		items.emplace_back(&remove);
+	}
+
+private:
+	TextMenuItem addGGGS;
+};
+
+class EditCheatsView : public BaseEditCheatsView
+{
+public:
+	EditCheatsView(ViewAttachParams attach, CheatsView& cheatsView):
+		BaseEditCheatsView
+		{
+			attach,
+			cheatsView,
+			[this](ItemMessage msg) -> ItemReply
+			{
+				return msg.visit(overloaded
+				{
+					[&](const ItemsMessage&) -> ItemReply { return 1 + cheats.size(); },
+					[&](const GetItemMessage& m) -> ItemReply
+					{
+						switch(m.idx)
+						{
+							case 0: return &addGGGS;
+							default: return &cheats[m.idx - 1];
+						}
+					},
+				});
+			}
+		},
+		addGGGS
+		{
+			"Add Game Genie / GameShark Code", attach,
+			[this](const Input::Event& e) { addNewCheat("Input xxxxxxxx (GS) or xxx-xxx-xxx (GG) code", e); }
+		} {}
+
+private:
+	TextMenuItem addGGGS;
+};
+
 std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
 {
 	switch(id)
@@ -226,5 +302,8 @@ std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
 		default: return nullptr;
 	}
 }
+
+std::unique_ptr<View> AppMeta::makeEditCheatsView(ViewAttachParams attach, CheatsView& view) { return std::make_unique<EditCheatsView>(attach, view); }
+std::unique_ptr<View> AppMeta::makeEditCheatView(ViewAttachParams attach, Cheat& c, BaseEditCheatsView& baseView) { return std::make_unique<EditCheatView>(attach, c, baseView); }
 
 }

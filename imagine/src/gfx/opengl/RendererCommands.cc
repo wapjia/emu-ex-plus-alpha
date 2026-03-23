@@ -13,33 +13,33 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "RendererCmds"
+#include <imagine/config/macros.h>
 #include <imagine/gfx/RendererCommands.hh>
-#include <imagine/gfx/Renderer.hh>
 #include <imagine/gfx/RendererTask.hh>
-#include <imagine/gfx/Program.hh>
+#include <imagine/gfx/Renderer.hh>
 #include <imagine/gfx/Texture.hh>
+#include <imagine/gfx/Program.hh>
 #include <imagine/gfx/TextureSampler.hh>
 #include <imagine/gfx/Mat4.hh>
-#include <imagine/base/Window.hh>
 #include <imagine/base/Screen.hh>
-#include <imagine/base/Viewport.hh>
-#include <imagine/logger/logger.h>
-#include "internalDefs.hh"
-#include "utils.hh"
+#include <imagine/util/opengl/glUtils.hh>
+#include <imagine/logger/SystemLogger.hh>
+#include <imagine/util/opengl/glHeaders.h>
+import imagine.internal.gfxOpengl;
 
 namespace IG::Gfx
 {
 
-static constexpr bool useGLCache = true;
+static SystemLogger log{"RendererCmds"};
+constexpr bool useGLCache = true;
 
-GLRendererCommands::GLRendererCommands(RendererTask &rTask, Window *winPtr, Drawable drawable,
-	Rect2<int> viewport, GLDisplay glDpy, const GLContext &glCtx, std::binary_semaphore *drawCompleteSemPtr):
+GLRendererCommands::GLRendererCommands(RendererTask& rTask, Window* winPtr, Drawable drawable,
+	Rect2<int> viewport, GLDisplay glDpy, const GLContext& glCtx, binary_semaphore* drawCompleteSemPtr):
 	rTask{&rTask}, r{&rTask.renderer()}, drawCompleteSemPtr{drawCompleteSemPtr},
 	winPtr{winPtr}, glDpy{glDpy}, glContextPtr{&glCtx}, drawable{drawable},
 	winViewport{viewport}
 {
-	assumeExpr(drawable);
+	assume(drawable);
 	if(setCurrentDrawable(drawable) && viewport.x2)
 	{
 		setViewport(viewport);
@@ -48,7 +48,7 @@ GLRendererCommands::GLRendererCommands(RendererTask &rTask, Window *winPtr, Draw
 
 void GLRendererCommands::bindGLVertexArray(GLuint vao)
 {
-	assert(hasVAOFuncs());
+	assume(hasVAOFuncs());
 	if(currVertexArrayName == vao)
 		return;
 	currVertexArrayName = vao;
@@ -62,7 +62,7 @@ void GLRendererCommands::bindGLArrayBuffer(GLuint vbo)
 
 void GLRendererCommands::bindGLIndexBuffer(GLuint ibo)
 {
-	assert(!hasVAOFuncs());
+	assume(!hasVAOFuncs());
 	if(currIndexBufferName == ibo)
 		return;
 	currIndexBufferName = ibo;
@@ -72,8 +72,8 @@ void GLRendererCommands::bindGLIndexBuffer(GLuint ibo)
 bool GLRendererCommands::setCurrentDrawable(Drawable drawable)
 {
 	auto &glCtx = glContext();
-	assert(glCtx);
-	assert(GLManager::currentContext() == glCtx);
+	assume(glCtx);
+	assume(GLManager::currentContext() == glCtx);
 	if(!GLManager::hasCurrentDrawable(drawable))
 	{
 		glCtx.setCurrentDrawable(drawable);
@@ -92,7 +92,7 @@ void GLRendererCommands::present(Drawable win)
 	// check if buffer swap blocks even though triple-buffering is used
 	if(Config::DEBUG_BUILD && winPtr && r->maxSwapChainImages() > 2 && swapTime > winPtr->screen()->frameRate().duration())
 	{
-		logWarn("buffer swap took %lldns", (long long)swapTime.count());
+		log.warn("buffer swap took {}", swapTime);
 	}
 }
 
@@ -146,7 +146,7 @@ void RendererCommands::deleteSyncFence(SyncFence fence)
 	if(!fence.sync)
 		return;
 	rTask->verifyCurrentContext();
-	assert(renderer().support.hasSyncFences());
+	assume(renderer().support.hasSyncFences());
 	renderer().support.deleteSync(glDpy, fence.sync);
 }
 
@@ -156,7 +156,7 @@ void RendererCommands::clientWaitSync(SyncFence fence, int flags, std::chrono::n
 		return;
 	rTask->verifyCurrentContext();
 	auto &r = renderer();
-	assert(r.support.hasSyncFences());
+	assume(r.support.hasSyncFences());
 	//logDMsg("waiting on sync:%p flush:%s timeout:0%llX", fence.sync, flags & 1 ? "yes" : "no", (unsigned long long)timeout);
 	r.support.clientWaitSync(glDpy, fence.sync, flags, timeout.count());
 	r.support.deleteSync(glDpy, fence.sync);
@@ -175,7 +175,7 @@ void RendererCommands::waitSync(SyncFence fence)
 		return;
 	rTask->verifyCurrentContext();
 	auto &r = renderer();
-	assert(r.support.hasSyncFences());
+	assume(r.support.hasSyncFences());
 	r.support.waitSync(glDpy, fence.sync);
 	r.support.deleteSync(glDpy, fence.sync);
 }
@@ -186,7 +186,7 @@ void RendererCommands::setRenderTarget(Texture &texture)
 	auto id = rTask->bindFramebuffer(texture);
 	if(Config::DEBUG_BUILD && glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
-		logErr("FBO:0x%X incomplete", id);
+		log.error("FBO:{:X} incomplete", id);
 	}
 }
 
@@ -232,7 +232,7 @@ void RendererCommands::setBlendMode(BlendMode mode)
 			case BlendMode::INTENSITY: return{BlendFunc::SRC_ALPHA, BlendFunc::ONE};
 			case BlendMode::OFF: break;
 		}
-		bug_unreachable("invalid blend mode:%d", std::to_underlying(mode));
+		unreachable();
 	}();
 	setBlendFunc(srcFunc, destFunc);
 	setBlend(true);
@@ -249,7 +249,7 @@ void RendererCommands::setBlendEquation(BlendEquation mode)
 			case BlendEquation::SUB: return GL_FUNC_SUBTRACT;
 			case BlendEquation::RSUB: return GL_FUNC_REVERSE_SUBTRACT;
 		}
-		bug_unreachable("invalid BlendEquation:%d", std::to_underlying(mode));
+		unreachable();
 	}();
 	glcBlendEquation(glMode);
 }
@@ -361,7 +361,7 @@ void RendererCommands::set(TextureBinding binding)
 	rTask->verifyCurrentContext();
 	if(!binding.name) [[unlikely]]
 	{
-		logWarn("binding default texture");
+		log.warn("binding default texture");
 	}
 	glBindTexture(binding.target, binding.name);
 }
@@ -383,7 +383,7 @@ void GLRendererCommands::setViewport(Rect2<int> v)
 {
 	rTask->verifyCurrentContext();
 	//logMsg("set GL viewport %d:%d:%d:%d", v.x, v.y, v.x2, v.y2);
-	assert(v.x2 && v.y2);
+	assume(v.x2 && v.y2);
 	glViewport(v.x, v.y, v.x2, v.y2);
 }
 
@@ -406,25 +406,25 @@ constexpr bool shouldNormalize(AttribType type, bool normalize) { return type !=
 
 void RendererCommands::drawPrimitives(Primitive mode, int start, int count)
 {
-	runGLCheckedVerbose([&]()
+	GL::runChecked([&]()
 	{
 		glDrawArrays(GLenum(mode), start, count);
-	}, "glDrawArrays()");
+	}, log, Renderer::checkGLErrorsVerbose, "glDrawArrays()");
 }
 
 void RendererCommands::drawPrimitiveElements(Primitive mode, int start, int count, AttribType type)
 {
-	runGLCheckedVerbose([&]()
+	GL::runChecked([&]()
 	{
 		glDrawElements(GLenum(mode), count, asGLType(type), (const void*)(intptr_t)start);
-	}, "glDrawElements()");
+	}, log, Renderer::checkGLErrorsVerbose, "glDrawElements()");
 }
 
 bool GLRendererCommands::hasVAOFuncs() const { return r->support.hasVAOFuncs(); }
 
 void GLRendererCommands::setupVertexArrayPointers(int stride, VertexLayoutFlags enabledLayout, VertexLayoutDesc layoutDesc)
 {
-	assert(!hasVAOFuncs());
+	assume(!hasVAOFuncs());
 	if(currentEnabledVertexLayout != enabledLayout)
 	{
 		if(layoutDesc.texCoord.size)

@@ -9,12 +9,12 @@
 
 #include <stdio.h>
 
-#include <imagine/logger/logger.h>
 #include "scd.h"
 #include "cd_sys.h"
 #include "cd_file.h"
 #include <mednafen/mednafen.h>
 #include <mednafen/cdrom/CDAccess.h>
+import imagine;
 
 #define cdprintf(x...)
 //#define DEBUG_CD

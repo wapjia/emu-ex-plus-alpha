@@ -1,0 +1,195 @@
+/*  This file is part of GBA.emu.
+
+	GBA.emu is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	GBA.emu is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with GBA.emu.  If not, see <http://www.gnu.org/licenses/> */
+
+module;
+#include "GBASys.hh"
+#include <core/gba/gba.h>
+#include <core/gba/gbaCheats.h>
+
+export module system;
+import emuex;
+import imagine;
+import std;
+
+namespace EmuEx
+{
+
+using namespace IG;
+
+export enum class GbaKey: KeyCode
+{
+	Up = 7,
+	Right = 5,
+	Down = 8,
+	Left = 6,
+	Select = 3,
+	Start = 4,
+	A = 1,
+	B = 2,
+	L = 10,
+	R = 9,
+
+	// Special key codes
+	LightInc = 11,
+	LightDec = 12,
+};
+
+extern "C++" class Cheat: public CheatsData {};
+extern "C++" class CheatCode: public CheatsData {};
+
+enum GbaConfigKey
+{
+	CFGKEY_RTC_EMULATION = 256, CFGKEY_SAVE_TYPE_OVERRIDE = 257,
+	CFGKEY_PCM_VOLUME = 258, CFGKEY_GB_APU_VOLUME = 259,
+	CFGKEY_SOUND_FILTERING = 260, CFGKEY_SOUND_INTERPOLATION = 261,
+	CFGKEY_SENSOR_TYPE = 262, CFGKEY_LIGHT_SENSOR_SCALE = 263,
+	CFGKEY_CHEATS_PATH = 264, CFGKEY_PATCHES_PATH = 265,
+	CFGKEY_USE_BIOS = 266, CFGKEY_DEFAULT_USE_BIOS = 267,
+	CFGKEY_BIOS_PATH = 268
+};
+
+export enum class RtcMode: uint8_t {AUTO, OFF, ON};
+
+export enum class GbaSensorType: uint8_t
+{
+	Auto, None, Accelerometer, Gyroscope, Light
+};
+
+constexpr float lightSensorScaleLuxDefault{10000.f};
+constexpr uint8_t darknessLevelDefault{0xee};
+constexpr size_t stateSizeVer11{734456};
+
+export constexpr uint32_t packSaveTypeOverride(int type, int size = 0) { return (type << 24) | (size & 0xFFFFFF); }
+export constexpr std::pair<int, int> unpackSaveTypeOverride(uint32_t val) { return {val >> 24, val & 0xFFFFFF}; }
+
+constexpr bool optionSaveTypeOverrideIsValid(const uint32_t& val)
+{
+	auto [type, size] = unpackSaveTypeOverride(val);
+	return type >= GBA_SAVE_AUTO && type <= GBA_SAVE_NONE;
+}
+
+export class GbaSystem final: public EmuSystem
+{
+public:
+	std::string cheatsDir;
+	std::string patchesDir;
+	std::string biosPath;
+	[[no_unique_address]] SensorListener sensorListener;
+	Property<RtcMode, CFGKEY_RTC_EMULATION,
+	{
+		.defaultValue = RtcMode::AUTO
+	}> optionRtcEmulation;
+	Property<uint32_t, CFGKEY_SAVE_TYPE_OVERRIDE,
+	{
+		.defaultValue = GBA_SAVE_AUTO, .isValid = optionSaveTypeOverrideIsValid
+	}> optionSaveTypeOverride;
+	FileIO saveFileIO;
+	static constexpr size_t saveStateSize{stateSizeVer11};
+	int detectedSaveSize{};
+	int sensorX{}, sensorY{}, sensorZ{};
+	float lightSensorScaleLux{lightSensorScaleLuxDefault};
+	uint8_t darknessLevel{darknessLevelDefault};
+	uint8_t detectedSaveType{};
+	bool detectedRtcGame{};
+	bool saveMemoryIsMappedFile{};
+	Property<AutoTristate, CFGKEY_USE_BIOS> useBios;
+	Property<bool, CFGKEY_DEFAULT_USE_BIOS> defaultUseBios;
+	ConditionalMember<Config::SENSORS, GbaSensorType> sensorType{};
+	ConditionalMember<Config::SENSORS, GbaSensorType> detectedSensorType{};
+	static constexpr FrameRate gbaFrameRate{16777216. / 280896.}; // ~59.7275Hz
+	static constexpr SystemLogger log{"GBA.emu"};
+
+	GbaSystem(ApplicationContext ctx):
+		EmuSystem{ctx} {}
+	void setGameSpecificSettings(GBASys&, int romSize);
+	void setRTC(RtcMode mode);
+	std::pair<int, int> saveTypeOverride() { return unpackSaveTypeOverride(optionSaveTypeOverride); }
+	void setSaveTypeOverride(int type, int size) { optionSaveTypeOverride = packSaveTypeOverride(type, size); };
+	void setSensorActive(bool);
+	void setSensorType(GbaSensorType);
+	void clearSensorValues();
+
+	// required API functions
+	void loadContent(IO&, EmuSystemCreateParams, OnLoadProgressDelegate);
+	[[gnu::hot]] void runFrame(EmuSystemTaskContext, EmuVideo*, EmuAudio*);
+	FS::FileString stateFilename(int slot, std::string_view name) const;
+	std::string_view stateFilenameExt() const { return ".gqs"; }
+	size_t stateSize() { return saveStateSize; }
+	void readState(EmuApp&, std::span<uint8_t> buff);
+	size_t writeState(std::span<uint8_t> buff, SaveStateFlags = {});
+	bool readConfig(ConfigType, MapIO&, unsigned key);
+	void writeConfig(ConfigType, FileIO&);
+	void reset(EmuApp&, ResetMode mode);
+	void clearInputBuffers();
+	void handleInputAction(EmuApp*, InputAction);
+	FrameRate frameRate() const { return gbaFrameRate; }
+	void configAudioRate(FrameRate outputFrameRate, int outputRate);
+
+	// optional API functions
+	void onStart();
+	void onStop();
+	bool resetSessionOptions(EmuApp&);
+	void loadBackupMemory(EmuApp&);
+	void onFlushBackupMemory(EmuApp&, BackupMemoryDirtyFlags);
+	WallClockTimePoint backupMemoryLastWriteTime(const EmuApp&) const;
+	void closeSystem();
+	bool onVideoRenderFormatChange(EmuVideo&, PixelFormat);
+	void renderFramebuffer(EmuVideo&);
+	Cheat* newCheat(EmuApp&, const char* name, CheatCodeDesc);
+	bool setCheatName(Cheat&, const char* name);
+	std::string_view cheatName(const Cheat&) const;
+	void setCheatEnabled(Cheat&, bool on);
+	bool isCheatEnabled(const Cheat&) const;
+	bool addCheatCode(EmuApp&, Cheat*&, CheatCodeDesc);
+	Cheat* removeCheatCode(Cheat&, CheatCode&);
+	bool removeCheat(Cheat&);
+	void forEachCheat(DelegateFunc<bool(Cheat&, std::string_view)>);
+	void forEachCheatCode(Cheat&, DelegateFunc<bool(CheatCode&, std::string_view)>);
+	//region 爱吾修改
+	void setCheatListAiWu(const std::list<std::string>& cheatList);
+	//endregion
+private:
+	void readCheatFile();
+	void writeCheatFile();
+	void applyGamePatches(uint8_t* rom, int& romSize);
+	bool shouldUseBios() const
+	{
+		switch(useBios)
+		{
+			case AutoTristate::Auto: return defaultUseBios && biosPath.size();
+			case AutoTristate::On: return biosPath.size();
+			case AutoTristate::Off: return false;
+		}
+		std::unreachable();
+	}
+};
+
+export using MainSystem = GbaSystem;
+
+export class GbaApp final: public EmuApp
+{
+public:
+	GbaApp(ApplicationInitParams initParams, ApplicationContext& ctx):
+		EmuApp{initParams, ctx}, system_{ctx} {}
+
+	auto& system(this auto&& self) { return self.system_; }
+
+private:
+	GbaSystem system_;
+};
+
+export using MainApp = GbaApp;
+
+}

@@ -22,7 +22,10 @@
 #include <imagine/util/rectangle2.h>
 #include <imagine/util/concepts.hh>
 #include <imagine/util/variant.hh>
+#ifndef IG_USE_MODULE_STD
 #include <string_view>
+#include <utility>
+#endif
 
 namespace IG::Input
 {
@@ -82,7 +85,8 @@ public:
 	std::u16string_view name() const override;
 	void resetName(UTF16Convertible auto &&name) { nameStr = IG_forward(name); }
 	void resetName() { nameStr.clear(); }
-	void resetItemSource(ItemSourceDelegate src = [](ItemMessage) -> ItemReply { return 0uz; }) { itemSrc = src; }
+	void resetItemSource(ItemSourceDelegate src) { itemSrc = src; }
+	void resetItemSource() { resetItemSource([](ItemMessage) -> ItemReply { return 0uz; }); }
 
 protected:
 	static constexpr size_t maxSeparators = 32;

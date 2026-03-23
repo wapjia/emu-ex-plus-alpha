@@ -17,13 +17,12 @@
 #include <emuframework/RecentContent.hh>
 #include <emuframework/EmuSystem.hh>
 #include <emuframework/Option.hh>
-#include <imagine/io/MapIO.hh>
-#include <imagine/io/FileIO.hh>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
+import imagine;
 
 namespace EmuEx
 {
+
+using namespace IG;
 
 constexpr SystemLogger log{"RecentContent"};
 

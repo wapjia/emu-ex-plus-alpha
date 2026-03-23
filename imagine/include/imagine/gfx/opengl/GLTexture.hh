@@ -27,10 +27,14 @@
 #include <EGL/eglext.h>
 #endif
 
+
 namespace IG::Gfx
 {
-
 class LockedTextureBuffer;
+}
+
+namespace IG::Gfx
+{
 
 class GLLockedTextureBuffer
 {

@@ -19,8 +19,11 @@
 
 namespace IG
 {
-
 class ApplicationContext;
+}
+
+namespace IG
+{
 
 class AndroidVibrationManager
 {

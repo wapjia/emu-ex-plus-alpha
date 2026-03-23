@@ -18,7 +18,7 @@
 #include <imagine/time/Time.hh>
 #include <imagine/input/Event.hh>
 #include <imagine/input/apple/AppleGameDevice.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
 #include <imagine/util/coreFoundation.h>
 #include <imagine/util/algorithm.h>
 #import <GameController/GameController.h>
@@ -26,7 +26,7 @@
 namespace IG::Input
 {
 
-constexpr SystemLogger log{"GameController"};
+static SystemLogger log{"GameController"};
 
 static const char *appleGCButtonName(Key k);
 

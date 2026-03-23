@@ -14,7 +14,9 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/gfx/Quads.hh>
+#ifndef IG_USE_MODULE_STD
 #include <numeric>
+#endif
 
 namespace IG::Gfx
 {
@@ -40,6 +42,7 @@ public:
 
 	constexpr BaseFanQuad(InitParams params)
 	{
+		centerV = {};
 		setPos(params.bounds);
 		if constexpr(requires {V::color;})
 		{
@@ -59,14 +62,13 @@ public:
 		centerV.pos = {std::midpoint(p.bl.x, p.tr.x), std::midpoint(p.bl.y, p.tr.y)};
 	}
 
-	constexpr void setUV(TexCoordRect rect, Rotation r = Rotation::UP)
+	constexpr void setUV(TexCoordRect rect, Rotation r = Rotation::UP) requires Used<TexCoordRect>
 	{
-		if constexpr(requires {V::texCoord;})
-		{
-			v = mapQuadUV(v, rect, r);
-			centerV.texCoord = {std::midpoint(v[0].texCoord.x, v[3].texCoord.x), std::midpoint(v[0].texCoord.y, v[3].texCoord.y)};
-		}
+		v = mapQuadUV(v, rect, r);
+		centerV.texCoord = {std::midpoint(v[0].texCoord.x, v[3].texCoord.x), std::midpoint(v[0].texCoord.y, v[3].texCoord.y)};
 	}
+
+	constexpr void setUV(TexCoordRect, Rotation = Rotation::UP) {}
 
 	constexpr std::array<V, vertexCount> toArray() const
 	{

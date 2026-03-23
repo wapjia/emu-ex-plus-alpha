@@ -13,13 +13,14 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "cpu-stat"
-#include "tests.hh"
-#include <imagine/io/FileIO.hh>
-#include <imagine/logger/logger.h>
+module;
 #include <unistd.h>
-#include <cstdio>
-#include <format>
+
+module cpuUtils;
+import imagine;
+
+namespace cpuUtils
+{
 
 struct CPUTime
 {
@@ -32,21 +33,22 @@ struct CPUTime
 	unsigned long long total = 0;
 };
 
+constexpr IG::SystemLogger log{"cpuStat"};
 static CPUTime cpuTime;
 static IG::FileIO cpuFreqFile{};
-static FILE *procStatFile{};
+static std::FILE *procStatFile{};
 
-void updateCPUFreq(FrameRateTest::TestFramework &test)
+CpuFreqString updateCPUFreq()
 {
 	if(!cpuFreqFile)
-		return;
-	std::array<char, 32> buff{};
+		return {};
+	CpuFreqString buff{};
 	cpuFreqFile.read(buff.data(), buff.size() - 1, 0);
 	// remove any whitespace
-	std::array<char, 32> str{};
-	sscanf(buff.data(), "%s", str.data());
+	CpuFreqString str{};
+	std::sscanf(buff.data(), "%s", str.data());
 	//logMsg("CPU freq:%s", str);
-	test.setCPUFreqText(str.data());
+	return str;
 }
 
 void initCPUFreqStatus()
@@ -62,34 +64,32 @@ void initCPUFreqStatus()
 	}
 	catch(...)
 	{
-		logWarn("can't open %s", cpuFreqPath);
+		log.warn("can't open:{}", cpuFreqPath);
 	}
 }
 
 void deinitCPUFreqStatus() {}
 
-void updateCPULoad(FrameRateTest::TestFramework &test)
+std::string updateCPULoad()
 {
 	if(!procStatFile)
-		return;
-	auto file = freopen("/proc/stat", "r", procStatFile);
+		return {};
+	auto file = std::freopen("/proc/stat", "r", procStatFile);
 	if(!file)
 	{
 		procStatFile = nullptr;
-		test.setCPUUseText("Error reading stats");
-		return;
+		return "Error reading stats";
 	}
 	unsigned long long user = 0,
 		nice = 0, system = 0, idle = 0,
 		iowait = 0, irq = 0, softirq = 0,
 		steal = 0, guest = 0, guestnice = 0;
-	if(fscanf(procStatFile, "cpu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
+	if(std::fscanf(procStatFile, "cpu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
 		&user, &nice, &system, &idle,
 		&iowait, &irq, &softirq,
 		&steal, &guest, &guestnice) != 10)
 	{
-		test.setCPUUseText("Error reading stats");
-		return;
+		return "Error reading stats";
 	}
 	/*logMsg("CPU times:%llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
 		user, nice, system, idle,
@@ -117,7 +117,7 @@ void updateCPULoad(FrameRateTest::TestFramework &test)
 		useStr = std::format("{:.2f}%", usagePercent);
 	}
 	cpuTime = newTime;
-	test.setCPUUseText(useStr);
+	return useStr;
 }
 
 void initCPULoadStatus()
@@ -126,10 +126,10 @@ void initCPULoadStatus()
 		return; // ignore cpu usage monitoring on non-linux systems
 	if(procStatFile)
 		return; // already open
-	procStatFile = fopen("/proc/stat", "r");
+	procStatFile = std::fopen("/proc/stat", "r");
 	if(!procStatFile)
 	{
-		logWarn("can't open /proc/stat");
+		log.warn("can't open /proc/stat");
 	}
 }
 
@@ -137,7 +137,9 @@ void deinitCPULoadStatus()
 {
 	if(procStatFile)
 	{
-		fclose(procStatFile);
+		std::fclose(procStatFile);
 		procStatFile = nullptr;
 	}
+}
+
 }

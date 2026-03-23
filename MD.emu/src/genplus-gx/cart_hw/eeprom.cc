@@ -20,7 +20,7 @@
  ***************************************************************************/
 
 #include "shared.h"
-#include <emuframework/EmuSystem.hh>
+import emuex;
 
 #define GAME_CNT 30
 

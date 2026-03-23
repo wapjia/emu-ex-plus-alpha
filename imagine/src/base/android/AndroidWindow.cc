@@ -13,21 +13,22 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include "android.hh"
-#include <imagine/logger/logger.h>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/base/Application.hh>
-#include <imagine/base/Screen.hh>
 #include <imagine/base/Window.hh>
+#include <imagine/base/Screen.hh>
+#include <imagine/base/Application.hh>
 #include <imagine/base/sharedLibrary.hh>
+#include <imagine/pixmap/PixelFormat.hh>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <android/native_activity.h>
 #include <android/native_window_jni.h>
 #include <android/looper.h>
+import imagine.internal.android;
 
 namespace IG
 {
 
-constexpr SystemLogger log{"Window"};
+static SystemLogger log{"Window"};
 static JNI::InstMethod<jobject(jobject, jlong)> jPresentation{};
 static JNI::InstMethod<void()> jPresentationDeinit{};
 static int32_t (*ANativeWindow_setFrameRate)(ANativeWindow* window, float frameRate, int8_t compatibility){};
@@ -86,14 +87,14 @@ static void initPresentationJNI(JNIEnv* env, jobject presentation)
 Point2D<float> Window::pixelSizeAsMM(Point2D<int> size)
 {
 	auto densityDPI = screen()->densityDPI();
-	assumeExpr(densityDPI > 0);
+	assume(densityDPI > 0);
 	return {((float)size.x / densityDPI) * 25.4f, ((float)size.y / densityDPI) * 25.4f};
 }
 
 Point2D<float> Window::pixelSizeAsScaledMM(Point2D<int> size)
 {
 	auto densityDPI = screen()->scaledDensityDPI();
-	assumeExpr(densityDPI > 0);
+	assume(densityDPI > 0);
 	return {((float)size.x / densityDPI) * 25.4f, ((float)size.y / densityDPI) * 25.4f};
 }
 
@@ -142,7 +143,7 @@ Window::Window(ApplicationContext ctx, WindowConfig config, InitDelegate onInit_
 	auto baseActivity = ctx.baseActivityObject();
 	if(ctx.windows().size())
 	{
-		assert(screen != ctx.mainScreen());
+		assume(screen != ctx.mainScreen());
 		if(!jPresentation)
 			jPresentation = {env, baseActivity, "presentation", "(Landroid/view/Display;J)Lcom/imagine/PresentationHelper;"};
 		jWin = {env, jPresentation(env, baseActivity, screen.displayObject(), (jlong)this)};

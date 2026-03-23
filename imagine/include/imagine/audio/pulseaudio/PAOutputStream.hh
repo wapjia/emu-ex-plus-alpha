@@ -17,13 +17,11 @@
 
 #include <imagine/audio/defs.hh>
 #include <imagine/audio/Format.hh>
-
-struct pa_context;
-struct pa_stream;
+#include <pulse/pulseaudio.h>
 #ifdef CONFIG_PACKAGE_PULSEAUDIO_GLIB
-struct pa_glib_mainloop;
+#include <pulse/glib-mainloop.h>
 #else
-struct pa_threaded_mainloop;
+#include <pulse/thread-mainloop.h>
 #endif
 
 namespace IG::Audio

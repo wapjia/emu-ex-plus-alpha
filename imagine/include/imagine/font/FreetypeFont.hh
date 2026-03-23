@@ -20,18 +20,26 @@
 #include <imagine/font/GlyphMetrics.hh>
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/util/container/ArrayList.hh>
-#include <array>
-#include <memory>
 #include <ft2build.h>
 #include FT_FREETYPE_H
-
+#ifdef CONFIG_PACKAGE_FONTCONFIG
+#include <fontconfig/fontconfig.h>
+#else
 struct _FcConfig;
+#endif
+#ifndef IG_USE_MODULE_STD
+#include <array>
+#include <memory>
+#endif
 
 namespace IG
 {
-
 class ApplicationContext;
 class IO;
+}
+
+namespace IG::Data
+{
 
 class FreetypeGlyphImage
 {
@@ -50,7 +58,7 @@ protected:
 	void deinit();
 };
 
-static constexpr size_t MAX_FREETYPE_SLOTS = Config::envIsLinux ? 4 : 2;
+inline constexpr size_t MAX_FREETYPE_SLOTS = Config::envIsLinux ? 4 : 2;
 
 class FreetypeFontSize
 {

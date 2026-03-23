@@ -19,35 +19,28 @@
 #include <imagine/base/BaseApplication.hh>
 #include <imagine/base/Timer.hh>
 #include <imagine/base/android/Choreographer.hh>
+#include <imagine/fs/FSDefs.hh>
 #include <imagine/time/Time.hh>
 #include <imagine/util/jni.hh>
 #include <pthread.h>
+#include <android/native_activity.h>
+#include <android/input.h>
+#include <android/configuration.h>
+#ifndef IG_USE_MODULE_STD
 #include <optional>
 #include <string>
 #include <utility>
 #include <variant>
+#endif
 
-struct ANativeActivity;
-struct AInputQueue;
-struct AConfiguration;
-struct AInputEvent;
-
-namespace IG::Input
+namespace IG
 {
-class Device;
-}
-
-namespace IG::FS
-{
-class PathString;
-class FileString;
-struct DirOpenFlags;
+class ApplicationContext;
 }
 
 namespace IG
 {
 
-class ApplicationContext;
 class FrameTimer;
 
 struct ApplicationInitParams
@@ -61,6 +54,7 @@ class AndroidApplication : public BaseApplication
 {
 public:
 	AndroidApplication(ApplicationInitParams);
+	static void main(ANativeActivity*, void* savedState, size_t savedStateSize);
 	void onWindowFocusChanged(ApplicationContext, int focused);
 	JNIEnv* thisThreadJniEnv() const;
 	bool hasHardwareNavButtons() const { return deviceFlags.permanentMenuKey; }

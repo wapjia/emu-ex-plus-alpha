@@ -13,20 +13,12 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/EmuApp.hh>
-#include <emuframework/AppKeyCode.hh>
-#include <emuframework/EmuOptions.hh>
-#include <emuframework/viewUtils.hh>
 #include "InputOverridesView.hh"
 #include "ProfileSelectView.hh"
 #include "../InputDeviceData.hh"
-#include <imagine/gui/TextEntry.hh>
-#include <imagine/gui/TextTableView.hh>
-#include <imagine/gui/AlertView.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/gfx/RendererCommands.hh>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
+#include <emuframework/EmuApp.hh>
+#include <emuframework/AppKeyCode.hh>
+import imagine;
 
 namespace EmuEx
 {
@@ -123,7 +115,7 @@ void InputOverridesView::pushAndShowDeviceView(const Input::Device &dev, const I
 
 constexpr std::string_view playerAsString(int p)
 {
-	assert(p != playerIndexUnset);
+	assume(p != playerIndexUnset);
 	if(p == playerIndexMulti)
 		return "Multiple";
 	return playerNumStrings[p];
@@ -137,10 +129,10 @@ InputOverridesDeviceView::InputOverridesDeviceView(UTF16String name, ViewAttachP
 	{
 		[&]
 		{
-			DynArray<TextMenuItem> items{EmuSystem::maxPlayers + 2uz};
+			DynArray<TextMenuItem> items{AppMeta::maxPlayers + 2uz};
 			items[0] = {"Default", attach, {.id = playerIndexUnset}};
 			items[1] = {"Multiple", attach, {.id = playerIndexMulti}};
-			for(auto i : iotaCount(EmuSystem::maxPlayers))
+			for(auto i: iotaCount(AppMeta::maxPlayers))
 			{
 				items[i + 2] = {playerNumStrings[i], attach, {.id = i}};
 			}
@@ -197,7 +189,7 @@ InputOverridesDeviceView::InputOverridesDeviceView(UTF16String name, ViewAttachP
 void InputOverridesDeviceView::loadItems()
 {
 	items.clear();
-	if(EmuSystem::maxPlayers > 1)
+	if(AppMeta::maxPlayers > 1)
 	{
 		items.emplace_back(&player);
 	}

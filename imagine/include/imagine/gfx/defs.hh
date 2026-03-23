@@ -18,7 +18,9 @@
 #include <imagine/config/defs.hh>
 #include <imagine/pixmap/PixelFormat.hh>
 #include <imagine/util/rectangle2.h>
+#ifndef IG_USE_MODULE_STD
 #include <array>
+#endif
 
 #ifndef CONFIG_GFX_OPENGL
 #define CONFIG_GFX_OPENGL 1
@@ -237,8 +239,8 @@ struct AttribDesc
 	constexpr bool operator==(AttribDesc const&) const = default;
 };
 
-constexpr bool supportsPresentModes = Config::envIsLinux || Config::envIsAndroid;
-constexpr bool supportsPresentationTime = Config::envIsAndroid;
+inline constexpr bool supportsPresentModes = Config::envIsLinux || Config::envIsAndroid;
+inline constexpr bool supportsPresentationTime = Config::envIsAndroid;
 
 struct GlyphSetMetrics
 {

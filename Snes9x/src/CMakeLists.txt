@@ -1,0 +1,62 @@
+target_sources(s9xp PRIVATE FILE_SET CXX_MODULES
+	BASE_DIRS main
+	FILES main/system.ccm
+)
+
+target_sources(s9xp PRIVATE
+	main/Main.cc
+	main/AppMeta.cc
+	main/input.cc
+	main/options.cc
+	main/S9XApi.cc
+	main/EmuMenuViews.cc
+	main/Cheats.cc
+	snes9x/bsx.cpp
+	snes9x/bml.cpp
+	snes9x/c4.cpp
+	snes9x/c4emu.cpp
+	snes9x/cheats.cpp
+	snes9x/cheats2.cpp
+	snes9x/clip.cpp
+	snes9x/controls.cpp
+	snes9x/cpu.cpp
+	snes9x/cpuexec.cpp
+	snes9x/cpuops.cpp
+	snes9x/dma.cpp
+	snes9x/dsp.cpp
+	snes9x/dsp1.cpp
+	snes9x/dsp2.cpp
+	snes9x/dsp3.cpp
+	snes9x/dsp4.cpp
+	snes9x/fxemu.cpp
+	snes9x/fxinst.cpp
+	snes9x/gfx.cpp
+	snes9x/globals.cpp
+	snes9x/loadzip.cpp
+	snes9x/memmap.cpp
+	snes9x/msu1.cpp
+	snes9x/movie.cpp
+	snes9x/obc1.cpp
+	snes9x/ppu.cpp
+	snes9x/stream.cpp
+	snes9x/sa1.cpp
+	snes9x/sa1cpu.cpp
+	snes9x/sdd1.cpp
+	snes9x/sdd1emu.cpp
+	snes9x/seta.cpp
+	snes9x/seta010.cpp
+	snes9x/seta011.cpp
+	snes9x/seta018.cpp
+	snes9x/sha256.cpp
+	snes9x/snapshot.cpp
+	snes9x/spc7110.cpp
+	snes9x/srtc.cpp
+	snes9x/tile.cpp
+	snes9x/tileimpl-h2x1.cpp
+	snes9x/tileimpl-n1x1.cpp
+	snes9x/tileimpl-n2x1.cpp
+	snes9x/apu/apu.cpp
+	snes9x/apu/bapu/dsp/sdsp.cpp
+	snes9x/apu/bapu/smp/smp.cpp
+	snes9x/apu/bapu/smp/smp_state.cpp
+)

@@ -19,8 +19,10 @@
 #include <imagine/base/android/HardwareBuffer.hh>
 #include <imagine/base/android/GraphicBuffer.hh>
 #include "egl.hh"
+#ifndef IG_USE_MODULE_STD
 #include <type_traits>
 #include <array>
+#endif
 
 namespace IG::Gfx
 {

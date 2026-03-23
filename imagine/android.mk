@@ -1,1 +1,0 @@
-make/shortcut/common-builds/android.mk

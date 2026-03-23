@@ -21,7 +21,7 @@ static_assert(__has_feature(objc_arc), "This file requires ARC");
 #include <imagine/base/Application.hh>
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/base/Screen.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
 #include <imagine/util/algorithm.h>
 #include "private.hh"
 #include <imagine/fs/FS.hh>
@@ -49,7 +49,7 @@ namespace IG::Input
 namespace IG
 {
 
-constexpr SystemLogger log{"app"};
+static SystemLogger log{"app"};
 MainApp *mainApp{};
 Application *appPtr{};
 bool isIPad = false;
@@ -408,7 +408,7 @@ void ApplicationContext::setOnDeviceOrientationChanged(DeviceOrientationChangedD
 
 void ApplicationContext::setSystemOrientation(Rotation o)
 {
-	IG::log.info("setting system orientation:{}", wise_enum::to_string(o));
+	IG::log.info("setting system orientation:{}", enumName(o));
 	auto sharedApp = uiApp();
 	[sharedApp setStatusBarOrientation:gfxOrientationToUIInterfaceOrientation(o) animated:YES];
 	if(deviceWindow())
@@ -553,9 +553,14 @@ void ApplicationContext::exitWithMessage(int exitVal, const char *msg)
 	::exit(exitVal);
 }
 
+void abort(const char* msg)
+{
+	log.error("{}", msg);
+	usleep(500000); // TODO: need a way to flush log output
+	std::abort();
 }
 
-int main(int argc, char *argv[])
+int IOSApplication::main(int argc, char* argv[])
 {
 	using namespace IG;
 	// check if running from system apps directory
@@ -564,13 +569,15 @@ int main(int argc, char *argv[])
 		IG::log.info("launched as system app from:{}", argv[0]);
 		isRunningAsSystemApp = true;
 	}
-	logger_setLogDirectoryPrefix("/var/mobile");
+	Log::setLogDirectoryPrefix("/var/mobile");
 	appPath = FS::makeAppPathFromLaunchCommand(argv[0]);
 
 	@autoreleasepool
 	{
 		return UIApplicationMain(argc, argv, @"MainUIApp", @"MainApp");
 	}
+}
+
 }
 
 CLINK int32_t __isOSVersionAtLeast(int32_t major, int32_t minor, int32_t subminor)

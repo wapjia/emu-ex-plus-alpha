@@ -18,10 +18,11 @@
 #include <imagine/io/IOUtils.hh>
 #include <imagine/io/MapIO.hh>
 #include <imagine/util/string/CStringView.hh>
+#include <android/asset_manager.h>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
 #include <span>
-
-struct AAsset;
+#endif
 
 namespace IG
 {

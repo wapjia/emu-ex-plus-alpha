@@ -15,12 +15,10 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/config.hh>
+#include <emuframework/defs.hh>
 
 namespace EmuEx
 {
-
-class EmuApp;
 
 // Easier access to the EmuApp object for any class that provides an appContext() function
 template<class App>

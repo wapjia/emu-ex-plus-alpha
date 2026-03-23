@@ -19,6 +19,7 @@
 #include <stella/common/audio/Resampler.hxx>
 #include <stella/emucore/Sound.hxx>
 #include <imagine/time/Time.hh>
+#include <imagine/logger/SystemLogger.hh>
 
 class OSystem;
 class AudioQueue;
@@ -58,6 +59,7 @@ private:
 	Int16 *currentFragment{};
 	int mixRate{};
 	AudioSettings::ResamplingQuality resampleQuality{AudioSettings::DEFAULT_RESAMPLING_QUALITY};
+	static constexpr IG::SystemLogger log{"2600.emu:Sound"};
 
 	void updateResampler();
 };

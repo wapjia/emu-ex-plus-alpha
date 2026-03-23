@@ -1,38 +1,34 @@
-#define LOGTAG "main"
-#include <emuframework/EmuSystemInlines.hh>
-#include <emuframework/EmuAppInlines.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/fs/ArchiveFS.hh>
-#include <imagine/util/format.hh>
-#include <imagine/util/string.h>
-#include <imagine/util/zlib.hh>
-#include <imagine/logger/logger.h>
+/*  This file is part of Snes9x EX.
 
+	Please see COPYING file in root directory for license information. */
+
+module;
+#include <snes9x.h>
 #include <memmap.h>
 #include <display.h>
 #include <snapshot.h>
 #include <cheats.h>
 #ifndef SNES9X_VERSION_1_4
 #include <apu/bapu/snes/snes.hpp>
+#include <apu/apu.h>
 #else
 #include <soundux.h>
 #endif
+#include <zlib.h>
+
+module system;
 
 #ifdef SNES9X_VERSION_1_4
-bool8 S9xDeinitUpdate(int width, int height);
-bool8 S9xDeinitUpdate(int width, int height, bool8) { return S9xDeinitUpdate(width, height); }
-static bool S9xInterlaceField()
-{
-	return (Memory.FillRAM[0x213F] & 0x80) >> 7;
-}
+extern "C++" bool8 S9xDeinitUpdate(int width, int height);
+extern "C" bool8 S9xDeinitUpdate(int width, int height, bool8) { return S9xDeinitUpdate(width, height); }
+static bool S9xInterlaceField() { return (Memory.FillRAM[0x213F] & 0x80) >> 7; }
 #endif
 
 namespace EmuEx
 {
 
-const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2025\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nSnes9x Team\nwww.snes9x.com";
 #if PIXEL_FORMAT == RGB565
-constexpr auto srcPixFmt = IG::PixelFmtRGB565;
+constexpr auto srcPixFmt = PixelFmtRGB565;
 #else
 #error "incompatible PIXEL_FORMAT value"
 #endif
@@ -40,41 +36,9 @@ static EmuSystemTaskContext emuSysTask{};
 static EmuVideo *emuVideo{};
 constexpr auto SNES_HEIGHT_480i = SNES_HEIGHT * 2;
 constexpr auto SNES_HEIGHT_EXTENDED_480i = SNES_HEIGHT_EXTENDED * 2;
-bool EmuSystem::hasCheats = true;
-bool EmuSystem::hasPALVideoSystem = true;
-bool EmuSystem::hasResetModes = true;
-bool EmuSystem::canRenderRGBA8888 = false;
-bool EmuSystem::hasRectangularPixels = true;
-bool EmuApp::needsGlobalInstance = true;
 
-EmuSystem::NameFilterFunc EmuSystem::defaultFsFilter =
-	[](std::string_view name)
-	{
-		return IG::endsWithAnyCaseless(name, ".smc", ".sfc", ".swc", ".bs", ".st", ".fig", ".mgd");
-	};
-
-Snes9xApp::Snes9xApp(ApplicationInitParams initParams, ApplicationContext &ctx):
-	EmuApp{initParams, ctx}, snes9xSystem{ctx} {}
-
-const BundledGameInfo &EmuSystem::bundledGameInfo(int) const
-{
-	static constexpr BundledGameInfo info[]
-	{
-		{"Bio Worm", "Bio Worm.7z"}
-	};
-
-	return info[0];
-}
-
-const char *EmuSystem::shortSystemName() const
-{
-	return "SFC-SNES";
-}
-
-const char *EmuSystem::systemName() const
-{
-	return "Super Famicom (SNES)";
-}
+extern "C++" std::string_view EmuSystem::shortSystemName() const { return "SFC-SNES"; }
+extern "C++" std::string_view EmuSystem::systemName() const { return "Super Famicom (SNES)"; }
 
 MutablePixmapView Snes9xSystem::fbPixmapView(WSize size, bool useInterlaceFields)
 {
@@ -94,7 +58,7 @@ void Snes9xSystem::renderFramebuffer(EmuVideo&)
 
 void Snes9xSystem::reset(EmuApp &, ResetMode mode)
 {
-	assert(hasContent());
+	assume(hasContent());
 	if(mode == ResetMode::HARD)
 	{
 		S9xReset();
@@ -113,7 +77,7 @@ void Snes9xSystem::reset(EmuApp &, ResetMode mode)
 
 FS::FileString Snes9xSystem::stateFilename(int slot, std::string_view name) const
 {
-	return IG::format<FS::FileString>("{}.{}." FREEZE_EXT, name, saveSlotCharAiWu(slot));//爱吾修改：修改即时存档插槽名
+	return format<FS::FileString>("{}.{}." FREEZE_EXT, name, saveSlotCharAiWu(slot));//爱吾修改：修改即时存档插槽名
 }
 
 std::string_view Snes9xSystem::stateFilenameExt() const { return "." FREEZE_EXT; }
@@ -190,7 +154,7 @@ void Snes9xSystem::loadBackupMemory(EmuApp &app)
 {
 	if(!Memory.SRAMSize)
 		return;
-	logMsg("loading backup memory");
+	log.info("loading backup memory");
 	Memory.LoadSRAM(sramFilename(app).c_str());
 }
 
@@ -198,7 +162,7 @@ void Snes9xSystem::onFlushBackupMemory(EmuApp &app, BackupMemoryDirtyFlags)
 {
 	if(!Memory.SRAMSize)
 		return;
-	logMsg("saving backup memory");
+	log.info("saving backup memory");
 	Memory.SaveSRAM(sramFilename(app).c_str());
 }
 
@@ -224,14 +188,14 @@ static bool isSufamiTurboBios(const IOBuffer &buff)
 
 bool Snes9xSystem::hasBiosExtension(std::string_view name)
 {
-	return IG::endsWithAnyCaseless(name, ".bin", ".bios");
+	return endsWithAnyCaseless(name, ".bin", ".bios");
 }
 
 IOBuffer Snes9xSystem::readSufamiTurboBios() const
 {
 	if(sufamiBiosPath.empty())
 		throw std::runtime_error{"No Sufami Turbo BIOS set"};
-	logMsg("loading Sufami Turbo BIOS:%s", sufamiBiosPath.data());
+	log.info("loading Sufami Turbo BIOS:{}", sufamiBiosPath);
 	if(EmuApp::hasArchiveExtension(appCtx.fileUriDisplayName(sufamiBiosPath)))
 	{
 		for(auto &entry : FS::ArchiveIterator{appCtx.openFileUri(sufamiBiosPath)})
@@ -262,7 +226,7 @@ void Snes9xSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDele
 		throw std::runtime_error("ROM is too large");
 	}
 	#ifndef SNES9X_VERSION_1_4
-	IG::fill(Memory.NSRTHeader);
+	fill(Memory.NSRTHeader);
 	#endif
 	Memory.HeaderCount = 0;
 	auto forceVideoSystemSettings = [&]() -> std::pair<bool, bool> // ForceNTSC, ForcePAL
@@ -285,7 +249,7 @@ void Snes9xSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDele
 	#ifndef SNES9X_VERSION_1_4
 	if(isSufamiTurboCart(buff)) // TODO: loading dual carts
 	{
-		logMsg("detected Sufami Turbo cart");
+		log.info("detected Sufami Turbo cart");
 		Memory.ROMFilename = contentFileName();
 		auto biosBuff = readSufamiTurboBios();
 		if(!Memory.LoadMultiCartMem((const uint8*)buff.data(), buff.size(),
@@ -317,14 +281,14 @@ void Snes9xSystem::configAudioRate(FrameRate outputFrameRate, int outputRate)
 		return;
 	Settings.SoundPlaybackRate = outputRate;
 	Settings.SoundInputRate = inputRate;
-	logMsg("set sound input rate:%.2f output rate:%d", inputRate, outputRate);
+	log.info("set sound input rate:{} output rate:{}", inputRate, outputRate);
 	S9xUpdateDynamicRate(0, 10);
 	#else
 	int mixRate = std::round(audioMixRate(outputRate, outputFrameRate));
 	if(mixRate == Settings.SoundPlaybackRate)
 		return;
 	Settings.SoundPlaybackRate = mixRate;
-	logMsg("set sound mix rate:%d", mixRate);
+	log.info("set sound mix rate:{}", mixRate);
 	S9xSetPlaybackRate(Settings.SoundPlaybackRate);
 	#endif
 }
@@ -333,7 +297,7 @@ static void mixSamples(int samples, EmuAudio *audio)
 {
 	if(!samples) [[unlikely]]
 		return;
-	assumeExpr(samples % 2 == 0);
+	assume(samples % 2 == 0);
 	int16_t audioBuff[1800];
 	S9xMixSamples((uint8*)audioBuff, samples);
 	if(audio)
@@ -390,25 +354,14 @@ void Snes9xSystem::runFrame(EmuSystemTaskContext taskCtx, EmuVideo *video, EmuAu
 	#endif
 }
 
-void EmuApp::onCustomizeNavView(EmuApp::NavView &view)
+}
+
+extern "C++"
 {
-	const Gfx::LGradientStopDesc navViewGrad[] =
-	{
-		{ .0, Gfx::PackedColor::format.build((139./255.) * .4, (149./255.) * .4, (230./255.) * .4, 1.) },
-		{ .3, Gfx::PackedColor::format.build((139./255.) * .4, (149./255.) * .4, (230./255.) * .4, 1.) },
-		{ .97, Gfx::PackedColor::format.build((46./255.) * .4, (50./255.) * .4, (77./255.) * .4, 1.) },
-		{ 1., view.separatorColor() },
-	};
-	view.setBackgroundGradient(navViewGrad);
-}
-
-}
-
 bool8 S9xDeinitUpdate (int width, int height)
 {
 	using namespace EmuEx;
 	auto &sys = gSnes9xSystem();
-	assumeExpr(emuVideo);
 	if((height == SNES_HEIGHT_EXTENDED || height == SNES_HEIGHT_EXTENDED_480i)
 		&& !sys.optionAllowExtendedVideoLines)
 	{
@@ -430,3 +383,4 @@ bool8 S9xContinueUpdate(int width, int height)
 	return S9xDeinitUpdate(width, height);
 }
 #endif
+}

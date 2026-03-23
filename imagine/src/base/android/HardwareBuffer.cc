@@ -13,19 +13,19 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "HardwareBuff"
 #include <imagine/base/android/HardwareBuffer.hh>
 #include <imagine/base/sharedLibrary.hh>
-#include <imagine/pixmap/PixmapDesc.hh>
-#include "android.hh"
-#include <imagine/logger/logger.h>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <android/hardware_buffer.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+import imagine.internal.android;
 
 namespace IG
 {
 
+static SystemLogger log{"HwBuffer"};
 static int (*AHardwareBuffer_allocate)(const AHardwareBuffer_Desc* desc, AHardwareBuffer** outBuffer){};
 static void (*AHardwareBuffer_release)(AHardwareBuffer* buffer){};
 static void (*AHardwareBuffer_describe)(const AHardwareBuffer* buffer, AHardwareBuffer_Desc* outDesc){};
@@ -37,7 +37,7 @@ static void loadAHardwareBufferSymbols()
 {
 	if(!AHardwareBuffer_allocate) [[unlikely]]
 	{
-		logMsg("loading AHardwareBuffer functions");
+		log.info("loading AHardwareBuffer functions");
 		loadSymbol(AHardwareBuffer_allocate, {}, "AHardwareBuffer_allocate");
 		loadSymbol(AHardwareBuffer_release, {}, "AHardwareBuffer_release");
 		loadSymbol(AHardwareBuffer_describe, {}, "AHardwareBuffer_describe");
@@ -59,13 +59,12 @@ HardwareBuffer::HardwareBuffer(PixmapDesc desc, uint32_t usage):
 HardwareBuffer::HardwareBuffer(uint32_t w, uint32_t h, uint32_t format, uint32_t usage):
 	HardwareBuffer()
 {
-	assumeExpr(AHardwareBuffer_allocate);
 	AHardwareBuffer_Desc hardwareDesc{.width = w, .height = h, .layers = 1, .format = format, .usage = usage,
 		.stride{}, .rfu0{}, .rfu1{}};
 	AHardwareBuffer *newBuff;
 	if(AHardwareBuffer_allocate(&hardwareDesc, &newBuff) != 0) [[unlikely]]
 	{
-		logErr("error allocating AHardwareBuffer");
+		log.error("error allocating AHardwareBuffer");
 		return;
 	}
 	AHardwareBuffer_Desc desc;
@@ -78,7 +77,7 @@ bool HardwareBuffer::lock(uint32_t usage, void **vaddr)
 {
 	if(AHardwareBuffer_lock(buff.get(), usage, -1, nullptr, vaddr) != 0) [[unlikely]]
 	{
-		logErr("error locking");
+		log.error("error locking");
 		return false;
 	}
 	return true;
@@ -93,14 +92,15 @@ bool HardwareBuffer::lock(uint32_t usage, IG::WindowRect rect, void **vaddr)
 		if((rect.x < 0 || rect.x2 > (int)desc.width ||
 			rect.y < 0 || rect.y2 > (int)desc.height)) [[unlikely]]
 		{
-			bug_unreachable("locking pixels:[%d:%d:%d:%d] outside of buffer:%d,%d",
+			log.error("locking pixels:[%d:%d:%d:%d] outside of buffer:%d,%d",
 				rect.x, rect.y, rect.x2, rect.y2, desc.width, desc.height);
+			unreachable();
 		}
 	}
 	ARect aRect{.left = rect.x, .top = rect.y, .right = rect.x2, .bottom = rect.y2};
 	if(AHardwareBuffer_lock(buff.get(), usage, -1, &aRect, vaddr) != 0) [[unlikely]]
 	{
-		logErr("error locking");
+		log.error("error locking");
 		return false;
 	}
 	return true;

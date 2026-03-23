@@ -17,7 +17,7 @@
 
 #include <imagine/bluetooth/defs.hh>
 #include <imagine/base/ApplicationContext.hh>
-#import <btstack/btstack.h>
+#include <btstack/btstack.h>
 
 namespace IG
 {

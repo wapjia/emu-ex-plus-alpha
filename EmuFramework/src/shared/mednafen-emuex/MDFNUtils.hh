@@ -13,14 +13,11 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/pixmap/Pixmap.hh>
-#include <imagine/fs/FSDefs.hh>
-#include <imagine/io/IO.hh>
-#include <imagine/gui/MenuItem.hh>
-#include <imagine/util/format.hh>
-#include <imagine/util/string.h>
-#include <imagine/util/zlib.hh>
 #include <emuframework/EmuApp.hh>
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#pragma GCC diagnostic ignored "-Wdeprecated-literal-operator"
+#include <mednafen/mednafen.h>
 #include <mednafen/types.h>
 #include <mednafen/video/surface.h>
 #include <mednafen/hash/md5.h>
@@ -28,8 +25,19 @@
 #include <mednafen/FileStream.h>
 #include <mednafen/MemoryStream.h>
 #include <mednafen/cdrom/CDInterface.h>
-#include <main/MainSystem.hh>
+#ifdef IG_USE_MODULES
+import imagine;
+import std;
+#else
+#include <imagine/pixmap/Pixmap.hh>
+#include <imagine/fs/FSDefs.hh>
+#include <imagine/io/IO.hh>
+#include <imagine/gui/MenuItem.hh>
+#include <imagine/util/format.hh>
+#include <imagine/util/string.h>
+#include <imagine/util/zlib.hh>
 #include <string_view>
+#endif
 
 namespace Mednafen
 {
@@ -46,7 +54,9 @@ struct DriveMediaStatus
 namespace EmuEx
 {
 
-inline Mednafen::MDFN_Surface toMDFNSurface(IG::MutablePixmapView pix)
+using namespace IG;
+
+inline Mednafen::MDFN_Surface toMDFNSurface(MutablePixmapView pix)
 {
 	using namespace Mednafen;
 	MDFN_PixelFormat fmt =
@@ -54,9 +64,9 @@ inline Mednafen::MDFN_Surface toMDFNSurface(IG::MutablePixmapView pix)
 		{
 			switch(pix.format().id)
 			{
-				case IG::PixelFmtBGRA8888: return MDFN_PixelFormat::ARGB32_8888;
-				case IG::PixelFmtRGBA8888: return MDFN_PixelFormat::ABGR32_8888;
-				case IG::PixelFmtRGB565: return MDFN_PixelFormat::RGB16_565;
+				case PixelFmtBGRA8888: return MDFN_PixelFormat::ARGB32_8888;
+				case PixelFmtRGBA8888: return MDFN_PixelFormat::ABGR32_8888;
+				case PixelFmtRGB565: return MDFN_PixelFormat::RGB16_565;
 				default: std::unreachable();
 			};
 		}();
@@ -71,7 +81,7 @@ inline FS::FileString stateFilenameMDFN(const Mednafen::MDFNGI &gameInfo, int sl
 		{
 			case -1: return autoChar;
 			case 0 ... 9: return '0' + slot;
-			default: bug_unreachable("slot == %d", slot);
+			default: unreachable();
 		}
 	}();
 	if(skipMD5)
@@ -82,7 +92,7 @@ inline FS::FileString stateFilenameMDFN(const Mednafen::MDFNGI &gameInfo, int sl
 
 inline FS::FileString saveExtMDFN(std::string_view ext, bool skipMD5)
 {
-	IG::FileString str{'.'};
+	FileString str{'.'};
 	if(!skipMD5)
 	{
 		str += Mednafen::md5_context::asciistr(Mednafen::MDFNGameInfo->MD5, 0);
@@ -94,8 +104,8 @@ inline FS::FileString saveExtMDFN(std::string_view ext, bool skipMD5)
 
 inline std::string savePathMDFN(const EmuApp &app, [[maybe_unused]] int id1, const char *cd1, bool skipMD5)
 {
-	assert(cd1);
-	IG::FileString ext{'.'};
+	assume(cd1);
+	FileString ext{'.'};
 	if(!skipMD5)
 	{
 		ext += Mednafen::md5_context::asciistr(Mednafen::MDFNGameInfo->MD5, 0);
@@ -106,10 +116,9 @@ inline std::string savePathMDFN(const EmuApp &app, [[maybe_unused]] int id1, con
 	return std::string{path};
 }
 
-inline std::string savePathMDFN(int id1, const char *cd1)
+inline std::string savePathMDFN(const auto& app, int id1, const char* cd1)
 {
-	auto &app = EmuEx::gApp();
-	return savePathMDFN(app, id1, cd1, static_cast<MainSystem&>(app.system()).noMD5InFilenames);
+	return savePathMDFN(app, id1, cd1, app.system().noMD5InFilenames);
 }
 
 inline BoolMenuItem saveFilenameTypeMenuItem(auto &view, auto &system)
@@ -159,7 +168,7 @@ inline void runFrame(EmuSystem &sys, Mednafen::MDFNGI &mdfnGameInfo, EmuSystemTa
 	mdfnGameInfo.Emulate(&espec);
 	if(audioPtr)
 	{
-		assert((unsigned)espec.SoundBufSize <= audioPtr->format().bytesToFrames(sizeof(audioBuff)));
+		assume((unsigned)espec.SoundBufSize <= audioPtr->format().bytesToFrames(sizeof(audioBuff)));
 		audioPtr->writeFrames((uint8_t*)audioBuff, espec.SoundBufSize);
 	}
 }

@@ -18,7 +18,9 @@
 #include <emuframework/EmuAppHelper.hh>
 #include <emuframework/EmuSystemTask.hh>
 #include <emuframework/EmuSystemTaskContext.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/gfx/PixmapBufferTexture.hh>
+#endif
 
 namespace EmuEx
 {
@@ -32,7 +34,7 @@ class [[nodiscard]] EmuVideoImage
 public:
 	constexpr EmuVideoImage() = default;
 	EmuVideoImage(EmuSystemTaskContext, EmuVideo&, Gfx::LockedTextureBuffer);
-	IG::MutablePixmapView pixmap() const;
+	MutablePixmapView pixmap() const;
 	explicit operator bool() const;
 	void endFrame();
 
@@ -48,17 +50,17 @@ public:
 	constexpr EmuVideo() = default;
 	void setRendererTask(Gfx::RendererTask&);
 	bool hasRendererTask() const;
-	bool setFormat(IG::PixmapDesc, EmuSystemTaskContext _ = {});
-	void resetImage(IG::PixelFormat newFmt = {});
-	IG::PixmapDesc deleteImage();
+	bool setFormat(PixmapDesc, EmuSystemTaskContext _ = {});
+	void resetImage(PixelFormat newFmt = {});
+	PixmapDesc deleteImage();
 	EmuVideoImage startFrame(EmuSystemTaskContext);
-	void startFrame(EmuSystemTaskContext, IG::PixmapView);
-	EmuVideoImage startFrameWithFormat(EmuSystemTaskContext, IG::PixmapDesc);
-	void startFrameWithFormat(EmuSystemTaskContext, IG::PixmapView);
-	void startFrameWithAltFormat(EmuSystemTaskContext, IG::PixmapView);
+	void startFrame(EmuSystemTaskContext, PixmapView);
+	EmuVideoImage startFrameWithFormat(EmuSystemTaskContext, PixmapDesc);
+	void startFrameWithFormat(EmuSystemTaskContext, PixmapView);
+	void startFrameWithAltFormat(EmuSystemTaskContext, PixmapView);
 	void startUnchangedFrame(EmuSystemTaskContext);
 	void finishFrame(EmuSystemTaskContext, Gfx::LockedTextureBuffer);
-	void finishFrame(EmuSystemTaskContext, IG::PixmapView);
+	void finishFrame(EmuSystemTaskContext, PixmapView);
 	void clear();
 	void takeGameScreenshot();
     //region 爱吾：增加指定路径的截图
@@ -67,22 +69,22 @@ public:
 	bool isExternalTexture() const;
 	Gfx::PixmapBufferTexture& image();
 	Gfx::Renderer& renderer() const;
-	IG::ApplicationContext appContext() const;
+	ApplicationContext appContext() const;
 	WSize size() const;
-	bool formatIsEqual(IG::PixmapDesc desc) const;
+	bool formatIsEqual(PixmapDesc desc) const;
 	void setTextureBufferMode(EmuSystem&, Gfx::TextureBufferMode);
 	void setSampler(Gfx::TextureSamplerConfig);
 	constexpr auto colorSpace() const { return colSpace; }
-	bool setRenderPixelFormat(EmuSystem&, IG::PixelFormat, Gfx::ColorSpace);
-	IG::PixelFormat renderPixelFormat() const;
-	IG::PixelFormat internalRenderPixelFormat() const;
+	bool setRenderPixelFormat(EmuSystem&, PixelFormat, Gfx::ColorSpace);
+	PixelFormat renderPixelFormat() const;
+	PixelFormat internalRenderPixelFormat() const;
 	static Gfx::TextureSamplerConfig samplerConfigForLinearFilter(bool useLinearFilter);
 	static MutablePixmapView takeInterlacedFields(MutablePixmapView, bool isOddField);
 
 protected:
 	Gfx::RendererTask* rTask{};
 	Gfx::PixmapBufferTexture vidImg;
-	IG::PixelFormat renderFmt;
+	PixelFormat renderFmt;
 	Gfx::TextureBufferMode bufferMode{};
 	bool screenshotNextFrame{};
 	Gfx::ColorSpace colSpace{Gfx::ColorSpace::LINEAR};
@@ -91,7 +93,7 @@ protected:
 	bool screenshotNextFrameAiWu{};
 	//endregion
 
-	void doScreenshot(EmuSystemTaskContext, IG::PixmapView);
+	void doScreenshot(EmuSystemTaskContext, PixmapView);
 	void postFrameFinished(EmuSystemTaskContext);
 	Gfx::TextureSamplerConfig samplerConfig() const { return samplerConfigForLinearFilter(useLinearFilter); }
 

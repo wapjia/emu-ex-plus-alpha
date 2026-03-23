@@ -14,22 +14,13 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/SystemActionsView.hh>
-#include <emuframework/EmuApp.hh>
-#include <emuframework/EmuSystem.hh>
-#include <emuframework/EmuVideo.hh>
-#include <emuframework/EmuViewController.hh>
-#include <emuframework/CreditsView.hh>
-#include <emuframework/StateSlotView.hh>
-#include <emuframework/BundledGamesView.hh>
-#include <emuframework/Cheats.hh>
-#include <emuframework/viewUtils.hh>
 #include "InputOverridesView.hh"
 #include "AutosaveSlotView.hh"
 #include "ResetAlertView.hh"
-#include <imagine/gui/TextEntry.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
+#include <emuframework/EmuApp.hh>
+#include <emuframework/Cheats.hh>
+#include <emuframework/StateSlotView.hh>
+import imagine;
 
 namespace EmuEx
 {
@@ -221,7 +212,7 @@ void SystemActionsView::onShow()
 		return;
 	TableView::onShow();
 	log.info("refreshing action menu state");
-	assert(system().hasContent());
+	assume(system().hasContent());
 	autosaveSlot.compile(autoSaveName(app()));
 	autosaveNow.compile(saveAutosaveName(app()));
 	autosaveNow.setActive(app().autosaveManager.slotName() != noAutosaveName);
@@ -232,7 +223,7 @@ void SystemActionsView::onShow()
 void SystemActionsView::loadStandardItems()
 {
 	/* 爱吾修改：去掉这些设置项
-	if(EmuSystem::hasCheats)
+	if(AppMeta::hasCheats)
 	{
 		item.emplace_back(&cheats);
 	}

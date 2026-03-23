@@ -11,9 +11,11 @@
 #include "core/gba/gba.h"
 #include "core/gba/gbaGlobals.h"
 
-#include <imagine/util/utility.h>
-#include <imagine/logger/logger.h>
 #include <algorithm>
+import imagine;
+
+#define CPUCheckDMA(reason, dmamask) CPUCheckDMA(gba, cpu, reason, dmamask)
+#define remake_stereo_buffer() remake_stereo_buffer(gba)
 
 #define NR10 0x60
 #define NR11 0x62
@@ -192,28 +194,29 @@ void Gba_Pcm::update(int dac)
 void Gba_Pcm_Fifo::timer_overflowed(GBASys &gba, ARM7TDMI &cpu, int which_timer)
 {
 	if (which_timer == timer && enabled) {
-		/* Mother 3 fix, refined to not break Metroid Fusion */
-		if (count == 16 || count == 0) {
-			// Need to fill FIFO
-			int saved_count = count;
-			CPUCheckDMA(gba, cpu, 3, which ? 4 : 2);
-			if (saved_count == 0 && count == 16)
-			    CPUCheckDMA(gba, cpu, 3, which ? 4 : 2);
-			if (count == 0) {
-				// Not filled by DMA, so fill with 16 bytes of silence
-				const int reg = which ? FIFOB_L : FIFOA_L;
-				for (int n = 8; n--;) {
-					soundEvent16(gba, reg, (uint16_t)0);
-					soundEvent16(gba, reg + 2, (uint16_t)0);
-				}
-			}
-		}
+		// 2025-11-24 - negativeExponent
+		// Timer overflow: consume 1 FIFO sample and update PCM
+		// This ensures that DMA refill is triggered after the FIFO drops to ≤16,
+		// matching original DMA behavior. Zero-fill occurs only if FIFO remains
+		// low after DMA. Preserves Mother 3 and Summon Night 2 timing-sensitive fixes.
 
 		// Read next sample from FIFO
 		count--;
 		dac = fifo[readIndex];
 		readIndex = (readIndex + 1) & 31;
 		pcm.update(dac);
+
+		if (count <= 16) {
+				// Need to fill FIFO
+				CPUCheckDMA(3, which ? 4 : 2);
+				if (count <= 16) {
+						const int io_reg = which ? FIFOB_L : FIFOA_L;
+						for (int n = 4; n--;) {
+							soundEvent16(gba, io_reg,     0);
+							soundEvent16(gba, io_reg + 2, 0);
+						}
+				}
+		}
 	}
 }
 
@@ -249,6 +252,8 @@ static void apply_control(GBASys &gba)
 	pcm[1].pcm.apply_control(gba, 1);
 }
 
+#define apply_control() apply_control(gba)
+
 static int gba_to_gb_sound(int addr)
 {
   static const int table[0x40] = {
@@ -274,7 +279,7 @@ void soundEvent8(GBASys &gba, uint32_t address, uint8_t data)
 		gb_apu.write_register(soundTicks, gb_addr, data);
 
 		if (address == NR52)
-			apply_control(gba);
+			apply_control();
 	}
 
 	// TODO: what about byte writes to SGCNT0_H etc.?
@@ -296,19 +301,23 @@ static void apply_volume(GBASys &gba, bool apu_only = false)
 	}
 }
 
+#define apply_volume(...) apply_volume(gba, ## __VA_ARGS__)
+
 static void write_SGCNT0_H(GBASys &gba, int data)
 {
 	WRITE16LE(&g_ioMem[SGCNT0_H], data & 0x770F);
 	pcm[0].write_control(gba, data);
 	pcm[1].write_control(gba, data >> 4);
-	apply_volume(gba, true);
+	apply_volume(true);
 }
+
+#define write_SGCNT0_H(data) write_SGCNT0_H(gba, data)
 
 void soundEvent16(GBASys &gba, uint32_t address, uint16_t data)
 {
 	switch (address) {
 	case SGCNT0_H:
-		write_SGCNT0_H(gba, data);
+		write_SGCNT0_H(data);
 		break;
 
 	case FIFOA_L:
@@ -350,12 +359,29 @@ static void end_frame(blip_time_t time)
 	stereo_buffer.end_frame(time);
 }
 
-void flush_samples(Multi_Buffer * buffer, EmuEx::EmuAudio *audio)
+void flush_samples(Multi_Buffer* buffer, EmuEx::EmuAudio *audio)
 {
 #ifdef __LIBRETRO__
-    int numSamples = buffer->read_samples((blip_sample_t*)soundFinalWave, buffer->samples_avail());
-    soundDriver->write(soundFinalWave, numSamples);
-    systemOnWriteDataToSoundBuffer(soundFinalWave, numSamples);
+    size_t numSamples = buffer->samples_avail();
+    if ((numSamples * 2) > sizeof(soundFinalWave)) {
+        // when there is more than 1-frame worth of samples, we
+        // split it so as not to overflow our buffer.
+        // Flush samples 2048 samples at a time
+        while (numSamples > 2048) {
+            buffer->read_samples((blip_sample_t*)soundFinalWave, 2048);
+            soundDriver->write(soundFinalWave, 2048);
+            numSamples -= 2048;
+        }
+        if (numSamples) {
+            // flush remaining samples
+            buffer->read_samples((blip_sample_t*)soundFinalWave, numSamples);
+            soundDriver->write(soundFinalWave, numSamples);
+        }
+    } else {
+        buffer->read_samples((blip_sample_t*)soundFinalWave, numSamples);
+        soundDriver->write(soundFinalWave, numSamples);
+        systemOnWriteDataToSoundBuffer(soundFinalWave, numSamples);
+    }
 #elif 0
     // We want to write the data frame by frame to support legacy audio drivers
     // that don't use the length parameter of the write method.
@@ -400,33 +426,35 @@ static void apply_filtering()
 
 void psoundTickfn(EmuEx::EmuAudio *audio)
 {
-	// Run sound hardware to present
-	end_frame(soundTicks);
+  /*if (gb_apu && stereo_buffer)*/ {
+      // Run sound hardware to present
+	    end_frame(soundTicks);
 
- 	//if (gb_apu && stereo_buffer)
-	{
-		flush_samples(&stereo_buffer, audio);
+			flush_samples(&stereo_buffer, audio);
 
-		/*if ( soundFiltering_ != soundFiltering )
-			apply_filtering();
+      /*
+      if (soundFiltering_ != soundFiltering)
+          apply_filtering();
 
-		if ( soundVolume_ != soundVolume )
-			apply_volume();*/
-	}
+      if (soundVolume_ != soundVolume)
+          apply_volume();
+      */
+  }
 
 	soundTicks = 0;
 }
 
 static void apply_muting(GBASys &gba)
 {
-	/*if ( !stereo_buffer || !g_ioMem )
-		return;*/
+	/*
+	if (!stereo_buffer || !g_ioMem)
+		return;
+	*/
 
 	// PCM
-	apply_control(gba);
+	apply_control();
 
-	//if (gb_apu)
-	{
+	/*if (gb_apu)*/ {
 		// APU
 		for (int i = 0; i < 4; i++) {
 			if (soundEnableFlag >> i & 1)
@@ -437,6 +465,8 @@ static void apply_muting(GBASys &gba)
 		}
 	}
 }
+
+#define apply_muting() apply_muting(gba)
 
 static void reset_apu()
 {
@@ -451,10 +481,7 @@ static void reset_apu()
 #if 0
 void soundShutdown()
 {
-	if (soundDriver) {
-		delete soundDriver;
-		soundDriver = 0;
-	}
+  soundDriver.reset();
 
 	systemOnSoundShutdown();
 
@@ -487,7 +514,7 @@ void soundSetVolume(GBASys &gba, float volume, bool gbVol)
 		gbApuSoundVolume_ = volume;
 	else
 		soundVolume_ = volume;
-	apply_volume(gba);
+	apply_volume();
 }
 
 float soundGetVolume(GBASys &, bool gbVol)
@@ -501,7 +528,7 @@ float soundGetVolume(GBASys &, bool gbVol)
 void soundSetEnable(GBASys &gba, int channels)
 {
 	soundEnableFlag = channels;
-	apply_muting(gba);
+	apply_muting();
 }
 
 int soundGetEnable(GBASys &)
@@ -536,13 +563,18 @@ void soundReset(GBASys &gba)
 	/*if (!soundDriver)
 	  return;
 
+	soundDriver->pause();
 	soundDriver->reset();*/
 
-	remake_stereo_buffer(gba);
-	reset_apu();
+	/*if (gb_apu)*/ {
+		gb_apu.end_frame(soundTicks);
+		reset_apu();
+	}
 
-	//soundPaused = true;
-	soundTicks        = 0;
+	remake_stereo_buffer();
+
+	soundTicks = 0;
+	//soundPaused = 1;
 
 	soundEvent8(gba,  NR52, (uint8_t) 0x80);
 }
@@ -589,7 +621,7 @@ void soundSetSampleRate(GBASys &gba, long sampleRate)
 			soundSampleRate      = sampleRate;
 		}
 
-		remake_stereo_buffer(gba);
+		remake_stereo_buffer();
 	}
 }
 
@@ -751,33 +783,54 @@ static constexpr variable_desc gba_state[] = {
 	{ NULL, 0 }
 };
 
+#undef remake_stereo_buffer
+
 void remake_stereo_buffer(GBASys &gba)
 {
 	// Clears pointers kept to old stereo_buffer
 	pcm[0].pcm.init();
 	pcm[1].pcm.init();
 
+	// APU
+	/*if (!gb_apu) {
+			gb_apu = new Gb_Apu; // TODO: handle out of memory
+			reset_apu();
+	}*/
+
+	gb_apu.save_state(&state.apu);
+
 	stereo_buffer.set_sample_rate(soundSampleRate, 75); // TODO: handle out of memory
 	stereo_buffer.clock_rate(gb_apu.clock_rate);
+
+	// Reapply APU register values from g_ioMem
+	for (int addr = NR10; addr <= NR52; ++addr) {
+			const int gb_reg = gba_to_gb_sound(addr);
+
+			if (addr == NR52)
+					g_ioMem[addr] |= 0x80;
+
+			if (gb_reg >= 0xFF10) {
+					state.apu.regs[gb_reg - 0xFF10] = g_ioMem[addr];
+			}
+	}
+
+	// Reapply wave RAM
+	memcpy(&state.apu.regs[0x20], &g_ioMem[0x90], 0x10);
+	memcpy(&state.apu.regs[0x30], &g_ioMem[0x90], 0x10);
 
 	// PCM
 	pcm[0].which = 0;
 	pcm[1].which = 1;
 	apply_filtering();
 
-	// APU
-	//if ( !gb_apu )
-	{
-		//reset_apu();
-		stereo_buffer.clear();
-	}
-
 	// Volume Level
-	apply_muting(gba);
-	apply_volume(gba);
+	gb_apu.load_state(state.apu);
+	write_SGCNT0_H(READ16LE(&g_ioMem[SGCNT0_H]) & 0x770F);
+	apply_muting();
+	apply_volume();
 }
 
-#ifndef __LIBRETRO__
+#if 0
 void soundSaveGame(gzFile out)
 {
 	gb_apu.save_state( &state.apu );
@@ -844,7 +897,7 @@ static void soundReadGameOld(GBASys &gba, gzFile in, int version)
 
 #include <stdio.h>
 
-void soundReadGame(GBASys &gba, gzFile in, int version)
+void soundReadGame(gzFile in, int version)
 {
 	// Prepare APU and default state
 	reset_apu();
@@ -856,13 +909,13 @@ void soundReadGame(GBASys &gba, gzFile in, int version)
 		soundReadGameOld(gba, in, version);
 
 	gb_apu.load_state(state.apu);
-	write_SGCNT0_H(gba, READ16LE( &g_ioMem [SGCNT0_H] ) & 0x770F);
+	write_SGCNT0_H(READ16LE(&g_ioMem[SGCNT0_H]) & 0x770F);
 
-	apply_muting(gba);
+	apply_muting();
 }
 #endif // !__LIBRETRO__
 
-
+#if 1
 void soundSaveGame(uint8_t*& out)
 {
     gb_apu.save_state(&state.apu);
@@ -882,7 +935,8 @@ void soundReadGame(GBASys &gba, const uint8_t*& in)
     utilReadDataMem(in, gba_state);
 
     gb_apu.load_state(state.apu);
-    write_SGCNT0_H(gba, READ16LE(&g_ioMem[SGCNT0_H]) & 0x770F);
+    write_SGCNT0_H(READ16LE(&g_ioMem[SGCNT0_H]) & 0x770F);
 
-    apply_muting(gba);
+    apply_muting();
 }
+#endif // __LIBRETRO__

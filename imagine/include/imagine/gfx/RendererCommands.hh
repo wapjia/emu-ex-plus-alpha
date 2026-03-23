@@ -24,8 +24,10 @@
 
 #include <imagine/gfx/SyncFence.hh>
 #include <imagine/util/ranges.hh>
+#ifndef IG_USE_MODULE_STD
 #include <span>
 #include <chrono>
+#endif
 
 namespace IG
 {

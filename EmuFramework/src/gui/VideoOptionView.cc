@@ -15,22 +15,16 @@
 
 #include <emuframework/VideoOptionView.hh>
 #include <emuframework/EmuApp.hh>
-#include <emuframework/EmuVideoLayer.hh>
-#include <emuframework/EmuVideo.hh>
-#include <emuframework/VideoImageEffect.hh>
-#include <emuframework/EmuViewController.hh>
 #include <emuframework/viewUtils.hh>
 #include "PlaceVideoView.hh"
-#include <imagine/base/ApplicationContext.hh>
-#include <format>
-#include <imagine/logger/logger.h>
+import imagine;
 
 namespace EmuEx
 {
 
 [[maybe_unused]] constexpr SystemLogger log{"VideoOptionView"};
 
-static const char *autoWindowPixelFormatStr(IG::ApplicationContext ctx)
+static const char *autoWindowPixelFormatStr(ApplicationContext ctx)
 {
 	return ctx.defaultWindowPixelFormat() == PixelFmtRGB565 ? "RGB565" : "RGBA8888";
 }
@@ -83,30 +77,31 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 	{
 		[&]()
 		{
-			StaticArrayList<TextMenuItem, MAX_ASPECT_RATIO_ITEMS> aspectRatioItem;
-			for(const auto &i : EmuSystem::aspectRatioInfos())
+			StaticArrayList<TextMenuItem, maxAspectRatioItems> aspectRatioItems;
+			aspectRatioItems.emplace_back(AppMeta::aspectRatioInfo.name, attach, [this](TextMenuItem& item)
 			{
-				aspectRatioItem.emplace_back(i.name, attach, [this](TextMenuItem &item)
-				{
-					app().setVideoAspectRatio(std::bit_cast<float>(item.id));
-				}, MenuItem::Config{.id = std::bit_cast<MenuId>(i.aspect.ratio<float>())});
-			}
-			if(EmuSystem::hasRectangularPixels)
+				app().setVideoAspectRatio(std::bit_cast<float>(item.id));
+			}, MenuItem::Config{.id = std::bit_cast<MenuId>(AppMeta::aspectRatioInfo.aspect.ratio<float>())});
+			aspectRatioItems.emplace_back("1:1", attach, [this]()
 			{
-				aspectRatioItem.emplace_back("正方形像素", attach, [this]()
+				app().setVideoAspectRatio(1);
+			}, MenuItem::Config{.id = std::bit_cast<MenuId>(1.f)});
+			if(AppMeta::hasRectangularPixels)
+			{
+				aspectRatioItems.emplace_back("正方形像素", attach, [this]()
 				{
 					app().setVideoAspectRatio(-1);
 				}, MenuItem::Config{.id = std::bit_cast<MenuId>(-1.f)});
 			}
-			aspectRatioItem.emplace_back("填充屏幕", attach, [this]()
+			aspectRatioItems.emplace_back("填充屏幕", attach, [this]()
 			{
 				app().setVideoAspectRatio(0);
 			}, MenuItem::Config{.id = 0});
-			aspectRatioItem.emplace_back("自定义", attach, [this](const Input::Event &e)
+			aspectRatioItems.emplace_back("自定义", attach, [this](const Input::Event &e)
 			{
 				pushAndShowNewCollectValueInputView<std::pair<float, float>>(attachParams(), e,
 					"输入整数或小数", "",
-					[this](CollectTextInputView &, auto val)
+					[this](CollectTextInputView&, auto val)
 					{
 						float ratio = val.first / val.second;
 						if(app().setVideoAspectRatio(ratio))
@@ -123,7 +118,7 @@ VideoOptionView::VideoOptionView(ViewAttachParams attach, EmuVideoLayer &videoLa
 					});
 				return false;
 			}, MenuItem::Config{.id = defaultMenuId});
-			return aspectRatioItem;
+			return aspectRatioItems;
 		}()
 	},
 	aspectRatio
@@ -600,7 +595,7 @@ TextMenuItem::SelectDelegate VideoOptionView::setVideoBrightnessCustomDel(ImageC
 							case ImageChannel::Green: return green;
 							case ImageChannel::Blue: return blue;
 						}
-						bug_unreachable("invalid ImageChannel");
+						unreachable();
 					}().setSelected(MenuId{val}, *this);
 				dismissPrevious();
 				return true;

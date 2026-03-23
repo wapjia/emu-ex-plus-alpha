@@ -16,9 +16,15 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/AppKeyCode.hh>
+#include <imagine/config/macros.h>
+#ifdef IG_USE_MODULES
+import imagine;
+import std;
+#else
 #include <imagine/input/inputDefs.hh>
 #include <imagine/input/bluetoothInputDefs.hh>
 #include <ranges>
+#endif
 
 namespace EmuEx
 {
@@ -31,10 +37,10 @@ constexpr Input::Key genericGamepadKeycodeToPS3HID(Input::Key k)
 	using namespace Input;
 	switch(k)
 	{
-		case Keycode::GAME_A: return Keycode::PS3::CROSS;
-		case Keycode::GAME_B: return Keycode::PS3::CIRCLE;
-		case Keycode::GAME_X: return Keycode::PS3::SQUARE;
-		case Keycode::GAME_Y: return Keycode::PS3::TRIANGLE;
+		case Keycode::GAME_A: return PS3Key::CROSS;
+		case Keycode::GAME_B: return PS3Key::CIRCLE;
+		case Keycode::GAME_X: return PS3Key::SQUARE;
+		case Keycode::GAME_Y: return PS3Key::TRIANGLE;
 		default: return k;
 	}
 }
@@ -44,8 +50,8 @@ constexpr Input::Key genericGamepadKeycodeToOuya(Input::Key k)
 	using namespace Input;
 	switch(k)
 	{
-		case Keycode::GAME_SELECT: return Keycode::Ouya::L3;
-		case Keycode::GAME_START:  return Keycode::Ouya::R3;
+		case Keycode::GAME_SELECT: return OuyaKey::L3;
+		case Keycode::GAME_START:  return OuyaKey::R3;
 		default: return k;
 	}
 }
@@ -57,10 +63,10 @@ constexpr Input::Key genericGamepadKeycodeToXperiaPlay(Input::Key k)
 	using namespace Input;
 	switch(k)
 	{
-		case Keycode::GAME_A: return Keycode::XperiaPlay::CROSS;
-		case Keycode::GAME_B: return Keycode::XperiaPlay::CIRCLE;
-		case Keycode::GAME_X: return Keycode::XperiaPlay::SQUARE;
-		case Keycode::GAME_Y: return Keycode::XperiaPlay::TRIANGLE;
+		case Keycode::GAME_A: return XperiaPlayKey::CROSS;
+		case Keycode::GAME_B: return XperiaPlayKey::CIRCLE;
+		case Keycode::GAME_X: return XperiaPlayKey::SQUARE;
+		case Keycode::GAME_Y: return XperiaPlayKey::TRIANGLE;
 		case Keycode::GAME_MODE: return Keycode::MENU;
 		default: return k;
 	}
@@ -73,14 +79,14 @@ constexpr Input::Key genericGamepadKeycodeToPandora(Input::Key k)
 	using namespace Input;
 	switch(k)
 	{
-		case Keycode::GAME_A: return Keycode::Pandora::X;
-		case Keycode::GAME_B: return Keycode::Pandora::B;
-		case Keycode::GAME_X: return Keycode::Pandora::A;
-		case Keycode::GAME_Y: return Keycode::Pandora::Y;
-		case Keycode::GAME_SELECT: return Keycode::Pandora::SELECT;
-		case Keycode::GAME_START: return Keycode::Pandora::START;
-		case Keycode::GAME_L1: return Keycode::Pandora::L;
-		case Keycode::GAME_R1: return Keycode::Pandora::R;
+		case Keycode::GAME_A: return PandoraKey::X;
+		case Keycode::GAME_B: return PandoraKey::B;
+		case Keycode::GAME_X: return PandoraKey::A;
+		case Keycode::GAME_Y: return PandoraKey::Y;
+		case Keycode::GAME_SELECT: return PandoraKey::SELECT;
+		case Keycode::GAME_START: return PandoraKey::START;
+		case Keycode::GAME_L1: return PandoraKey::L;
+		case Keycode::GAME_R1: return PandoraKey::R;
 		default: return k;
 	}
 }
@@ -130,7 +136,7 @@ template<const auto &pcKeyboardBaseMap, const auto &genericGamepadBaseMap, const
 	const auto &gamepadAppKeyCodeMap = genericGamepadAppKeyCodeMap>
 constexpr std::span<const KeyConfigDesc> genericKeyConfigs()
 {
-	using namespace IG::Input;
+	using namespace Input;
 
 	static constexpr auto pcKeyboardMap = concatToArrayNow<genericKeyboardAppKeyCodeMap, pcKeyboardBaseMap>;
 

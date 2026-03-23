@@ -19,9 +19,12 @@
 #ifdef __ANDROID__
 #include <imagine/io/AAssetIO.hh>
 #endif
+#include <imagine/fs/FSDefs.hh>
 #include <imagine/util/string/CStringView.hh>
+#ifndef IG_USE_MODULE_STD
 #include <span>
 #include <utility>
+#endif
 
 namespace IG
 {
@@ -49,15 +52,10 @@ class IO;
 
 }
 
-namespace IG::FS
-{
-class PathString;
-}
-
 namespace IG::FileUtils
 {
 
-constexpr size_t defaultBufferReadSizeLimit = 0x2000000; // 32 Megabytes
+inline constexpr size_t defaultBufferReadSizeLimit = 0x2000000; // 32 Megabytes
 
 ssize_t writeToPath(CStringView path, std::span<const unsigned char> src);
 ssize_t writeToPath(CStringView path, IO &io);

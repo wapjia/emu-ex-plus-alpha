@@ -100,6 +100,6 @@ ifdef android_metadata_appExtStorage
  android_gen_metadata_args += --app-ext-storage
 endif
 
-ifeq ($(findstring O_RELEASE=1,$(android_makefileOpts)),)
+ifneq ($(CONFIG),Release)
  android_gen_metadata_args += --debug
 endif

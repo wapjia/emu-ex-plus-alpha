@@ -15,10 +15,13 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <zlib.h>
+#ifndef IG_USE_MODULE_STD
 #include <span>
 #include <bit>
 #include <cstdint>
-#include <zlib.h>
+#endif
+
 
 namespace IG
 {

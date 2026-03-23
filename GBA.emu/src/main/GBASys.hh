@@ -4,7 +4,7 @@
 #include <core/base/port.h>
 #include <core/gba/gba.h>
 #include <imagine/util/used.hh>
-#include <imagine/util/utility.h>
+#include <imagine/util/utility.hh>
 #include <imagine/util/memory/Buffer.hh>
 
 using MixColorType = uint16_t;
@@ -101,7 +101,13 @@ struct GBAMem
 			uint16_t TM3D; // TM3CNT_L
 			uint16_t TM3CNT; // TM3CNT_H
 			// 0x110
-			uint8_t unused110[0xF0];
+			uint8_t unused110[0x20];
+			// 0x130
+			uint16_t P1;
+			uint8_t unused132[0xE];
+			// 0x140
+			uint8_t unused140[0xC0];
+			// 0x200
 			uint16_t IE;
 			uint16_t IF;
 			uint16_t WAITCNT;
@@ -182,7 +188,6 @@ struct GBAMem
 			COLY     = 0x0000;
 		}
 
-		constexpr auto& operator[] (this auto&& self, int idx) { return self.b[idx]; }
 		constexpr operator uint8_t*() { return b; }
 	};
 
@@ -199,8 +204,9 @@ struct GBADMA
 	int cpuDmaTicksToUpdate{};
 	int cpuDmaCount{};
 	bool cpuDmaRunning{};
-	uint32_t cpuDmaLast{};
 	uint32_t cpuDmaPC{};
+	uint32_t cpuDmaLatchData[4]{};
+	uint32_t cpuDmaBusValue{};
 
 	uint32_t dma0Source{};
 	uint32_t dma0Dest{};
@@ -254,6 +260,12 @@ struct GBATimers
 
 void mode0RenderLine(MixColorType *, GBALCD &lcd, const GBAMem::IoMem &ioMem);
 
+union SystemColorMap
+{
+	uint32_t map32[0x10000];
+	uint16_t map16[0x10000];
+};
+
 struct GBALCD
 {
 	uint32_t line0[240];
@@ -275,15 +287,13 @@ struct GBALCD
 	bool windowOn{};
 	MixColorType *lineMix{};
 	unsigned layerEnable{};
-	int gfxBG2Changed{};
-	int gfxBG3Changed{};
 	int gfxBG2X{};
 	int gfxBG2Y{};
 	int gfxBG3X{};
 	int gfxBG3Y{};
 	int layerEnableDelay{};
 	int lcdTicks{};
-	uint16_t gfxLastVCOUNT{};
+	SystemColorMap systemColorMap;
 
 	void registerRamReset(uint32_t flags)
 	{
@@ -317,17 +327,14 @@ struct GBALCD
 	}
 };
 
-const char *dispModeName(GBALCD::RenderLineFunc);
-
 struct ARM7TDMI;
 
-static inline uint32_t CPUReadByteQuick(ARM7TDMI &cpu, uint32_t addr);
+const char *dispModeName(GBALCD::RenderLineFunc);
+inline uint32_t CPUReadByteQuick(ARM7TDMI&, uint32_t addr);
+inline uint32_t CPUReadHalfWordQuick(ARM7TDMI&, uint32_t addr);
+inline uint32_t CPUReadMemoryQuick(ARM7TDMI&, uint32_t addr);
 
-static inline uint32_t CPUReadHalfWordQuick(ARM7TDMI &cpu, uint32_t addr);
-
-static inline uint32_t CPUReadMemoryQuick(ARM7TDMI &cpu, uint32_t addr);
-
-constexpr unsigned cpuBitsSet[256] =
+inline constexpr uint8_t cpuBitsSet[256] =
 {
 		0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
 		1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
@@ -367,6 +374,8 @@ typedef struct GBAMatrix {
     uint32_t mappings[GBA_MATRIX_MAPPINGS_MAX]{};
 } GBAMatrix_t;
 
+inline constexpr bool CONFIG_TRIGGER_ARM_STATE_EVENT = 0;
+
 struct ARM7TDMI
 {
 	constexpr ARM7TDMI(GBASys *gba): gba(gba) {}
@@ -390,14 +399,10 @@ struct ARM7TDMI
 	ConditionalMember<USE_SWITICKS, int> SWITicks{};
 	ConditionalMember<USE_IRQTICKS, int> IRQTicks{};
 #ifdef VBAM_USE_CPU_PREFETCH
-private:
 	uint32_t cpuPrefetch[2]{};
 #endif
 public:
 	uint32_t busPrefetchCount{};
-	/*uint16_t IE = 0;
-	uint16_t IF = 0;
-	uint16_t IME = 0;*/
 #ifdef VBAM_USE_DELAYED_CPU_FLAGS
 	uint32_t lastArithmeticRes{1};
 #else
@@ -411,8 +416,6 @@ public:
 	bool armState{true};
 	bool armIrqEnable{true};
 	bool holdState{};
-	//uint8_t cpuBitsSet[256];
-	//uint8_t cpuLowestBitSet[256];
 	GBASys *gba;
 	unsigned memoryWait[16]
 	  {0, 0, 2, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 0};
@@ -665,6 +668,29 @@ struct GBASys
 
 extern GBASys gGba;
 
+namespace IG
+{
+class ApplicationContext;
+}
+
+void CPULoop(GBASys&, EmuEx::EmuSystemTaskContext, EmuEx::EmuVideo*, EmuEx::EmuAudio*);
+void CPUCleanUp();
+bool CPUReadState(IG::ApplicationContext, GBASys&, const char*);
+bool CPUWriteState(IG::ApplicationContext, GBASys&, const char*);
+void setSaveType(int type, int size);
+const char* saveTypeStr(int type, int size);
+bool saveMemoryHasContent();
+int soundVolumeAsInt(GBASys&, bool gbVol);
+int soundFilteringAsInt(GBASys&);
+
+struct CheatsData;
+void cheatsEnable(CheatsData&);
+void cheatsDisable(ARM7TDMI&, CheatsData&);
+
+bool patchApplyIPS(FILE* f, uint8_t** rom, int* size);
+bool patchApplyUPS(FILE* f, uint8_t** rom, int* size);
+bool patchApplyPPF(FILE* f, uint8_t** rom, int* size);
+
 uint32_t biosRead8(ARM7TDMI &cpu, uint32_t address);
 uint32_t biosRead16(ARM7TDMI &cpu, uint32_t address);
 uint32_t biosRead32(ARM7TDMI &cpu, uint32_t address);
@@ -683,18 +709,22 @@ uint32_t eepromRead32(ARM7TDMI &cpu, uint32_t address);
 
 uint32_t flashRead32(ARM7TDMI &cpu, uint32_t address);
 
-static inline uint32_t CPUReadByteQuick(ARM7TDMI &cpu, uint32_t addr)
-	{ return cpu.map[addr>>24].address[addr & cpu.map[addr>>24].mask]; }
+inline uint32_t CPUReadByteQuick(ARM7TDMI &cpu, uint32_t addr)
+	{ return cpu.map[addr >> 24].address[addr & cpu.map[addr >> 24].mask]; }
 
-static inline uint32_t CPUReadHalfWordQuick(ARM7TDMI &cpu, uint32_t addr)
-	{ return READ16LE(((uint16_t*)&cpu.map[addr>>24].address[addr & cpu.map[addr>>24].mask])); }
+inline uint32_t CPUReadHalfWordQuick(ARM7TDMI &cpu, uint32_t addr)
+	{ return READ16LE(((uint16_t*)&cpu.map[addr >> 24].address[addr & cpu.map[addr >> 24].mask])); }
 
-static inline uint32_t CPUReadMemoryQuick(ARM7TDMI &cpu, uint32_t addr)
-	{ return READ32LE(((uint32_t*)&cpu.map[addr>>24].address[addr & cpu.map[addr>>24].mask])); }
+inline uint32_t CPUReadMemoryQuick(ARM7TDMI &cpu, uint32_t addr)
+	{ return READ32LE(((uint32_t*)&cpu.map[addr >> 24].address[addr & cpu.map[addr >> 24].mask])); }
 
 inline void blankLine(MixColorType *lineMix, GBALCD &lcd, const GBAMem::IoMem &ioMem)
 {
 	for (int x = 0; x < 240; x++)
 		lineMix[x] = 0x7fff;
-	lcd.gfxLastVCOUNT = ioMem.VCOUNT;
+}
+
+inline void UPDATE_REG(GBASys& gba, auto address, auto value)
+{
+  WRITE16LE(&gba.mem.ioMem[address], value);
 }

@@ -16,10 +16,9 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/EmuApp.hh>
-#include <emuframework/EmuInput.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/gui/TextTableView.hh>
-#include <imagine/input/inputDefs.hh>
-#include <string_view>
+#endif
 
 namespace EmuEx
 {

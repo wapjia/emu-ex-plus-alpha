@@ -22,10 +22,10 @@ void* operator new (std::size_t size) { return std::malloc(size); }
 
 void* operator new[] (std::size_t size) { return std::malloc(size); }
 
-void operator delete (void *o) noexcept { std::free(o); }
+void operator delete (void* o) noexcept { std::free(o); }
 
-void operator delete[] (void *o) noexcept { std::free(o); }
+void operator delete[] (void* o) noexcept { std::free(o); }
 
-void operator delete (void *o, std::size_t) noexcept { std::free(o); }
+void operator delete (void* o, std::size_t) noexcept { std::free(o); }
 
-void operator delete[] (void *o, std::size_t) noexcept { std::free(o); }
+void operator delete[] (void* o, std::size_t) noexcept { std::free(o); }

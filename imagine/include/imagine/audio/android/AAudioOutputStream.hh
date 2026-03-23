@@ -18,21 +18,17 @@
 #include <imagine/audio/defs.hh>
 #include <imagine/audio/Format.hh>
 #include <imagine/base/CustomEvent.hh>
-
-typedef struct AAudioStreamStruct AAudioStream;
-typedef struct AAudioStreamBuilderStruct AAudioStreamBuilder;
+#include <aaudio/AAudio.h>
 
 namespace IG::Audio
 {
 
-class Manager;
-
 class AAudioOutputStream
 {
 public:
-	AAudioOutputStream(const Manager &);
+	AAudioOutputStream(const Manager&);
 	~AAudioOutputStream();
-	AAudioOutputStream &operator=(AAudioOutputStream &&) = delete;
+	AAudioOutputStream& operator=(AAudioOutputStream&&) = delete;
 	StreamError open(OutputStreamConfig config);
 	void play();
 	void pause();

@@ -13,20 +13,17 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "QuartzPNG"
-
 #include <imagine/data-type/image/PixmapReader.hh>
+#include <imagine/data-type/image/PixmapWriter.hh>
 #include <imagine/data-type/image/PixmapSource.hh>
-#include <imagine/pixmap/Pixmap.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/fs/FS.hh>
+#include <imagine/util/format.hh>
 #include <CoreGraphics/CGBitmapContext.h>
 #include <CoreGraphics/CGContext.h>
-#include <cassert>
 
 namespace IG::Data
 {
+
+static SystemLogger log{"Quartz2dData"};
 
 int Quartz2dImage::width()
 {
@@ -56,14 +53,14 @@ Quartz2dImage::Quartz2dImage(CStringView name)
 	CGDataProviderRef dataProvider = CGDataProviderCreateWithFilename(name);
 	if(!dataProvider)
 	{
-		logErr("error opening file: %s", name.data());
+		log.error("error opening file:{}", name);
 		return;
 	}
 	auto imgRef = CGImageCreateWithPNGDataProvider(dataProvider, nullptr, 0, kCGRenderingIntentDefault);
 	CGDataProviderRelease(dataProvider);
 	if(!imgRef)
 	{
-		logErr("error creating CGImage from file: %s", name.data());
+		log.error("error creating CGImage from file:{}", name);
 		return;
 	}
 	img.reset(imgRef);
@@ -78,7 +75,7 @@ bool Quartz2dImage::hasAlphaChannel()
 
 void Quartz2dImage::readImage(MutablePixmapView dest)
 {
-	assert(dest.format() == pixelFormat());
+	assume(dest.format() == pixelFormat());
 	int height = this->height();
 	int width = this->width();
 	auto colorSpace = isGrayscale() ? CGColorSpaceCreateDeviceGray() : CGColorSpaceCreateDeviceRGB();

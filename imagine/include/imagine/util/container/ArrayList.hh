@@ -15,12 +15,14 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/util/utility.h>
-#include <cassert>
+#include <imagine/util/utility.hh>
+#ifndef IG_USE_MODULE_STD
 #include <cstddef>
 #include <iterator>
 #include <span>
 #include <algorithm>
+#include <utility>
+#endif
 
 namespace IG
 {
@@ -56,7 +58,7 @@ public:
 
 	constexpr void resize(size_t size)
 	{
-		assert(size <= max_size());
+		assume(size <= max_size());
 		size_= size;
 	}
 
@@ -77,7 +79,7 @@ public:
 
 	constexpr T &at(size_t idx)
 	{
-		assert(idx < size());
+		assume(idx < size());
 		return (*this)[idx];
 	}
 
@@ -93,20 +95,20 @@ public:
 
 	constexpr void pop_back()
 	{
-		assert(size_);
+		assume(size_);
 		size_--;
 	}
 
 	constexpr void push_back(const T &d)
 	{
-		assert(size_ < max_size());
+		assume(size_ < max_size());
 		data()[size_] = d;
 		size_++;
 	}
 
 	constexpr T &emplace_back(auto &&...args)
 	{
-		assert(size_ < max_size());
+		assume(size_ < max_size());
 		auto newAddr = &data()[size_];
 		new(newAddr) T(IG_forward(args)...);
 		size_++;
@@ -115,7 +117,7 @@ public:
 
 	constexpr iterator insert(const_iterator position, const T& val)
 	{
-		assert(size_ < max_size());
+		assume(size_ < max_size());
 		iterator p = data() + (position - begin());
 		if(p == end())
 		{
@@ -170,7 +172,7 @@ private:
 };
 
 template<class T, size_t SIZE>
-static constexpr typename StaticArrayList<T,SIZE>::size_type
+inline constexpr typename StaticArrayList<T,SIZE>::size_type
 	erase(StaticArrayList<T,SIZE>& c, const auto &val)
 {
 	auto it = std::remove(c.begin(), c.end(), val);
@@ -180,7 +182,7 @@ static constexpr typename StaticArrayList<T,SIZE>::size_type
 }
 
 template<class T, size_t SIZE>
-static constexpr typename StaticArrayList<T,SIZE>::size_type
+inline constexpr typename StaticArrayList<T,SIZE>::size_type
 	erase_if(StaticArrayList<T,SIZE>& c, auto pred)
 {
 	auto it = std::remove_if(c.begin(), c.end(), pred);

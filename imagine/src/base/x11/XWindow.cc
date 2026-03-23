@@ -13,21 +13,20 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "Window"
-#include <imagine/base/Screen.hh>
 #include <imagine/base/Window.hh>
 #include <imagine/base/Application.hh>
 #include <imagine/pixmap/PixelFormat.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/util/algorithm.h>
-#include "xlibutils.h"
+#include <imagine/logger/SystemLogger.hh>
+#include <cstring>
 #include <xcb/xcb_icccm.h>
 #include <xcb/xfixes.h>
+#include "macros.h"
+import xutils;
 
 namespace IG
 {
 
-constexpr SystemLogger log{"X11Win"};
+static SystemLogger log{"X11Win"};
 
 void Window::setAcceptDnd(bool on)
 {
@@ -39,7 +38,7 @@ void Window::setAcceptDnd(bool on)
 void Window::setTitle(const char *name)
 {
 	xcb_change_property(xConn, XCB_PROP_MODE_REPLACE, xWin, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8,
-		strlen(name), name);
+		std::strlen(name), name);
 	xcb_flush(xConn);
 }
 
@@ -57,7 +56,7 @@ Point2D<float> Window::pixelSizeAsMM(Point2D<int> size)
 {
 	auto &s = *screen();
 	auto [xMM, yMM] = s.mmSize();
-	assert(xMM);
+	assume(xMM);
 	return {xMM * ((float)size.x/(float)s.width()), yMM * ((float)size.y/(float)s.height())};
 }
 
@@ -107,8 +106,8 @@ static WindowRect makeWindowRectWithConfig(xcb_connection_t& conn, const WindowC
 	{
 		winRect.y2 = workAreaRect.ySize();
 	}
-	assert(winRect.xSize() > 0);
-	assert(winRect.ySize() > 0);
+	assume(winRect.xSize() > 0);
+	assume(winRect.ySize() > 0);
 
 	// set window position
 	if(config.isDefaultPosition())
@@ -242,7 +241,7 @@ XWindow::~XWindow()
 
 void Window::show()
 {
-	assert(xWin);
+	assume(xWin);
 	xcb_map_window(xConn, xWin);
 	xcb_flush(xConn);
 	postDraw();
@@ -303,7 +302,7 @@ void Window::setCursorVisible(bool on)
 
 static void ewmhFullscreen(xcb_connection_t& conn, xcb_window_t win, int action)
 {
-	assert(action == _NET_WM_STATE_REMOVE || action == _NET_WM_STATE_ADD || action == _NET_WM_STATE_TOGGLE);
+	assume(action == _NET_WM_STATE_REMOVE || action == _NET_WM_STATE_ADD || action == _NET_WM_STATE_TOGGLE);
 	xcb_client_message_event_t xev{};
 	xev.response_type = XCB_CLIENT_MESSAGE;
 	xev.window = win;

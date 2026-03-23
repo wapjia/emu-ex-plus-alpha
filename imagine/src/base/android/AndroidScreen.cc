@@ -13,27 +13,24 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <unistd.h>
-#include <cerrno>
 #include <imagine/base/Screen.hh>
-#include <imagine/base/ApplicationContext.hh>
 #include <imagine/base/Application.hh>
-#include <imagine/time/Time.hh>
-#include <imagine/util/algorithm.h>
-#include <imagine/logger/logger.h>
-#include "android.hh"
-#include <imagine/base/SimpleFrameTimer.hh>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
+#include <unistd.h>
+#include <android/native_activity.h>
+import imagine.internal.android;
 
 namespace IG
 {
 
-constexpr SystemLogger log{"Screen"};
+static SystemLogger log{"Screen"};
 static JNI::InstMethod<void(jboolean)> jSetListener{};
 static JNI::InstMethod<void(jlong)> jEnumDisplays{};
 
 void AndroidApplication::initScreens(JNIEnv *env, jobject baseActivity, jclass baseActivityClass, int32_t androidSDK, ANativeActivity *nActivity)
 {
-	assert(!jEnumDisplays);
+	assume(!jEnumDisplays);
 	if(androidSDK >= 17)
 	{
 		JNI::InstMethod<jobject(jlong)> jDisplayListenerHelper{env, baseActivityClass, "displayListenerHelper", "(J)Lcom/imagine/DisplayListenerHelper;"};
@@ -114,8 +111,8 @@ void AndroidApplication::initScreens(JNIEnv *env, jobject baseActivity, jclass b
 AndroidScreen::AndroidScreen(ApplicationContext ctx, InitParams params)
 {
 	auto [env, aDisplay, metrics, id, refreshRate, presentationDeadline, rotation] = params;
-	assert(aDisplay);
-	assert(metrics);
+	assume(aDisplay);
+	assume(metrics);
 	this->aDisplay = {env, aDisplay};
 	bool isStraightRotation = true;
 	if(id == 0)
@@ -155,9 +152,9 @@ AndroidScreen::AndroidScreen(ApplicationContext ctx, InitParams params)
 	auto widthPixels = env->GetIntField(metrics, jWidthPixels);
 	auto heightPixels = env->GetIntField(metrics, jHeightPixels);
 	densityDPI_ = 160.*env->GetFloatField(metrics, jDensity);
-	assert(densityDPI_);
+	assume(densityDPI_);
 	scaledDensityDPI_ = 160.*env->GetFloatField(metrics, jScaledDensity);
-	assert(scaledDensityDPI_);
+	assume(scaledDensityDPI_);
 	log.info("screen with size:{}x{}, density DPI:{}, scaled density DPI:{}",
 		widthPixels, heightPixels, densityDPI_, scaledDensityDPI_);
 	if(Config::DEBUG_BUILD)

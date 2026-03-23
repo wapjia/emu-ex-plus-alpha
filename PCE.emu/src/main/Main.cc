@@ -13,68 +13,31 @@
 	You should have received a copy of the GNU General Public License
 	along with PCE.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "main"
-#include <emuframework/EmuSystemInlines.hh>
-#include <emuframework/EmuAppInlines.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/util/ScopeGuard.hh>
-#include <imagine/util/format.hh>
-#include <imagine/util/string.h>
+module;
+#include <mednafen/mednafen.h>
 #include <mednafen/cdrom/CDInterface.h>
 #include <mednafen/state-driver.h>
 #include <mednafen/hash/md5.h>
 #include <mednafen/MemoryStream.h>
+#include "mdfnDefs.hh"
 #include <pce/huc.h>
 #include <pce_fast/huc.h>
-#include <pce_fast/vdc.h>
-#include <mednafen-emuex/MDFNUtils.hh>
-#include <mednafen-emuex/ArchiveVFS.hh>
-#include <imagine/logger/logger.h>
+
+module system;
 
 namespace EmuEx
 {
 
-const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2025\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nMednafen Team\nmednafen.github.io";
-bool EmuSystem::hasRectangularPixels = true;
-bool EmuSystem::stateSizeChangesAtRuntime = true;
 constexpr double masterClockFrac = 21477272.727273 / 3.;
 constexpr FrameRate pceFrameRateWith262Lines{masterClockFrac / (455. * 262.)}; // ~60.05Hz
 constexpr FrameRate pceFrameRate{masterClockFrac / (455. * 263.)}; // ~59.82Hz
-bool EmuApp::needsGlobalInstance = true;
 
-PceApp::PceApp(ApplicationInitParams initParams, ApplicationContext &ctx):
-	EmuApp{initParams, ctx}, pceSystem{ctx} {}
-
-bool hasHuCardExtension(std::string_view name)
-{
-	return IG::endsWithAnyCaseless(name, ".pce", ".sgx");
-}
-
-static bool hasCDExtension(std::string_view name)
-{
-	return IG::endsWithAnyCaseless(name, ".toc", ".cue", ".ccd", ".chd");
-}
-
-static bool hasPCEWithCDExtension(std::string_view name)
-{
-	return hasHuCardExtension(name) || hasCDExtension(name);
-}
-
-const char *EmuSystem::shortSystemName() const
-{
-	return "PCE-TG16";
-}
-
-const char *EmuSystem::systemName() const
-{
-	return "PC Engine (TurboGrafx-16)";
-}
-
-EmuSystem::NameFilterFunc EmuSystem::defaultFsFilter = hasPCEWithCDExtension;
+extern "C++" std::string_view EmuSystem::shortSystemName() const { return "PCE-TG16"; }
+extern "C++" std::string_view EmuSystem::systemName() const { return "PC Engine (TurboGrafx-16)"; }
 
 void PceSystem::loadBackupMemory(EmuApp &)
 {
-	logMsg("loading backup memory");
+	log.info("loading backup memory");
 	if(isUsingAccurateCore())
 		MDFN_IEN_PCE::HuC_LoadNV();
 	else
@@ -85,7 +48,7 @@ void PceSystem::onFlushBackupMemory(EmuApp &, BackupMemoryDirtyFlags)
 {
 	if(!hasContent())
 		return;
-	logMsg("saving backup memory");
+	log.info("saving backup memory");
 	if(isUsingAccurateCore())
 		MDFN_IEN_PCE::HuC_SaveNV();
 	else
@@ -115,7 +78,7 @@ WSize PceSystem::multiresVideoBaseSize() const { return {512, 0}; }
 void PceSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDelegate)
 {
 	mdfnGameInfo = resolvedCore() == EmuCore::Accurate ? EmulatedPCE : EmulatedPCE_Fast;
-	logMsg("using emulator core module:%s", asModuleString(resolvedCore()).data());
+	log.info("using emulator core module:{}", asModuleString(resolvedCore()));
 	if(hasCDExtension(contentFileName()))
 	{
 		bool isArchive = std::holds_alternative<ArchiveIO>(io);
@@ -152,20 +115,20 @@ void PceSystem::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDelegat
 		EmuEx::loadContent(*this, mdfnGameInfo, io, maxRomSize);
 	}
 	//logMsg("%d input ports", MDFNGameInfo->InputInfo->InputPorts);
-	for(auto i : iotaCount(5))
+	for(auto i: iotaCount(5))
 	{
 		mdfnGameInfo.SetInput(i, "gamepad", (uint8*)&inputBuff[i]);
 	}
 	updatePixmap(mSurfacePix.format());
 }
 
-bool PceSystem::onVideoRenderFormatChange(EmuVideo &, IG::PixelFormat fmt)
+bool PceSystem::onVideoRenderFormatChange(EmuVideo &, PixelFormat fmt)
 {
 	updatePixmap(fmt);
 	return false;
 }
 
-void PceSystem::updatePixmap(IG::PixelFormat fmt)
+void PceSystem::updatePixmap(PixelFormat fmt)
 {
 	mSurfacePix = {{{mdfnGameInfo.fb_width, mdfnGameInfo.fb_height}, fmt}, pixBuff};
 	if(!hasContent())
@@ -188,7 +151,7 @@ void PceSystem::configAudioRate(FrameRate outputFrameRate, int outputRate)
 	auto currMixRate = isUsingAccurateCore() ? MDFN_IEN_PCE::GetSoundRate() : MDFN_IEN_PCE_FAST::GetSoundRate();
 	if(mixRate == currMixRate)
 		return;
-	logMsg("set sound mix rate:%.2f for %s video lines", mixRate, isUsing263Lines() ? "263" : "262");
+	log.info("set sound mix rate:{} for {} video lines", mixRate, isUsing263Lines() ? "263" : "262");
 	if(isUsingAccurateCore())
 		MDFN_IEN_PCE::SetSoundRate(mixRate);
 	else
@@ -197,7 +160,7 @@ void PceSystem::configAudioRate(FrameRate outputFrameRate, int outputRate)
 
 void PceSystem::runFrame(EmuSystemTaskContext taskCtx, EmuVideo *video, EmuAudio *audio)
 {
-	static constexpr size_t maxAudioFrames = 48000 / minFrameRate;
+	static constexpr size_t maxAudioFrames = 48000 / AppMeta::minFrameRate;
 	static constexpr size_t maxLineWidths = 264;
 	EmuEx::runFrame(*this, mdfnGameInfo, taskCtx, video, mSurfacePix, audio, maxAudioFrames, maxLineWidths);
 	if(configuredFor263Lines != isUsing263Lines()) [[unlikely]]
@@ -208,7 +171,7 @@ void PceSystem::runFrame(EmuSystemTaskContext taskCtx, EmuVideo *video, EmuAudio
 
 void PceSystem::reset(EmuApp &, ResetMode mode)
 {
-	assert(hasContent());
+	assume(hasContent());
 	mdfnGameInfo.DoSimpleCommand(MDFN_MSC_RESET);
 }
 
@@ -220,27 +183,17 @@ double PceSystem::videoAspectRatioScale() const
 {
 	double baseLines = 224.;
 	double lineCount = (visibleLines.last - visibleLines.first) + 1;
-	assumeExpr(lineCount >= 0);
+	assume(lineCount >= 0);
 	double lineAspectScaler = baseLines / lineCount;
 	return correctLineAspect ? lineAspectScaler : 1.;
 }
 
-void EmuApp::onCustomizeNavView(EmuApp::NavView &view)
-{
-	const Gfx::LGradientStopDesc navViewGrad[] =
-	{
-		{ .0, Gfx::PackedColor::format.build((255./255.) * .4, (104./255.) * .4, (31./255.) * .4, 1.) },
-		{ .3, Gfx::PackedColor::format.build((255./255.) * .4, (104./255.) * .4, (31./255.) * .4, 1.) },
-		{ .97, Gfx::PackedColor::format.build((85./255.) * .4, (35./255.) * .4, (10./255.) * .4, 1.) },
-		{ 1., view.separatorColor() },
-	};
-	view.setBackgroundGradient(navViewGrad);
 }
 
-}
-
-namespace Mednafen
+extern "C++" namespace Mednafen
 {
+
+using namespace IG;
 
 void MDFN_MidSync(EmulateSpecStruct *espec, const unsigned flags)
 {
@@ -250,7 +203,7 @@ void MDFN_MidSync(EmulateSpecStruct *espec, const unsigned flags)
 }
 
 template <class Pixel>
-static void renderMultiresOutput(EmulateSpecStruct spec, IG::PixmapView srcPix, int multiResOutputWidth)
+static void renderMultiresOutput(EmulateSpecStruct spec, PixmapView srcPix, int multiResOutputWidth)
 {
 	int pixHeight = spec.DisplayRect.h;
 	auto img = spec.video->startFrameWithFormat(spec.taskCtx, {{multiResOutputWidth, pixHeight}, srcPix.format()});
@@ -259,17 +212,17 @@ static void renderMultiresOutput(EmulateSpecStruct spec, IG::PixmapView srcPix, 
 	if(multiResOutputWidth == 1024)
 	{
 		// scale 256x4, 341x3 + 1x4, 512x2
-		for(auto h : IG::iotaCount(pixHeight))
+		for(auto h: iotaCount(pixHeight))
 		{
 			auto srcPixAddr = (Pixel*)&srcPix[0, h];
 			int width = lineWidth[h];
 			switch(width)
 			{
 				default:
-					bug_unreachable("width == %d", width);
+					unreachable();
 				case 256:
 				{
-					for([[maybe_unused]] auto w : IG::iotaCount(256))
+					for([[maybe_unused]] auto w: iotaCount(256))
 					{
 						*destPixAddr++ = *srcPixAddr;
 						*destPixAddr++ = *srcPixAddr;
@@ -280,7 +233,7 @@ static void renderMultiresOutput(EmulateSpecStruct spec, IG::PixmapView srcPix, 
 				}
 				case 341:
 				{
-					for([[maybe_unused]] auto w : IG::iotaCount(340))
+					for([[maybe_unused]] auto w: iotaCount(340))
 					{
 						*destPixAddr++ = *srcPixAddr;
 						*destPixAddr++ = *srcPixAddr;
@@ -294,7 +247,7 @@ static void renderMultiresOutput(EmulateSpecStruct spec, IG::PixmapView srcPix, 
 				}
 				case 512:
 				{
-					for([[maybe_unused]] auto w : IG::iotaCount(512))
+					for([[maybe_unused]] auto w: iotaCount(512))
 					{
 						*destPixAddr++ = *srcPixAddr;
 						*destPixAddr++ = *srcPixAddr++;
@@ -307,17 +260,17 @@ static void renderMultiresOutput(EmulateSpecStruct spec, IG::PixmapView srcPix, 
 	}
 	else // 512 width
 	{
-		for(auto h : IG::iotaCount(pixHeight))
+		for(auto h: iotaCount(pixHeight))
 		{
 			auto srcPixAddr = (Pixel*)&srcPix[0, h];
 			int width = lineWidth[h];
 			switch(width)
 			{
 				default:
-					bug_unreachable("width == %d", width);
+					unreachable();
 				case 256:
 				{
-					for([[maybe_unused]] auto w : IG::iotaCount(256))
+					for([[maybe_unused]] auto w: iotaCount(256))
 					{
 						*destPixAddr++ = *srcPixAddr;
 						*destPixAddr++ = *srcPixAddr++;
@@ -348,7 +301,7 @@ void MDFND_commitVideoFrame(EmulateSpecStruct *espec)
 	for(int i = spec.DisplayRect.y; i < spec.DisplayRect.y + pixHeight; i++)
 	{
 		int w = spec.LineWidths[i];
-		assumeExpr(w == 256 || w == 341 || w == 512);
+		assume(w == 256 || w == 341 || w == 512);
 		switch(w)
 		{
 			case 256: uses256 = true; break;
@@ -378,12 +331,12 @@ void MDFND_commitVideoFrame(EmulateSpecStruct *espec)
 			multiResOutputWidth = 1024;
 		}
 	}
-	IG::PixmapView srcPix = static_cast<EmuEx::PceSystem&>(*espec->sys).mSurfacePix.subView(
+	PixmapView srcPix = static_cast<EmuEx::PceSystem&>(*espec->sys).mSurfacePix.subView(
 		{spec.DisplayRect.x, spec.DisplayRect.y},
 		{pixWidth, pixHeight});
 	if(multiResOutputWidth)
 	{
-		if(srcPix.format() == IG::PixelFmtRGB565)
+		if(srcPix.format() == PixelFmtRGB565)
 			renderMultiresOutput<uint16_t>(spec, srcPix, multiResOutputWidth);
 		else
 			renderMultiresOutput<uint32_t>(spec, srcPix, multiResOutputWidth);
@@ -396,7 +349,7 @@ void MDFND_commitVideoFrame(EmulateSpecStruct *espec)
 
 }
 
-namespace MDFN_IEN_PCE_FAST
+extern "C++" namespace MDFN_IEN_PCE_FAST
 {
 // dummy HES functions
 int PCE_HESLoad(const uint8 *buf, uint32 size) { return 0; };

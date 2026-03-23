@@ -17,9 +17,10 @@
 
 #include <imagine/config/defs.hh>
 #include <imagine/base/BaseWindow.hh>
+#include <xcb/xcb.h>
+#ifndef IG_USE_MODULE_STD
 #include <utility>
-
-struct xcb_connection_t;
+#endif
 
 namespace IG
 {

@@ -24,11 +24,11 @@
 #include "shared.h"
 #include "vdp_render.h"
 #include "hvc.h"
-#include <imagine/logger/logger.h>
-#include <imagine/pixmap/Pixmap.hh>
 #ifndef NO_SCD
 #include <scd/scd.h>
 #endif
+
+import imagine;
 
 /* Mark a pattern as dirty */
 #define MARK_BG_DIRTY(addr)                         \

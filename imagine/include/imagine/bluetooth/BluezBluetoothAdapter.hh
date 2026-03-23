@@ -16,14 +16,14 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/bluetooth/defs.hh>
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/l2cap.h>
 #include <imagine/base/EventLoop.hh>
 #include <imagine/base/Pipe.hh>
 #include <imagine/base/ApplicationContext.hh>
 #ifdef CONFIG_BLUETOOTH_SERVER
 #include <imagine/util/container/ArrayList.hh>
 #endif
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
 
 namespace IG
 {

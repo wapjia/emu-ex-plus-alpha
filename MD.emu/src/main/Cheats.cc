@@ -13,61 +13,42 @@
 	You should have received a copy of the GNU General Public License
 	along with MD.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/EmuApp.hh>
-#include <emuframework/viewUtils.hh>
-#include <main/Cheats.hh>
+module;
 #include <z80.hh>
-#include "EmuCheatViews.hh"
-#include "MainSystem.hh"
-#include <imagine/io/FileIO.hh>
-#include <imagine/io/FileStream.hh>
-#include <imagine/gui/TextEntry.hh>
-#include <imagine/fs/FS.hh>
 #include <imagine/util/mayAliasInt.h>
-#include <imagine/util/string.h>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
 #include "system.h"
 #include "loadrom.h"
 #include "md_cart.h"
 #include "genesis.h"
-#include <ranges>
+
+module system;
 
 namespace EmuEx
 {
 
-constexpr SystemLogger log{"MD.emu"};
+// Needs to be a #define because it get stringified
+#define MAX_CHEAT_NAME_CHARS 127
 
-static auto codePromptString()
-{
-	return emuSystemIs16Bit() ? "Input xxxx-xxxx (GG) or xxxxxx:xxxx (AR) code"
-		: "Input xxx-xxx-xxx (GG) or xxxxxx:xx (AR) code";
-}
-
-static auto editCodePromptString()
-{
-	return emuSystemIs16Bit() ? "Input xxxx-xxxx (GG) or xxxxxx:xxxx (AR) code, or blank to delete"
-		: "Input xxx-xxx-xxx (GG) or xxxxxx:xx (AR) code, or blank to delete";
-}
+static_assert(Cheat::maxCheatNameChars == MAX_CHEAT_NAME_CHARS);
 
 static bool strIs16BitGGCode(const char *str)
 {
-	return strlen(str) == 9 && str[4] == '-';
+	return std::strlen(str) == 9 && str[4] == '-';
 }
 
 static bool strIs8BitGGCode(const char *str)
 {
-	return strlen(str) == 11 && str[3] == '-' && str[7] == '-';
+	return std::strlen(str) == 11 && str[3] == '-' && str[7] == '-';
 }
 
 static bool strIs16BitARCode(const char *str)
 {
-	return strlen(str) == 11 && str[6] == ':';
+	return std::strlen(str) == 11 && str[6] == ':';
 }
 
 static bool strIs8BitARCode(const char *str)
 {
-	return strlen(str) == 9 && str[6] == ':';
+	return std::strlen(str) == 9 && str[6] == ':';
 }
 
 static bool strIs8BitCode(const char *str)
@@ -86,7 +67,7 @@ unsigned decodeCheat(const char *string, uint32 &address, uint16 &data, uint16 &
 	static const char arvalidchars[] = "0123456789ABCDEF";
 
 	// 16-bit Game Genie code (ABCD-EFGH)
-	if((strlen(string) >= 9) && (string[4] == '-'))
+	if((std::strlen(string) >= 9) && (string[4] == '-'))
 	{
 		// 16-bit system only
 		if(!emuSystemIs16Bit())
@@ -96,10 +77,10 @@ unsigned decodeCheat(const char *string, uint32 &address, uint16 &data, uint16 &
 
 		static const char ggvalidchars[] = "ABCDEFGHJKLMNPRSTVWXYZ0123456789";
 
-		for(auto i : iotaCount(8))
+		for(auto i: iotaCount(8))
 		{
 			if(i == 4) string++;
-			auto p = strchr(ggvalidchars, *string++);
+			auto p = std::strchr(ggvalidchars, *string++);
 			if(!p) return 0;
 			auto n = p - ggvalidchars;
 
@@ -154,7 +135,7 @@ unsigned decodeCheat(const char *string, uint32 &address, uint16 &data, uint16 &
 	}
 
 	// 8-bit Game Genie code (DDA-AAA-XXX)
-	else if((strlen(string) >= 11) && (string[3] == '-') && (string[7] == '-'))
+	else if((std::strlen(string) >= 11) && (string[3] == '-') && (string[7] == '-'))
 	{
 		// 8-bit system only
 		if(emuSystemIs16Bit())
@@ -163,26 +144,26 @@ unsigned decodeCheat(const char *string, uint32 &address, uint16 &data, uint16 &
 		}
 
 		// decode 8-bit data
-		for(auto i : iotaCount(2))
+		for(auto i: iotaCount(2))
 		{
-			auto p = strchr(arvalidchars, *string++);
+			auto p = std::strchr(arvalidchars, *string++);
 			if(!p) return 0;
 			auto n = (p - arvalidchars) & 0xF;
 			data |= (n  << ((1 - i) * 4));
 		}
 
 		// decode 16-bit address (low 12-bits)
-		for(auto i : iotaCount(3))
+		for(auto i: iotaCount(3))
 		{
 			if(i==1) string++; // skip separator
-			auto p = strchr (arvalidchars, *string++);
+			auto p = std::strchr (arvalidchars, *string++);
 			if(!p) return 0;
 			auto n = (p - arvalidchars) & 0xF;
 			address |= (n  << ((2 - i) * 4));
 		}
 
 		// decode 16-bit address (high 4-bits)
-		auto p = strchr (arvalidchars, *string++);
+		auto p = std::strchr (arvalidchars, *string++);
 		if(!p) return 0;
 		auto n = (p - arvalidchars) & 0xF;
 		n ^= 0xF; // bits inversion
@@ -197,10 +178,10 @@ unsigned decodeCheat(const char *string, uint32 &address, uint16 &data, uint16 &
 
 		// decode reference 8-bit data
 		uint8 ref = 0;
-		for(auto i : iotaCount(2))
+		for(auto i: iotaCount(2))
 		{
 			string++; // skip separator and 2nd digit
-			auto p = strchr (arvalidchars, *string++);
+			auto p = std::strchr (arvalidchars, *string++);
 			if (p == NULL) return 0;
 			auto n = (p - arvalidchars) & 0xF;
 			ref |= (n  << ((1 - i) * 4));
@@ -221,12 +202,12 @@ unsigned decodeCheat(const char *string, uint32 &address, uint16 &data, uint16 &
 		if(emuSystemIs16Bit())
 		{
 			// 16-bit code (AAAAAA:DDDD)
-			if(strlen(string) < 11) return 0;
+			if(std::strlen(string) < 11) return 0;
 
 			// decode 24-bit address
-			for(auto i : iotaCount(6))
+			for(auto i: iotaCount(6))
 			{
-				auto p = strchr(arvalidchars, *string++);
+				auto p = std::strchr(arvalidchars, *string++);
 				if(!p) return 0;
 				auto n = (p - arvalidchars) & 0xF;
 				address |= (n << ((5 - i) * 4));
@@ -234,9 +215,9 @@ unsigned decodeCheat(const char *string, uint32 &address, uint16 &data, uint16 &
 
 			// decode 16-bit data
 			string++;
-			for(auto i : iotaCount(4))
+			for(auto i: iotaCount(4))
 			{
-				auto p = strchr(arvalidchars, *string++);
+				auto p = std::strchr(arvalidchars, *string++);
 				if(!p) return 0;
 				auto n = (p - arvalidchars) & 0xF;
 				data |= (n << ((3 - i) * 4));
@@ -255,13 +236,13 @@ unsigned decodeCheat(const char *string, uint32 &address, uint16 &data, uint16 &
 		else
 		{
 			// 8-bit code (xxAAAA:DD)
-			if(strlen(string) < 9) return 0;
+			if(std::strlen(string) < 9) return 0;
 
 			// decode 16-bit address
 			string+=2;
-			for(auto i : iotaCount(4))
+			for(auto i: iotaCount(4))
 			{
-				auto p = strchr(arvalidchars, *string++);
+				auto p = std::strchr(arvalidchars, *string++);
 				if(!p) return 0;
 				auto n = (p - arvalidchars) & 0xF;
 				address |= (n << ((3 - i) * 4));
@@ -275,9 +256,9 @@ unsigned decodeCheat(const char *string, uint32 &address, uint16 &data, uint16 &
 
 			// decode 8-bit data
 			string++;
-			for(auto i : iotaCount(2))
+			for(auto i: iotaCount(2))
 			{
-				auto p = strchr(arvalidchars, *string++);
+				auto p = std::strchr(arvalidchars, *string++);
 				if(!p) return 0;
 				auto n = (p - arvalidchars) & 0xF;
 				data |= (n  << ((1 - i) * 4));
@@ -296,7 +277,7 @@ void MdSystem::applyCheats()
 {
 	for(auto &e : cheatList)
   {
-  	assert(!e.applied); // make sure cheats have been cleared beforehand
+  	assume(!e.applied); // make sure cheats have been cleared beforehand
     if(e.on)
     {
     	for(auto& code: e.codes)
@@ -439,7 +420,7 @@ void MdSystem::writeCheatFile()
 		}
 		if(e.on)
 		{
-			file.write("ON\n", strlen("ON\n"));
+			file.write("ON\n", std::strlen("ON\n"));
 		}
 	}
 }
@@ -464,7 +445,7 @@ void MdSystem::readCheatFile()
 	}
 	log.info("reading cheats file:{}", path);
 	char line[256];
-	IG::FileStream<FileIO> fileStream{std::move(file), "r"};
+	FileStream<FileIO> fileStream{std::move(file), "r"};
 	while(fgets(line, sizeof(line), fileStream.filePtr()))
 	{
 		log.info("got line:{}", line);
@@ -544,7 +525,7 @@ void MdSystem::ROMCheatUpdate()
 
 Cheat* MdSystem::newCheat(EmuApp& app, const char* name, CheatCodeDesc desc)
 {
-	if(strlen(desc.str) > 11)
+	if(std::strlen(desc.str) > 11)
 	{
 		app.postMessage(true, "Code is too long");
 		return {};
@@ -646,71 +627,6 @@ void MdSystem::forEachCheatCode(Cheat& cheat, DelegateFunc<bool(CheatCode&, std:
 	}
 }
 
-EditCheatView::EditCheatView(ViewAttachParams attach, Cheat& cheat, BaseEditCheatsView& editCheatsView):
-	BaseEditCheatView
-	{
-		"Edit Cheat",
-		attach,
-		cheat,
-		editCheatsView
-	},
-	addCode
-	{
-		"Add Another Code", attach,
-		[this](const Input::Event& e) { addNewCheatCode(codePromptString(), e); }
-	}
-{
-	loadItems();
-}
-
-void EditCheatView::loadItems()
-{
-	codes.clear();
-	for(auto& c: cheatPtr->codes)
-	{
-		codes.emplace_back("Code", c.text, attachParams(), [this, &c](const Input::Event& e)
-		{
-			pushAndShowNewCollectValueInputView<const char*, ScanValueMode::AllowBlank>(attachParams(), e, editCodePromptString(), c.text,
-				[this, &c](CollectTextInputView&, auto str) { return modifyCheatCode(c, {str}); });
-		});
-	};
-	items.clear();
-	items.emplace_back(&name);
-	for(auto& c: codes)
-	{
-		items.emplace_back(&c);
-	}
-	items.emplace_back(&addCode);
-	items.emplace_back(&remove);
-}
-
-EditCheatsView::EditCheatsView(ViewAttachParams attach, CheatsView& cheatsView):
-	BaseEditCheatsView
-	{
-		attach,
-		cheatsView,
-		[this](ItemMessage msg) -> ItemReply
-		{
-			return msg.visit(overloaded
-			{
-				[&](const ItemsMessage &m) -> ItemReply { return 1 + cheats.size(); },
-				[&](const GetItemMessage &m) -> ItemReply
-				{
-					switch(m.idx)
-					{
-						case 0: return &addCode;
-						default: return &cheats[m.idx - 1];
-					}
-				},
-			});
-		}
-	},
-	addCode
-	{
-		"Add Game Genie / Action Replay Code", attach,
-		[this](const Input::Event& e) { addNewCheat(codePromptString(), e); }
-	} {}
-
 //region 爱吾修改
 void MdSystem::setCheatListAiWu(const std::list<std::string>& cheats)
 {
@@ -738,7 +654,7 @@ void MdSystem::setCheatListAiWu(const std::list<std::string>& cheats)
 //endregion
 }
 
-void ROMCheatUpdate()
+extern "C++" void ROMCheatUpdate()
 {
 	static_cast<EmuEx::MdSystem&>(EmuEx::gSystem()).ROMCheatUpdate();
 }

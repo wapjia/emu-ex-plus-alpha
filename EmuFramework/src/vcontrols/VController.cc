@@ -13,18 +13,12 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <imagine/config/macros.h>
 #include <emuframework/VController.hh>
 #include <emuframework/EmuApp.hh>
 #include <emuframework/AppKeyCode.hh>
-#include <emuframework/EmuOptions.hh>
-#include "../WindowData.hh"
 #include <emuframework/Option.hh>
-#include <imagine/util/math.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/gfx/RendererCommands.hh>
-#include <imagine/base/Window.hh>
-#include <imagine/io/FileIO.hh>
-#include <imagine/logger/logger.h>
+#include "../WindowData.hh"
 
 namespace EmuEx
 {
@@ -32,7 +26,7 @@ namespace EmuEx
 constexpr SystemLogger log{"VController"};
 constexpr uint8_t defaultAlpha = 255. * .5;
 
-VController::VController(IG::ApplicationContext ctx):
+VController::VController(ApplicationContext ctx):
 	appCtx{ctx},
 	alphaF{defaultAlpha / 255.},
 	defaultButtonSize
@@ -51,12 +45,12 @@ VController::VController(IG::ApplicationContext ctx):
 	uiElements.emplace_back(std::in_place_type<VControllerUIButtonGroup>);
 }
 
-int VController::xMMSizeToPixel(const IG::Window &win, float mm) const
+int VController::xMMSizeToPixel(const Window &win, float mm) const
 {
 	return win.widthMMInPixels(mm);
 }
 
-int VController::yMMSizeToPixel(const IG::Window &win, float mm) const
+int VController::yMMSizeToPixel(const Window &win, float mm) const
 {
 	return win.heightMMInPixels(mm);
 }
@@ -65,12 +59,12 @@ static void updateTexture(const EmuApp &app, VControllerElement &e, Gfx::Rendere
 {
 	e.visit(overloaded
 	{
-		[&](VControllerDPad& dpad){ dpad.setImage(task, app.asset(app.vControllerAssetDesc(KeyInfo{0})), fanQuadIdxs); },
+		[&](VControllerDPad& dpad){ dpad.setImage(task, app.asset(AppMeta::vControllerAssetDesc(KeyInfo{0})), fanQuadIdxs); },
 		[&](VControllerButtonGroup &grp)
 		{
 			for(auto &btn : grp.buttons)
 			{
-				auto desc = app.vControllerAssetDesc(btn.key);
+				auto desc = AppMeta::vControllerAssetDesc(btn.key);
 				btn.setImage(app.asset(desc), desc.aspectRatio.y);
 			}
 			grp.setTask(task);
@@ -120,7 +114,7 @@ void VController::updateTextures()
 
 static void setSize(VControllerElement &elem, int sizePx, Gfx::Renderer &r)
 {
-	assert(sizePx);
+	assume(sizePx);
 	elem.visit(overloaded
 	{
 		[&](VControllerDPad &dpad){ dpad.setSize(r, makeEvenRoundedUp(int(sizePx * 2.5f))); },
@@ -131,7 +125,7 @@ static void setSize(VControllerElement &elem, int sizePx, Gfx::Renderer &r)
 
 void VController::setButtonSizes(int gamepadBtnSizeInPixels, int uiBtnSizeInPixels)
 {
-	if(EmuSystem::inputHasKeyboard)
+	if(AppMeta::inputHasKeyboard)
 		kb.place(gamepadBtnSizeInPixels, gamepadBtnSizeInPixels * .75f, layoutBounds());
 	for(auto &elem : gpElements) { setSize(elem, gamepadBtnSizeInPixels, renderer()); }
 	for(auto &elem : uiElements) { setSize(elem, uiBtnSizeInPixels, renderer()); }
@@ -229,8 +223,8 @@ std::array<KeyInfo, 2> VController::findGamepadElements(WPt pos)
 
 KeyInfo VController::keyboardKeyFromPointer(const Input::MotionEvent &e)
 {
-	assert(isInKeyboardMode());
-	assumeExpr(e.isPointer());
+	assume(isInKeyboardMode());
+	assume(e.isPointer());
 	if(e.pushed())
 	{
 		kb.unselectKey();
@@ -258,9 +252,9 @@ KeyInfo VController::keyboardKeyFromPointer(const Input::MotionEvent &e)
 	return {};
 }
 
-bool VController::pointerInputEvent(const Input::MotionEvent &e, IG::WindowRect gameRect)
+bool VController::pointerInputEvent(const Input::MotionEvent &e, WindowRect gameRect)
 {
-	assumeExpr(e.isPointer());
+	assume(e.isPointer());
 	/* 爱吾修改：删除原版的虚拟按钮的相关逻辑
 	if(e.pushed() || e.released())
 	{
@@ -315,7 +309,7 @@ bool VController::pointerInputEvent(const Input::MotionEvent &e, IG::WindowRect 
 					app.handleSystemKeyInput(vBtn, Input::Action::PUSHED);
 					if(vibrateOnTouchInput())
 					{
-						app.vibrationManager.vibrate(IG::Milliseconds{32});
+						app.vibrationManager.vibrate(Milliseconds{32});
 					}
 				}
 			}
@@ -434,7 +428,7 @@ void VController::draw(Gfx::RendererCommands &__restrict__ cmds, const VControll
 
 bool VController::isInKeyboardMode() const
 {
-	return EmuSystem::inputHasKeyboard && kbMode;
+	return AppMeta::inputHasKeyboard && kbMode;
 }
 
 void VController::setInputPlayer(int8_t player)
@@ -533,7 +527,7 @@ void VController::applyButtonAlpha(float alpha)
 	for(auto &e : uiElements) { e.setAlpha(alpha); }
 }
 
-void VController::setWindow(const IG::Window &win_)
+void VController::setWindow(const Window &win_)
 {
 	win = &win_;
 	winData = &EmuEx::windowData(win_);
@@ -551,7 +545,7 @@ bool VController::setButtonSize(int16_t mm100xOpt, bool placeElements)
 
 int VController::emulatedDeviceButtonPixelSize() const
 {
-	return IG::makeEvenRoundedUp(xMMSizeToPixel(window(), buttonSize() / 100.f));
+	return makeEvenRoundedUp(xMMSizeToPixel(window(), buttonSize() / 100.f));
 }
 
 int VController::uiButtonPixelSize() const
@@ -726,7 +720,7 @@ bool VController::readConfig(EmuApp &app, MapIO &io, unsigned key)
 			[[maybe_unused]] auto configId = io.get<uint8_t>(); // reserved for future use
 			auto elements = io.get<uint8_t>();
 			log.info("read emu device button data ({} bytes) with {} element(s)", io.size(), elements);
-			for([[maybe_unused]] auto i : iotaCount(elements))
+			for([[maybe_unused]] auto i: iotaCount(elements))
 			{
 				if(!readVControllerElement(app.inputManager, io, gpElements, false))
 					return false;
@@ -740,7 +734,7 @@ bool VController::readConfig(EmuApp &app, MapIO &io, unsigned key)
 			[[maybe_unused]] auto configId = io.get<uint8_t>(); // reserved for future use
 			auto elements = io.get<uint8_t>();
 			log.info("read UI button data ({} bytes) with {} element(s)", io.size(), elements);
-			for([[maybe_unused]] auto i : iotaCount(elements))
+			for([[maybe_unused]] auto i: iotaCount(elements))
 			{
 				if(!readVControllerElement(app.inputManager, io, uiElements, true))
 					return false;
@@ -858,7 +852,7 @@ void VController::writeConfig(FileIO &io) const
 	writeUIButtonsConfig(io);
 }
 
-void VController::configure(IG::Window &win, Gfx::Renderer &renderer, const Gfx::GlyphTextureSet &face)
+void VController::configure(Window &win, Gfx::Renderer &renderer, const Gfx::GlyphTextureSet &face)
 {
 	setWindow(win);
 	setRenderer(renderer);
@@ -866,7 +860,7 @@ void VController::configure(IG::Window &win, Gfx::Renderer &renderer, const Gfx:
 	fanQuadIdxs = {renderer.mainTask, {.size = 24}}; // for rendering DPads with FanQuads
 	{
 		auto indices = fanQuadIdxs.map();
-		for(auto i : iotaCount(2))
+		for(auto i: iotaCount(2))
 		{
 			std::ranges::copy(Gfx::mapFanQuadIndices(i), indices.begin() + (i * 12));
 		}
@@ -948,7 +942,7 @@ void VController::resetEmulatedDeviceGroups()
 std::vector<VControllerElement> VController::defaultEmulatedDeviceGroups() const
 {
 	std::vector<VControllerElement> gpElements;
-	for(const auto &c : system().inputDeviceDesc(0).components)
+	for(const auto &c : AppMeta::inputDeviceDesc(0).components)
 	{
 		if(!c.flags.altConfig)
 			add(gpElements, c);
@@ -999,15 +993,15 @@ std::vector<VControllerElement> VController::defaultUIGroups() const
 	return uiElements;
 }
 
-VControllerLayoutPosition VControllerLayoutPosition::fromPixelPos(WPt pos, WSize size, IG::WindowRect windowBounds)
+VControllerLayoutPosition VControllerLayoutPosition::fromPixelPos(WPt pos, WSize size, WindowRect windowBounds)
 {
-	IG::WindowRect bound {pos - size/2, pos + size/2};
+	WindowRect bound {pos - size/2, pos + size/2};
 
 	const auto &rect = windowBounds;
-	IG::WindowRect ltQuadrantRect{{rect.x, rect.y}, rect.center()};
-	IG::WindowRect rtQuadrantRect{{rect.xCenter(), rect.y}, {rect.x2, rect.yCenter()}};
-	IG::WindowRect lbQuadrantRect{{rect.x, rect.yCenter()}, {rect.xCenter(), rect.y2}};
-	IG::WindowRect rbQuadrantRect{rect.center(), {rect.x2, rect.y2}};
+	WindowRect ltQuadrantRect{{rect.x, rect.y}, rect.center()};
+	WindowRect rtQuadrantRect{{rect.xCenter(), rect.y}, {rect.x2, rect.yCenter()}};
+	WindowRect lbQuadrantRect{{rect.x, rect.yCenter()}, {rect.xCenter(), rect.y2}};
+	WindowRect rbQuadrantRect{rect.center(), {rect.x2, rect.y2}};
 	bool ltQuadrant = bound.overlaps(ltQuadrantRect);
 	bool rtQuadrant = bound.overlaps(rtQuadrantRect);
 	bool lbQuadrant = bound.overlaps(lbQuadrantRect);
@@ -1060,7 +1054,7 @@ VControllerElement &VController::add(std::vector<VControllerElement> &elems, Inp
 			case InputComponent::ui:
 				return elems.emplace_back(std::in_place_type<VControllerUIButtonGroup>, c.keyCodes, c.layoutOrigin);
 			case InputComponent::dPad:
-				assert(c.keyCodes.size() == 4);
+				assume(c.keyCodes.size() == 4);
 				return elems.emplace_back(std::in_place_type<VControllerDPad>, std::span<const KeyInfo, 4>{c.keyCodes.data(), 4});
 			case InputComponent::button:
 			case InputComponent::trigger:
@@ -1072,7 +1066,7 @@ VControllerElement &VController::add(std::vector<VControllerElement> &elems, Inp
 				return e;
 			}
 		}
-		bug_unreachable("invalid InputComponent");
+		unreachable();
 	}();
 	if(hasWindow())
 	{

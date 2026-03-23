@@ -13,10 +13,9 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/config/defs.hh>
 #include <imagine/vmem/memory.hh>
-#include <imagine/util/utility.h>
-#include <imagine/logger/logger.h>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <mach/mach.h>
 #include <mach/vm_map.h>
 #include <mach/machine/vm_param.h>
@@ -24,7 +23,7 @@
 namespace IG
 {
 
-constexpr SystemLogger log{"VMem"};
+static SystemLogger log{"VMem"};
 uintptr_t pageSize = PAGE_SIZE;
 
 std::span<uint8_t> vAlloc(size_t bytes)
@@ -50,7 +49,7 @@ void vFree(std::span<uint8_t> buff)
 
 std::span<uint8_t> vAllocMirrored(size_t bytes)
 {
-	assert(bytes == roundPageSize(bytes));
+	assume(bytes == roundPageSize(bytes));
 	// allocate enough pages for the buffer + the mirrored pages
 	auto buff = vAlloc(bytes * 2);
 	if(!buff.data()) [[unlikely]]

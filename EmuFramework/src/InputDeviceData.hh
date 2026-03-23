@@ -16,13 +16,12 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include "InputDeviceConfig.hh"
-#include <imagine/input/inputDefs.hh>
-#include <imagine/util/container/VMemArray.hh>
-#include <imagine/util/container/ArrayList.hh>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
+#include <imagine/util/container/array.hh>
+#include <imagine/util/container/VMemArray.hh>
 
 namespace EmuEx
 {

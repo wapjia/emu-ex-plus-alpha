@@ -13,22 +13,22 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "Wiimote"
 #include <imagine/bluetooth/Wiimote.hh>
-#include <imagine/base/Application.hh>
 #include <imagine/input/bluetoothInputDefs.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/time/Time.hh>
-#include <imagine/util/bit.hh>
+#include <imagine/base/Application.hh>
 #include <imagine/util/ranges.hh>
-#include "../input/PackedInputAccess.hh"
+#include <imagine/util/variant.hh>
+#include <imagine/logger/SystemLogger.hh>
+import std;
+import packedInputAccess;
 
 namespace IG
 {
 
-static constexpr char ccDataBytes = 6;
-static constexpr char nunchuckDataBytes = 6;
-static constexpr char proDataBytes = 10;
+static SystemLogger log{"Wiimote"};
+constexpr char ccDataBytes = 6;
+constexpr char nunchuckDataBytes = 6;
+constexpr char proDataBytes = 10;
 
 namespace Input
 {
@@ -187,7 +187,7 @@ const char *WiimoteExtDevice::keyName(Input::Key k) const
 
 bool Wiimote::open(BluetoothAdapter& adapter, Input::Device& dev)
 {
-	logMsg("opening Wiimote");
+	log.info("opening Wiimote");
 	btaPtr = &adapter;
 	ctlSock.onData = intSock.onData =
 		[&dev](const char *packet, size_t size)
@@ -201,7 +201,7 @@ bool Wiimote::open(BluetoothAdapter& adapter, Input::Device& dev)
 		};
 	if(ctlSock.openL2cap(adapter, addr, 17).code())
 	{
-		logErr("error opening control socket");
+		log.error("error opening control socket");
 		return false;
 	}
 	return true;
@@ -211,13 +211,13 @@ uint32_t Wiimote::statusHandler(Input::Device &dev, BluetoothSocket &sock, Bluet
 {
 	if(status == BluetoothSocketState::Opened && &sock == (BluetoothSocket*)&ctlSock)
 	{
-		logMsg("opened Wiimote control socket, opening interrupt socket");
+		log.info("opened Wiimote control socket, opening interrupt socket");
 		intSock.openL2cap(*btaPtr, addr, 19);
 		return 0; // don't add ctlSock to event loop
 	}
 	else if(status == BluetoothSocketState::Opened && &sock == (BluetoothSocket*)&intSock)
 	{
-		logMsg("Wiimote opened successfully");
+		log.info("Wiimote opened successfully");
 		ctx.application().bluetoothInputDeviceStatus(ctx, dev, status);
 		setLEDs(enumId_);
 		requestStatus();
@@ -225,12 +225,12 @@ uint32_t Wiimote::statusHandler(Input::Device &dev, BluetoothSocket &sock, Bluet
 	}
 	else if(status == BluetoothSocketState::ConnectError)
 	{
-		logErr("Wiimote connection error");
+		log.error("Wiimote connection error");
 		ctx.application().bluetoothInputDeviceStatus(ctx, dev, status);
 	}
 	else if(status == BluetoothSocketState::ReadError)
 	{
-		logErr("Wiimote read error");
+		log.error("Wiimote read error");
 		ctx.application().bluetoothInputDeviceStatus(ctx, dev, status);
 	}
 	return 1;
@@ -251,27 +251,27 @@ void Wiimote::readReg(uint32_t offset, uint8_t size)
 {
 	uint8_t toRead[8] = { 0xa2, 0x17, 0x04,
 			uint8_t((offset & 0xFF0000) >> 16), uint8_t((offset & 0xFF00) >> 8), uint8_t(offset & 0xFF), 0x00, size };
-	logMsg("read reg %X %X %X", toRead[3], toRead[4], toRead[5]);
+	log.info("read reg {} {} {}", toRead[3], toRead[4], toRead[5]);
 	intSock.write(toRead, sizeof(toRead));
 }
 
 void Wiimote::setLEDs(uint8_t player)
 {
-	logMsg("setting LEDs for player %d", player);
+	log.info("setting LEDs for player:{}", player);
 	const uint8_t setLEDs[] = { 0xa2, 0x11, playerLEDs(player) };
 	intSock.write(setLEDs, sizeof(setLEDs));
 }
 
 void Wiimote::requestStatus()
 {
-	logMsg("requesting status");
+	log.info("requesting status");
 	const uint8_t reqStatus[] = { 0xa2, 0x15, 0x00 };
 	intSock.write(reqStatus, sizeof(reqStatus));
 }
 
 void Wiimote::sendDataMode(uint8_t mode)
 {
-	logMsg("setting mode 0x%X", mode);
+	log.info("setting mode:{:X}", mode);
 	uint8_t setMode[] = { 0xa2, 0x12, 0x00, mode };
 	intSock.write(setMode, sizeof(setMode));
 }
@@ -308,7 +308,7 @@ bool Wiimote::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 	auto packet = (const uint8_t*)packetPtr;
 	if(packet[0] != 0xa1) [[unlikely]]
 	{
-		logWarn("Unknown report in Wiimote packet");
+		log.warn("Unknown report in Wiimote packet");
 		return 1;
 	}
 	auto time = SteadyClock::now();
@@ -317,7 +317,6 @@ bool Wiimote::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 		case 0x30:
 		{
 			//logMsg("got core report");
-			//assert(device);
 			processCoreButtons(dev, packet, time);
 			break;
 		}
@@ -325,7 +324,6 @@ bool Wiimote::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 		case 0x32:
 		{
 			//logMsg("got core+extension report");
-			//assert(device);
 			processCoreButtons(dev, packet, time);
 			switch(extension)
 			{
@@ -340,29 +338,28 @@ bool Wiimote::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 		case 0x34:
 		{
 			//logMsg("got core+extension19 report");
-			//assert(device);
 			processProButtons(dev, packet, time);
 			break;
 		}
 
 		case 0x20:
 		{
-			logMsg("got status report, bits 0x%X", packet[4]);
+			log.info("got status report, bits:{:X}", packet[4]);
 			if(extension && !(packet[4] & bit(1)))
 			{
-				logMsg("extension disconnected");
+				log.info("extension disconnected");
 				extension = EXT_NONE;
 				sendDataMode(0x30);
 				removeExtendedDevice();
 			}
 			else if(!extension && (packet[4] & bit(1)))
 			{
-				logMsg("extension connected");
+				log.info("extension connected");
 				initExtension();
 			}
 			else
 			{
-				logMsg("no extension change");
+				log.info("no extension change");
 				// set report mode
 				sendDataModeByExtension();
 				if(!identifiedType)
@@ -376,7 +373,7 @@ bool Wiimote::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 
 		case 0x21:
 		{
-			logMsg("got read report from addr %X %X", packet[5], packet[6]);
+			log.info("got read report from addr {} {}", packet[5], packet[6]);
 			switch(function)
 			{
 				case FUNC_GET_EXT_TYPE:
@@ -385,11 +382,11 @@ bool Wiimote::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 					const uint8_t ccType[5] {/*0x00,*/ 0x00, 0xA4, 0x20, 0x01, 0x01};
 					const uint8_t wiiUProType[5] {/*0x00,*/ 0x00, 0xA4, 0x20, 0x01, 0x20};
 					const uint8_t nunchukType[6] {0x00, 0x00, 0xA4, 0x20, 0x00, 0x00};
-					logMsg("ext type: %X %X %X %X %X %X",
+					log.info("ext type: {} {} {} {} {} {}",
 						packet[7], packet[8], packet[9], packet[10], packet[11], packet[12]);
-					if(memcmp(&packet[8], ccType, sizeof(ccType)) == 0)
+					if(std::memcmp(&packet[8], ccType, sizeof(ccType)) == 0)
 					{
-						logMsg("extension is CC");
+						log.info("extension is CC");
 						extension = EXT_CC;
 						sendDataModeByExtension();
 						std::ranges::fill(prevExtData, 0xFF);
@@ -399,13 +396,13 @@ bool Wiimote::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 						axis[1] = {Input::AxisId::Y, axisClassicLScaler};
 						axis[2] = {Input::AxisId::Z, axisClassicRScaler};
 						axis[3] = {Input::AxisId::RZ, axisClassicRScaler};
-						assert(!extDevicePtr);
+						assume(!extDevicePtr);
 						extDevicePtr = &ctx.application().addInputDevice(ctx,
 							std::make_unique<Input::Device>(std::in_place_type<WiimoteExtDevice>, Input::Map::WII_CC, DeviceTypeFlags{.gamepad = true}, "Wii Classic Controller"), true);
 					}
-					else if(memcmp(&packet[7], nunchukType, 6) == 0)
+					else if(std::memcmp(&packet[7], nunchukType, 6) == 0)
 					{
-						logMsg("extension is Nunchuk");
+						log.info("extension is Nunchuk");
 						extension = EXT_NUNCHUK;
 						sendDataModeByExtension();
 						std::ranges::fill(prevExtData, 0xFF);
@@ -413,9 +410,9 @@ bool Wiimote::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 						axis[0] = {Input::AxisId::X, axisNunchukScaler};
 						axis[1] = {Input::AxisId::Y, axisNunchukScaler};
 					}
-					else if(memcmp(&packet[8], wiiUProType, sizeof(ccType)) == 0)
+					else if(std::memcmp(&packet[8], wiiUProType, sizeof(ccType)) == 0)
 					{
-						logMsg("extension is Wii U Pro");
+						log.info("extension is Wii U Pro");
 						extension = EXT_WIIU_PRO;
 						sendDataModeByExtension();
 						std::ranges::fill(prevExtData, 0xFF);
@@ -429,7 +426,7 @@ bool Wiimote::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 					}
 					else
 					{
-						logMsg("unknown extension");
+						log.info("unknown extension");
 						extension = EXT_UNKNOWN;
 						sendDataModeByExtension();
 					}
@@ -447,7 +444,7 @@ bool Wiimote::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 
 		case 0x22:
 		{
-			logMsg("ack output report, %X %X", packet[4], packet[5]);
+			log.info("ack output report, {} {}", packet[4], packet[5]);
 			switch(function)
 			{
 				case FUNC_INIT_EXT:
@@ -455,7 +452,7 @@ bool Wiimote::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 				case FUNC_INIT_EXT_DONE:
 					readReg(0xa400fa, 6);
 					function = FUNC_GET_EXT_TYPE;
-					logMsg("done extension init, getting type");
+					log.info("done extension init, getting type");
 					break;
 			}
 			break;
@@ -463,7 +460,7 @@ bool Wiimote::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 
 		default:
 		{
-			logMsg("unhandled packet type %d from wiimote", packet[1]);
+			log.info("unhandled packet type {} from wiimote", packet[1]);
 		}
 	}
 	return 1;
@@ -513,7 +510,7 @@ void Wiimote::processCoreButtons(Input::Device &dev, const uint8_t *packet, Stea
 			ctx.application().dispatchRepeatableKeyInputEvent(event);
 		}
 	}
-	memcpy(prevBtnData, btnData, sizeof(prevBtnData));
+	std::memcpy(prevBtnData, btnData, sizeof(prevBtnData));
 }
 
 void Wiimote::processClassicButtons(Input::Device &dev, const uint8_t *packet, SteadyClockTimePoint time)
@@ -522,7 +519,7 @@ void Wiimote::processClassicButtons(Input::Device &dev, const uint8_t *packet, S
 	auto ccData = &packet[4];
 	int stickPos[4];
 	decodeCCSticks(ccData, stickPos[0], stickPos[1], stickPos[2], stickPos[3]);
-	for(auto i : iotaCount(4))
+	for(auto i: iotaCount(4))
 	{
 		if(axis[i].dispatchInputEvent(stickPos[i], Map::WII_CC, time, dev, ctx.mainWindow()))
 			ctx.endIdleByUserActivity();
@@ -539,7 +536,7 @@ void Wiimote::processClassicButtons(Input::Device &dev, const uint8_t *packet, S
 			ctx.application().dispatchRepeatableKeyInputEvent(event);
 		}
 	}
-	memcpy(prevExtData, ccData, ccDataBytes);
+	std::memcpy(prevExtData, ccData, ccDataBytes);
 }
 
 void Wiimote::processProButtons(Input::Device &dev, const uint8_t *packet, SteadyClockTimePoint time)
@@ -548,7 +545,7 @@ void Wiimote::processProButtons(Input::Device &dev, const uint8_t *packet, Stead
 	const uint8_t *proData = &packet[4];
 	int stickPos[4];
 	decodeProSticks(proData, stickPos[0], stickPos[1], stickPos[2], stickPos[3]);
-	for(auto i : iotaCount(4))
+	for(auto i: iotaCount(4))
 	{
 		if(axis[i].dispatchInputEvent(stickPos[i], Map::WII_CC, time, dev, ctx.mainWindow()))
 			ctx.endIdleByUserActivity();
@@ -565,14 +562,14 @@ void Wiimote::processProButtons(Input::Device &dev, const uint8_t *packet, Stead
 			ctx.application().dispatchRepeatableKeyInputEvent(event);
 		}
 	}
-	memcpy(prevExtData, proData, proDataBytes);
+	std::memcpy(prevExtData, proData, proDataBytes);
 }
 
 void Wiimote::processNunchukButtons(Input::Device &dev, const uint8_t *packet, SteadyClockTimePoint time)
 {
 	using namespace IG::Input;
 	const uint8_t *nunData = &packet[4];
-	for(auto i : iotaCount(2))
+	for(auto i: iotaCount(2))
 	{
 		if(axis[i].dispatchInputEvent(int(nunData[i]) - 127, Map::WIIMOTE, time, dev, ctx.mainWindow()))
 			ctx.endIdleByUserActivity();
@@ -588,7 +585,7 @@ void Wiimote::processNunchukButtons(Input::Device &dev, const uint8_t *packet, S
 			ctx.application().dispatchRepeatableKeyInputEvent(event);
 		}
 	}
-	memcpy(prevExtData, nunData, nunchuckDataBytes);
+	std::memcpy(prevExtData, nunData, nunchuckDataBytes);
 }
 
 bool Wiimote::isSupportedClass(std::array<uint8_t, 3> devClass)

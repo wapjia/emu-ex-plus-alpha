@@ -29,9 +29,11 @@
 #include <imagine/base/win32/inputDefs.hh>
 #endif
 
+#ifndef IG_USE_MODULE_STD
 #include <string>
 #include <string_view>
 #include <memory>
+#endif
 
 namespace IG
 {
@@ -137,7 +139,7 @@ enum class Action : uint8_t
 
 using PointerId = PointerIdImpl;
 
-static constexpr PointerId NULL_POINTER_ID
+inline constexpr PointerId NULL_POINTER_ID
 {
 	[]()
 	{
@@ -148,48 +150,41 @@ static constexpr PointerId NULL_POINTER_ID
 	}()
 };
 
-#ifdef CONFIG_INPUT_GAMEPAD_DEVICES
-
-namespace Keycode
+struct OuyaKey
 {
-	namespace Ouya
-	{
 	static constexpr Key
-	O = GAME_A,
-	U = GAME_X,
-	Y = GAME_Y,
-	A = GAME_B,
-	L1 = GAME_L1,
-	L2 = GAME_L2,
-	L3 = GAME_LEFT_THUMB,
-	R1 = GAME_R1,
-	R2 = GAME_R2,
-	R3 = GAME_RIGHT_THUMB,
+	O = Keycode::GAME_A,
+	U = Keycode::GAME_X,
+	Y = Keycode::GAME_Y,
+	A = Keycode::GAME_B,
+	L1 = Keycode::GAME_L1,
+	L2 = Keycode::GAME_L2,
+	L3 = Keycode::GAME_LEFT_THUMB,
+	R1 = Keycode::GAME_R1,
+	R2 = Keycode::GAME_R2,
+	R3 = Keycode::GAME_RIGHT_THUMB,
 	UP = Keycode::UP, RIGHT = Keycode::RIGHT, DOWN = Keycode::DOWN, LEFT = Keycode::LEFT,
-	SYSTEM = MENU;
-	}
+	SYSTEM = Keycode::MENU;
+};
 
-	namespace PS3
-	{
+struct PS3Key
+{
 	static constexpr Key
-	CROSS = GAME_X,
-	CIRCLE = GAME_Y,
-	SQUARE = GAME_A,
-	TRIANGLE = GAME_B,
-	L1 = GAME_L1,
-	L2 = GAME_L2,
-	L3 = GAME_LEFT_THUMB,
-	R1 = GAME_R1,
-	R2 = GAME_R2,
-	R3 = GAME_RIGHT_THUMB,
-	SELECT = GAME_SELECT,
-	START = GAME_START,
+	CROSS = Keycode::GAME_X,
+	CIRCLE = Keycode::GAME_Y,
+	SQUARE = Keycode::GAME_A,
+	TRIANGLE = Keycode::GAME_B,
+	L1 = Keycode::GAME_L1,
+	L2 = Keycode::GAME_L2,
+	L3 = Keycode::GAME_LEFT_THUMB,
+	R1 = Keycode::GAME_R1,
+	R2 = Keycode::GAME_R2,
+	R3 = Keycode::GAME_RIGHT_THUMB,
+	SELECT = Keycode::GAME_SELECT,
+	START = Keycode::GAME_START,
 	UP = Keycode::UP, RIGHT = Keycode::RIGHT, DOWN = Keycode::DOWN, LEFT = Keycode::LEFT,
-	PS = GAME_1;
-	}
-}
-
-#endif
+	PS = Keycode::GAME_1;
+};
 
 enum class AxisSetId : uint8_t
 {
@@ -200,7 +195,7 @@ enum class AxisSetId : uint8_t
 	pedals
 };
 
-constexpr DeviceTypeFlags virtualDeviceFlags{.miscKeys = true, .keyboard = true, .virtualInput = true};
+inline constexpr DeviceTypeFlags virtualDeviceFlags{.miscKeys = true, .keyboard = true, .virtualInput = true};
 
 class BaseDevice
 {

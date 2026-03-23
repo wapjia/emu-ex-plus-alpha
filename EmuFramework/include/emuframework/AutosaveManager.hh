@@ -15,14 +15,18 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/config.hh>
+#include <emuframework/defs.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/base/PausableTimer.hh>
 #include <imagine/fs/FSDefs.hh>
 #include <imagine/io/FileIO.hh>
-#include <imagine/util/enum.hh>
+#endif
+#ifndef IG_USE_MODULE_STD
 #include <string>
 #include <string_view>
 #include <functional>
+#endif
+
 
 namespace EmuEx
 {
@@ -32,18 +36,20 @@ using namespace IG;
 class EmuApp;
 class EmuSystem;
 
-WISE_ENUM_CLASS((AutosaveLaunchMode, uint8_t),
+enum class AutosaveLaunchMode: uint8_t
+{
 	Load,
 	LoadNoState,
 	Ask,
-	NoSave);
+	NoSave
+};
 
 enum class LoadAutosaveMode{Normal, NoState};
 enum class AutosaveActionSource{Auto, Manual};
 
-constexpr std::string_view defaultAutosaveFilename = "auto-00";
-constexpr std::string_view noAutosaveName = "\a";
-constexpr Minutes maxAutosaveSaveFreq{720};
+inline constexpr std::string_view defaultAutosaveFilename = "auto-00";
+inline constexpr std::string_view noAutosaveName = "\a";
+inline constexpr Minutes maxAutosaveSaveFreq{720};
 
 class AutosaveManager
 {

@@ -92,7 +92,7 @@ using PointerIdImpl = void*;
 using Key = uint16_t;
 
 // TODO: remove dummy defs
-namespace Keycode
+struct Keycode
 {
 	static const Key
 	A = 3000, // TODO kVK_ANSI_A,

@@ -13,16 +13,18 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "SurfaceTexStorage"
+#include <imagine/config/macros.h>
 #include <imagine/gfx/opengl/android/SurfaceTextureStorage.hh>
 #include <imagine/gfx/Renderer.hh>
-#include "../../../base/android/android.hh"
-#include <imagine/util/ScopeGuard.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
+#include <imagine/util/opengl/glHeaders.h>
 #include <android/native_window_jni.h>
+import imagine.internal.android;
 
 namespace IG::Gfx
 {
+
+static SystemLogger log{"SurfaceTexStorage"};
 
 SurfaceTextureStorage::SurfaceTextureStorage(RendererTask &r, TextureConfig config, bool makeSingleBuffered):
 	Texture{r}
@@ -34,7 +36,7 @@ SurfaceTextureStorage::SurfaceTextureStorage(RendererTask &r, TextureConfig conf
 	}
 	SamplerParams samplerParams = asSamplerParams(config.samplerConfig);
 	task().runSync(
-		[=, this](GLTask::TaskContext ctx)
+		[=, this](RendererTask::TaskContext ctx)
 		{
 			auto env = task().appContext().thisThreadJniEnv();
 			glGenTextures(1, &texName_.get());
@@ -57,7 +59,7 @@ SurfaceTextureStorage::SurfaceTextureStorage(RendererTask &r, TextureConfig conf
 	{
 		throw std::runtime_error("Error creating surface texture: SurfaceTexture constructor failed");
 	}
-	logMsg("made%sSurfaceTexture with texture:0x%X",
+	log.info("made{}SurfaceTexture with texture:{:X}",
 		singleBuffered ? " " : " buffered ", texName());
 	auto env = r.appContext().mainThreadJniEnv();
 	auto localSurface = makeSurface(env, surfaceTex);
@@ -71,7 +73,7 @@ SurfaceTextureStorage::SurfaceTextureStorage(RendererTask &r, TextureConfig conf
 	{
 		throw std::runtime_error("Error creating surface texture: ANativeWindow_fromSurface failed");
 	}
-	logMsg("native window:%p from Surface:%p%s", nativeWin, localSurface, singleBuffered ? " (single-buffered)" : "");
+	log.info("native window:{} from Surface:{}{}", (void*)nativeWin, (void*)localSurface, singleBuffered ? " (single-buffered)" : "");
 	if(!setFormat(config.pixmapDesc, config.colorSpace, config.samplerConfig)) [[unlikely]]
 	{
 		throw std::runtime_error("Error creating surface texture: bad format");
@@ -104,7 +106,7 @@ void SurfaceTextureStorage::deinit()
 {
 	if(nativeWin)
 	{
-		logMsg("deinit SurfaceTexture, releasing window:%p", nativeWin);
+		log.info("deinit SurfaceTexture, releasing window:{}", (void*)nativeWin);
 		ANativeWindow_release(std::exchange(nativeWin, {}));
 	}
 	auto env = task().appContext().mainThreadJniEnv();
@@ -122,16 +124,16 @@ void SurfaceTextureStorage::deinit()
 
 bool SurfaceTextureStorage::setFormat(IG::PixmapDesc desc, ColorSpace, TextureSamplerConfig)
 {
-	logMsg("setting size:%dx%d format:%s", desc.w(), desc.h(), desc.format.name());
+	log.info("setting size:{}x{} format:{}", desc.w(), desc.h(), desc.format.name());
 	int winFormat = toAHardwareBufferFormat(desc.format);
 	if(!winFormat) [[unlikely]]
 	{
-		logErr("pixel format not usable");
+		log.error("pixel format not usable");
 		return false;
 	}
 	if(ANativeWindow_setBuffersGeometry(nativeWin, desc.w(), desc.h(), winFormat) < 0) [[unlikely]]
 	{
-		logErr("ANativeWindow_setBuffersGeometry failed");
+		log.error("ANativeWindow_setBuffersGeometry failed");
 		return false;
 	}
 	updateFormatInfo(desc, 1, GL_TEXTURE_EXTERNAL_OES);
@@ -143,7 +145,7 @@ LockedTextureBuffer SurfaceTextureStorage::lock(TextureBufferFlags bufferFlags)
 {
 	if(!nativeWin) [[unlikely]]
 	{
-		logErr("called lock when uninitialized");
+		log.error("called lock when uninitialized");
 		return {};
 	}
 	if(singleBuffered)
@@ -163,15 +165,9 @@ LockedTextureBuffer SurfaceTextureStorage::lock(TextureBufferFlags bufferFlags)
 	aRect.bottom = rect.y2;*/
 	if(ANativeWindow_lock(nativeWin, &winBuffer, nullptr) < 0)
 	{
-		logErr("ANativeWindow_lock failed");
+		log.error("ANativeWindow_lock failed");
 		return {};
 	}
-	/*rect.x = aRect.left;
-	rect.y = aRect.top;
-	rect.x2 = aRect.right;
-	rect.y2 = aRect.bottom;*/
-	//buff.data = (char*)winBuffer.bits + (aRect.top * buff.pitch + aRect.left * bpp);
-	//logMsg("locked buffer %p with pitch %d", winBuffer.bits, winBuffer.stride * bpp);
 	return lockedBuffer(winBuffer.bits, (uint32_t)winBuffer.stride * bpp, bufferFlags);
 }
 
@@ -179,7 +175,7 @@ void SurfaceTextureStorage::unlock(LockedTextureBuffer, TextureWriteFlags)
 {
 	if(!nativeWin) [[unlikely]]
 	{
-		logErr("called unlock when uninitialized");
+		log.error("called unlock when uninitialized");
 		return;
 	}
 	ANativeWindow_unlockAndPost(nativeWin);

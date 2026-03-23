@@ -16,8 +16,10 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/gfx/defs.hh>
+#ifndef IG_USE_MODULE_STD
 #include <span>
 #include <string_view>
+#endif
 
 #ifdef CONFIG_GFX_OPENGL
 #include <imagine/gfx/opengl/GLSLProgram.hh>

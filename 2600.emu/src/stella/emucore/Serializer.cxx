@@ -17,10 +17,8 @@
 
 #include "FSNode.hxx"
 #include "Serializer.hxx"
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/io/IOStream.hh>
-#include <imagine/io/FileIO.hh>
-#include <emuframework/EmuApp.hh>
+import emuex;
+import imagine;
 
 using std::ios;
 using std::ios_base;

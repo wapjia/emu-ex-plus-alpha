@@ -18,7 +18,9 @@
 #include <imagine/config/defs.hh>
 #include <imagine/base/iphone/IOSWindow.hh>
 #include <imagine/util/memory/UniqueCFObject.hh>
+#ifndef IG_USE_MODULE_STD
 #include <type_traits>
+#endif
 
 #ifdef __OBJC__
 #import <OpenGLES/EAGL.h>
@@ -27,10 +29,13 @@
 
 namespace IG
 {
-
 class GLDisplay;
 class GLContext;
 struct GLContextAttributes;
+}
+
+namespace IG
+{
 
 class GLManagerImpl
 {

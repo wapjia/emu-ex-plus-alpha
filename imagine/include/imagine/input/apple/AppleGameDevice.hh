@@ -16,8 +16,9 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/input/inputDefs.hh>
+#ifndef IG_USE_MODULE_STD
 #include <utility>
-
+#endif
 #ifdef __OBJC__
 #import <GameController/GameController.h>
 #endif

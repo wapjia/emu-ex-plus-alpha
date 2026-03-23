@@ -15,9 +15,14 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
+#ifdef IG_USE_MODULES
+import imagine;
+import std;
+#else
 #include <imagine/io/IO.hh>
 #include <imagine/io/IOUtils-impl.hh>
 #include <optional>
+#endif
 
 namespace EmuEx
 {

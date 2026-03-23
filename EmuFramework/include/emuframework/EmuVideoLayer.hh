@@ -18,10 +18,12 @@
 #include <emuframework/VideoImageOverlay.hh>
 #include <emuframework/VideoImageEffect.hh>
 #include <emuframework/EmuOptions.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/gfx/Quads.hh>
 #include <imagine/gfx/Vec3.hh>
 #include <imagine/pixmap/PixelFormat.hh>
 #include <imagine/util/container/ArrayList.hh>
+#endif
 
 namespace EmuEx
 {
@@ -31,35 +33,37 @@ class EmuVideo;
 class EmuSystem;
 class VController;
 
-WISE_ENUM_CLASS((ImageChannel, uint8_t),
+enum class ImageChannel: uint8_t
+{
 	All,
 	Red,
 	Green,
-	Blue);
+	Blue
+};
 
 class EmuVideoLayer
 {
 public:
 	EmuVideoLayer(EmuVideo &video, float defaultAspectRatio);
-	void place(IG::WindowRect viewRect, IG::WindowRect displayRect, EmuInputView *inputView, EmuSystem &sys);
+	void place(WindowRect viewRect, WindowRect displayRect, EmuInputView *inputView, EmuSystem &sys);
 	void draw(Gfx::RendererCommands &cmds);
 	void setRendererTask(Gfx::RendererTask &);
-	void setFormat(EmuSystem &, IG::PixelFormat videoFmt, IG::PixelFormat effectFmt, Gfx::ColorSpace);
+	void setFormat(EmuSystem &, PixelFormat videoFmt, PixelFormat effectFmt, Gfx::ColorSpace);
 	void setOverlay(ImageOverlayId id);
 	ImageOverlayId overlayEffectId() const { return userOverlayEffectId; }
 	void updateOverlay() { setOverlay(userOverlayEffectId); }
 	void setOverlayIntensity(float intensity);
 	float overlayIntensity() const { return vidImgOverlay.intensityLevel(); }
-	void setEffect(EmuSystem &, ImageEffectId, IG::PixelFormat);
+	void setEffect(EmuSystem &, ImageEffectId, PixelFormat);
 	ImageEffectId effectId() const { return userEffectId; }
-	void updateEffect(EmuSystem &, IG::PixelFormat);
-	void setEffectFormat(IG::PixelFormat);
+	void updateEffect(EmuSystem &, PixelFormat);
+	void setEffectFormat(PixelFormat);
 	void setLinearFilter(bool on);
 	bool usingLinearFilter() const { return useLinearFilter; }
-	void onVideoFormatChanged(IG::PixelFormat effectFmt);
+	void onVideoFormatChanged(PixelFormat effectFmt);
 	Gfx::ColorSpace colorSpace() const { return colSpace; }
 	bool srgbColorSpace() const { return colSpace == Gfx::ColorSpace::SRGB; }
-	void setRotation(IG::Rotation);
+	void setRotation(Rotation);
 	float evalAspectRatio(float aR);
 	float channelBrightness(ImageChannel) const;
 	int channelBrightnessAsInt(ImageChannel ch) const { return channelBrightness(ch) * 100.f; }
@@ -77,7 +81,7 @@ public:
 		updateBrightness();
 	}
 
-	const IG::WindowRect &contentRect() const
+	const WindowRect &contentRect() const
 	{
 		return contentRect_;
 	}
@@ -85,11 +89,11 @@ public:
 	EmuVideo &video;
 private:
 	VideoImageOverlay vidImgOverlay;
-	IG::StaticArrayList<VideoImageEffect*, 1> effects;
+	StaticArrayList<VideoImageEffect*, 1> effects;
 	VideoImageEffect userEffect;
 	Gfx::ITexQuads quad;
 	Gfx::TextureSpan texture;
-	IG::WindowRect contentRect_;
+	WindowRect contentRect_;
 	Gfx::Vec3 brightness{1.f, 1.f, 1.f};
 	Gfx::Vec3 brightnessSrgb{1.f, 1.f, 1.f};
 	Gfx::Vec3 brightnessUnscaled{1.f, 1.f, 1.f};
@@ -104,9 +108,12 @@ private:
 	ImageOverlayId userOverlayEffectId{};
 	Gfx::ColorSpace colSpace{};
 public:
-	Property<uint8_t, CFGKEY_CONTENT_SCALE, PropertyDesc<uint8_t>{.defaultValue = 100, .isValid = optionContentScaleIsValid}> scale;
+	Property<uint8_t, CFGKEY_CONTENT_SCALE,
+	{
+		.defaultValue = 100, .isValid = optionContentScaleIsValid
+	}> scale;
 private:
-	IG::Rotation rotation{};
+	Rotation rotation{};
 	bool useLinearFilter{true};
 
 	void placeOverlay();
@@ -117,7 +124,7 @@ private:
 	void updateBrightness();
 	void logOutputFormat();
 	Gfx::Renderer &renderer();
-	Gfx::ColorSpace videoColorSpace(IG::PixelFormat videoFmt) const;
+	Gfx::ColorSpace videoColorSpace(PixelFormat videoFmt) const;
 	Gfx::TextureSamplerConfig samplerConfig() const;
 
 	//region 背景色

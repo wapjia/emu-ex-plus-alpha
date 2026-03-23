@@ -13,10 +13,6 @@
 	You should have received a copy of the GNU General Public License
 	along with NEO.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/io/MapIO.hh>
-#include <imagine/logger/logger.h>
-#include <cstring>
-
 extern "C"
 {
 	#include <gngeo/roms.h>
@@ -30,6 +26,9 @@ extern "C"
 	void timer_mkstate(Stream *gzf,int mode);
 	void pd4990a_mkstate(Stream *gzf,int mode);
 }
+import system;
+import imagine;
+import std;
 
 #ifdef USE_STARSCREAM
 static int m68k_flag=0x1;
@@ -68,9 +67,9 @@ bool openState(MapIO &io, int mode)
 		char string[20]{};
 		io.read(string, 6);
 
-		if(strcmp(string, stateSig))
+		if(std::strcmp(string, stateSig))
 		{
-			logErr("%s is not a valid gngeo state header", string);
+			NeoSystem::log.error("{} is not a valid gngeo state header", string);
 			return false;
 		}
 
@@ -78,7 +77,7 @@ bool openState(MapIO &io, int mode)
 
 		if (flags != (m68k_flag | z80_flag | endian_flag))
 		{
-			logMsg("This save state comes from a different endian architecture.\n"
+			NeoSystem::log.error("This save state comes from a different endian architecture.\n"
 					"This is not currently supported :(");
 			return false;
 		}
@@ -102,12 +101,12 @@ static int mkstate_data(MapIO &io, void *data, int size, int mode)
 void makeState(MapIO &io, int mode)
 {
 	GAME_ROMS r;
-	memcpy(&r,&memory.rom,sizeof(GAME_ROMS));
+	std::memcpy(&r,&memory.rom,sizeof(GAME_ROMS));
 	mkstate_data(io, &memory, sizeof (memory), mode);
 
 	/* Roms info are needed (at least) for z80 bankswitch, so we need to restore
 	 * it asap */
-	if (mode==STREAD) memcpy(&memory.rom,&r,sizeof(GAME_ROMS));
+	if (mode==STREAD) std::memcpy(&memory.rom,&r,sizeof(GAME_ROMS));
 
 
 	mkstate_data(io, &bankaddress, sizeof (Uint32), mode);
@@ -131,7 +130,7 @@ void makeState(MapIO &io, int mode)
 
 }
 
-CLINK int mkstate_data(Stream *ptr, void *data, int size, int mode)
+extern "C" int mkstate_data(Stream *ptr, void *data, int size, int mode)
 {
 	return EmuEx::mkstate_data(*static_cast<MapIO*>(ptr), data, size, mode);
 }

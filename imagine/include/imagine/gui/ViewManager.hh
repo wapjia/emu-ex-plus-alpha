@@ -18,7 +18,9 @@
 #include <imagine/gui/viewDefs.hh>
 #include <imagine/gfx/GlyphTextureSet.hh>
 #include <imagine/util/used.hh>
+#ifndef IG_USE_MODULE_STD
 #include <optional>
+#endif
 
 namespace IG
 {

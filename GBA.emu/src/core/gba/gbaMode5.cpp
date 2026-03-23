@@ -45,15 +45,10 @@ void mode5RenderLine(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem::IoMem &
   const uint16_t *palette = (uint16_t *)lcd.paletteRAM;
 
   if (coreOptions.layerEnable & 0x0400) {
-    int changed = gfxBG2Changed;
-
-    if (gfxLastVCOUNT > VCOUNT)
-      changed = 3;
-
     gfxDrawRotScreen16Bit160(lcd.vram, BG2CNT, ioMem.BG2X_L, ioMem.BG2X_H,
     		ioMem.BG2Y_L, ioMem.BG2Y_H, ioMem.BG2PA, ioMem.BG2PB,
     		ioMem.BG2PC, ioMem.BG2PD,
-    		lcd.gfxBG2X, lcd.gfxBG2Y, changed,
+    		lcd.gfxBG2X, lcd.gfxBG2Y,
                              g_line2, VCOUNT, MOSAIC, DISPCNT);
   }
 
@@ -110,8 +105,6 @@ void mode5RenderLine(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem::IoMem &
 
     g_lineMix[x] = color;
   }
-  gfxBG2Changed = 0;
-  gfxLastVCOUNT = VCOUNT;
 }
 
 void mode5RenderLineNoWindow(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem::IoMem &ioMem)
@@ -119,15 +112,10 @@ void mode5RenderLineNoWindow(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem:
   const uint16_t *palette = (uint16_t *)lcd.paletteRAM;
 
   if (coreOptions.layerEnable & 0x0400) {
-    int changed = gfxBG2Changed;
-
-    if (gfxLastVCOUNT > VCOUNT)
-      changed = 3;
-
     gfxDrawRotScreen16Bit160(lcd.vram, BG2CNT, ioMem.BG2X_L, ioMem.BG2X_H,
     		ioMem.BG2Y_L, ioMem.BG2Y_H, ioMem.BG2PA, ioMem.BG2PB,
     		ioMem.BG2PC, ioMem.BG2PD,
-    		lcd.gfxBG2X, lcd.gfxBG2Y, changed,
+    		lcd.gfxBG2X, lcd.gfxBG2Y,
                              g_line2, VCOUNT, MOSAIC, DISPCNT);
   }
 
@@ -222,8 +210,6 @@ void mode5RenderLineNoWindow(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem:
 
     g_lineMix[x] = color;
   }
-  gfxBG2Changed = 0;
-  gfxLastVCOUNT = VCOUNT;
 }
 
 void mode5RenderLineAll(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem::IoMem &ioMem)
@@ -231,15 +217,10 @@ void mode5RenderLineAll(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem::IoMe
   const uint16_t *palette = (uint16_t *)lcd.paletteRAM;
 
   if (coreOptions.layerEnable & 0x0400) {
-    int changed = gfxBG2Changed;
-
-    if (gfxLastVCOUNT > VCOUNT)
-      changed = 3;
-
     gfxDrawRotScreen16Bit160(lcd.vram, BG2CNT, ioMem.BG2X_L, ioMem.BG2X_H,
     		ioMem.BG2Y_L, ioMem.BG2Y_H, ioMem.BG2PA, ioMem.BG2PB,
     		ioMem.BG2PC, ioMem.BG2PD,
-    		lcd.gfxBG2X, lcd.gfxBG2Y, changed,
+    		lcd.gfxBG2X, lcd.gfxBG2Y,
                              g_line2, VCOUNT, MOSAIC, DISPCNT);
   }
 
@@ -377,6 +358,4 @@ void mode5RenderLineAll(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem::IoMe
 
     g_lineMix[x] = color;
   }
-  gfxBG2Changed = 0;
-  gfxLastVCOUNT = VCOUNT;
 }

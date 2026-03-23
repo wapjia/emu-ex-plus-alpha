@@ -16,7 +16,9 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/gfx/defs.hh>
+#ifndef IG_USE_MODULE_STD
 #include <span>
+#endif
 
 namespace IG::Gfx
 {

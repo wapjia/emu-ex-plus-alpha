@@ -17,7 +17,9 @@
 
 #include <imagine/util/used.hh>
 #include <imagine/time/Time.hh>
+#ifndef IG_USE_MODULE_STD
 #include <cmath>
+#endif
 
 namespace IG
 {

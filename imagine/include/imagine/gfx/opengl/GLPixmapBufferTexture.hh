@@ -20,15 +20,20 @@
 #include <imagine/gfx/opengl/android/SurfaceTextureStorage.hh>
 #endif
 #include <imagine/gfx/Texture.hh>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
 #include <variant>
 #include <array>
+#endif
 
 namespace IG::Gfx
 {
-
 class RendererTask;
 class PixmapBufferTexture;
+}
+
+namespace IG::Gfx
+{
 
 template<class Impl, class BufferInfo>
 class GLTextureStorage: public Texture
@@ -112,7 +117,7 @@ using GLPixmapBufferTextureVariant = std::variant<
 	, AHardwareBufferStorage
 	, GraphicBufferStorage
 	#endif
-	#ifdef CONFIG_GFX_OPENGL_TEXTURE_TARGET_EXTERNAL
+	#ifdef CONFIG_GFX_ANDROID_SURFACE_TEXTURE
 	, SurfaceTextureStorage
 	#endif
 	>;

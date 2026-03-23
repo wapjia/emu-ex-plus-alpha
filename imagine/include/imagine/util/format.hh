@@ -15,21 +15,18 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <imagine/fs/FSDefs.hh>
 #include <imagine/util/concepts.hh>
 #include <imagine/util/used.hh>
+#ifndef IG_USE_MODULE_STD
 #include <format>
 #include <array>
+#endif
 
 namespace boost::static_strings
 {
 template<std::size_t N, typename CharT, typename Traits>
 class basic_static_string;
-}
-
-namespace IG::FS
-{
-class PathString;
-class FileString;
 }
 
 namespace IG
@@ -38,7 +35,7 @@ namespace IG
 class CStringView;
 
 template <class... T>
-constexpr auto formatTo(ResizableContainer auto &c, std::format_string<T...> fmt, T&&... args)
+constexpr auto formatTo(ResizableContainer auto& c, std::format_string<T...> fmt, T&&... args)
 {
 	return std::vformat_to(std::back_inserter(c), fmt.get(), std::make_format_args(args...));
 }
@@ -68,12 +65,6 @@ struct std::formatter<IG::CStringView> : std::formatter<std::string_view> {};
 
 template<std::size_t N, typename CharT, typename Traits>
 struct std::formatter<boost::static_strings::basic_static_string<N, CharT, Traits>> : std::formatter<std::string_view> {};
-
-template<>
-struct std::formatter<IG::FS::PathString> : std::formatter<std::string_view> {};
-
-template<>
-struct std::formatter<IG::FS::FileString> : std::formatter<std::string_view> {};
 
 template<class T, int Tag>
 struct std::formatter<IG::UnusedType<T, Tag>>

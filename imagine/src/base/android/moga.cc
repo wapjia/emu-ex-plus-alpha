@@ -13,21 +13,21 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "MOGAInput"
-#include <imagine/base/Application.hh>
-#include <imagine/base/android/AndroidInputDevice.hh>
 #include <imagine/input/android/MogaManager.hh>
-#include <imagine/time/Time.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/base/ApplicationContext.hh>
+#include <imagine/base/Application.hh>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <android/input.h>
 
 namespace IG::Input
 {
 
-static constexpr int ACTION_VERSION_MOGAPRO = 1;
-static constexpr int STATE_CONNECTION = 1;
-static constexpr int STATE_SELECTED_VERSION = 4;
-static constexpr int DEVICE_ID = -128; // arbitrary value to avoid collisions
+static SystemLogger log{"Moga"};
+constexpr int ACTION_VERSION_MOGAPRO = 1;
+constexpr int STATE_CONNECTION = 1;
+constexpr int STATE_SELECTED_VERSION = 4;
+constexpr int DEVICE_ID = -128; // arbitrary value to avoid collisions
 
 MogaManager::MogaManager(ApplicationContext ctx, bool notify):
 	onExit
@@ -56,12 +56,12 @@ MogaManager::MogaManager(ApplicationContext ctx, bool notify):
 	if(env->ExceptionCheck())
 	{
 		env->ExceptionClear();
-		logErr("error creating MOGA helper object");
+		log.error("error creating MOGA helper object");
 		return;
 	}
 	mogaHelper = {env, newMogaHelper};
 	initMOGAJNIAndDevice(env, mogaHelper);
-	logMsg("init MOGA input system");
+	log.info("init MOGA input system");
 	onResumeMOGA(env, notify);
 }
 
@@ -69,7 +69,7 @@ MogaManager::~MogaManager()
 {
 	if(!mogaHelper)
 		return;
-	logMsg("deinit MOGA input system");
+	log.info("deinit MOGA input system");
 	jMOGAExit(mogaHelper.jniEnv(), mogaHelper);
 	appContext().application().removeInputDevice(appContext(), Input::Map::SYSTEM, DEVICE_ID, false);
 }
@@ -106,13 +106,13 @@ void MogaManager::updateMOGAState(JNIEnv *env, bool connected, bool notify)
 		auto &app = appContext().application();
 		if(connected)
 		{
-			logMsg("MOGA connected");
+			log.info("MOGA connected");
 			const char *name = jMOGAGetState(env, mogaHelper, STATE_SELECTED_VERSION) == ACTION_VERSION_MOGAPRO ? "MOGA Pro Controller" : "MOGA Controller";
 			mogaDev = app.addAndroidInputDevice(appContext(), makeMOGADevice(name), notify);
 		}
 		else
 		{
-			logMsg("MOGA disconnected");
+			log.info("MOGA disconnected");
 			mogaDev = {};
 			app.removeInputDevice(appContext(), Input::Map::SYSTEM, DEVICE_ID, notify);
 		}
@@ -121,7 +121,7 @@ void MogaManager::updateMOGAState(JNIEnv *env, bool connected, bool notify)
 
 void MogaManager::initMOGAJNIAndDevice(JNIEnv *env, jobject mogaHelper)
 {
-	logMsg("init MOGA JNI");
+	log.info("init MOGA JNI");
 	auto mogaHelperCls = env->GetObjectClass(mogaHelper);
 	jMOGAGetState = {env, mogaHelperCls, "getState", "(I)I"};
 	jMOGAOnPause = {env, mogaHelperCls, "onPause", "()V"};
@@ -138,7 +138,7 @@ void MogaManager::initMOGAJNIAndDevice(JNIEnv *env, jobject mogaHelper)
 				auto &mogaDev = *mogaManager.mogaDev;
 				auto ctx = mogaManager.appContext();
 				//logMsg("MOGA key event: %d %d %d", action, keyCode, (int)time);
-				assert((uint32_t)keyCode < Keycode::COUNT);
+				assume((uint32_t)keyCode < Keycode::COUNT);
 				ctx.endIdleByUserActivity();
 				Key key = keyCode & 0x1ff;
 				auto time = SteadyClockTimePoint{Nanoseconds{timestamp}};
@@ -156,7 +156,7 @@ void MogaManager::initMOGAJNIAndDevice(JNIEnv *env, jobject mogaHelper)
 				auto ctx = mogaManager.appContext();
 				ctx.endIdleByUserActivity();
 				auto time = SteadyClockTimePoint{Nanoseconds{timestamp}};
-				logMsg("MOGA motion event: %f %f %f %f %f %f %d", (double)x, (double)y, (double)z, (double)rz, (double)lTrigger, (double)rTrigger, (int)timestamp);
+				log.info("MOGA motion event: {} {} {} {} {} {} {}", x, y, z, rz, lTrigger, rTrigger, timestamp);
 				auto &win = ctx.mainWindow();
 				auto axis = mogaDev.motionAxes();
 				axis[0].update(x, Map::SYSTEM, time, mogaDev, win, true);
@@ -172,7 +172,7 @@ void MogaManager::initMOGAJNIAndDevice(JNIEnv *env, jobject mogaHelper)
 			(void*)(void (*)(JNIEnv*, jobject, jlong, jint, jint))
 			([](JNIEnv* env, jobject, jlong mogaManagerPtr, jint state, jint action)
 			{
-				logMsg("MOGA state event: %d %d", state, action);
+				log.info("MOGA state event: {} {}", state, action);
 				if(state == STATE_CONNECTION)
 				{
 					auto &mogaManager = *((MogaManager*)mogaManagerPtr);
@@ -188,7 +188,7 @@ void MogaManager::onResumeMOGA(JNIEnv *env, bool notify)
 {
 	jMOGAOnResume(env, mogaHelper);
 	bool isConnected = jMOGAGetState(env, mogaHelper, STATE_CONNECTION);
-	logMsg("checked MOGA connection state:%s", isConnected ? "yes" : "no");
+	log.info("checked MOGA connection state:{}", isConnected ? "yes" : "no");
 	updateMOGAState(env, isConnected, notify);
 }
 

@@ -18,12 +18,16 @@
 #include <imagine/gfx/defs.hh>
 #include <imagine/gfx/Vertex.hh>
 #include <imagine/gfx/Buffer.hh>
+#include <imagine/gfx/RendererTask.hh>
 #include <imagine/util/rectangle2.h>
 #include <imagine/util/ranges.hh>
+#include <imagine/util/macros.h>
+#ifndef IG_USE_MODULE_STD
 #include <span>
 #include <array>
 #include <utility>
 #include <type_traits>
+#endif
 
 namespace IG::Gfx
 {
@@ -112,6 +116,10 @@ struct QuadPoints
 	constexpr QuadPoints(WRect r): QuadPoints{r.as<T>()} {}
 };
 
+IG_MemberTypeReflection(color);
+IG_MemberTypeReflection(texCoord);
+IG_MemberTypeReflection(x);
+
 template<VertexLayout V>
 class BaseQuad
 {
@@ -120,17 +128,18 @@ public:
 	using Pos = decltype(V::pos.x);
 	using PosRect = Rect2<Pos>;
 	using PosPoint = Point2D<Pos>;
-	using Color = IG_GetValueTypeOr(V::color, UnusedType<Color>);
-	using TexCoord = IG_GetValueTypeOr(V::texCoord.x, UnusedType<float>);
-	using TexCoordRect = std::conditional_t<used(TexCoord{}), Rect2<TexCoord>, UnusedType<FRect>>;
+	using Color = colorReflectionType<V, UnusedType<Color4F>>;
+	using TexCoordStruct = texCoordReflectionType<V, UnusedType<float>>;
+	using TexCoord = xReflectionType<TexCoordStruct, UnusedType<float>>;
+	using TexCoordRect = std::conditional_t<Used<TexCoord>, Rect2<TexCoord>, UnusedType<FRect>>;
 
 	struct InitParams
 	{
 		PosRect bounds{};
-		Color color{};
-		TexCoordRect textureBounds = unitTexCoordRect();
+		[[no_unique_address]] Color color{};
+		[[no_unique_address]] TexCoordRect textureBounds{unitTexCoordRect()};
 		TextureSpan textureSpan{};
-		Rotation rotation = Rotation::UP;
+		Rotation rotation{Rotation::UP};
 	};
 
 	static constexpr int tlIdx = 0, blIdx = 1, trIdx = 2, brIdx = 3;
@@ -142,6 +151,7 @@ public:
 
 	constexpr BaseQuad(InitParams params)
 	{
+		v = {};
 		setPos(params.bounds);
 		if constexpr(requires {V::color;})
 		{
@@ -160,27 +170,21 @@ public:
 		v = mapQuadPos(v, p.bl, p.tl, p.tr, p.br);
 	}
 
-	constexpr void setUV(TexCoordRect rect, Rotation r = Rotation::UP)
+	constexpr void setUV(TexCoordRect rect, Rotation r = Rotation::UP) requires Used<TexCoord>
 	{
-		if constexpr(requires {V::texCoord;})
-		{
-			v = mapQuadUV(v, rect, r);
-		}
+		v = mapQuadUV(v, rect, r);
 	}
 
-	static constexpr TexCoordRect remapTexCoordRect(FRect rect)
+	constexpr void setUV(TexCoordRect, Rotation = Rotation::UP) {}
+
+	static constexpr TexCoordRect remapTexCoordRect(FRect rect) requires Used<TexCoord>
 	{
-		if constexpr(requires {V::texCoord;})
-		{
-			if(texCoordAttribDesc<V>().normalize)
-				return Gfx::remapTexCoordRect<TexCoordRect>(rect);
-			return rect.as<TexCoord>();
-		}
-		else
-		{
-			return {};
-		}
+		if(texCoordAttribDesc<V>().normalize)
+			return Gfx::remapTexCoordRect<TexCoordRect>(rect);
+		return rect.as<TexCoord>();
 	}
+
+	static constexpr TexCoordRect remapTexCoordRect(FRect) { return {}; }
 
 	static constexpr TexCoordRect unitTexCoordRect() { return remapTexCoordRect({{}, {1.f, 1.f}}); }
 

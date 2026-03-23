@@ -15,16 +15,22 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/pixmap/PixelFormat.hh>
 #include <imagine/util/Property.hh>
-#include <imagine/util/enum.hh>
+#endif
+#ifndef IG_USE_MODULE_STD
 #include <cstdint>
+#include <string_view>
+#endif
 
 namespace EmuEx
 {
 
+using namespace IG;
+
 // TODO: recycle obsolete enums
-enum { CFGKEY_SOUND = 0, CFGKEY_TOUCH_CONTROL_DISPLAY = 1,
+enum ConfigKey { CFGKEY_SOUND = 0, CFGKEY_TOUCH_CONTROL_DISPLAY = 1,
 	CFGKEY_AUTOSAVE_TIMER_MINS = 2, CFGKEY_LAST_DIR = 3, CFGKEY_TOUCH_CONTROL_VIRBRATE = 4,
 	CFGKEY_FRAME_INTERVAL = 5, CFGKEY_FONT_Y_SIZE = 6, CFGKEY_GAME_ORIENTATION = 7,
 	CFGKEY_GAME_ASPECT_RATIO = 8,
@@ -85,6 +91,7 @@ enum { CFGKEY_SOUND = 0, CFGKEY_TOUCH_CONTROL_DISPLAY = 1,
 	CFGKEY_REWIND_STATES = 118, CFGKEY_REWIND_TIMER_SECS = 119,
 	CFGKEY_FRAME_CLOCK = 120, CFGKEY_INPUT_DEVICE_CONTENT_CONFIGS = 121,
 	CFGKEY_SHOW_FRAME_TIMING_STATS = 122, CFGKEY_OUTPUT_FRAME_RATE_MODE = 123,
+	CFGKEY_SAVE_STATE_SLOT = 124,
 	// 256+ is reserved
 };
 
@@ -98,46 +105,46 @@ enum class InEmuTristate : uint8_t
 	Off, InEmu, On
 };
 
-constexpr unsigned optionContentScaleIntegerOnly = 255, optionContentScaleIntegerOnlyY = 254;
+inline constexpr unsigned optionContentScaleIntegerOnly = 255, optionContentScaleIntegerOnlyY = 254;
 
-constexpr const char *optionSavePathDefaultToken = ":DEFAULT:";
+inline constexpr std::string_view optionSavePathDefaultToken{":DEFAULT:"};
 
-constexpr double minRunSpeed = .05;
-constexpr double maxRunSpeed = 20.;
+inline constexpr double minRunSpeed = .05;
+inline constexpr double maxRunSpeed = 20.;
 
-constexpr bool isValidFastSpeed(const auto &v) { return v <= int(maxRunSpeed * 100.) && v > 100; }
-constexpr bool isValidSlowSpeed(const auto &v) { return v >= int(minRunSpeed * 100.) && v < 100; }
+inline constexpr bool isValidFastSpeed(const auto &v) { return v <= int(maxRunSpeed * 100.) && v > 100; }
+inline constexpr bool isValidSlowSpeed(const auto &v) { return v >= int(minRunSpeed * 100.) && v < 100; }
 
 bool isValidAspectRatio(float val);
 
-constexpr bool isValidFontSize(const auto &v)
+inline constexpr bool isValidFontSize(const auto &v)
 {
 	return v >= 2000 && v <= 10000;
 }
 
-constexpr bool optionContentScaleIsValid(const auto &v)
+inline constexpr bool optionContentScaleIsValid(const auto &v)
 {
 	return v == optionContentScaleIntegerOnly || v == optionContentScaleIntegerOnlyY
 		|| (v >= 10 && v <= 200);
 }
 
-constexpr bool optionMenuScaleIsValid(const auto &v)
+inline constexpr bool optionMenuScaleIsValid(const auto &v)
 {
 	return v >= 50 && v <= 100;
 }
 
-constexpr bool isValidFrameInterval(const auto &v)
+inline constexpr bool isValidFrameInterval(const auto &v)
 {
 	return v >= 0 && v <= 4;
 }
 
-constexpr bool imageEffectPixelFormatIsValid(const auto &v)
+inline constexpr bool imageEffectPixelFormatIsValid(const auto &v)
 {
 	switch(v)
 	{
-		case IG::PixelFmtUnset:
-		case IG::PixelFmtRGB565:
-		case IG::PixelFmtRGBA8888:
+		case PixelFmtUnset:
+		case PixelFmtRGB565:
+		case PixelFmtRGBA8888:
 			return true;
 		default:
 			return false;
@@ -156,32 +163,21 @@ constexpr bool isValidWithMinMax(const auto &v)
 	return v >= min && v <= max;
 }
 
-constexpr bool windowPixelFormatIsValid(const IG::PixelFormat &v)
+inline constexpr bool windowPixelFormatIsValid(const PixelFormat &v)
 {
 	switch(v)
 	{
-		case IG::PixelFmtUnset:
-		case IG::PixelFmtRGB565:
-		case IG::PixelFmtRGBA8888:
+		case PixelFmtUnset:
+		case PixelFmtRGB565:
+		case PixelFmtRGBA8888:
 			return true;
 		default: return false;
 	}
 }
 
-constexpr bool renderPixelFormatIsValid(const auto &v)
+inline constexpr bool renderPixelFormatIsValid(const PixelFormat& v)
 {
 	return windowPixelFormatIsValid(v);
 }
-
-}
-
-namespace IG
-{
-
-template<>
-constexpr bool isValidProperty(const EmuEx::AutoTristate &v) { return unsigned(v) <= 2; }
-
-template<>
-constexpr bool isValidProperty(const EmuEx::InEmuTristate &v) { return unsigned(v) <= 2; }
 
 }

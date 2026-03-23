@@ -15,10 +15,12 @@
 
 #include <emuframework/TurboInput.hh>
 #include <emuframework/EmuApp.hh>
-#include <imagine/logger/logger.h>
+import imagine;
 
 namespace EmuEx
 {
+
+using namespace IG;
 
 constexpr SystemLogger log{"TurboInput"};
 

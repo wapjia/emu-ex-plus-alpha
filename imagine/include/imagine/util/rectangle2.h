@@ -20,7 +20,9 @@
 #include <imagine/util/Point2D.hh>
 #include <imagine/util/concepts.hh>
 #include <imagine/util/math.hh>
+#ifndef IG_USE_MODULE_STD
 #include <algorithm>
+#endif
 
 namespace IG
 {
@@ -333,7 +335,7 @@ public:
 };
 
 template<class T>
-constexpr static Rect2<T> makeRectRel(Point2D<T> pos, Point2D<T> size)
+inline constexpr Rect2<T> makeRectRel(Point2D<T> pos, Point2D<T> size)
 {
 	return Rect2<T>::makeRel(pos, size);
 }
@@ -438,7 +440,7 @@ using IRect = Rect2<int>;
 using SRect = Rect2<int16_t>;
 using FRect = Rect2<float>;
 
-constexpr static WindowRect makeWindowRectRel(WPt pos, WPt size)
+inline constexpr WindowRect makeWindowRectRel(WPt pos, WPt size)
 {
 	return WindowRect::makeRel(pos, size);
 }

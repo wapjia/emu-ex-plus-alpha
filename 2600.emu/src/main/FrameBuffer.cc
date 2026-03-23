@@ -16,11 +16,10 @@
 #include <FrameBuffer.hxx>
 #include <OSystem.hxx>
 #include <stella/emucore/tia/TIA.hxx>
-// TODO: Some Stella types collide with MacTypes.h
-#define Debugger DebuggerMac
-#include <emuframework/EmuApp.hh>
-#undef Debugger
-#include <imagine/logger/logger.h>
+import emuex;
+import imagine;
+
+using namespace IG;
 
 FrameBuffer::FrameBuffer(OSystem& osystem):
 	appPtr{&osystem.app()}, myPaletteHandler{osystem}
@@ -39,7 +38,7 @@ void FrameBuffer::enablePhosphor(bool enable, int blend)
 	if(blend >= 0)
 	{
 		myPhosphorPercent = std::max(blend, 1) / 100.0;
-  	logMsg("phosphor blend:%d (%.2f%%)", blend, myPhosphorPercent);
+  	log.info("phosphor blend:{} ({}%)", blend, myPhosphorPercent);
 	}
 	if(enable)
   {
@@ -60,32 +59,32 @@ uint8_t FrameBuffer::getPhosphor(uInt8 c1, uInt8 c2) const
 
 void FrameBuffer::setTIAPalette(const PaletteArray& palette)
 {
-	logMsg("setTIAPalette");
-	auto desc32 = format == IG::PixelFmtBGRA8888 ? IG::PixelDescBGRA8888Native : IG::PixelDescRGBA8888Native;
-	for(auto i : IG::iotaCount(256))
+	log.info("setTIAPalette");
+	auto desc32 = format == PixelFmtBGRA8888 ? PixelDescBGRA8888Native : PixelDescRGBA8888Native;
+	for(auto i: iotaCount(256))
 	{
 		uint8_t r = (palette[i] >> 16) & 0xff;
 		uint8_t g = (palette[i] >> 8) & 0xff;
 		uint8_t b = palette[i] & 0xff;
-		tiaColorMap16[i] = IG::PixelDescRGB565.build(r >> 3, g >> 2, b >> 3, 0);
+		tiaColorMap16[i] = PixelDescRGB565.build(r >> 3, g >> 2, b >> 3, 0);
 		tiaColorMap32[i] = desc32.build((int)r, (int)g, (int)b, 0);
 	}
 }
 
-void FrameBuffer::setPixelFormat(IG::PixelFormatId fmt)
+void FrameBuffer::setPixelFormat(PixelFormatId fmt)
 {
 	format = fmt;
 }
 
-IG::PixelFormatId FrameBuffer::pixelFormat() const
+PixelFormatId FrameBuffer::pixelFormat() const
 {
 	return format;
 }
 
 std::array<uInt8, 3> FrameBuffer::getRGBPhosphorTriple(uInt32 c, uInt32 p) const
 {
-	auto [rc, gc, bc, ac] = IG::PixelDescRGBA8888Native.rgba(c);
-	auto [rp, gp, bp, ap] = IG::PixelDescRGBA8888Native.rgba(p);
+	auto [rc, gc, bc, ac] = PixelDescRGBA8888Native.rgba(c);
+	auto [rp, gp, bp, ap] = PixelDescRGBA8888Native.rgba(p);
 
   // Mix current calculated frame with previous displayed frame
   const uInt8 rn = myPhosphorPalette[rc][rp];
@@ -97,22 +96,22 @@ std::array<uInt8, 3> FrameBuffer::getRGBPhosphorTriple(uInt32 c, uInt32 p) const
 uInt16 FrameBuffer::getRGBPhosphor16(const uInt32 c, const uInt32 p) const
 {
   auto [rn, gn, bn] = getRGBPhosphorTriple(c, p);
-  return IG::PixelDescRGB565.build(rn >> 3, gn >> 2, bn >> 3, 0);
+  return PixelDescRGB565.build(rn >> 3, gn >> 2, bn >> 3, 0);
 }
 
 uInt32 FrameBuffer::getRGBPhosphor32(const uInt32 c, const uInt32 p) const
 {
   auto [rn, gn, bn] = getRGBPhosphorTriple(c, p);
-  return IG::PixelDescRGBA8888Native.build(rn, gn, bn, (uInt8)0);
+  return PixelDescRGBA8888Native.build(rn, gn, bn, (uInt8)0);
 }
 
 template <int outputBits>
-void FrameBuffer::renderOutput(IG::MutablePixmapView pix, TIA &tia)
+void FrameBuffer::renderOutput(MutablePixmapView pix, TIA& tia)
 {
-	IG::PixmapView framePix{{{(int)tia.width(), (int)tia.height()}, IG::PixelFmtI8}, tia.frameBuffer()};
-	assumeExpr(pix.size() == framePix.size());
-	assumeExpr(pix.format().bytesPerPixel() == outputBits / 8);
-	assumeExpr(framePix.format().bytesPerPixel() == 1);
+	PixmapView framePix{{{(int)tia.width(), (int)tia.height()}, PixelFmtI8}, tia.frameBuffer()};
+	assume(pix.size() == framePix.size());
+	assume(pix.format().bytesPerPixel() == outputBits / 8);
+	assume(framePix.format().bytesPerPixel() == 1);
 	if(myUsePhosphor)
 	{
 		uint8_t* prevFrame = prevFramebuffer.data();
@@ -145,9 +144,9 @@ void FrameBuffer::renderOutput(IG::MutablePixmapView pix, TIA &tia)
 	}
 }
 
-void FrameBuffer::render(IG::MutablePixmapView pix, TIA &tia)
+void FrameBuffer::render(MutablePixmapView pix, TIA& tia)
 {
-	if(format == IG::PixelFmtRGB565)
+	if(format == PixelFmtRGB565)
 	{
 		renderOutput<16>(pix, tia);
 	}

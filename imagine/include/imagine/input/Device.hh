@@ -17,11 +17,13 @@
 
 #include <imagine/input/inputDefs.hh>
 #include <imagine/time/Time.hh>
-#include <imagine/util/utility.h>
 #include <imagine/util/variant.hh>
+#ifndef IG_USE_MODULE_STD
 #include <string>
 #include <string_view>
 #include <span>
+#include <utility>
+#endif
 
 #ifdef CONFIG_PACKAGE_X11
 #include <imagine/base/x11/XInputDevice.hh>
@@ -100,15 +102,14 @@ public:
 
 	constexpr bool isModifierKey(Key k) const
 	{
-		using namespace Keycode;
 		switch(k)
 		{
-			case LALT:
-			case RALT:
-			case LSHIFT:
-			case RSHIFT:
-			case LCTRL:
-			case RCTRL:
+			case Keycode::LALT:
+			case Keycode::RALT:
+			case Keycode::LSHIFT:
+			case Keycode::RSHIFT:
+			case Keycode::LCTRL:
+			case Keycode::RCTRL:
 				return true;
 		}
 		return false;
@@ -116,15 +117,14 @@ public:
 
 	constexpr Key swapModifierKey(Key k) const
 	{
-		using namespace Keycode;
 		switch(k)
 		{
-			case LALT: return RALT;
-			case RALT: return LALT;
-			case LSHIFT: return RSHIFT;
-			case RSHIFT: return LSHIFT;
-			case LCTRL: return RCTRL;
-			case RCTRL: return LCTRL;
+			case Keycode::LALT: return Keycode::RALT;
+			case Keycode::RALT: return Keycode::LALT;
+			case Keycode::LSHIFT: return Keycode::RSHIFT;
+			case Keycode::RSHIFT: return Keycode::LSHIFT;
+			case Keycode::LCTRL: return Keycode::RCTRL;
+			case Keycode::RCTRL: return Keycode::LCTRL;
 		}
 		return k;
 	}

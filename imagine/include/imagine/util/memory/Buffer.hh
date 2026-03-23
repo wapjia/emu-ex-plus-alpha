@@ -17,11 +17,13 @@
 
 #include <imagine/util/concepts.hh>
 #include <imagine/util/DelegateFunc.hh>
+#include <imagine/util/utility.hh>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
 #include <span>
 #include <string_view>
 #include <cstdint>
-#include <cassert>
+#endif
 
 namespace IG
 {
@@ -83,7 +85,7 @@ public:
 
 	constexpr std::string_view stringView(size_t offset, size_t viewSize) const requires (sizeof(T) == 1)
 	{
-		assert(offset + viewSize <= size());
+		assume(offset + viewSize <= size());
 		return {reinterpret_cast<const char*>(data() + offset), viewSize};
 	}
 

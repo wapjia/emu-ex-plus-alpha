@@ -18,13 +18,15 @@
 #include <imagine/config/defs.hh>
 #include <imagine/fs/FSDefs.hh>
 #include <imagine/util/string/CStringView.hh>
-#include <imagine/util/utility.h>
-#include <ctime>
-#include <memory>
-#include <string_view>
 #include <dirent.h>
 #include <unistd.h>
 #include <limits.h>
+#ifndef IG_USE_MODULE_STD
+#include <ctime>
+#include <memory>
+#include <string_view>
+#include <utility>
+#endif
 
 namespace IG::FS
 {

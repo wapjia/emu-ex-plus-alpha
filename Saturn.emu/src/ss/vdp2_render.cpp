@@ -30,10 +30,10 @@
 #include <mednafen/MThreading.h>
 #include "vdp2_common.h"
 #include "vdp2_render.h"
-#include <imagine/thread/Thread.hh>
-#include <imagine/util/container/RingBuffer.hh>
 
 #include <atomic>
+
+import imagine;
 
 namespace MDFN_IEN_SS
 {

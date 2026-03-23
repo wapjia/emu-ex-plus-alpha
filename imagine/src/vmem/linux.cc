@@ -13,21 +13,18 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/config/defs.hh>
 #include <imagine/vmem/memory.hh>
-#include <imagine/util/utility.h>
-#include <imagine/logger/logger.h>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <sys/mman.h>
 #include <unistd.h>
-
 #if defined __ANDROID__ && ANDROID_MIN_API <= 24
 #define NEEDS_MREMAP_SYSCALL
+#include <unistd.h>
+#include <sys/syscall.h>
 #endif
 
 #ifdef NEEDS_MREMAP_SYSCALL
-#include <unistd.h>
-#include <sys/syscall.h>
-
 // Bionic pre-Android 7 is missing extended mremap with new_address parameter
 static void *mremap(void *old_address, size_t old_size, size_t new_size, int flags, void *new_address)
 {
@@ -38,7 +35,7 @@ static void *mremap(void *old_address, size_t old_size, size_t new_size, int fla
 namespace IG
 {
 
-constexpr SystemLogger log{"VMem"};
+static SystemLogger log{"VMem"};
 uintptr_t pageSize = sysconf(_SC_PAGESIZE);
 
 static std::span<uint8_t> vAlloc(size_t bytes, bool shared)
@@ -70,7 +67,7 @@ void vFree(std::span<uint8_t> buff)
 
 std::span<uint8_t> vAllocMirrored(size_t bytes)
 {
-	assert(bytes == roundPageSize(bytes));
+	assume(bytes == roundPageSize(bytes));
 	// allocate enough pages for the buffer + the mirrored pages
 	auto buff = vAlloc(bytes * 2, true);
 	if(!buff.data()) [[unlikely]]

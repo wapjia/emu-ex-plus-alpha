@@ -14,9 +14,7 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/LoadProgressView.hh>
-#include <imagine/gfx/RendererCommands.hh>
-#include <imagine/util/math.hh>
-#include <imagine/logger/logger.h>
+import imagine;
 
 namespace EmuEx
 {
@@ -39,7 +37,7 @@ LoadProgressView::LoadProgressView(ViewAttachParams attach, const Input::Event &
 				{
 					case EmuSystem::LoadProgress::FAILED:
 					{
-						assumeExpr(msg.intArg3 > 0);
+						assume(msg.intArg3 > 0);
 						size_t len = msg.intArg3;
 						char errorStr[len];
 						msgs.readExtraData(std::span{errorStr, len});
@@ -64,7 +62,7 @@ LoadProgressView::LoadProgressView(ViewAttachParams attach, const Input::Event &
 					{
 						setPos(msg.intArg);
 						setMax(msg.intArg2);
-						assumeExpr(msg.intArg3 >= -1);
+						assume(msg.intArg3 >= -1);
 						switch(msg.intArg3)
 						{
 							case -1: // no string
@@ -101,7 +99,7 @@ void LoadProgressView::updateProgressRect()
 {
 	int barHeight = text.height() * 1.5f;
 	auto bar = WRect::makeRel(displayRect().pos(LC2DO) - WPt{0, barHeight/2},
-		{int(IG::remap(int64_t(pos), 0, max, 0, displayRect().xSize())), barHeight});
+		{int(remap(int64_t(pos), 0, max, 0, displayRect().xSize())), barHeight});
 	progessBarQuads.write(0, {.bounds = bar.as<int16_t>()});
 }
 
@@ -131,7 +129,7 @@ void LoadProgressView::draw(Gfx::RendererCommands&__restrict__ cmds, ViewDrawPar
 {
 	if(!text.isVisible())
 		return;
-	using namespace IG::Gfx;
+	using namespace Gfx;
 	auto &basicEffect = cmds.basicEffect();
 	cmds.set(BlendMode::OFF);
 	if(max)

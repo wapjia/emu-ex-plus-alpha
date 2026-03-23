@@ -15,9 +15,7 @@
 
 #include "PlaceVControlsView.hh"
 #include <emuframework/EmuApp.hh>
-#include <emuframework/EmuViewController.hh>
-#include <imagine/gfx/RendererCommands.hh>
-#include <imagine/logger/logger.h>
+import imagine;
 
 namespace EmuEx
 {
@@ -66,13 +64,13 @@ void PlaceVControlsView::place()
 	}
 	else // full grid
 	{
-		for(auto i : iotaCount(hLines))
+		for(auto i: iotaCount(hLines))
 		{
 			int yPos = viewRect().y + ((i + 1) * snapPxSize);
 			Quad{{.bounds = WRect{{viewRect().x, yPos},
 				{viewRect().x2, yPos + lineSize}}.as<int16_t>()}}.write(map, 2 + i);
 		}
-		for(auto i : iotaCount(vLines))
+		for(auto i: iotaCount(vLines))
 		{
 			int xPos = viewRect().x + ((i + 1) * snapPxSize);
 			Quad{{.bounds = WRect{{xPos, viewRect().y},
@@ -175,7 +173,7 @@ bool PlaceVControlsView::inputEvent(const Input::Event& e, ViewInputEventParams)
 
 void PlaceVControlsView::draw(Gfx::RendererCommands &__restrict__ cmds, ViewDrawParams) const
 {
-	using namespace IG::Gfx;
+	using namespace Gfx;
 	cmds.setColor({.5, .5, .5});
 	auto &basicEffect = cmds.basicEffect();
 	basicEffect.disableTexture(cmds);

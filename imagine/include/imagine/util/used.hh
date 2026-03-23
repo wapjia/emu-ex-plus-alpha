@@ -15,7 +15,10 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#ifndef IG_USE_MODULE_STD
 #include <concepts>
+#include <cstddef>
+#endif
 
 namespace IG
 {
@@ -76,12 +79,15 @@ struct UnusedType
 	constexpr auto operator *(const auto& rhs) const { return T{} * T{rhs}; }
 	constexpr auto operator /(const auto& rhs) const { return T{} / T{rhs}; }
 	constexpr auto operator %(const auto& rhs) const { return T{} % T{rhs}; }
-	constexpr auto& operator[](this auto&& self, [[maybe_unused]] const auto& idx) { return self; }
+	constexpr auto& operator[](this auto&& self, [[maybe_unused]] const auto&) { return self; }
 	constexpr auto operator<=>(const T& o) const { return T{} <=> o; };
 };
 
 template <class T>
 concept Unused = requires {typename T::UnusedTypeTag;};
+
+template <class T>
+concept Used = !Unused<T>;
 
 // selects either type T and an empty type that converts to T and returns VALUE,
 // used in combination with [[no_unique_address]] and a unique Tag value to declare
@@ -96,8 +102,6 @@ struct UseIfOrConstantTagInjector // used to inject the line count as "tag" when
     using Type = UseIfOrConstant<condition, T, value, tag>;
 };
 
-#define ConditionalMemberOr [[no_unique_address]] IG::UseIfOrConstantTagInjector<__LINE__>::Type
-
 // same as above but always returns a default constructed value so class types can be used
 template<bool condition, class T, int tag = 0>
 using UseIf = std::conditional_t<condition, T, UnusedType<T, tag>>;
@@ -109,8 +113,6 @@ struct UseIfTagInjector
     using Type = UseIf<condition, T, tag>;
 };
 
-#define ConditionalMember [[no_unique_address]] IG::UseIfTagInjector<__LINE__>::Type
-
 // test that a variable's type is used in UseIf and not the UnusedType case
 constexpr bool used(auto&&) { return true; }
 constexpr bool used(auto&) { return true; }
@@ -120,7 +122,7 @@ constexpr bool used(Unused auto&) { return false; }
 
 // invoke func if v's type doesn't satisfy the Unused concept
 template<class R = int>
-constexpr auto doIfUsed(auto& v, auto&& func, [[maybe_unused]] R&& defaultReturn = R())
+constexpr auto doIfUsed(auto& v, auto&& func, [[maybe_unused]] R&& = R())
 {
 	return func(v);
 }
@@ -141,16 +143,5 @@ constexpr auto doIfUsedOr(Unused auto&, auto&&, auto&& defaultFunc)
 {
 	return defaultFunc();
 }
-
-#define IG_GetDefaultValueOr(value, orValue) \
-[]() \
-{ \
-    if constexpr(requires {value;}) \
-        return decltype(value)(); \
-    else \
-        return orValue; \
-}()
-
-#define IG_GetValueTypeOr(value, OrType) decltype(IG_GetDefaultValueOr(value, OrType()))
 
 }

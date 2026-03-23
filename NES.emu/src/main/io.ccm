@@ -1,0 +1,86 @@
+/*  This file is part of NES.emu.
+
+	NES.emu is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	NES.emu is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with NES.emu.  If not, see <http://www.gnu.org/licenses/> */
+
+module;
+#include <fceu/emufile.h>
+
+export module io;
+import imagine;
+
+namespace EmuEx
+{
+
+using namespace IG;
+
+export class EmuFileIO final : public EMUFILE
+{
+public:
+	MapIO io;
+
+	EmuFileIO(IO& srcIO):
+		EmuFileIO{IG::MapIO{srcIO}} {}
+
+	EmuFileIO(MapIO srcIO):
+		io{std::move(srcIO)}
+	{
+		if(!io) [[unlikely]]
+		{
+			failbit = true;
+		}
+	}
+
+	~EmuFileIO() = default;
+
+	FILE *get_fp() final { return nullptr; }
+	EMUFILE* memwrap() final { return nullptr; }
+	void truncate(size_t) final {}
+	int fprintf(const char*, ...) final { return 0; };
+	size_t size() final { return io.size(); }
+	void fflush() final {}
+
+	int fgetc() { return IG::fgetc(io); }
+
+	int fputc(int c) final
+	{
+		io.put(c);
+		return c;
+	}
+
+	size_t _fread(const void *ptr, size_t bytes) final
+	{
+		ssize_t ret = io.read((void*)ptr, bytes);
+		if(ret < (ssize_t)bytes)
+			failbit = true;
+		return ret;
+	}
+
+	void fwrite(const void *ptr, size_t bytes) final
+	{
+		if(io.write(ptr, bytes) == (ssize_t)bytes)
+			failbit = true;
+	}
+
+	int fseek(long int offset, int origin) final
+	{
+		return IG::fseek(io, offset, origin);
+	}
+
+	long int ftell() final
+	{
+		return IG::ftell(io);
+	}
+};
+
+}

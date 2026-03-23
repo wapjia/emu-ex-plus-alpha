@@ -15,12 +15,13 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <emuframework/defs.hh>
 #include <emuframework/EmuAppHelper.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/gui/TableView.hh>
 #include <imagine/gui/MenuItem.hh>
 #include <imagine/util/memory/DynArray.hh>
-#include <emuframework/config.hh>
-#include <vector>
+#endif
 
 namespace EmuEx
 {

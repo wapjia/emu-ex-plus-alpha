@@ -17,7 +17,9 @@
 
 #include <emuframework/EmuSystem.hh>
 #include <emuframework/EmuAppHelper.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/gui/FSPicker.hh>
+#endif
 
 namespace EmuEx
 {
@@ -27,13 +29,13 @@ using namespace IG;
 class FilePicker : public FSPicker, public EmuAppHelper
 {
 public:
-	FilePicker(ViewAttachParams, FSPicker::Mode, EmuSystem::NameFilterFunc, const Input::Event &, bool includeArchives = true);
-	FilePicker(ViewAttachParams, EmuApp &, FSPicker::Mode, EmuSystem::NameFilterFunc, const Input::Event &, bool includeArchives = true);
+	FilePicker(ViewAttachParams, FSPicker::Mode, NameFilterFunc, const Input::Event &, bool includeArchives = true);
+	FilePicker(ViewAttachParams, EmuApp &, FSPicker::Mode, NameFilterFunc, const Input::Event &, bool includeArchives = true);
 	static std::unique_ptr<FilePicker> forBenchmarking(ViewAttachParams, const Input::Event &, bool singleDir = false);
 	static std::unique_ptr<FilePicker> forLoading(ViewAttachParams, const Input::Event &, bool singleDir = false,
 		EmuSystemCreateParams params = {});
 	static std::unique_ptr<FilePicker> forMediaChange(ViewAttachParams, const Input::Event &,
-		EmuSystem::NameFilterFunc filter, FSPicker::OnSelectPathDelegate, bool singleDir = false);
+		NameFilterFunc filter, FSPicker::OnSelectPathDelegate, bool singleDir = false);
 	static std::unique_ptr<FilePicker> forMediaCreation(ViewAttachParams, const Input::Event &);
 	static std::unique_ptr<FilePicker> forMediaCreation(ViewAttachParams);
 };

@@ -15,10 +15,12 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/util/utility.h>
+#ifndef IG_USE_MODULE_STD
 #include <concepts>
 #include <thread>
 #include <atomic>
+#include <utility>
+#endif
 
 namespace IG
 {

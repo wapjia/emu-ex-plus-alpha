@@ -28,6 +28,8 @@ toolchainEnvParams = CC="$(CC)" CXX="$(CXX)" AR="$(AR)" RANLIB="$(RANLIB)"
 
 ifndef V
  PRINT_CMD := @
+else
+ VERBOSE_ARG := -v
 endif
 
 endif

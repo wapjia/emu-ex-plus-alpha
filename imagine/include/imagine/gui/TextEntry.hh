@@ -21,7 +21,9 @@
 #include <imagine/input/TextField.hh>
 #include <imagine/util/used.hh>
 #include <imagine/util/string/StaticString.hh>
+#ifndef IG_USE_MODULE_STD
 #include <array>
+#endif
 
 namespace IG
 {

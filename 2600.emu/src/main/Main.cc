@@ -13,68 +13,36 @@
 	You should have received a copy of the GNU General Public License
 	along with 2600.emu.  If not, see <http://www.gnu.org/licenses/> */
 
+module;
 #include <stella/emucore/Cart.hxx>
 #include <stella/emucore/CartCreator.hxx>
-#include <stella/emucore/Props.hxx>
 #include <stella/emucore/MD5.hxx>
 #include <stella/emucore/Sound.hxx>
 #include <stella/emucore/tia/TIA.hxx>
 #include <stella/emucore/Switches.hxx>
+#include <stella/emucore/Paddles.hxx>
 #include <stella/emucore/PropsSet.hxx>
 #include <stella/emucore/M6532.hxx>
 #include <stella/emucore/DispatchResult.hxx>
 #include <stella/common/StateManager.hxx>
 #include <stella/common/AudioSettings.hxx>
-#include <OSystem.hxx>
 #include <EventHandler.hxx>
+#include <FrameBuffer.hxx>
 #include <SoundEmuEx.hh>
-// TODO: Stella includes can clash with PAGE_SHIFT & PAGE_MASK based on order
-// TODO: Some Stella types collide with MacTypes.h
-#define Debugger DebuggerMac
-#include <emuframework/EmuAppInlines.hh>
-#include <emuframework/EmuSystemInlines.hh>
-#undef Debugger
-#include <imagine/util/format.hh>
-#include <imagine/util/string.h>
-#include <imagine/logger/logger.h>
+
+module system;
 
 namespace EmuEx
 {
 
-constexpr SystemLogger log{"2600.emu"};
 constexpr size_t MAX_ROM_SIZE = 512 * 1024;
-const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2025\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nStella Team\nstella-emu.github.io";
-bool EmuSystem::hasPALVideoSystem = true;
-bool EmuSystem::hasResetModes = true;
-IG::Audio::SampleFormat EmuSystem::audioSampleFormat = IG::Audio::SampleFormats::f32;
-bool EmuSystem::hasRectangularPixels = true;
-bool EmuApp::needsGlobalInstance = true;
 
-EmuSystem::NameFilterFunc EmuSystem::defaultFsFilter =
-	[](std::string_view name)
-	{
-		return IG::endsWithAnyCaseless(name, ".a26", ".bin");
-	};
-
-A2600App::A2600App(ApplicationInitParams initParams, ApplicationContext &ctx):
-	EmuApp{initParams, ctx}, a2600System{ctx, *this}
-{
-	audio.setStereo(false); // TODO: stereo mode
-}
-
-const char *EmuSystem::shortSystemName() const
-{
-	return "2600";
-}
-
-const char *EmuSystem::systemName() const
-{
-	return "Atari 2600";
-}
+extern "C++" std::string_view EmuSystem::shortSystemName() const { return "2600"; }
+extern "C++" std::string_view EmuSystem::systemName() const { return "Atari 2600"; }
 
 FS::FileString A2600System::stateFilename(int slot, std::string_view name) const
 {
-	return IG::format<FS::FileString>("{}.0{}.sta", name, saveSlotChar(slot));
+	return format<FS::FileString>("{}.0{}.sta", name, saveSlotChar(slot));
 }
 
 void A2600System::closeSystem()
@@ -142,7 +110,7 @@ void A2600System::loadContent(IO &io, EmuSystemCreateParams, OnLoadProgressDeleg
 	saveStateSize = state.size();
 }
 
-static auto consoleFrameRate(const OSystem &osystem)
+static auto consoleFrameRate(const OSystem& osystem)
 {
 	if(!osystem.hasConsole())
 		return 60.f;
@@ -164,7 +132,7 @@ void A2600System::configAudioRate(FrameRate outputFrameRate, int outputRate)
 	osystem.setSoundMixRate(std::round(audioMixRate(outputRate, configuredInputVideoFrameRate, outputFrameRate)));
 }
 
-static void renderVideo(EmuSystemTaskContext taskCtx, EmuVideo &video, FrameBuffer &fb, TIA &tia)
+static void renderVideo(EmuSystemTaskContext taskCtx, EmuVideo& video, FrameBuffer& fb, TIA& tia)
 {
 	auto fmt = video.renderPixelFormat();
 	auto img = video.startFrameWithFormat(taskCtx, {{(int)tia.width(), (int)tia.height()}, fmt});
@@ -172,7 +140,7 @@ static void renderVideo(EmuSystemTaskContext taskCtx, EmuVideo &video, FrameBuff
 	img.endFrame();
 }
 
-void A2600System::runFrame(EmuSystemTaskContext taskCtx, EmuVideo *video, EmuAudio *audio)
+void A2600System::runFrame(EmuSystemTaskContext taskCtx, EmuVideo* video, EmuAudio* audio)
 {
 	auto &os = osystem;
 	auto &console = os.console();
@@ -198,16 +166,16 @@ void A2600System::runFrame(EmuSystemTaskContext taskCtx, EmuVideo *video, EmuAud
 	}
 }
 
-void A2600System::renderFramebuffer(EmuVideo &video)
+void A2600System::renderFramebuffer(EmuVideo& video)
 {
 	auto &tia = osystem.console().tia();
 	auto &fb = osystem.frameBuffer();
 	renderVideo({}, video, fb, tia);
 }
 
-void A2600System::reset(EmuApp &, ResetMode mode)
+void A2600System::reset(EmuApp&, ResetMode mode)
 {
-	assert(hasContent());
+	assume(hasContent());
 	if(mode == ResetMode::HARD)
 	{
 		osystem.console().system().reset();
@@ -225,7 +193,7 @@ void A2600System::reset(EmuApp &, ResetMode mode)
 	}
 }
 
-void A2600System::readState(EmuApp &app, std::span<uint8_t> buff)
+void A2600System::readState(EmuApp& app, std::span<uint8_t> buff)
 {
 	Serializer state;
 	state.putByteArray(buff.data(), buff.size());
@@ -238,25 +206,13 @@ size_t A2600System::writeState(std::span<uint8_t> buff, SaveStateFlags flags)
 {
 	Serializer state;
 	osystem.state().saveState(state);
-	assert(state.size() == saveStateSize);
-	assert(state.size() <= buff.size());
+	assume(state.size() == saveStateSize);
+	assume(state.size() <= buff.size());
 	state.getByteArray(buff.data(), buff.size());
 	return saveStateSize;
 }
 
-void EmuApp::onCustomizeNavView(EmuApp::NavView &view)
-{
-	const Gfx::LGradientStopDesc navViewGrad[] =
-	{
-		{ .0, Gfx::PackedColor::format.build((200./255.) * .4, (100./255.) * .4, (0./255.) * .4, 1.) },
-		{ .3, Gfx::PackedColor::format.build((200./255.) * .4, (100./255.) * .4, (0./255.) * .4, 1.) },
-		{ .97, Gfx::PackedColor::format.build((75./255.) * .4, (37.5/255.) * .4, (0./255.) * .4, 1.) },
-		{ 1., view.separatorColor() },
-	};
-	view.setBackgroundGradient(navViewGrad);
-}
-
-bool A2600System::onVideoRenderFormatChange(EmuVideo &, IG::PixelFormat fmt)
+bool A2600System::onVideoRenderFormatChange(EmuVideo&, PixelFormat fmt)
 {
 	osystem.frameBuffer().setPixelFormat(fmt);
 	if(osystem.hasConsole())

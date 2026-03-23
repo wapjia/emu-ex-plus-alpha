@@ -17,10 +17,11 @@
 
 #include <imagine/io/IOUtils.hh>
 #include <imagine/util/string/CStringView.hh>
+#include <archive.h>
+#include <archive_entry.h>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
-
-struct archive;
-struct archive_entry;
+#endif
 
 namespace IG::FS
 {

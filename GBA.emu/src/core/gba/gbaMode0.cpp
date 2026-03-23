@@ -252,7 +252,6 @@ void mode0RenderLineNoWindow(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem:
               color = gfxAlphaBlend(color, back,
                                     g_coeff[COLEV & 0x1F],
                                     g_coeff[(COLEV >> 8) & 0x1F]);
-
           }
         } break;
       case 2:

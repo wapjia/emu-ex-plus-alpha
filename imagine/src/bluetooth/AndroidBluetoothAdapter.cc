@@ -13,14 +13,13 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "AndroidBT"
 #include <imagine/bluetooth/BluetoothAdapter.hh>
-#include <imagine/thread/Thread.hh>
-#include <imagine/logger/logger.h>
 #include <imagine/util/fd-utils.h>
 #include <imagine/util/jni.hh>
-#include <cerrno>
-#include "../base/android/android.hh"
+#include <imagine/logger/SystemLogger.hh>
+#include <android/looper.h>
+#include <errno.h>
+import imagine.internal.android;
 #include "utils.hh"
 
 namespace IG
@@ -42,6 +41,7 @@ struct asocket
 	int abort_fd[2];  /* pipe used to abort */
 };
 
+static SystemLogger log{"Bluetooth"};
 static JNI::InstMethod<jint(jobject)> jStartScan;
 static JNI::InstMethod<jint(jbyteArray, jint, jint)> jInRead;
 static JNI::InstMethod<jint()> jGetFd;
@@ -59,7 +59,7 @@ void AndroidBluetoothAdapter::sendSocketStatusMessage(const SocketStatusMessage 
 {
 	if(write(statusPipe[1], &msg, sizeof(msg)) == -1)
 	{
-		logErr("error writing BT socket status to pipe");
+		log.error("error writing BT socket status to pipe");
 	}
 }
 
@@ -72,8 +72,8 @@ static void JNICALL btScanStatus(JNIEnv*, jobject, jlong btaAddr, jint res)
 void AndroidBluetoothAdapter::handleScanStatus(BluetoothScanState)
 {
 	auto &bta = static_cast<BluetoothAdapter&>(*this);
-	assert(inDetect);
-	logMsg("scan complete");
+	assume(inDetect);
+	log.info("scan complete");
 	if(scanCancelled)
 		bta.onScanStatus(bta, BluetoothScanState::Cancelled, 0);
 	else
@@ -92,17 +92,17 @@ bool AndroidBluetoothAdapter::handleScanClass(uint32_t classInt)
 	auto &bta = static_cast<BluetoothAdapter&>(*this);
 	if(scanCancelled)
 	{
-		logMsg("scan canceled while handling device class");
+		log.info("scan canceled while handling device class");
 		return 0;
 	}
-	logMsg("got class %X", classInt);
+	log.info("got class {}", classInt);
 	std::array<uint8_t, 3> classByte;
 	classByte[2] = classInt >> 16;
 	classByte[1] = (classInt >> 8) & 0xff;
 	classByte[0] = classInt & 0xff;
 	if(!bta.onScanDeviceClass(bta, classByte))
 	{
-		logMsg("skipping device due to class %X:%X:%X", classByte[0], classByte[1], classByte[2]);
+		log.info("skipping device due to class {:X}:{:X}:{:X}", classByte[0], classByte[1], classByte[2]);
 		return 0;
 	}
 	return 1;
@@ -119,7 +119,7 @@ void AndroidBluetoothAdapter::handleScanName(JNIEnv* env, jstring name, jstring 
 	auto &bta = static_cast<BluetoothAdapter&>(*this);
 	if(scanCancelled)
 	{
-		logMsg("scan canceled while handling device name");
+		log.info("scan canceled while handling device name");
 		return;
 	}
 	const char *nameStr = env->GetStringUTFChars(name, nullptr);
@@ -129,7 +129,7 @@ void AndroidBluetoothAdapter::handleScanName(JNIEnv* env, jstring name, jstring 
 		str2ba(addrStr, &addrByte);
 		env->ReleaseStringUTFChars(addr, addrStr);
 	}
-	logMsg("got name %s", nameStr);
+	log.info("got name {}", nameStr);
 	bta.onScanDeviceName(bta, nameStr, addrByte);
 	env->ReleaseStringUTFChars(name, nameStr);
 }
@@ -143,7 +143,7 @@ static void JNICALL turnOnResult(JNIEnv*, jobject, jlong btaAddr, jboolean succe
 void AndroidBluetoothAdapter::handleTurnOnResult(bool success)
 {
 	auto &bta = static_cast<BluetoothAdapter&>(*this);
-	logMsg("bluetooth power on result: %d", int(success));
+	log.info("bluetooth power on result:{}", success);
 	if(turnOnD)
 	{
 		turnOnD(bta, success ? BluetoothState::On : BluetoothState::Error);
@@ -160,7 +160,7 @@ bool BluetoothAdapter::openDefault()
 	auto env = ctx.mainThreadJniEnv();
 	if(!jDefaultAdapter)
 	{
-		logMsg("JNI setup");
+		log.info("JNI setup");
 		auto baseActivityCls = (jclass)env->GetObjectClass(ctx.baseActivityObject());
 		jDefaultAdapter = {env, baseActivityCls, "btDefaultAdapter", "(J)Landroid/bluetooth/BluetoothAdapter;"};
 		jStartScan = {env, baseActivityCls, "btStartScan", "(Landroid/bluetooth/BluetoothAdapter;)I"};
@@ -170,17 +170,14 @@ bool BluetoothAdapter::openDefault()
 		jTurnOn = {env, baseActivityCls, "btTurnOn", "()V"};
 
 		jclass jBluetoothSocketCls = env->FindClass("android/bluetooth/BluetoothSocket");
-		assert(jBluetoothSocketCls);
 		jBtSocketClose = {env, jBluetoothSocketCls, "close", "()V"};
 		jBtSocketInputStream = {env, jBluetoothSocketCls, "getInputStream", "()Ljava/io/InputStream;"};
 		jBtSocketOutputStream = {env, jBluetoothSocketCls, "getOutputStream", "()Ljava/io/OutputStream;"};
 
 		jclass jInputStreamCls = env->FindClass("java/io/InputStream");
-		assert(jInputStreamCls);
 		jInRead = {env, jInputStreamCls, "read", "([BII)I"};
 
 		jclass jOutputStreamCls = env->FindClass("java/io/OutputStream");
-		assert(jOutputStreamCls);
 		jOutWrite = {env, jOutputStreamCls, "write", "([BII)V"};
 
 		if(ctx.androidSDK() < 17)
@@ -189,7 +186,7 @@ bool BluetoothAdapter::openDefault()
 			fdDataId = env->GetFieldID(jBluetoothSocketCls, "mSocketData", "I");
 			if(!fdDataId)
 			{
-				logWarn("can't find mSocketData member of BluetoothSocket class, not using native FDs");
+				log.warn("can't find mSocketData member of BluetoothSocket class, not using native FDs");
 				env->ExceptionClear();
 			}
 		}
@@ -200,12 +197,12 @@ bool BluetoothAdapter::openDefault()
 			if(fdDataId)
 			{
 				auto parcelFileDescriptorCls = env->FindClass("android/os/ParcelFileDescriptor");
-				assert(parcelFileDescriptorCls);
+				assume(parcelFileDescriptorCls);
 				jGetFd = {env, parcelFileDescriptorCls, "getFd", "()I"};
 			}
 			else
 			{
-				logWarn("can't find mPfd member of BluetoothSocket class, not using native FDs");
+				log.warn("can't find mPfd member of BluetoothSocket class, not using native FDs");
 				env->ExceptionClear();
 			}
 		}
@@ -221,18 +218,18 @@ bool BluetoothAdapter::openDefault()
 		env->RegisterNatives(baseActivityCls, activityMethods, std::size(activityMethods));
 	}
 
-	logMsg("opening default BT adapter");
+	log.info("opening default BT adapter");
 	adapter = jDefaultAdapter(env, ctx.baseActivityObject(), (jlong)this);
 	if(!adapter)
 	{
-		logErr("error opening adapter");
+		log.error("error opening adapter");
 		return false;
 	}
 	adapter = env->NewGlobalRef(adapter);
-	assert(adapter);
+	assume(adapter);
 	{
 		[[maybe_unused]] int ret = pipe(statusPipe);
-		assert(ret == 0);
+		assume(ret == 0);
 		ret = ALooper_addFd(EventLoop::forThread().nativeObject(), statusPipe[0], ALOOPER_POLL_CALLBACK, ALOOPER_EVENT_INPUT,
 			[](int fd, int events, void* data)
 			{
@@ -243,16 +240,16 @@ bool BluetoothAdapter::openDefault()
 					SocketStatusMessage msg;
 					if(read(fd, &msg, sizeof(msg)) != sizeof(msg))
 					{
-						logErr("error reading BT socket status message in pipe");
+						log.error("error reading BT socket status message in pipe");
 						return 1;
 					}
-					logMsg("got bluetooth socket status delegate message");
+					log.info("got bluetooth socket status delegate message");
 					auto &bta = *static_cast<BluetoothAdapter*>(data);
 					msg.socket->onStatusDelegateMessage(bta, msg.type);
 				}
 				return 1;
 			}, this);
-		assert(ret == 1);
+		assume(ret == 1);
 	}
 	return true;
 }
@@ -278,23 +275,23 @@ bool BluetoothAdapter::startScan(OnStatusDelegate onResult, OnScanDeviceClassDel
 {
  	if(!inDetect)
 	{
- 		logMsg("preparing to start scan");
+ 		log.info("preparing to start scan");
  		auto doScan =
  			[this](BluetoothAdapter &, State newState)
  			{
  				if(newState != BluetoothState::On)
  				{
- 					logMsg("failed to turn on bluetooth");
+ 					log.error("failed to turn on bluetooth");
  					inDetect = 0;
  					onScanStatus(*this, BluetoothScanState::Failed, 0);
  					return;
  				}
 
- 				logMsg("starting scan");
+ 				log.info("starting scan");
  				if(!jStartScan(appContext().mainThreadJniEnv(), appContext().baseActivityObject(), adapter))
  				{
  					inDetect = 0;
- 					logMsg("failed to start scan");
+ 					log.error("failed to start scan");
  					onScanStatus(*this, BluetoothScanState::Failed, 0);
  				}
  			};
@@ -316,7 +313,7 @@ bool BluetoothAdapter::startScan(OnStatusDelegate onResult, OnScanDeviceClassDel
 	}
 	else
 	{
-		logMsg("previous bluetooth detection still running");
+		log.info("previous bluetooth detection still running");
 		return 0;
 	}
 }
@@ -331,7 +328,7 @@ BluetoothAdapter::State BluetoothAdapter::state()
 		case 13: return BluetoothState::TurningOff;
 		case 11: return BluetoothState::TurningOn;
 	}
-	logMsg("unknown state: %d", currState);
+	log.error("unknown state:{}", currState);
 	return BluetoothState::Off;
 }
 
@@ -343,7 +340,7 @@ void BluetoothAdapter::setActiveState(bool on, OnStateChangeDelegate onStateChan
 		auto currState = state();
 		if(currState != BluetoothState::On)
 		{
-			logMsg("radio is off, requesting activation");
+			log.info("radio is off, requesting activation");
 			turnOnD = onStateChange;
 			jTurnOn(bta.appContext().mainThreadJniEnv(), appContext().baseActivityObject());
 		}
@@ -372,7 +369,7 @@ bool AndroidBluetoothSocket::readPendingData(int events)
 	auto &sock = static_cast<BluetoothSocket&>(*this);
 	if(events & pollEventError)
 	{
-		logMsg("socket %d disconnected", nativeFd);
+		log.info("socket {} disconnected", nativeFd);
 		sock.onStatus(sock, BluetoothSocketState::ReadError);
 		return false;
 	}
@@ -385,7 +382,7 @@ bool AndroidBluetoothSocket::readPendingData(int events)
 			auto len = read(nativeFd, buff, sizeof buff);
 			if(len <= 0) [[unlikely]]
 			{
-				logMsg("error %d reading packet from socket %d", len == -1 ? errno : 0, nativeFd);
+				log.info("error {} reading packet from socket {}", len == -1 ? errno : 0, nativeFd);
 				sock.onStatus(sock, BluetoothSocketState::ReadError);
 				return false;
 			}
@@ -414,17 +411,17 @@ void AndroidBluetoothSocket::onStatusDelegateMessage(BluetoothAdapter& bta, Blue
 		}
 		else
 		{
-			logMsg("starting read thread");
+			log.info("starting read thread");
 			IG::makeDetachedThread(
 				[this, &bta]()
 				{
 					if(Config::DEBUG_BUILD)
-						logMsg("in read thread %d", gettid());
+						log.info("in read thread {}", gettid());
 					auto &sock = static_cast<BluetoothSocket&>(*this);
 					JNIEnv *env = ctx.thisThreadJniEnv();
 					if(!env)
 					{
-						logErr("error attaching env to thread");
+						log.error("error attaching env to thread");
 						// TODO: cleanup
 						return;
 					}
@@ -433,7 +430,7 @@ void AndroidBluetoothSocket::onStatusDelegateMessage(BluetoothAdapter& bta, Blue
 					int dataPipe[2];
 					{
 						[[maybe_unused]] int ret = pipe(dataPipe);
-						assert(ret == 0);
+						assume(ret == 0);
 						ret = ALooper_addFd(looper, dataPipe[0], ALOOPER_POLL_CALLBACK, ALOOPER_EVENT_INPUT,
 							[](int fd, int events, void* data)
 							{
@@ -446,21 +443,21 @@ void AndroidBluetoothSocket::onStatusDelegateMessage(BluetoothAdapter& bta, Blue
 									int ret = read(fd, &size, sizeof(size));
 									if(ret != sizeof(size))
 									{
-										logErr("error reading BT socket data header in pipe, returned %d", ret);
+										log.error("error reading BT socket data header in pipe, returned {}", ret);
 										return 1;
 									}
 									char data[size];
 									ret = read(fd, data, size);
 									if(ret != size)
 									{
-										logErr("error reading BT socket data header in pipe, returned %d", ret);
+										log.error("error reading BT socket data header in pipe, returned {}", ret);
 										return 1;
 									}
 									socket.onData(&data[0], size);
 								}
 								return 1;
 							}, this);
-						assert(ret == 1);
+						assume(ret == 1);
 					}
 
 					jbyteArray jData = env->NewByteArray(48);
@@ -469,7 +466,7 @@ void AndroidBluetoothSocket::onStatusDelegateMessage(BluetoothAdapter& bta, Blue
 					if(usingArrayCopy) // will call GetByteArrayElements each iteration
 					{
 						env->ReleaseByteArrayElements(jData, data, 0);
-						logErr("couldn't get direct array pointer");
+						log.error("couldn't get direct array pointer");
 					}
 					jobject jInput = jBtSocketInputStream(env, socket);
 					for(;;)
@@ -479,9 +476,9 @@ void AndroidBluetoothSocket::onStatusDelegateMessage(BluetoothAdapter& bta, Blue
 						if(len <= 0 || env->ExceptionCheck()) [[unlikely]]
 						{
 							if(isClosing)
-								logMsg("input stream %p closing", jInput);
+								log.info("input stream {} closing", (void*)jInput);
 							else
-								logMsg("error reading packet from input stream %p", jInput);
+								log.info("error reading packet from input stream {}", (void*)jInput);
 							env->ExceptionClear();
 							if(!isClosing)
 								bta.sendSocketStatusMessage({sock, BluetoothSocketState::ReadError});
@@ -489,13 +486,13 @@ void AndroidBluetoothSocket::onStatusDelegateMessage(BluetoothAdapter& bta, Blue
 						}
 						if(::write(dataPipe[1], &len, sizeof(len)) != sizeof(len))
 						{
-							logErr("unable to write message header to pipe: %s", strerror(errno));
+							log.error("unable to write message header to pipe:{}", std::strerror(errno));
 						}
 						if(usingArrayCopy)
 							data = env->GetByteArrayElements(jData, nullptr);
 						if(::write(dataPipe[1], data, len) != len)
 						{
-							logErr("unable to write bt data to pipe: %s", strerror(errno));
+							log.error("unable to write bt data to pipe:{}", std::strerror(errno));
 						}
 						if(usingArrayCopy)
 							env->ReleaseByteArrayElements(jData, data, JNI_ABORT);
@@ -519,13 +516,13 @@ static int nativeFdForSocket(JNIEnv *env, jobject btSocket)
 		auto pFd = env->GetObjectField(btSocket, fdDataId);
 		if(!pFd)
 		{
-			logWarn("null ParcelFileDescriptor");
+			log.warn("null ParcelFileDescriptor");
 			return -1;
 		}
 		int fd = jGetFd(env, pFd);
 		if(fd < 0)
 		{
-			logWarn("invalid FD");
+			log.warn("invalid FD");
 			return -1;
 		}
 		return fd;
@@ -536,12 +533,12 @@ static int nativeFdForSocket(JNIEnv *env, jobject btSocket)
 		auto sockPtr = (asocket*)(uintptr_t)env->GetIntField(btSocket, fdDataId);
 		if(!sockPtr)
 		{
-			logWarn("null asocket");
+			log.warn("null asocket");
 			return -1;
 		}
 		if(sockPtr->fd < 0)
 		{
-			logWarn("invalid FD");
+			log.warn("invalid FD");
 			return -1;
 		}
 		return sockPtr->fd;
@@ -558,12 +555,12 @@ void AndroidBluetoothSocket::openSocket(BluetoothAdapter &adapter, BluetoothAddr
 	IG::makeDetachedThread(
 		[this, &adapter]()
 		{
-			logMsg("in connect thread %d", gettid());
+			log.info("in connect thread {}", gettid());
 			auto &sock = static_cast<BluetoothSocket&>(*this);
 			JNIEnv *env = ctx.thisThreadJniEnv();
 			if(!env)
 			{
-				logErr("error attaching env to thread");
+				log.error("error attaching env to thread");
 				connectSem.release();
 				isConnecting = false;
 				return;
@@ -571,19 +568,19 @@ void AndroidBluetoothSocket::openSocket(BluetoothAdapter &adapter, BluetoothAddr
 			socket = adapter.openSocket(env, addrStr.data(), this->channel, isL2cap);
 			if(socket)
 			{
-				logMsg("opened Bluetooth socket %p", socket);
+				log.info("opened Bluetooth socket {}", (void*)socket);
 				socket = env->NewGlobalRef(socket);
 				int fd = nativeFdForSocket(env, socket);
 				if(fd != -1 && fd_isValid(fd))
 				{
-					logMsg("native FD %d", fd);
+					log.info("native FD {}", fd);
 					nativeFd = fd;
 				}
 				else
 				{
 					outStream = jBtSocketOutputStream(env, socket);
-					assert(outStream);
-					logMsg("opened output stream %p", outStream);
+					assume(outStream);
+					log.info("opened output stream {}", (void*)outStream);
 					outStream = env->NewGlobalRef(outStream);
 				}
 				adapter.sendSocketStatusMessage({sock, BluetoothSocketState::Opened});
@@ -598,14 +595,14 @@ void AndroidBluetoothSocket::openSocket(BluetoothAdapter &adapter, BluetoothAddr
 
 std::system_error BluetoothSocket::openRfcomm(BluetoothAdapter &adapter, BluetoothAddr bdaddr, uint32_t channel)
 {
-	logMsg("opening RFCOMM channel %d", channel);
+	log.info("opening RFCOMM channel {}", channel);
 	openSocket(adapter, bdaddr, channel, 0);
 	return std::error_code{};
 }
 
 std::system_error BluetoothSocket::openL2cap(BluetoothAdapter &adapter, BluetoothAddr bdaddr, uint32_t psm)
 {
-	logMsg("opening L2CAP psm %d", psm);
+	log.info("opening L2CAP psm {}", psm);
 	openSocket(adapter, bdaddr, psm, 1);
 	return std::error_code{};
 }
@@ -619,12 +616,12 @@ void AndroidBluetoothSocket::close()
 {
 	if(isConnecting)
 	{
-		logMsg("waiting for connect thread to complete before closing socket");
+		log.info("waiting for connect thread to complete before closing socket");
 		connectSem.acquire();
 	}
 	if(socket)
 	{
-		logMsg("closing socket");
+		log.info("closing socket");
 		if(nativeFd != -1)
 		{
 			fdSrc.detach();
@@ -641,7 +638,7 @@ void AndroidBluetoothSocket::close()
 
 ssize_t BluetoothSocket::write(const void *data, size_t size)
 {
-	logMsg("writing %zd bytes", size);
+	log.info("writing {} bytes", size);
 	if(nativeFd != -1)
 	{
 		return fd_writeAll(nativeFd, data, size);

@@ -16,9 +16,12 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/util/used.hh>
-#include <imagine/util/utility.h>
+#include <imagine/util/utility.hh>
+#include <imagine/util/enum.hh>
+#ifndef IG_USE_MODULE_STD
 #include <type_traits>
 #include <concepts>
+#endif
 
 namespace IG
 {
@@ -26,21 +29,29 @@ namespace IG
 template<class T>
 constexpr bool isValidProperty(const T&) { return true; }
 
-template<class T, class SerializedT = T, std::predicate<const T&> Validator = bool(*)(const T&)>
+template<Enum T>
+constexpr bool isValidProperty(const T& v) { return enumIsValid(v); }
+
+template<class T>
+concept HasStaticIsValid = requires(T&& v){ { T::isValid(v) } -> std::same_as<bool>; };
+
+template<HasStaticIsValid T>
+constexpr bool isValidProperty(const T& v) { return T::isValid(v); }
+
+template<class T>
 struct PropertyDesc
 {
-	using SerializedType = SerializedT;
 	T defaultValue{};
 	bool mutableDefault{};
-	Validator isValid = [](const T &v){ return isValidProperty(v); };
+	bool(*isValid)(const T&){isValidProperty<T>};
 };
 
-template<class T, auto uid_, PropertyDesc desc = PropertyDesc<T>{}>
+template<class T, auto uid_, PropertyDesc<T> desc = {}, class SerializedT = T>
 class Property
 {
 public:
 	using Type = T;
-	using SerializedType = decltype(desc)::SerializedType;
+	using SerializedType = SerializedT;
 	static constexpr bool sameSerializedType = std::is_same_v<T, SerializedType>;
 	static constexpr auto uid{uid_};
 
@@ -50,19 +61,19 @@ public:
 	constexpr Property(const Property&) = default;
 	constexpr Property& operator=(const Property&) = default;
 
-	constexpr Property& operator=(auto &&v)
+	constexpr Property& operator=(auto&& v)
 	{
 		set(IG_forward(v));
 		return *this;
 	}
 
-	constexpr void setUnchecked(auto &&v)
+	constexpr void setUnchecked(auto&& v)
 	{
-		assert(isValid(v));
+		assume(isValid(v));
 		value_ = IG_forward(v);
 	}
 
-	constexpr bool set(auto &&v)
+	constexpr bool set(auto&& v)
 	{
 		if(!isValid(v))
 			return false;
@@ -70,7 +81,7 @@ public:
 		return true;
 	}
 
-	constexpr bool setDefaultValue(auto &&v)
+	constexpr bool setDefaultValue(auto&& v)
 	{
 		if(!isValid(v))
 			return false;
@@ -83,9 +94,9 @@ public:
 	constexpr const T& defaultValue() const { return defaultValue_; }
 	constexpr bool isDefault() const { return value() == defaultValue(); }
 	constexpr const T& reset() { return value_ = defaultValue(); }
-	static constexpr bool isValid(const auto &v) { return desc.isValid(v); }
+	static constexpr bool isValid(const auto& v) { return desc.isValid(v); }
 
-	constexpr const T& resetDefault(auto &&v)
+	constexpr const T& resetDefault(auto&& v)
 	{
 		setDefaultValue(IG_forward(v));
 		return reset();
@@ -93,9 +104,9 @@ public:
 
 	// If serialized types match, no need to copy/convert values
 	constexpr const T& serialize() const requires (sameSerializedType) { return value(); }
-	constexpr bool unserialize(auto &&v) requires (sameSerializedType) { return set(IG_forward(v)); }
+	constexpr bool unserialize(auto&& v) requires (sameSerializedType) { return set(IG_forward(v)); }
 	constexpr auto serialize() const requires (!sameSerializedType) { return SerializedType(value()); }
-	constexpr bool unserialize(auto &&v) requires (!sameSerializedType) { return set(T(IG_forward(v))); }
+	constexpr bool unserialize(auto&& v) requires (!sameSerializedType) { return set(T(IG_forward(v))); }
 
 private:
 	T value_{desc.defaultValue};
@@ -103,9 +114,7 @@ private:
 		ConstantType<T, desc.defaultValue, uid>> defaultValue_{desc.defaultValue};
 };
 
-template<bool condition, class T, auto uid, PropertyDesc<T> desc = PropertyDesc<T>{}>
-using ConditionalPropertyImpl = std::conditional_t<condition, Property<T, uid, desc>, ConstantType<T, desc.defaultValue, uid>>;
-
-#define ConditionalProperty [[no_unique_address]] ConditionalPropertyImpl
+template<bool condition, class T, auto uid, PropertyDesc<T> desc = {}, class SerializedT = T>
+using ConditionalPropertyImpl = std::conditional_t<condition, Property<T, uid, desc, SerializedT>, ConstantType<T, desc.defaultValue, uid>>;
 
 }

@@ -26,8 +26,10 @@
 #include <imagine/base/timer/CFTimer.hh>
 #endif
 
+#ifndef IG_USE_MODULE_STD
 #include <chrono>
 #include <string_view>
+#endif
 
 namespace IG
 {

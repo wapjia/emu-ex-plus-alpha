@@ -14,23 +14,15 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/MainMenuView.hh>
-#include <emuframework/EmuApp.hh>
-#include <emuframework/EmuSystem.hh>
-#include <emuframework/CreditsView.hh>
-#include <emuframework/FilePicker.hh>
-#include <emuframework/VideoOptionView.hh>
 #include <emuframework/TouchConfigView.hh>
+#include <emuframework/FilePicker.hh>
 #include <emuframework/BundledGamesView.hh>
-#include "InputManagerView.hh"
-#include "RecentContentView.hh"
+#include <emuframework/CreditsView.hh>
 #include "FrameTimingView.hh"
-#include <emuframework/EmuOptions.hh>
-#include <imagine/gui/AlertView.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/bluetooth/BluetoothInputDevice.hh>
-#include <format>
-#include <imagine/logger/logger.h>
+#include "RecentContentView.hh"
+#include "InputManagerView.hh"
+#include <emuframework/EmuApp.hh>
+import imagine;
 
 namespace EmuEx
 {
@@ -52,20 +44,21 @@ template <class ViewT>
 static void handledFailedBTAdapterInit(ViewT& view, [[maybe_unused]] ViewAttachParams attach, [[maybe_unused]] const Input::Event& e)
 {
 	view.app().postErrorMessage("Unable to initialize Bluetooth adapter");
-	#ifdef CONFIG_BLUETOOTH_BTSTACK
-	if(!FS::exists("/var/lib/dpkg/info/ch.ringwald.btstack.list"))
+	if constexpr(Config::Bluetooth::driver == Config::Bluetooth::Driver::Btstack)
 	{
-		view.pushAndShowModal(std::make_unique<YesNoAlertView>(attach, "BTstack not found, open Cydia and install?",
-			YesNoAlertView::Delegates
-			{
-				.onYes = [](View &v){ v.appContext().openURL("cydia://package/ch.ringwald.btstack"); }
-			}), e, false);
+		if(!FS::exists("/var/lib/dpkg/info/ch.ringwald.btstack.list"))
+		{
+			view.pushAndShowModal(std::make_unique<YesNoAlertView>(attach, "BTstack not found, open Cydia and install?",
+				YesNoAlertView::Delegates
+				{
+					.onYes = [](View &v){ v.appContext().openURL("cydia://package/ch.ringwald.btstack"); }
+				}), e, false);
+		}
 	}
-	#endif
 }
 
 MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
-	TableView{EmuApp::mainViewName(), attach, item},
+	TableView{AppMeta::mainViewName, attach, item},
 	loadGame
 	{
 		"Open Content", attach,
@@ -223,7 +216,7 @@ MainMenuView::MainMenuView(ViewAttachParams attach, bool customMenu):
 		"关于", attach,
 		[this](const Input::Event &e)
 		{
-			pushAndShow(makeView<CreditsView>(EmuSystem::creditsViewStr), e);
+			pushAndShow(makeView<CreditsView>(AppMeta::creditsViewStr), e);
 		}
 	},
 	exitApp
@@ -309,7 +302,7 @@ void MainMenuView::loadFileBrowserItems()
 	/* 爱吾修改：去掉这些功能
 	item.emplace_back(&loadGame);
 	item.emplace_back(&recentGames);
-	if(EmuSystem::hasBundledGames && app().showsBundledGames)
+	if(AppMeta::hasBundledGames() && app().showsBundledGames)
 	{
 		item.emplace_back(&bundledGames);
 	}
@@ -356,7 +349,7 @@ OptionCategoryView::OptionCategoryView(ViewAttachParams attach):
 		{
 			return msg.visit(overloaded
 			{
-				[&](const ItemsMessage&) -> ItemReply { return EmuApp::hasGooglePlayStoreFeatures() ? std::size(subConfig) : std::size(subConfig)-1; },
+				[&](const ItemsMessage&) -> ItemReply { return AppMeta::hasGooglePlayStoreFeatures ? std::size(subConfig) : std::size(subConfig)-1; },
 				[&](const GetItemMessage& m) -> ItemReply { return &subConfig[m.idx]; },
 			});
 		}
@@ -414,14 +407,14 @@ OptionCategoryView::OptionCategoryView(ViewAttachParams attach):
 		}
 	}
 {
-	if(EmuApp::hasGooglePlayStoreFeatures())
+	if(AppMeta::hasGooglePlayStoreFeatures)
 	{
 		subConfig[lastIndex(subConfig)] =
 		{
 			"Beta Testing Opt-in/out", attach,
 			[this]()
 			{
-				appContext().openURL(std::format("https://play.google.com/apps/testing/{}", appContext().applicationId));
+				appContext().openURL(std::format("https://play.google.com/apps/testing/{}", ApplicationMeta::id));
 			}
 		};
 	}

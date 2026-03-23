@@ -15,17 +15,24 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#ifndef IG_USE_MODULE_STD
 #include <concepts>
 #include <ranges>
+#include <cstddef>
+#endif
 
 namespace IG
 {
 
 template<std::integral T>
-constexpr auto iotaCount(T count) { return std::views::iota((T)0, count); }
+constexpr auto iotaCount(T count) { return std::views::iota(T{}, count); }
 
+#if defined(__cpp_lib_ranges_enumerate) && __cpp_lib_ranges_enumerate >= 202211L
+using std::views::enumerate;
+#else
 template<std::ranges::range T>
-constexpr auto enumerate(T&& rng) { return std::views::zip(std::views::iota(0), std::forward<T>(rng)); }
+constexpr auto enumerate(T&& rng) { return std::views::zip(std::views::iota(0uz), std::forward<T>(rng)); }
+#endif
 
 template<std::ranges::range T>
 constexpr auto lastIndex(T&& rng) { return std::ranges::size(std::forward<T>(rng)) - 1; }

@@ -10,6 +10,16 @@
 .global draw_tile_arm_xflip_xzoom
 .global draw_tile_arm_yflip_xzoom
 
+.type draw_one_char_arm, %function
+.type draw_tile_arm_norm, %function
+.type draw_tile_arm_xyflip_norm, %function
+.type draw_tile_arm_xflip_norm, %function
+.type draw_tile_arm_yflip_norm, %function
+.type draw_tile_arm_xzoom, %function
+.type draw_tile_arm_xyflip_xzoom, %function
+.type draw_tile_arm_xflip_xzoom, %function
+.type draw_tile_arm_yflip_xzoom, %function
+
 .macro LOAD_GLOBAL_VAR reg prefix name
 	ldr \reg, .L\prefix\()_addr_\name
 .L\prefix\()_offset_\name :

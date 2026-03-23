@@ -13,25 +13,10 @@
 	You should have received a copy of the GNU General Public License
 	along with GBC.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/EmuApp.hh>
-#include <emuframework/Option.hh>
-#include "MainSystem.hh"
-#include "Palette.hh"
+module system;
 
 namespace EmuEx
 {
-
-const char *EmuSystem::configFilename = "GbcEmu.config";
-
-std::span<const AspectRatioInfo> GbcSystem::aspectRatioInfos()
-{
-	static constexpr AspectRatioInfo aspectRatioInfo[]
-	{
-		{"10:9 (原画)", {10, 9}},
-		EMU_SYSTEM_DEFAULT_ASPECT_RATIO_INFO_INIT
-	};
-	return aspectRatioInfo;
-}
 
 void GbcSystem::onOptionsLoaded()
 {

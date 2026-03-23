@@ -13,10 +13,11 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/audio/pulseaudio/PAOutputStream.hh>
+#include <imagine/config/macros.h>
 #include <imagine/audio/OutputStream.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/io/FileIO.hh>
 #include <imagine/util/ScopeGuard.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <pulse/pulseaudio.h>
 #ifdef CONFIG_PACKAGE_PULSEAUDIO_GLIB
 #include <pulse/glib-mainloop.h>
@@ -27,7 +28,7 @@
 namespace IG::Audio
 {
 
-constexpr SystemLogger log{"PulseAudio"};
+static SystemLogger log{"PulseAudio"};
 
 static pa_sample_format_t pcmFormatToPA(const SampleFormat &format)
 {
@@ -36,8 +37,7 @@ static pa_sample_format_t pcmFormatToPA(const SampleFormat &format)
 		case 4 : return format.isFloat() ? PA_SAMPLE_FLOAT32NE : PA_SAMPLE_S32NE;
 		case 2 : return PA_SAMPLE_S16NE;
 		case 1 : return PA_SAMPLE_U8;
-		default:
-			bug_unreachable("bytes == %d", format.bytes());
+		default: unreachable();
 	}
 }
 
@@ -171,7 +171,6 @@ StreamError PAOutputStream::open(OutputStreamConfig config)
 				log.error("error:{} in pa_stream_begin_write with {} bytes", err, bytes);
 				return;
 			}
-			assumeExpr(thisPtr->onSamplesNeeded);
 			thisPtr->onSamplesNeeded(buff, thisPtr->pcmFormat.bytesToFrames(bytes));
 			if(int err = pa_stream_write(stream, buff, bytes, nullptr, 0, PA_SEEK_RELATIVE);
 				err < 0)
@@ -213,7 +212,7 @@ StreamError PAOutputStream::open(OutputStreamConfig config)
 		isCorked = true;
 	}
 	unlockMainLoop();
-	assert(serverAttr);
+	assume(serverAttr);
 	log.info("opened stream with target fill bytes:{}", serverAttr->tlength);
 	return {};
 }
@@ -306,7 +305,7 @@ void PAOutputStream::signalMainLoop()
 {
 	#ifdef CONFIG_PACKAGE_PULSEAUDIO_GLIB
 	log.info("signaling main loop");
-	assert(!mainLoopSignaled);
+	assume(!mainLoopSignaled);
 	mainLoopSignaled = true;
 	#else
 	pa_threaded_mainloop_signal(mainloop, 0);

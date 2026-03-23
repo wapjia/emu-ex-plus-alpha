@@ -4,11 +4,7 @@
 #include "LC89510.h"
 #include "misc.h"
 #include "mem.hh"
-
-#include <imagine/logger/logger.h>
-#include <imagine/util/algorithm.h>
-#include <imagine/util/ranges.hh>
-#include <imagine/io/FileIO.hh>
+import imagine;
 
 SegaCD sCD;
 
@@ -23,7 +19,7 @@ static int intAckS68k(M68KCPU &m68ki_cpu, int level)
 void scd_interruptSubCpu(unsigned irq)
 {
 	unsigned enabled = sCD.gate[0x33] & (1 << irq);
-	if(!enabled) { bug_unreachable("irq"); }
+	IG::assume(enabled);
 	//logMsg("int %d, mask %X, enabled %d", irq, sCD.gate[0x33], enabled);
 	sCD.cpu.setIRQ(irq);
 }
@@ -37,7 +33,7 @@ void dumpPRG(const char *n)
 void handleBad68KIns()
 {
 	dumpPRG("s68kcode2.bin");
-	//bug_unreachable("");
+	//IG::unreachable();
 }
 
 void m68kPCChange(M68KCPU &cpu, unsigned oldPC, unsigned PC)

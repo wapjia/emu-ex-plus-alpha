@@ -16,11 +16,15 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/EmuAppHelper.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/gui/TableView.hh>
 #include <imagine/gui/MenuItem.hh>
 #include <imagine/util/container/ArrayList.hh>
 #include <imagine/bluetooth/defs.hh>
+#endif
+#ifndef IG_USE_MODULE_STD
 #include <array>
+#endif
 
 namespace EmuEx
 {

@@ -13,27 +13,30 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <imagine/config/macros.h>
 #include <imagine/io/PosixIO.hh>
-#include <imagine/util/fd-utils.h>
-#include <imagine/util/utility.h>
-#include <imagine/util/string/StaticString.hh>
-#include <imagine/util/format.hh>
-#include <imagine/config/defs.hh>
-#include <imagine/logger/logger.h>
-#include "utils.hh"
 #include <imagine/io/IOUtils-impl.hh>
-#include <cstring>
-#include <sys/stat.h>
+#include <imagine/logger/SystemLogger.hh>
+#include <imagine/util/string/StaticString.hh>
+#include <imagine/util/fd-utils.h>
+#include <imagine/util/format.hh>
+#include <errno.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/mman.h>
-#include <system_error>
+#include <sys/uio.h>
+#if defined __ANDROID__ && ANDROID_MIN_API < 24
+#include <sys/syscall.h>
+#endif
+import imagine.internal.io;
+import std;
 
 namespace IG
 {
 
 template class IOUtils<PosixIO>;
 
-constexpr SystemLogger log{"PosixIO"};
+static SystemLogger log{"PosixIO"};
 
 #if !defined __linux__
 constexpr int MAP_POPULATE = 0;
@@ -92,7 +95,7 @@ PosixIO::PosixIO(CStringView path, OpenFlags openFlags)
 	if((fd_ = ::open(path, flags, openMode)) == -1) [[unlikely]]
 	{
 		if constexpr(Config::DEBUG_BUILD)
-			log.error("error opening file ({}) @ {}:{}", flagsString(openFlags), path, strerror(errno));
+			log.error("error opening file ({}) @ {}:{}", flagsString(openFlags), path, std::strerror(errno));
 		if(openFlags.test)
 			return;
 		else
@@ -148,7 +151,6 @@ ssize_t PosixIO::write(const void *buff, size_t bytes, std::optional<off_t> offs
 }
 
 #if defined __ANDROID__ && ANDROID_MIN_API < 24
-#include <sys/syscall.h>
 
 static ssize_t pwritevWrapper(PosixIO &io, std::span<const OutVector> buffs, off_t offset)
 {
@@ -274,7 +276,7 @@ IOBuffer PosixIO::releaseBuffer()
 	if(flags == -1) [[unlikely]]
 	{
 		if(Config::DEBUG_BUILD)
-			log.error("fcntl({}) failed:{}", fd(), strerror(errno));
+			log.error("fcntl({}) failed:{}", fd(), std::strerror(errno));
 		flags = 0;
 	}
 	bool isWritable = (flags & O_WRONLY) || (flags & O_RDWR);
@@ -310,7 +312,7 @@ IOBuffer PosixIO::byteBufferFromMmap(void *data, size_t size)
 			if(munmap((void*)ptr, size) == -1)
 			{
 				if constexpr(Config::DEBUG_BUILD)
-					log.error("munmap({}, {}) error:{}", (void*)ptr, size, strerror(errno));
+					log.error("munmap({}, {}) error:{}", (void*)ptr, size, std::strerror(errno));
 			}
 		}
 	};

@@ -1,5 +1,4 @@
 #include "core/gba/gbaGfx.h"
-
 #include "core/gba/gbaGlobals.h"
 
 #define BLDMOD ioMem.BLDMOD
@@ -45,23 +44,15 @@ void mode2RenderLine(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem::IoMem &
   const uint16_t *palette = (uint16_t *)lcd.paletteRAM;
 
   if (coreOptions.layerEnable & 0x0400) {
-    int changed = gfxBG2Changed;
-    if (gfxLastVCOUNT > VCOUNT)
-      changed = 3;
-
     gfxDrawRotScreen(lcd.vram, BG2CNT, ioMem.BG2X_L, ioMem.BG2X_H, ioMem.BG2Y_L, ioMem.BG2Y_H,
                      ioMem.BG2PA, ioMem.BG2PB, ioMem.BG2PC, ioMem.BG2PD, lcd.gfxBG2X, lcd.gfxBG2Y,
-                     changed, g_line2, VCOUNT, MOSAIC, palette);
+                     g_line2, VCOUNT, MOSAIC, palette);
   }
 
   if (coreOptions.layerEnable & 0x0800) {
-    int changed = gfxBG3Changed;
-    if (gfxLastVCOUNT > VCOUNT)
-      changed = 3;
-
     gfxDrawRotScreen(lcd.vram, BG3CNT, ioMem.BG3X_L, ioMem.BG3X_H, ioMem.BG3Y_L, ioMem.BG3Y_H,
     		ioMem.BG3PA, ioMem.BG3PB, ioMem.BG3PC, ioMem.BG3PD, lcd.gfxBG3X, lcd.gfxBG3Y,
-                     changed, g_line3, VCOUNT, MOSAIC, palette);
+                     g_line3, VCOUNT, MOSAIC, palette);
   }
 
   gfxDrawSprites(g_lineOBJ);
@@ -127,9 +118,6 @@ void mode2RenderLine(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem::IoMem &
 
     g_lineMix[x] = color;
   }
-  gfxBG2Changed = 0;
-  gfxBG3Changed = 0;
-  gfxLastVCOUNT = VCOUNT;
 }
 
 void mode2RenderLineNoWindow(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem::IoMem &ioMem)
@@ -137,23 +125,15 @@ void mode2RenderLineNoWindow(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem:
   const uint16_t *palette = (uint16_t *)lcd.paletteRAM;
 
   if (coreOptions.layerEnable & 0x0400) {
-    int changed = gfxBG2Changed;
-    if (gfxLastVCOUNT > VCOUNT)
-      changed = 3;
-
     gfxDrawRotScreen(lcd.vram, BG2CNT, ioMem.BG2X_L, ioMem.BG2X_H, ioMem.BG2Y_L, ioMem.BG2Y_H,
                      ioMem.BG2PA, ioMem.BG2PB, ioMem.BG2PC, ioMem.BG2PD, lcd.gfxBG2X, lcd.gfxBG2Y,
-                     changed, g_line2, VCOUNT, MOSAIC, palette);
+                     g_line2, VCOUNT, MOSAIC, palette);
   }
 
   if (coreOptions.layerEnable & 0x0800) {
-    int changed = gfxBG3Changed;
-    if (gfxLastVCOUNT > VCOUNT)
-      changed = 3;
-
     gfxDrawRotScreen(lcd.vram, BG3CNT, ioMem.BG3X_L, ioMem.BG3X_H, ioMem.BG3Y_L, ioMem.BG3Y_H,
     		ioMem.BG3PA, ioMem.BG3PB, ioMem.BG3PC, ioMem.BG3PD, lcd.gfxBG3X, lcd.gfxBG3Y,
-                     changed, g_line3, VCOUNT, MOSAIC, palette);
+                     g_line3, VCOUNT, MOSAIC, palette);
   }
 
   gfxDrawSprites(g_lineOBJ);
@@ -264,9 +244,6 @@ void mode2RenderLineNoWindow(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem:
 
     g_lineMix[x] = color;
   }
-  gfxBG2Changed = 0;
-  gfxBG3Changed = 0;
-  gfxLastVCOUNT = VCOUNT;
 }
 
 void mode2RenderLineAll(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem::IoMem &ioMem)
@@ -296,23 +273,15 @@ void mode2RenderLineAll(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem::IoMe
   }
 
   if (coreOptions.layerEnable & 0x0400) {
-    int changed = gfxBG2Changed;
-    if (gfxLastVCOUNT > VCOUNT)
-      changed = 3;
-
     gfxDrawRotScreen(lcd.vram, BG2CNT, ioMem.BG2X_L, ioMem.BG2X_H, ioMem.BG2Y_L, ioMem.BG2Y_H,
                      ioMem.BG2PA, ioMem.BG2PB, ioMem.BG2PC, ioMem.BG2PD, lcd.gfxBG2X, lcd.gfxBG2Y,
-                     changed, g_line2, VCOUNT, MOSAIC, palette);
+                     g_line2, VCOUNT, MOSAIC, palette);
   }
 
   if (coreOptions.layerEnable & 0x0800) {
-    int changed = gfxBG3Changed;
-    if (gfxLastVCOUNT > VCOUNT)
-      changed = 3;
-
     gfxDrawRotScreen(lcd.vram, BG3CNT, ioMem.BG3X_L, ioMem.BG3X_H, ioMem.BG3Y_L, ioMem.BG3Y_H,
     		ioMem.BG3PA, ioMem.BG3PB, ioMem.BG3PC, ioMem.BG3PD, lcd.gfxBG3X, lcd.gfxBG3Y,
-                     changed, g_line3, VCOUNT, MOSAIC, palette);
+                     g_line3, VCOUNT, MOSAIC, palette);
   }
 
   gfxDrawSprites(g_lineOBJ);
@@ -445,7 +414,4 @@ void mode2RenderLineAll(MixColorType *g_lineMix, GBALCD &lcd, const GBAMem::IoMe
 
     g_lineMix[x] = color;
   }
-  gfxBG2Changed = 0;
-  gfxBG3Changed = 0;
-  gfxLastVCOUNT = VCOUNT;
 }

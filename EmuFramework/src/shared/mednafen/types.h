@@ -24,10 +24,6 @@
    #error "Compiling with large memory model is not recommended, for performance reasons."
   #endif
  #endif
-
- #ifdef __USING_SJLJ_EXCEPTIONS__
-  #error "SJLJ-style exception handling will incur a significant performance penalty even when exceptions are not thrown, and thus an alternative(e.g. DWARF) should be used if at all possible."
- #endif
 #endif
 //
 //

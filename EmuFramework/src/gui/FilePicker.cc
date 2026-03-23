@@ -14,26 +14,21 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/FilePicker.hh>
-#include <emuframework/EmuSystem.hh>
 #include <emuframework/EmuApp.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/gui/FSPicker.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/io/IO.hh>
-#include <string>
+import imagine;
 
 namespace EmuEx
 {
 
 FilePicker::FilePicker(ViewAttachParams attach,
-	FSPicker::Mode mode, EmuSystem::NameFilterFunc filter, const Input::Event &e, bool includeArchives):
+	FSPicker::Mode mode, NameFilterFunc filter, const Input::Event &e, bool includeArchives):
 	FilePicker
 	{
 		attach, EmuApp::get(attach.appContext()), mode, filter, e, includeArchives
 	} {}
 
 FilePicker::FilePicker(ViewAttachParams attach, EmuApp &app,
-	FSPicker::Mode mode, EmuSystem::NameFilterFunc filter, const Input::Event&, bool includeArchives):
+	FSPicker::Mode mode, NameFilterFunc filter, const Input::Event&, bool includeArchives):
 	FSPicker
 	{
 		attach,
@@ -63,7 +58,7 @@ std::unique_ptr<FilePicker> FilePicker::forBenchmarking(ViewAttachParams attach,
 {
 	auto &app = EmuApp::get(attach.appContext());
 	auto mode = singleDir ? FSPicker::Mode::FILE_IN_DIR : FSPicker::Mode::FILE;
-	auto picker = std::make_unique<FilePicker>(attach, app, mode, EmuSystem::defaultFsFilter, e);
+	auto picker = std::make_unique<FilePicker>(attach, app, mode, AppMeta::defaultFsFilter, e);
 	picker->setPath(app.contentSearchPath, e);
 	picker->setOnChangePath(
 		[&app](FSPicker &picker, const Input::Event &)
@@ -88,7 +83,7 @@ std::unique_ptr<FilePicker> FilePicker::forLoading(ViewAttachParams attach, cons
 {
 	auto &app = EmuApp::get(attach.appContext());
 	auto mode = singleDir ? FSPicker::Mode::FILE_IN_DIR : FSPicker::Mode::FILE;
-	auto picker = std::make_unique<FilePicker>(attach, app, mode, EmuSystem::defaultFsFilter, e);
+	auto picker = std::make_unique<FilePicker>(attach, app, mode, AppMeta::defaultFsFilter, e);
 	picker->setPath(app.contentSearchPath, e);
 	picker->setOnChangePath(
 		[&app](FSPicker &picker, const Input::Event &)
@@ -104,7 +99,7 @@ std::unique_ptr<FilePicker> FilePicker::forLoading(ViewAttachParams attach, cons
 }
 
 std::unique_ptr<FilePicker> FilePicker::forMediaChange(ViewAttachParams attach, const Input::Event &e,
-	EmuSystem::NameFilterFunc filter, FSPicker::OnSelectPathDelegate onSelect, bool singleDir)
+	NameFilterFunc filter, FSPicker::OnSelectPathDelegate onSelect, bool singleDir)
 {
 	auto &app = EmuApp::get(attach.appContext());
 	auto mode = singleDir ? FSPicker::Mode::FILE_IN_DIR : FSPicker::Mode::FILE;
@@ -118,7 +113,7 @@ std::unique_ptr<FilePicker> FilePicker::forMediaCreation(ViewAttachParams attach
 {
 	auto &app = EmuApp::get(attach.appContext());
 	auto mode = FSPicker::Mode::DIR;
-	auto picker = std::make_unique<FilePicker>(attach, app, mode, EmuSystem::NameFilterFunc{}, e);
+	auto picker = std::make_unique<FilePicker>(attach, app, mode, NameFilterFunc{}, e);
 	picker->setPath(app.contentSearchPath, e);
 	return picker;
 }

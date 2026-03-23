@@ -13,12 +13,9 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/audio/defs.hh>
-#include <imagine/audio/Manager.hh>
+#include <imagine/config/macros.h>
 #include <imagine/audio/OutputStream.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/util/utility.h>
-#include <imagine/util/variant.hh>
+#include <imagine/audio/Manager.hh>
 
 namespace IG::Audio
 {
@@ -41,8 +38,7 @@ void OutputStream::setApi(const Manager &mgr, Api api)
 		#ifdef __APPLE__
 		case Api::COREAUDIO: emplace<CAOutputStream>(); return;
 		#endif
-		default:
-			bug_unreachable("audio API should always be valid");
+		default: unreachable();
 	}
 }
 

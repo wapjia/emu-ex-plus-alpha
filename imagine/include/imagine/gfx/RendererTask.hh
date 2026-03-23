@@ -16,9 +16,12 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/gfx/defs.hh>
-#include <imagine/util/utility.h>
+#include <imagine/gfx/SyncFence.hh>
+#ifndef IG_USE_MODULE_STD
 #include <concepts>
 #include <chrono>
+#include <utility>
+#endif
 
 #ifdef CONFIG_GFX_OPENGL
 #include <imagine/gfx/opengl/GLRendererTask.hh>
@@ -34,13 +37,16 @@ class Viewport;
 namespace IG::Gfx
 {
 
-WISE_ENUM_CLASS((PresentMode, uint8_t),
+enum class PresentMode: uint8_t
+{
 	Auto, Immediate, FIFO
-);
+};
 
 class RendererTask : public RendererTaskImpl
 {
 public:
+	using TaskContext = RendererTaskImpl::TaskContext;
+
 	using RendererTaskImpl::RendererTaskImpl;
 	void updateDrawableForSurfaceChange(Window &, WindowSurfaceChange);
 	void setPresentMode(Window &, PresentMode);

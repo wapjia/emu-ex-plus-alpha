@@ -18,12 +18,14 @@
 #include <imagine/io/ioDefs.hh>
 #include <imagine/util/memory/Buffer.hh>
 #include <imagine/util/concepts.hh>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
 #include <utility>
 #include <span>
 #include <type_traits>
 #include <optional>
 #include <expected>
+#endif
 
 namespace IG
 {

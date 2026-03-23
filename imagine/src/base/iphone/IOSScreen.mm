@@ -18,12 +18,12 @@ static_assert(__has_feature(objc_arc), "This file requires ARC");
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/base/Application.hh>
 #include <imagine/time/Time.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
 #include "ios.hh"
 
 namespace IG
 {
-constexpr SystemLogger log{"Screen"};
+static SystemLogger log{"Screen"};
 }
 
 using namespace IG;

@@ -24,9 +24,11 @@
 #include <imagine/gfx/opengl/GLRenderer.hh>
 #endif
 
+#ifndef IG_USE_MODULE_STD
 #include <vector>
 #include <span>
 #include <string_view>
+#endif
 
 namespace IG::Data
 {

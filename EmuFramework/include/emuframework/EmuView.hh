@@ -15,12 +15,14 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/config.hh>
+#include <emuframework/defs.hh>
 #include <emuframework/EmuTiming.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/gui/View.hh>
 #include <imagine/time/Time.hh>
 #include <imagine/gfx/GfxText.hh>
 #include <imagine/gfx/Quads.hh>
+#endif
 
 namespace EmuEx
 {

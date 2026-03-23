@@ -17,36 +17,32 @@
 
 #include <imagine/config/defs.hh>
 #include <imagine/util/DelegateFunc.hh>
+#ifndef IG_USE_MODULE_STD
 #include <array>
 #include <cstdint>
-
-#if defined __ANDROID__
-#define CONFIG_BLUETOOTH_ANDROID
-#elif defined __APPLE__ && TARGET_OS_IPHONE
-#define CONFIG_BLUETOOTH_BTSTACK
-#elif defined __linux__
-#define CONFIG_BLUETOOTH_BLUEZ
 #endif
 
 namespace Config::Bluetooth
 {
 
-#if defined CONFIG_BLUETOOTH_BLUEZ || defined CONFIG_BLUETOOTH_BTSTACK
-#define CONFIG_BLUETOOTH_SERVER
-constexpr bool server = true;
+enum class Driver
+{
+	None, Android, Btstack, Bluez
+};
+
+#if defined __ANDROID__
+inline constexpr Driver driver = Driver::Android;
+#elif defined __APPLE__ && TARGET_OS_IPHONE
+inline constexpr Driver driver = Driver::Btstack;
+#elif defined __linux__
+inline constexpr Driver driver = Driver::Bluez;
 #else
-constexpr bool server = false;
+inline constexpr Driver driver = Driver::None;
 #endif
 
-#if defined CONFIG_BLUETOOTH_BLUEZ || defined CONFIG_BLUETOOTH_BTSTACK
-#define CONFIG_BLUETOOTH_SCAN_CACHE_USAGE
-#define CONFIG_BLUETOOTH_SCAN_SECS
-constexpr bool scanCache = true;
-constexpr bool scanTime = true;
-#else
-constexpr bool scanCache = false;
-constexpr bool scanTime = false;
-#endif
+inline constexpr bool server = driver == Driver::Bluez || driver == Driver::Btstack;
+inline constexpr bool scanCache = driver == Driver::Bluez || driver == Driver::Btstack;
+inline constexpr bool scanTime = driver == Driver::Bluez || driver == Driver::Btstack;
 
 }
 

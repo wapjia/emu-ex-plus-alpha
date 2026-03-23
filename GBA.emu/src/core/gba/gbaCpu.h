@@ -24,13 +24,6 @@ extern int thumbExecute(ARM7TDMI &cpu) __attribute__((hot));
 #define UNLIKELY(x) (x)
 #endif
 
-constexpr bool CONFIG_TRIGGER_ARM_STATE_EVENT = 0;
-
-static void UPDATE_REG(auto *gba, auto address, auto value)
-{
-  WRITE16LE(((uint16_t*)&(gba)->mem.ioMem.b[address]), value);
-}
-
 extern uint32_t mastercode;
 extern void CPUSoftwareInterrupt(ARM7TDMI &cpu, int comment);
 
@@ -148,7 +141,7 @@ inline int codeTicksAccess32(ARM7TDMI &cpu, uint32_t address) // ARM NON SEQ
         return 0;
       }
       busPrefetchCount = ((busPrefetchCount & 0xFF) >> 1) | (busPrefetchCount & 0xFFFFFF00);
-      return memoryWaitSeq[addr] - 1;
+      return memoryWaitSeq32[addr] - 1; // NOTE: was memoryWaitSeq[]
     } else {
       busPrefetchCount = 0;
       return memoryWait32[addr];
@@ -189,27 +182,30 @@ inline int codeTicksAccessSeq32(ARM7TDMI &cpu, uint32_t address) // ARM SEQ
         return 0;
       }
       busPrefetchCount = ((busPrefetchCount & 0xFF) >> 1) | (busPrefetchCount & 0xFFFFFF00);
-      return memoryWaitSeq[addr];
+      return memoryWaitSeq32[addr]; // NOTE: was memoryWaitSeq[]
     } else if (busPrefetchCount > 0xFF) {
       busPrefetchCount = 0;
       return memoryWait32[addr];
     } else
       return memoryWaitSeq32[addr];
   } else {
+  	busPrefetchCount = 0; // NOTE: was previosly missing
     return memoryWaitSeq32[addr];
   }
 }
 
 // Emulates the Cheat System (m) code
-inline void cpuMasterCodeCheck(ARM7TDMI &cpu)
+inline void cpuMasterCodeCheck()
 {
-  if ((mastercode) && (mastercode == cpu.armNextPC)) {
+#if 0
+  if ((mastercode) && (mastercode == armNextPC)) {
     uint32_t joy = 0;
     if (systemReadJoypads())
       joy = systemReadJoypad(-1);
     uint32_t ext = (joy >> 10);
-    cpu.cpuTotalTicks += cheatsCheckKeys(cpu, P1 ^ 0x3FF, ext);
+    cpuTotalTicks += cheatsCheckKeys(P1 ^ 0x3FF, ext);
   }
+#endif
 }
 
 #undef busPrefetchCount

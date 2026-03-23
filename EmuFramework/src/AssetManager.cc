@@ -14,17 +14,16 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/AssetManager.hh>
-#include <imagine/gfx/Renderer.hh>
-#include <imagine/gui/View.hh>
-#include <imagine/data-type/image/PixmapSource.hh>
-#include <imagine/logger/logger.h>
+import imagine;
 
 namespace EmuEx
 {
 
+using namespace IG;
+
 constexpr SystemLogger log{"AssetManager"};
 
-constexpr AssetDesc assetDesc[wise_enum::size<AssetID>]
+constexpr AssetDesc assetDesc[enumCount<AssetID>]
 {
 	// arrow, accept, close, more
 	{AssetFileID::ui, {{},       {.25, .25}}},
@@ -52,7 +51,7 @@ constexpr AssetDesc assetDesc[wise_enum::size<AssetID>]
 
 Gfx::TextureSpan AssetManager::get(Gfx::Renderer& r, AssetID assetID) const
 {
-	assumeExpr(to_underlying(assetID) < wise_enum::size<AssetID>);
+	assume(to_underlying(assetID) < enumCount<AssetID>);
 	return get(r, assetDesc[to_underlying(assetID)]);
 }
 

@@ -29,8 +29,10 @@
 
 #include <imagine/pixmap/PixelFormat.hh>
 #include <imagine/util/concepts.hh>
+#ifndef IG_USE_MODULE_STD
 #include <optional>
 #include <type_traits>
+#endif
 
 namespace IG::GL
 {
@@ -43,9 +45,9 @@ struct Version
 };
 
 #if defined CONFIG_OS_IOS || defined __ANDROID__
-constexpr auto defaultApi = IG::GL::API::OpenGLES;
+inline constexpr auto defaultApi = IG::GL::API::OpenGLES;
 #else
-constexpr auto defaultApi = IG::GL::API::OpenGL;
+inline constexpr auto defaultApi = IG::GL::API::OpenGL;
 #endif
 
 }
@@ -53,9 +55,9 @@ constexpr auto defaultApi = IG::GL::API::OpenGL;
 namespace Config
 {
 #if !defined NDEBUG && !defined __APPLE__
-constexpr bool OpenGLDebugContext = true;
+inline constexpr bool OpenGLDebugContext = true;
 #else
-constexpr bool OpenGLDebugContext = false;
+inline constexpr bool OpenGLDebugContext = false;
 #endif
 }
 
@@ -66,7 +68,7 @@ class Window;
 class GLDisplay;
 class ApplicationContext;
 
-constexpr bool useEGLPlatformAPI = Config::envIsLinux && !Config::MACHINE_IS_PANDORA;
+inline constexpr bool useEGLPlatformAPI = Config::envIsLinux && !Config::MACHINE_IS_PANDORA;
 
 struct GLBufferConfigAttributes
 {
@@ -157,13 +159,11 @@ public:
 	GLDisplay display() const;
 	GLDisplay getDefaultDisplay(NativeDisplayConnection) const;
 	std::optional<GLBufferConfig> tryBufferConfig(ApplicationContext, const GLBufferRenderConfigAttributes&) const;
-	GLBufferConfig makeBufferConfig(ApplicationContext, const GLBufferRenderConfigAttributes&) const;
-	GLBufferConfig makeBufferConfig(ApplicationContext, std::span<const GLBufferRenderConfigAttributes>) const;
 	NativeWindowFormat nativeWindowFormat(ApplicationContext, GLBufferConfig) const;
 	GLContext makeContext(GLContextAttributes, GLBufferConfig, NativeGLContext shareContext);
-	GLContext makeContext(GLContextAttributes, GLBufferConfig);
+	GLContext makeContext(GLContextAttributes attrs, GLBufferConfig config) { return makeContext(attrs, config, {}); }
 	static NativeGLContext currentContext();
-	void resetCurrentContext() const;
+	void resetCurrentContext() const { display().resetCurrentContext(); }
 	GLDrawable makeDrawable(Window &, GLDrawableAttributes) const;
 	static bool hasCurrentDrawable(NativeGLDrawable);
 	static bool hasCurrentDrawable();
@@ -177,6 +177,22 @@ public:
 	bool hasPresentationTime() const;
 	void setPresentationTime(NativeGLDrawable, SteadyClockTimePoint) const;
 	void logInfo() const;
+
+	GLBufferConfig makeBufferConfig(ApplicationContext ctx, const GLBufferRenderConfigAttributes& attrs) const
+	{
+		return makeBufferConfig(ctx, std::span{&attrs, 1});
+	}
+
+	GLBufferConfig makeBufferConfig(ApplicationContext ctx, std::span<const GLBufferRenderConfigAttributes> attrsSpan) const
+	{
+		for(const auto &attrs : attrsSpan)
+		{
+			auto config = tryBufferConfig(ctx, attrs);
+			if(config)
+				return *config;
+		}
+		throw std::runtime_error("Error finding a GL configuration");
+	}
 
 	static bool loadSymbol(Pointer auto &symPtr, const char *name)
 	{

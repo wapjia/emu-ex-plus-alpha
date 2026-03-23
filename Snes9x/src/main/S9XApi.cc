@@ -1,26 +1,26 @@
-#define LOGTAG "main"
+/*  This file is part of Snes9x EX.
+
+	Please see COPYING file in root directory for license information. */
+
 #include <imagine/logger/logger.h>
-#include <imagine/fs/FS.hh>
-#include <imagine/fs/ArchiveFS.hh>
-#include <imagine/io/FileIO.hh>
-#include <imagine/io/IO.hh>
-#include <imagine/util/format.hh>
-#include <imagine/util/string.h>
-#include <emuframework/EmuSystem.hh>
-#include <emuframework/EmuApp.hh>
-#include "MainSystem.hh"
 #include <sys/stat.h>
 #include <zlib.h>
 #ifndef SNES9X_VERSION_1_4
 #include <apu/apu.h>
 #include <controls.h>
 #else
+#include <snes9x.h>
 #include <apu.h>
 #include <soundux.h>
 #endif
 #include <display.h>
 #include <memmap.h>
+import system;
+import emuex;
+import imagine;
+import std;
 
+using namespace IG;
 using namespace EmuEx;
 
 #ifndef SNES9X_VERSION_1_4
@@ -38,12 +38,12 @@ static std::string globalPath;
 void S9xMessage(int, int, const char *msg)
 {
 	if(msg)
-		logMsg("%s", msg);
+		Snes9xSystem::log.info("{}", msg);
 }
 
 void S9xPrintf(const char* msg, ...)
 {
-	if(!logger_isEnabled())
+	if(!Log::isEnabled())
 		return;
 	va_list args;
 	va_start(args, msg);
@@ -53,7 +53,7 @@ void S9xPrintf(const char* msg, ...)
 
 void S9xPrintfError(const char* msg, ...)
 {
-	if(!logger_isEnabled())
+	if(!Log::isEnabled())
 		return;
 	va_list args;
 	va_start(args, msg);
@@ -94,7 +94,7 @@ extern "C" void S9xLoadSDD1Data()
 
 const char *S9xGetFilenameInc(const char *e)
 {
-	assert(0); // not used yet
+	assume(0); // not used yet
 	return 0;
 }
 
@@ -276,7 +276,7 @@ bool S9xPollPointer(uint32, int16*, int16*)
 
 void S9xExit(void)
 {
-	bug_unreachable("should not be called");
+	unreachable();
 }
 
 void S9xToggleSoundChannel(int c)
@@ -293,8 +293,7 @@ void S9xToggleSoundChannel(int c)
 
 const char * S9xStringInput(const char*)
 {
-	bug_unreachable("should not be called");
-	return 0;
+	unreachable();
 }
 
 void _splitpath(const char *path, char *drive, char *dir, char *fname, char *ext)
@@ -372,7 +371,7 @@ void S9xCloseSnapshotFile(STREAM file)
 
 FILE *fopenHelper(const char* filename, const char* mode)
 {
-	return IG::FileUtils::fopenUri(EmuEx::gAppContext(), filename, mode);
+	return FileUtils::fopenUri(EmuEx::gAppContext(), filename, mode);
 }
 
 void removeFileHelper(const char* filename)

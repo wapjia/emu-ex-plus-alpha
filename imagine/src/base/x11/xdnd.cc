@@ -14,13 +14,10 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/base/Application.hh>
-#include <imagine/util/bit.hh>
-#include <imagine/util/algorithm.h>
-#include <imagine/util/utility.h>
-#include "xdnd.hh"
-#include "xlibutils.h"
-#include <ranges>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
+#include <xcb/xproto.h>
+#include "macros.h"
+import xutils;
 
 enum
 {
@@ -66,9 +63,7 @@ constexpr xcb_atom_t currentDNDVersion = 5;
 namespace IG
 {
 
-constexpr SystemLogger log{"X11"};
-
-using XdndAtoms = XApplication::XdndAtoms;
+static SystemLogger log{"X11"};
 
 void XApplication::setXdnd(xcb_window_t win, bool on)
 {
@@ -154,8 +149,8 @@ static void receiveDrop(xcb_connection_t& conn, XdndAtoms xdndAtom, xcb_window_t
 		xdndAtom[XdndSelection], XCB_ATOM_STRING, xdndAtom[iSelectionProperty], time);
 }
 
-void handleXDNDEvent(xcb_connection_t& conn, XdndAtoms xdndAtom, const xcb_client_message_event_t& message,
-	xcb_window_t win, xcb_window_t &draggerWin, xcb_atom_t &dragAction)
+void XApplication::handleXDNDEvent(xcb_connection_t& conn, XdndAtoms xdndAtom, const xcb_client_message_event_t& message,
+	xcb_window_t win, xcb_window_t& draggerWin, xcb_atom_t& dragAction)
 {
 	auto type = message.type;
 	if(type == xdndAtom[XdndEnter])

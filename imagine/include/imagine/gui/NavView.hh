@@ -21,9 +21,12 @@
 #include <imagine/gfx/Quads.hh>
 #include <imagine/gui/View.hh>
 #include <imagine/util/memory/DynArray.hh>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
 #include <array>
 #include <span>
+#include <utility>
+#endif
 
 namespace IG
 {

@@ -1,3 +1,5 @@
+#pragma once
+
 /*  This file is part of Imagine.
 
 	Imagine is free software: you can redistribute it and/or modify
@@ -13,20 +15,25 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#pragma once
-#include <emuframework/config.hh>
+#include <emuframework/defs.hh>
 #include <emuframework/EmuAppHelper.hh>
 #include <emuframework/inputDefs.hh>
+#include <emuframework/EmuViewController.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/input/inputDefs.hh>
 #include <imagine/input/DragTracker.hh>
 #include <imagine/gfx/Texture.hh>
 #include <imagine/gfx/Quads.hh>
 #include <imagine/gfx/FanQuads.hh>
 #include <imagine/util/variant.hh>
+#endif
+#ifndef IG_USE_MODULE_STD
 #include <vector>
 #include <span>
 #include <optional>
+#endif
 
+#ifndef IG_USE_MODULE_IMAGINE
 namespace IG
 {
 class Window;
@@ -34,6 +41,7 @@ class ApplicationContext;
 class FileIO;
 class MapIO;
 }
+#endif
 
 namespace EmuEx
 {
@@ -67,9 +75,9 @@ struct VControllerLayoutPosition
 	WPt toPixelPos(WindowRect viewBounds) const;
 };
 
-constexpr int16_t defaultDPadDeadzoneMM100x = 135;
-constexpr float defaultDPadDiagonalSensitivity = .57f;
-constexpr int8_t defaultButtonSpacingMM = 2;
+inline constexpr int16_t defaultDPadDeadzoneMM100x = 135;
+inline constexpr float defaultDPadDiagonalSensitivity = .57f;
+inline constexpr int8_t defaultButtonSpacingMM = 2;
 
 class VControllerDPad
 {
@@ -130,12 +138,6 @@ public:
 	bool isHighlighted[4]{};
 
 	void updateBoundingAreaGfx(Gfx::Renderer &);
-};
-
-enum class VControllerKbMode: uint8_t
-{
-	LAYOUT_1,
-	LAYOUT_2
 };
 
 class VControllerKeyboard

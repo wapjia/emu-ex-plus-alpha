@@ -16,12 +16,16 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/OutputTimingManager.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/base/MessagePort.hh>
 #include <imagine/thread/Thread.hh>
 #include <imagine/time/Time.hh>
 #include <imagine/util/variant.hh>
 #include <imagine/util/ScopeGuard.hh>
+#endif
+#ifndef IG_USE_MODULE_STD
 #include <flat_map>
+#endif
 
 namespace EmuEx
 {
@@ -83,10 +87,10 @@ public:
 
 	struct CommandMessage
 	{
-		std::binary_semaphore* semPtr{};
+		binary_semaphore* semPtr{};
 		Command command{SuspendCommand{}};
 
-		void setReplySemaphore(std::binary_semaphore* semPtr_) { assert(!semPtr); semPtr = semPtr_; };
+		void setReplySemaphore(binary_semaphore* semPtr_) { assume(!semPtr); semPtr = semPtr_; };
 	};
 
 	struct SuspendContext
@@ -136,12 +140,12 @@ public:
 private:
 	EmuApp& app;
 	Window* winPtr{};
-	IG::OnFrameDelegate onFrameUpdate;
+	OnFrameDelegate onFrameUpdate;
 	MessagePort<CommandMessage> commandPort{"EmuSystemTask Command"};
 	std::thread taskThread;
 	ThreadId threadId_{};
-	std::binary_semaphore framePresentedSem{0};
-	std::binary_semaphore suspendSem{0};
+	binary_semaphore framePresentedSem{0};
+	binary_semaphore suspendSem{0};
 	FrameRateConfig frameRateConfig;
 	int savedAdvancedFrames{};
 	FrameRateDetector frameRateDetector;
@@ -157,9 +161,9 @@ private:
 	void addOnFrameDelayed();
 	void addOnFrame();
 	void removeOnFrame();
-	IG::OnFrameDelegate onFrameCalibrate();
-	IG::OnFrameDelegate onFrameDelayed(uint16_t delay);
-	void addOnFrameDelegate(IG::OnFrameDelegate);
+	OnFrameDelegate onFrameCalibrate();
+	OnFrameDelegate onFrameDelayed(uint16_t delay);
+	void addOnFrameDelegate(OnFrameDelegate);
 	void setIntendedFrameRate(FrameRateConfig);
 	FrameRate remapScreenFrameRate(FrameRate) const;
 	FrameRateConfig configFrameRate(const Screen&);

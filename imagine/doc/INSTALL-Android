@@ -7,13 +7,10 @@ Download & install Android Studio (stable channel). Define environment variables
 
 If using MacOS X, install the gmake package from MacPorts and use it instead of the regular make command when building.
 
-The following make variables are used by the build system:
+The following environment variables are used by the build system:
 
 ANDROID_NDK_PATH : Optional, defaults to the highest version NDK found in ANDROID_SDK_ROOT
  - The Android NDK root path containing the "toolchains" & "sources" subdirectories for use if different than the NDK installed in ANDROID_SDK_ROOT
-
-android_arch : Optional, default set by app
- - When building an Imagine-based app, specifies a space separated list of which architectures to build ("arm64 armv7 x86" for example)
 
 2. Dependencies
 ===============
@@ -36,4 +33,4 @@ When upgrading build tools like the NDK run the android-clean-project make targe
 
 --------------------------------
 
-Copyright 2014-2023 by Robert Broglia
+Copyright 2014-2026 by Robert Broglia

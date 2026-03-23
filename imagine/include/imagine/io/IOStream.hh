@@ -16,10 +16,12 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/io/ioDefs.hh>
+#ifndef IG_USE_MODULE_STD
 #include <streambuf>
 #include <istream>
 #include <ostream>
 #include <memory>
+#endif
 
 namespace IG
 {

@@ -13,25 +13,13 @@
 	You should have received a copy of the GNU General Public License
 	along with MD.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/EmuApp.hh>
-#include <emuframework/EmuInput.hh>
-#include <emuframework/Option.hh>
-#include "MainSystem.hh"
+module;
+#include "genplus-config.h"
+
+module system;
 
 namespace EmuEx
 {
-
-const char *EmuSystem::configFilename = "MdEmu.config";
-
-std::span<const AspectRatioInfo> MdSystem::aspectRatioInfos()
-{
-	static constexpr AspectRatioInfo aspectRatioInfo[]
-	{
-		{"4:3 (原画)", {4, 3}},
-		EMU_SYSTEM_DEFAULT_ASPECT_RATIO_INFO_INIT
-	};
-	return aspectRatioInfo;
-}
 
 void MdSystem::onOptionsLoaded()
 {

@@ -25,9 +25,10 @@
 #include <mednafen/mempatcher.h>
 #include <mednafen/compress/GZFileStream.h>
 #include <mednafen/FileStream.h>
-#include <emuframework/EmuSystem.hh>
 
 #include "mcgenjin.h"
+
+import emuex;
 
 namespace MDFN_IEN_PCE
 {

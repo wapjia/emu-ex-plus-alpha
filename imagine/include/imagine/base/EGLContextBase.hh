@@ -15,18 +15,19 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <imagine/config/defs.hh>
+#include <imagine/base/WindowConfig.hh>
 #ifndef EGL_NO_X11
 #define EGL_NO_X11
 #endif
-
-#include <imagine/config/defs.hh>
-#include <imagine/base/WindowConfig.hh>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+#ifndef IG_USE_MODULE_STD
 #include <optional>
 #include <memory>
 #include <type_traits>
 #include <span>
+#endif
 
 namespace IG::GL
 {
@@ -36,11 +37,14 @@ struct Version;
 
 namespace IG
 {
-
 class GLDisplay;
 class GLDrawable;
 struct GLContextAttributes;
 struct GLBufferConfigAttributes;
+}
+
+namespace IG
+{
 
 using NativeGLDrawable = EGLSurface;
 using NativeGLContext = EGLContext;

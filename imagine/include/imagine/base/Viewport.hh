@@ -20,6 +20,7 @@
 #include <imagine/util/rectangle2.h>
 #include <imagine/util/used.hh>
 #include <imagine/util/2DOrigin.h>
+#include <imagine/util/math/Point2D.hh>
 
 namespace IG
 {
@@ -34,23 +35,53 @@ public:
 		Viewport{rect, rect, softOrientation} {}
 	constexpr Viewport(WSize size):
 		Viewport{{{}, size}} {}
+	[[nodiscard]]
 	constexpr WRect realBounds() const { return isSideways() ? bounds().makeInverted() : bounds(); }
+	[[nodiscard]]
 	constexpr WRect bounds() const { return rect; }
+	[[nodiscard]]
 	constexpr WRect realOriginBounds() const { return isSideways() ? originBounds().makeInverted() : originBounds(); }
+	[[nodiscard]]
 	constexpr WRect originBounds() const { return originRect; }
+	[[nodiscard]]
 	constexpr int realWidth() const { return isSideways() ? height() : width(); }
+	[[nodiscard]]
 	constexpr int realHeight() const { return isSideways() ? width() : height(); }
+	[[nodiscard]]
 	constexpr int width() const { return rect.xSize(); }
+	[[nodiscard]]
 	constexpr int height() const { return rect.ySize(); }
+	[[nodiscard]]
 	constexpr float aspectRatio() const { return (float)width() / (float)height(); }
+	[[nodiscard]]
 	constexpr float realAspectRatio() const { return (float)realWidth() / (float)realHeight(); }
+	[[nodiscard]]
 	constexpr bool isPortrait() const { return width() < height(); }
+	[[nodiscard]]
 	constexpr bool isSideways() const { return IG::isSideways(softRotation_); }
+	[[nodiscard]]
 	constexpr bool operator==(Viewport const &) const = default;
-	WRect relRect(WPt pos, WSize size, _2DOrigin posOrigin, _2DOrigin screenOrigin) const;
-	WRect relRectBestFit(WPt pos, float aspectRatio, _2DOrigin posOrigin, _2DOrigin screenOrigin) const;
+
+	[[nodiscard]]
+	constexpr WRect relRect(WPt pos, WSize size, _2DOrigin posOrigin, _2DOrigin screenOrigin) const
+	{
+		// adjust to the requested origin on the screen
+		auto newX = LT2DO.adjustX(pos.x, width(), screenOrigin.invertYIfCartesian());
+		auto newY = LT2DO.adjustY(pos.y, height(), screenOrigin.invertYIfCartesian());
+		WRect rect;
+		rect.setPosRel({newX, newY}, size, posOrigin);
+		return rect;
+	}
+
+	[[nodiscard]]
+	constexpr WRect relRectBestFit(WPt pos, float aspectRatio, _2DOrigin posOrigin, _2DOrigin screenOrigin) const
+	{
+		auto size = sizesWithRatioBestFit(aspectRatio, width(), height());
+		return relRect(pos, size, posOrigin, screenOrigin);
+	}
 
 	// converts to a relative rectangle in OpenGL coordinate system
+	[[nodiscard]]
 	constexpr Rect2<int> asYUpRelRect() const
 	{
 		return {{realBounds().x, realOriginBounds().ySize() - realBounds().y2}, {realWidth(), realHeight()}};

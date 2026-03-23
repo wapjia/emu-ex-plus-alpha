@@ -14,7 +14,7 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/thread/Thread.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
 #ifdef __linux__
 #include <sched.h>
 #include <sys/resource.h>
@@ -22,11 +22,16 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <errno.h>
+#else
+#include <pthread.h>
 #endif
-#include <cstring>
+import std;
 
 namespace IG
 {
+
+[[maybe_unused]] static SystemLogger log{"Thread"};
 
 void setThreadCPUAffinityMask([[maybe_unused]] std::span<const ThreadId> ids, [[maybe_unused]] CPUMask mask)
 {
@@ -34,17 +39,17 @@ void setThreadCPUAffinityMask([[maybe_unused]] std::span<const ThreadId> ids, [[
 	cpu_set_t cpuSet{};
 	if(mask)
 	{
-		memcpy(&cpuSet, &mask, sizeof(mask));
+		std::memcpy(&cpuSet, &mask, sizeof(mask));
 	}
 	else
 	{
-		memset(&cpuSet, 0xFF, sizeof(cpuSet));
+		std::memset(&cpuSet, 0xFF, sizeof(cpuSet));
 	}
 	for(auto id : ids)
 	{
 		// using direct syscall for compatibility with old Android versions
 		if(syscall(__NR_sched_setaffinity, id, sizeof(cpuSet), &cpuSet) && Config::DEBUG_BUILD)
-			logErr("error:%s setting thread:0x%X CPU affinity", strerror(errno), (unsigned)id);
+			log.error("error:{} setting thread:{:X} CPU affinity", std::strerror(errno), id);
 	}
 	#endif
 }
@@ -53,7 +58,7 @@ void setThreadPriority([[maybe_unused]] ThreadId id, [[maybe_unused]] int nice)
 {
 	#ifdef __linux__
 	if(setpriority(PRIO_PROCESS, id, nice) && Config::DEBUG_BUILD)
-		logErr("error:%s setting thread:0x%X nice level:%d", strerror(errno), (unsigned)id, nice);
+		log.error("error:{} setting thread:{} nice level:{}", std::strerror(errno), id, nice);
 	#endif
 }
 

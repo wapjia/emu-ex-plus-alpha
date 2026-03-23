@@ -15,25 +15,22 @@
 
 #include "ArchiveVFS.hh"
 #include <mednafen/MemoryStream.h>
-#include <imagine/fs/ArchiveFS.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/io/MapIO.hh>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
+import imagine;
 
 namespace Mednafen
 {
 
-constexpr IG::SystemLogger log{"ArchiveVFS"};
+using namespace IG;
+constexpr SystemLogger log{"ArchiveVFS"};
 
-ArchiveVFS::ArchiveVFS(IG::ArchiveIO arch):
+ArchiveVFS::ArchiveVFS(ArchiveIO arch):
 	VirtualFS('/', "/"),
 	arch{std::move(arch)} {}
 
 Stream* ArchiveVFS::open(const std::string &path, const uint32 mode, const int do_lock, const bool throw_on_noent, const CanaryType canary)
 {
-	assert(mode == MODE_READ);
-	assert(do_lock == 0);
+	assume(mode == MODE_READ);
+	assume(do_lock == 0);
 	seekFile(path);
 	auto stream = std::make_unique<MemoryStream>(arch.size(), true);
 	if(arch.read(stream->map(), arch.size()) != ssize_t(arch.size()))
@@ -45,19 +42,19 @@ Stream* ArchiveVFS::open(const std::string &path, const uint32 mode, const int d
 
 FILE* ArchiveVFS::openAsStdio(const std::string& path, const uint32 mode)
 {
-	assert(mode == MODE_READ);
+	assume(mode == MODE_READ);
 	seekFile(path);
-	return IG::MapIO{arch}.toFileStream("rb");
+	return MapIO{arch}.toFileStream("rb");
 }
 
 void ArchiveVFS::seekFile(const std::string& path)
 {
 	arch.rewind();
-	auto filename = IG::FS::basename(path);
+	auto filename = FS::basename(path);
 	log.info("looking for file:{}", filename);
-	if(!IG::FS::seekFileInArchive(arch, [&](auto &entry)
+	if(!FS::seekFileInArchive(arch, [&](auto &entry)
 		{
-			auto name = IG::FS::basename(entry.name());
+			auto name = FS::basename(entry.name());
 			//log.debug("checking:{}", name);
 			return name == filename;
 		}))

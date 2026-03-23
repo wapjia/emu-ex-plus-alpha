@@ -23,7 +23,6 @@
 
 #include "m68k.h"
 #include "shared.h"
-#include <imagine/logger/logger.h>
 #ifndef NO_SCD
 #include <scd/scd.h>
 #endif

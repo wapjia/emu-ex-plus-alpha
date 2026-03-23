@@ -1,6 +1,6 @@
 namespace EmuEx
 {
-class NesSystem;
+class NesSystemHolder;
 }
 
 extern bool isFDS;
@@ -10,7 +10,7 @@ void FCEU_FDSInsert(void);
 //void FCEU_FDSEject(void);
 void FCEU_FDSSelect(void);
 
-void FCEU_FDSSetDisk(uint8 side, EmuEx::NesSystem &);
+void FCEU_FDSSetDisk(uint8 side, EmuEx::NesSystemHolder&);
 bool FCEU_FDSInserted();
 uint8 FCEU_FDSCurrentSide();
 uint8 FCEU_FDSSides();

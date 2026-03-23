@@ -21,18 +21,17 @@
  *
  ****************************************************************************************/
 
-#include <imagine/util/algorithm.h>
-#include <emuframework/EmuApp.hh>
 #include "shared.h"
 #include "vdp_render.h"
 #include "Fir_Resampler.h"
 #include "eq.h"
-#include "assert.h"
 
 #ifndef NO_SCD
 #include <scd/scd.h>
 #include <scd/pcm.h>
 #endif
+
+import emuex;
 
 /* Global variables */
 //t_bitmap bitmap;
@@ -51,7 +50,7 @@ static void system_frame_sms(EmuEx::EmuSystemTaskContext, EmuEx::EmuVideo *);
 static int pause_b;
 static EQSTATE eq;
 static int32 llp,rrp;
-constexpr size_t maxAudioFrames = 48000 / EmuEx::EmuSystem::minFrameRate;
+constexpr size_t maxAudioFrames = 48000 / EmuEx::AppMeta::minFrameRate;
 
 /****************************************************************
  * Audio subsystem
@@ -223,7 +222,7 @@ int audioUpdateAll(int16 *sb)
   error("%d PSG samples remaining\n",snd.psg.pos - snd.psg.buffer);
 #endif
 
-  assert(size < snd.buffer_size);
+  IG::assume(size < snd.buffer_size);
   /* mix samples */
   for (i = 0; i < size; i ++)
   {

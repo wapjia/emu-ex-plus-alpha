@@ -15,9 +15,7 @@
 
 #include "RecentContentView.hh"
 #include <emuframework/EmuApp.hh>
-#include <imagine/gui/AlertView.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/io/IO.hh>
+import imagine;
 
 namespace EmuEx
 {

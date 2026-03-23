@@ -49,7 +49,7 @@ static constexpr INLINE uint64 MDFN_PixelFormat_SetTagT(const uint64 tag)
 }
 */
 
-static constexpr INLINE uint64 MDFN_PixelFormat_MakeTag(const uint8 colorspace,
+constexpr INLINE uint64 MDFN_PixelFormat_MakeTag(const uint8 colorspace,
 		  const uint8 opp,
 		  const uint8 rs, const uint8 gs, const uint8 bs, const uint8 as,
 		  const uint8 rp, const uint8 gp, const uint8 bp, const uint8 ap)

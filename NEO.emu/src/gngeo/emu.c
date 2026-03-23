@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <assert.h>
 
 #include "emu.h"
 #include "memory.h"

@@ -21,7 +21,7 @@
 
 #include "common.h"
 #include "backup.h"
-#include <emuframework/EmuSystem.hh>
+import emuex;
 
 namespace MDFN_IEN_SS
 {

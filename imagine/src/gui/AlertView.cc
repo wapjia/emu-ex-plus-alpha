@@ -14,18 +14,14 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/gui/AlertView.hh>
-#include <imagine/gui/ViewManager.hh>
 #include <imagine/gfx/RendererCommands.hh>
-#include <imagine/gfx/RendererTask.hh>
 #include <imagine/gfx/BasicEffect.hh>
-#include <imagine/input/Event.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/util/math.hh>
+#include <imagine/logger/SystemLogger.hh>
 
 namespace IG
 {
 
-constexpr SystemLogger log{"AlertView"};
+static SystemLogger log{"AlertView"};
 
 void BaseAlertView::init()
 {

@@ -1,0 +1,183 @@
+/*  This file is part of Imagine.
+
+	Imagine is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	Imagine is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
+
+module;
+#include <emuframework/defs.hh>
+#include <emuframework/AssetManager.hh>
+#include <emuframework/AutosaveManager.hh>
+#include <emuframework/EmuApp.hh>
+#include <emuframework/Option.hh>
+#include <emuframework/EmuOptions.hh>
+#include <emuframework/AppKeyCode.hh>
+#include <emuframework/Cheats.hh>
+#include <emuframework/ButtonConfigView.hh>
+#include <emuframework/LoadProgressView.hh>
+#include <emuframework/MainMenuView.hh>
+#include <emuframework/SystemActionsView.hh>
+#include <emuframework/VideoOptionView.hh>
+#include <emuframework/AudioOptionView.hh>
+#include <emuframework/SystemOptionView.hh>
+#include <emuframework/FilePathOptionView.hh>
+#include <emuframework/UserPathSelectView.hh>
+#include <emuframework/DataPathSelectView.hh>
+#include <emuframework/GUIOptionView.hh>
+#include <emuframework/FilePicker.hh>
+#include <emuframework/BundledGamesView.hh>
+#include <emuframework/CreditsView.hh>
+#include <emuframework/StateSlotView.hh>
+#include <emuframework/TouchConfigView.hh>
+#include <emuframework/viewUtils.hh>
+#include <emuframework/OutSizeTracker.hh>
+#include <emuframework/keyRemappingUtils.hh>
+
+#if __has_include (<mednafen-emuex/MDFNUtils.hh>)
+	#ifndef HAVE_CONFIG_H
+	#define HAVE_CONFIG_H
+	#endif
+	#define MDFN_UTILS
+	#include <mednafen-emuex/MDFNUtils.hh>
+	#include <mednafen-emuex/ArchiveVFS.hh>
+#endif
+
+export module emuex;
+
+export namespace EmuEx
+{
+	using EmuEx::AssetManager;
+	using EmuEx::AssetDesc;
+	using EmuEx::AssetFileID;
+	using EmuEx::AssetID;
+	using EmuEx::SaveStateFlags;
+	using EmuEx::ConfigType;
+	using EmuEx::ConfigKey;
+	using EmuEx::readOptionValue;
+	using EmuEx::readStringOptionValue;
+	using EmuEx::readSizedData;
+	using EmuEx::writeOptionValueHeader;
+	using EmuEx::writeOptionValueIfNotDefault;
+	using EmuEx::writeOptionValue;
+	using EmuEx::writeStringOptionValue;
+	using EmuEx::writeStringOptionValueIfNotDefault;
+	using EmuEx::writeSizedData;
+	using EmuEx::sizedDataBytes;
+	using EmuEx::optionSavePathDefaultToken;
+	using EmuEx::optionUserPathContentToken;
+	using EmuEx::isValidWithMax;
+	using EmuEx::isValidWithMinMax;
+	using EmuEx::isValidProperty;
+	using EmuEx::AutoTristate;
+	using EmuEx::InEmuTristate;
+	using EmuEx::AppMeta;
+	using EmuEx::NameFilterFunc;
+	using EmuEx::EmuApp;
+	using EmuEx::EmuAppHelper;
+	using EmuEx::EmuAppHelperBase;
+	using EmuEx::gApp;
+	using EmuEx::gAppContext;
+	using EmuEx::EmuSystem;
+	using EmuEx::EmuSystemTask;
+	using EmuEx::EmuSystemTaskContext;
+	using EmuEx::EmuSystemCreateParams;
+	using EmuEx::gSystem;
+	using EmuEx::EmuTiming;
+	using EmuEx::EmuAudio;
+	using EmuEx::EmuVideo;
+	using EmuEx::EmuVideoImage;
+	using EmuEx::EmuVideoLayer;
+	using EmuEx::AspectRatioInfo;
+	using EmuEx::DeinterlaceMode;
+	using EmuEx::VideoSystem;
+	using EmuEx::FrameDuration;
+	using EmuEx::InputManager;
+	using EmuEx::InputAction;
+	using EmuEx::VController;
+	using EmuEx::VControllerKeyboard;
+	using EmuEx::VControllerKbMode;
+	using EmuEx::KeyConfig;
+	using EmuEx::KeyConfigDesc;
+	using EmuEx::KeyCode;
+	using EmuEx::KeyFlags;
+	using EmuEx::KeyMapping;
+	using EmuEx::KeyCategory;
+	using EmuEx::AppKeys;
+	using EmuEx::AppKeyCode;
+	using EmuEx::appKeyCategory;
+	using EmuEx::genericGamepadModifierAppKeyCodeMap;
+	using EmuEx::SystemKeyInputFlags;
+	using EmuEx::KeyInfo;
+	using EmuEx::SystemInputDeviceDesc;
+	using EmuEx::InputComponentDesc;
+	using EmuEx::InputComponent;
+	using EmuEx::AxisAsDpadFlags;
+	using EmuEx::BundledGameInfo;
+	using EmuEx::toString;
+	using EmuEx::AppNavView;
+	using EmuEx::LoadProgressView;
+	using EmuEx::EmuInputView;
+	using EmuEx::MainMenuView;
+	using EmuEx::SystemActionsView;
+	using EmuEx::VideoOptionView;
+	using EmuEx::AudioOptionView;
+	using EmuEx::SystemOptionView;
+	using EmuEx::FilePathOptionView;
+	using EmuEx::GUIOptionView;
+	using EmuEx::FilePicker;
+	using EmuEx::DataFileSelectView;
+	using EmuEx::DataFolderSelectView;
+	using EmuEx::pushAndShowNewCollectTextInputView;
+	using EmuEx::pushAndShowNewCollectValueInputView;
+	using EmuEx::pushAndShowNewCollectValueRangeInputView;
+	using EmuEx::ScanValueMode;
+	using EmuEx::OutSizeTracker;
+	using EmuEx::UserPathSelectView;
+	using EmuEx::userPathToDisplayName;
+	using EmuEx::DataPathSelectMode;
+	using EmuEx::ArchivePathSelectMode;
+	using EmuEx::cheatsMenuName;
+	using EmuEx::patchesMenuName;
+	using EmuEx::palettesMenuName;
+	using EmuEx::turbo;
+	using EmuEx::transpose;
+	using EmuEx::genericKeyConfigs;
+	using EmuEx::Cheat;
+	using EmuEx::CheatCode;
+	using EmuEx::CheatCodeDesc;
+	using EmuEx::BaseEditCheatView;
+	using EmuEx::BaseEditCheatsView;
+	using EmuEx::CheatsView;
+
+	#ifdef MDFN_UTILS
+	using EmuEx::toMDFNSurface;
+	using EmuEx::stateFilenameMDFN;
+	using EmuEx::saveExtMDFN;
+	using EmuEx::savePathMDFN;
+	using EmuEx::saveFilenameTypeMenuItem;
+	using EmuEx::loadContent;
+	using EmuEx::runFrame;
+	using EmuEx::stateSizeMDFN;
+	using EmuEx::readStateMDFN;
+	using EmuEx::writeStateMDFN;
+	using EmuEx::writeCDMD5;
+	using EmuEx::clearCDInterfaces;
+	#endif
+}
+
+#ifdef MDFN_UTILS
+export namespace Mednafen
+{
+	using Mednafen::DriveMediaStatus;
+	using Mednafen::ArchiveVFS;
+}
+#endif

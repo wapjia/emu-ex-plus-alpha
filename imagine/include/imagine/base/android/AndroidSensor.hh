@@ -16,11 +16,10 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/base/baseDefs.hh>
+#include <android/sensor.h>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
-
-struct ASensorEventQueue;
-struct ASensorManager;
-struct ASensor;
+#endif
 
 namespace IG
 {

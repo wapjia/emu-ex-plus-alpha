@@ -19,7 +19,9 @@
 #include <imagine/util/Point2D.hh>
 #include <imagine/util/container/ArrayList.hh>
 #include <imagine/util/algorithm.h>
+#ifndef IG_USE_MODULE_STD
 #include <concepts>
+#endif
 
 namespace IG::Input
 {

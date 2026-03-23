@@ -14,11 +14,13 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/gfx/Renderer.hh>
-#include <imagine/logger/logger.h>
-#include "../utils.hh"
+#include <imagine/logger/SystemLogger.hh>
+#include <imagine/util/opengl/glUtils.hh>
 
 namespace IG::Gfx
 {
+	
+static SystemLogger log{"Renderer"};
 
 static constexpr bool USE_DEPTH_BUFFER = false;
 
@@ -33,13 +35,13 @@ IG::Point2D<int> GLRendererTask::makeIOSDrawableRenderbuffer(void *layer, GLuint
 			{
 				glGenRenderbuffers(1, &colorRenderbuffer);
 			}
-			runGLChecked([&]()
+			GL::runChecked([&]()
 			{
 				glBindRenderbuffer(GL_RENDERBUFFER, colorRenderbuffer);
-			}, "glBindRenderbuffer()");
+			}, log, Renderer::checkGLErrors, "glBindRenderbuffer()");
 			if(![[EAGLContext currentContext] renderbufferStorage:GL_RENDERBUFFER fromDrawable:(__bridge CAEAGLLayer*)layer])
 			{
-				logErr("error setting renderbuffer storage");
+				log.error("error setting renderbuffer storage");
 			}
 			glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &backingWidth);
 			glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &backingHeight);
@@ -54,7 +56,7 @@ IG::Point2D<int> GLRendererTask::makeIOSDrawableRenderbuffer(void *layer, GLuint
 			}
 			glBindRenderbuffer(GL_RENDERBUFFER, 0);
 		});
-	logMsg("made color renderbuffer:%d with size %dx%d", colorRenderbuffer, backingWidth, backingHeight);
+	log.error("made color renderbuffer:{} with size {}x{}", colorRenderbuffer, backingWidth, backingHeight);
 	return {backingWidth, backingHeight};
 }
 

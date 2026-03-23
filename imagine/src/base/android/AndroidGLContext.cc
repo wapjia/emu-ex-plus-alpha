@@ -13,11 +13,10 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "EGL"
 #include <imagine/base/GLContext.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/time/Time.hh>
+#include <imagine/util/utility.hh>
 #include <android/native_window.h>
+#include <EGL/egl.h>
 
 namespace IG
 {

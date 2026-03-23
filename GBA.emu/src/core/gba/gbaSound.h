@@ -89,13 +89,13 @@ extern const int SOUND_CLOCK_TICKS;   // Number of 16.8 MHz clocks between calls
 extern int &soundTicks;          // Number of 16.8 MHz clocks until soundTick() will be called
 
 // Saves/loads emulator state
-
+#if 1
 void soundSaveGame(uint8_t*&);
 void soundReadGame(GBASys &gba, const uint8_t*& in);
-
+#else
 void soundSaveGame(gzFile);
-void soundReadGame(GBASys &gba, gzFile, int version);
-
+void soundReadGame(gzFile, int version);
+#endif
 
 class Multi_Buffer;
 

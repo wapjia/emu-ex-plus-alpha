@@ -4,9 +4,9 @@
 
 #include "core/base/file_util.h"
 #include "core/gba/gba.h"
+#include "gbaEeprom.h"
 
-#include <imagine/util/algorithm.h>
-#include <imagine/logger/logger.h>
+import imagine;
 
 int eepromMode = EEPROM_IDLE;
 int eepromByte = 0;
@@ -18,6 +18,7 @@ IG::ByteBuffer eepromData;
 uint8_t eepromBuffer[16];
 bool eepromInUse = false;
 int eepromSize = SIZE_EEPROM_512;
+uint32_t eepromMask = 0;
 
 static auto eepromSaveData(uint8_t *eepromData)
 {
@@ -48,6 +49,11 @@ void eepromReset()
     eepromByte = 0;
     eepromBits = 0;
     eepromAddress = 0;
+}
+
+void eepromSetSize(int size) {
+    eepromSize = size;
+    eepromMask = (gbaGetRomSize() > (16 * 1024 * 1024)) ? 0x01FFFF00 : 0x01000000;
 }
 
 void eepromSaveGame(uint8_t*& data)
@@ -87,7 +93,6 @@ void eepromReadGame(gzFile gzFile, int version)
       eepromSize = SIZE_EEPROM_512;
   }
 }
-#endif
 
 void eepromReadGameSkip(gzFile gzFile, int version)
 {
@@ -99,6 +104,7 @@ void eepromReadGameSkip(gzFile gzFile, int version)
         utilGzSeek(gzFile, SIZE_EEPROM_8K, SEEK_CUR);
     }
 }
+#endif
 
 int eepromRead(uint32_t /* address */)
 {
@@ -154,8 +160,8 @@ void eepromWrite(uint32_t /* address */, uint8_t value, int cpuDmaCount)
         }
         if (cpuDmaCount == 0x11 || cpuDmaCount == 0x51) {
             if (eepromBits == 0x11) {
+                eepromSetSize(SIZE_EEPROM_8K);
                 eepromInUse = true;
-                eepromSize = SIZE_EEPROM_8K;
                 eepromAddress = ((eepromBuffer[0] & 0x3F) << 8) | ((eepromBuffer[1] & 0xFF));
                 if (!(eepromBuffer[0] & 0x40)) {
                     eepromBuffer[0] = (uint8_t)bit;
@@ -170,6 +176,7 @@ void eepromWrite(uint32_t /* address */, uint8_t value, int cpuDmaCount)
             }
         } else {
             if (eepromBits == 9) {
+                eepromSetSize(SIZE_EEPROM_512);
                 eepromInUse = true;
                 eepromAddress = (eepromBuffer[0] & 0x3F);
                 if (!(eepromBuffer[0] & 0x40)) {

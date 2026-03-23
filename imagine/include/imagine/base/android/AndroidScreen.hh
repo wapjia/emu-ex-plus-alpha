@@ -18,18 +18,24 @@
 #include <imagine/config/defs.hh>
 #include <imagine/time/Time.hh>
 #include <imagine/base/baseDefs.hh>
+#include <imagine/base/ApplicationContext.hh>
 #include <imagine/base/SimpleFrameTimer.hh>
 #include <imagine/base/android/Choreographer.hh>
 #include <imagine/base/FrameTimerInterface.hh>
 #include <imagine/util/jni.hh>
 #include <imagine/util/used.hh>
+#ifndef IG_USE_MODULE_STD
 #include <variant>
 #include <flat_set>
+#endif
 
 namespace IG
 {
-
 class ApplicationContext;
+}
+
+namespace IG
+{
 
 using FrameTimerVariant = std::variant<NativeChoreographerFrameTimer, JavaChoreographerFrameTimer, SimpleFrameTimer>;
 

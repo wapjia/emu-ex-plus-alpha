@@ -25,8 +25,10 @@
 #include <imagine/base/eventloop/CFEventLoop.hh>
 #endif
 
+#ifndef IG_USE_MODULE_STD
 #include <utility>
 #include <string_view>
+#endif
 
 namespace IG
 {

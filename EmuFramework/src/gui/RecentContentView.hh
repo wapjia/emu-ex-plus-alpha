@@ -17,12 +17,15 @@
 
 #include <emuframework/EmuAppHelper.hh>
 #include <emuframework/RecentContent.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/gui/TableView.hh>
 #include <imagine/gui/MenuItem.hh>
-#include <vector>
+#endif
 
 namespace EmuEx
 {
+
+using namespace IG;
 
 class RecentContentView : public TableView, public EmuAppHelper
 {

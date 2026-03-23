@@ -15,23 +15,26 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/gfx/Texture.hh>
 #include <imagine/gfx/Program.hh>
 #include <imagine/gfx/Quads.hh>
-#include <imagine/util/enum.hh>
+#endif
 
 namespace EmuEx
 {
 
 using namespace IG;
 
-WISE_ENUM_CLASS((ImageEffectId, uint8_t),
-	(DIRECT, 0),
-	(HQ2X, 1),
-	(SCALE2X, 2),
-	(PRESCALE2X, 3),
-	(PRESCALE3X, 4),
-	(PRESCALE4X, 5));
+enum class ImageEffectId: uint8_t
+{
+	DIRECT = 0,
+	HQ2X = 1,
+	SCALE2X = 2,
+	PRESCALE2X = 3,
+	PRESCALE3X = 4,
+	PRESCALE4X = 5
+};
 
 class VideoImageEffect
 {
@@ -48,12 +51,12 @@ public:
 	constexpr	VideoImageEffect() = default;
 	VideoImageEffect(Gfx::Renderer &r, Id effect, PixelFormat, Gfx::ColorSpace, Gfx::TextureSamplerConfig, WSize size);
 	void setImageSize(Gfx::Renderer &r, WSize size, Gfx::TextureSamplerConfig);
-	void setFormat(Gfx::Renderer &r, IG::PixelFormat, Gfx::ColorSpace, Gfx::TextureSamplerConfig);
+	void setFormat(Gfx::Renderer &r, PixelFormat, Gfx::ColorSpace, Gfx::TextureSamplerConfig);
 	void setSampler(Gfx::TextureSamplerConfig);
 	Gfx::Program &program();
 	Gfx::Texture &renderTarget();
 	void drawRenderTarget(Gfx::RendererCommands &, Gfx::TextureSpan);
-	constexpr IG::PixelFormat imageFormat() const { return format; }
+	constexpr PixelFormat imageFormat() const { return format; }
 	operator bool() const { return (bool)prog; }
 
 private:
@@ -66,7 +69,7 @@ private:
 	WSize renderTargetScale{};
 	WSize renderTargetImgSize{};
 	WSize inputImgSize{1, 1};
-	IG::PixelFormat format;
+	PixelFormat format;
 	Gfx::ColorSpace colorSpace{Gfx::ColorSpace::LINEAR};
 
 	void initRenderTargetTexture(Gfx::Renderer &r, Gfx::TextureSamplerConfig);

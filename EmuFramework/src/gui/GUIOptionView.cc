@@ -15,12 +15,7 @@
 
 #include <emuframework/GUIOptionView.hh>
 #include <emuframework/EmuApp.hh>
-#include <emuframework/EmuViewController.hh>
-#include <emuframework/EmuOptions.hh>
 #include <emuframework/viewUtils.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/gfx/Renderer.hh>
-#include <format>
 
 namespace EmuEx
 {
@@ -342,7 +337,7 @@ void GUIOptionView::loadStockItems()
 	{
 		item.emplace_back(&layoutBehindSystemUI);
 	}
-	if(EmuSystem::hasBundledGames)
+	if(AppMeta::hasBundledGames())
 	{
 		item.emplace_back(&showBundledGames);
 	}

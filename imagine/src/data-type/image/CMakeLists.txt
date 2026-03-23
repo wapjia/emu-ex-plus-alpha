@@ -1,0 +1,8 @@
+if(ENV STREQUAL ios)
+	target_sources(imagine PRIVATE Quartz2d.cc Quartz2dUIKit.mm)
+elseif(ENV STREQUAL android)
+	target_sources(imagine PRIVATE Android.cc)
+else()
+	addPkgLibpng(imagine)
+	target_sources(imagine PRIVATE LibPNG.cc)
+endif()

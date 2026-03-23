@@ -15,10 +15,14 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/util/utility.h>
-#include <imagine/util/enum.hh>
+#include <imagine/config/defs.hh>
+#include <imagine/util/math.hh>
+#include <imagine/util/utility.hh>
+#ifndef IG_USE_MODULE_STD
 #include <chrono>
 #include <concepts>
+#include <utility>
+#endif
 
 namespace IG
 {
@@ -56,14 +60,16 @@ concept ChronoTimePoint =
 		typename T::duration;
 	};
 
+[[nodiscard]]
 constexpr bool hasTime(ChronoTimePoint auto t) { return t.time_since_epoch().count(); }
 
-template<ChronoDuration T>
+template<ChronoDuration T> [[nodiscard]]
 constexpr T fromSeconds(std::convertible_to<double> auto secs)
 {
 	return std::chrono::round<T>(FloatSeconds{secs});
 }
 
+[[nodiscard]]
 constexpr double toHz(ChronoDuration auto t)
 {
 	if(t.count() == 0)
@@ -71,7 +77,7 @@ constexpr double toHz(ChronoDuration auto t)
 	return 1. / std::chrono::duration_cast<FloatSeconds>(t).count();
 }
 
-template<ChronoDuration T>
+template<ChronoDuration T> [[nodiscard]]
 constexpr T fromHz(std::convertible_to<double> auto hz)
 {
 	if(hz == 0)
@@ -79,6 +85,7 @@ constexpr T fromHz(std::convertible_to<double> auto hz)
 	return fromSeconds<T>(1. / hz);
 }
 
+[[nodiscard]]
 inline SteadyClockDuration timeFunc(auto&& func, auto&& ...args)
 {
 	auto before = SteadyClock::now();
@@ -86,6 +93,7 @@ inline SteadyClockDuration timeFunc(auto&& func, auto&& ...args)
 	return SteadyClock::now() - before;
 }
 
+[[nodiscard]]
 inline SteadyClockDuration timeFuncDebug(auto&& func, auto&& ...args)
 {
 	#ifdef NDEBUG
@@ -97,12 +105,13 @@ inline SteadyClockDuration timeFuncDebug(auto&& func, auto&& ...args)
 	#endif
 }
 
-
-WISE_ENUM_CLASS((FrameClockSource, uint8_t),
+enum class FrameClockSource: uint8_t
+{
 	Unset,
 	Renderer,
 	Screen,
-	Timer);
+	Timer
+};
 
 enum class FrameClockUsage: uint8_t {normal, fixedRate};
 
@@ -116,14 +125,16 @@ public:
 	SteadyClockDuration duration;
 	FrameClockMode mode;
 
+	[[nodiscard]]
 	SteadyClockDuration delta() const
 	{
 		if(!hasTime(lastTime)) [[unlikely]]
 			return {};
-		assumeExpr(time >= lastTime);
+		assume(time >= lastTime);
 		return time - lastTime;
 	}
 
+	[[nodiscard]]
 	SteadyClockTimePoint presentTime(int frames) const
 	{
 		if(frames <= 0)
@@ -131,6 +142,7 @@ public:
 		return duration * frames + time;
 	}
 
+	[[nodiscard]]
 	int elapsedFrames() const
 	{
 		if(!hasTime(lastTime)) [[unlikely]]
@@ -138,8 +150,17 @@ public:
 		return elapsedFrames(delta(), duration);
 	}
 
-	static int elapsedFrames(SteadyClockDuration delta, SteadyClockDuration frameDuration);
+	[[nodiscard]]
+	int elapsedFrames(SteadyClockDuration delta, SteadyClockDuration frameDuration) const
+	{
+		assume(frameDuration.count() > 0);
+		auto elapsed = divRoundClosestPositive(delta.count(), frameDuration.count());
+		return elapsed;
+	}
+
+	[[nodiscard]]
 	bool isFromRenderer() const { return mode == FrameClockMode::renderer; }
+	[[nodiscard]]
 	bool isFromScreen() const { return mode == FrameClockMode::screen; }
 };
 
@@ -150,10 +171,15 @@ public:
 	constexpr FrameRate(SteadyClockDuration duration): duration_{duration}, hz_{toHz(duration)} {}
 	constexpr FrameRate(std::convertible_to<double> auto hz): duration_{fromHz<SteadyClockDuration>(hz)}, hz_{double(hz)} {}
 	constexpr FrameRate(std::convertible_to<double> auto hz, SteadyClockDuration duration): duration_{duration}, hz_{double(hz)} {}
+	[[nodiscard]]
 	constexpr SteadyClockDuration duration() const { return duration_; }
+	[[nodiscard]]
 	constexpr double hz() const { return hz_; }
+	[[nodiscard]]
 	constexpr explicit operator bool() const { return hz_; }
+	[[nodiscard]]
 	constexpr bool operator==(const FrameRate& rhs) const { return hz_ == rhs.hz_; }
+	[[nodiscard]]
 	constexpr auto operator<=>(const FrameRate& rhs) const { return hz_ <=> rhs.hz_; }
 
 private:

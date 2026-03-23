@@ -14,6 +14,11 @@ for inc in $4; do
 "
 done
 
+for def in $5; do
+	NEW="${NEW}#define ${def/=/ }
+"
+done
+
 # check for empty config
 if [ -z "${NEW}" ]; then
 	exit 0

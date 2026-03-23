@@ -1,8 +1,7 @@
 #pragma once
 
-#include <imagine/bluetooth/BluetoothAdapter.hh>
-#include <imagine/util/format.hh>
 #include <imagine/util/ctype.hh>
+#include <imagine/util/format.hh>
 
 namespace IG
 {
@@ -22,7 +21,7 @@ static int bachk(const char *str)
 	if (!str)
 		return -1;
 
-	if (strlen(str) != 17)
+	if (std::strlen(str) != 17)
 		return -1;
 
 	while (*str) {
@@ -59,7 +58,7 @@ static int str2ba(const char *str, BluetoothAddr *ba)
 	}
 
 	for (i = 0; i < 6; i++, str += 3)
-		b.data()[i] = strtol(str, NULL, 16);
+		b.data()[i] = std::strtol(str, NULL, 16);
 
 	baswap(ba, &b);
 

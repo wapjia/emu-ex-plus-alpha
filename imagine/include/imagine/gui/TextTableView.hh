@@ -17,9 +17,11 @@
 
 #include <imagine/gui/MenuItem.hh>
 #include <imagine/gui/TableView.hh>
-#include <imagine/util/utility.h>
+#include <imagine/util/utility.hh>
+#ifndef IG_USE_MODULE_STD
 #include <vector>
-#include <cassert>
+#include <utility>
+#endif
 
 namespace IG
 {
@@ -42,7 +44,7 @@ public:
 
 	TextMenuItem &setItem(size_t idx, UTF16Convertible auto &&name, TextMenuItem::SelectDelegate del)
 	{
-		assert(idx < textItem.size());
+		assume(idx < textItem.size());
 		textItem[idx] = {IG_forward(name), attachParams(), del};
 		return textItem[idx];
 	}

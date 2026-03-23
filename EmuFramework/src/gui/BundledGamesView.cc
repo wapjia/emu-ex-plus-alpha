@@ -15,13 +15,12 @@
 
 #include <emuframework/BundledGamesView.hh>
 #include <emuframework/EmuApp.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/io/IO.hh>
-#include <imagine/fs/ArchiveFS.hh>
-#include <imagine/base/ApplicationContext.hh>
+import imagine;
 
 namespace EmuEx
 {
+
+using namespace IG;
 
 constexpr SystemLogger log{"BundledGamesView"};
 
@@ -35,10 +34,10 @@ BundledGamesView::BundledGamesView(ViewAttachParams attach):
 	game
 	{
 		{
-			system().bundledGameInfo(0).displayName, attach,
+			AppMeta::bundledGameInfo[0].displayName, attach,
 			[this](const Input::Event &e)
 			{
-				auto &info = system().bundledGameInfo(0);
+				auto &info = AppMeta::bundledGameInfo[0];
 				auto file = appContext().openAsset(info.assetName, OpenFlags{.test = true, .accessHint = IOAccessHint::All});
 				if(!file)
 				{
@@ -53,15 +52,5 @@ BundledGamesView::BundledGamesView(ViewAttachParams attach):
 			}
 		}
 	} {}
-
-[[gnu::weak]] const BundledGameInfo &EmuSystem::bundledGameInfo(int) const
-{
-	static const BundledGameInfo info[]
-	{
-		{ "test", "test" }
-	};
-
-	return info[0];
-}
 
 }

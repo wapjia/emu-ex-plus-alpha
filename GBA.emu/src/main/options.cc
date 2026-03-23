@@ -13,30 +13,16 @@
 	You should have received a copy of the GNU General Public License
 	along with GBA.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/EmuApp.hh>
-#include <emuframework/Option.hh>
-#include "MainSystem.hh"
+module;
 #include "GBASys.hh"
 #include <core/gba/gba.h>
 #include <core/gba/gbaRtc.h>
 #include <core/gba/gbaSound.h>
-#include <imagine/logger/logger.h>
+
+module system;
 
 namespace EmuEx
 {
-
-constexpr SystemLogger log{"GBA.emu"};
-const char *EmuSystem::configFilename = "GbaEmu.config";
-
-std::span<const AspectRatioInfo> GbaSystem::aspectRatioInfos()
-{
-	static constexpr AspectRatioInfo aspectRatioInfo[]
-	{
-		{"3:2 (原画)", {3, 2}},
-		EMU_SYSTEM_DEFAULT_ASPECT_RATIO_INFO_INIT
-	};
-	return aspectRatioInfo;
-}
 
 bool GbaSystem::resetSessionOptions(EmuApp &)
 {
@@ -72,7 +58,7 @@ bool GbaSystem::readConfig(ConfigType type, MapIO &io, unsigned key)
 			case CFGKEY_RTC_EMULATION: return readOptionValue(io, optionRtcEmulation);
 			case CFGKEY_SAVE_TYPE_OVERRIDE: return readOptionValue(io, optionSaveTypeOverride);
 			case CFGKEY_SENSOR_TYPE:
-				return readOptionValue(io, sensorType, [&](auto v){return v <= IG::lastEnum<GbaSensorType>;});
+				return readOptionValue(io, sensorType, [&](auto v){return v <= lastEnum<GbaSensorType>;});
 			case CFGKEY_USE_BIOS: return readOptionValue(io, useBios);
 		}
 	}
@@ -121,16 +107,6 @@ void GbaSystem::setSensorType(GbaSensorType type)
 {
 	sensorType = type;
 	sessionOptionSet();
-}
-
-int soundVolumeAsInt(GBASys &, bool gbVol)
-{
-	return std::round(100.f * soundGetVolume(gGba, gbVol));
-}
-
-int soundFilteringAsInt(GBASys &)
-{
-	return std::round(100.f * soundGetFiltering(gGba));
 }
 
 }

@@ -18,12 +18,12 @@
 #include <imagine/audio/defs.hh>
 #include <SLES/OpenSLES.h>
 #include <SLES/OpenSLES_Android.h>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
+#endif
 
 namespace IG::Audio
 {
-
-class Manager;
 
 class OpenSLESOutputStream
 {

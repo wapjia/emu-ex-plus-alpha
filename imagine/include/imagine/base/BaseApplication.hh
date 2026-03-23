@@ -23,11 +23,13 @@
 #include <imagine/base/MessagePort.hh>
 #include <imagine/input/Device.hh>
 #include <imagine/util/DelegateFuncSet.hh>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
 #include <optional>
 #include <cstdint>
 #include <string_view>
 #include <algorithm>
+#endif
 
 namespace IG
 {

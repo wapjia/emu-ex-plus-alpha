@@ -15,21 +15,26 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <emuframework/EmuTiming.hh>
+#include <emuframework/VController.hh>
+#include <emuframework/EmuInput.hh>
+#include <emuframework/AppMeta.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/fs/FSUtils.hh>
 #include <imagine/base/baseDefs.hh>
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/time/Time.hh>
-#include <imagine/audio/SampleFormat.hh>
+#include <imagine/audio/Format.hh>
 #include <imagine/util/rectangle2.h>
 #include <imagine/util/memory/DynArray.hh>
-#include <imagine/util/enum.hh>
-#include <emuframework/EmuTiming.hh>
-#include <emuframework/VController.hh>
-#include <emuframework/EmuInput.hh>
+#endif
+#ifndef IG_USE_MODULE_STD
 #include <string>
 #include <string_view>
+#endif
 #include <list>
 
+#ifndef IG_USE_MODULE_IMAGINE
 namespace IG
 {
 class ApplicationContext;
@@ -46,6 +51,7 @@ class MotionEvent;
 class DragTrackerState;
 enum class Action : uint8_t;
 }
+#endif
 
 namespace EmuEx
 {
@@ -67,22 +73,6 @@ struct CheatCodeDesc
 	unsigned flags{};
 };
 
-struct AspectRatioInfo
-{
-	std::string_view name{};
-	IG::Point2D<int8_t> aspect{};
-
-	constexpr float asFloat() const { return aspect.ratio<float>(); }
-};
-
-#define EMU_SYSTEM_DEFAULT_ASPECT_RATIO_INFO_INIT {"1:1", {1, 1}}
-
-struct BundledGameInfo
-{
-	const char *displayName;
-	const char *assetName;
-};
-
 struct EmuSystemCreateParams
 {
 	uint8_t systemFlags;
@@ -93,58 +83,19 @@ enum class ConfigType : uint8_t
 	MAIN, SESSION, CORE
 };
 
-struct InputAction
-{
-	KeyCode code{};
-	KeyFlags flags{};
-	Input::Action state{};
-	uint32_t metaState{};
-
-	constexpr bool isPushed() const { return state == Input::Action::PUSHED; }
-	constexpr operator KeyInfo() const { return KeyInfo{code, flags}; }
-};
-
-enum class InputComponent : uint8_t
-{
-	ui, dPad, button, trigger
-};
-
-struct InputComponentFlags
-{
-	uint8_t
-	altConfig:1{},
-	rowSize:2{},
-	staggeredLayout:1{};
-};
-
-struct InputComponentDesc
-{
-	const char *name{};
-	std::span<const KeyInfo> keyCodes{};
-	InputComponent type{};
-	_2DOrigin layoutOrigin{};
-	InputComponentFlags flags{};
-};
-
-struct SystemInputDeviceDesc
-{
-	const char *name;
-	std::span<const InputComponentDesc> components;
-};
-
 enum class VideoSystem: uint8_t
 {
 	NATIVE_NTSC, PAL
 };
 
-WISE_ENUM_CLASS((DeinterlaceMode, uint8_t),
-	Bob,
-	Weave
-);
+enum class DeinterlaceMode: uint8_t
+{
+	Bob, Weave
+};
 
 using FrameDuration = Nanoseconds;
 
-constexpr const char *optionUserPathContentToken = ":CONTENT:";
+inline constexpr const char *optionUserPathContentToken = ":CONTENT:";
 
 struct SaveStateFlags
 {
@@ -183,33 +134,11 @@ public:
 			intArg{intArg}, intArg2{intArg2}, intArg3{intArg3}, progress{progress} {}
 	};
 
-	using OnLoadProgressDelegate = IG::DelegateFunc<bool(int pos, int max, const char *label)>;
-	using NameFilterFunc = bool(*)(std::string_view name);
+	using OnLoadProgressDelegate = DelegateFunc<bool(int pos, int max, const char *label)>;
 	using BackupMemoryDirtyFlags = uint8_t;
 	enum class ResetMode: uint8_t { HARD, SOFT };
 
-	// Static system configuration
-	static const int maxPlayers;
-	static const char *configFilename;
-	static bool inputHasKeyboard;
-	static bool hasBundledGames;
-	static bool hasPALVideoSystem;
-	static bool canRenderRGB565;
-	static bool canRenderRGBA8888;
-	static bool hasResetModes;
-	static bool handlesArchiveFiles;
-	static bool handlesGenericIO;
-	static bool hasCheats;
-	static bool hasSound;
-	static int forcedSoundRate;
-	static IG::Audio::SampleFormat audioSampleFormat;
-	static NameFilterFunc defaultFsFilter;
-	static const char *creditsViewStr;
-	static F2Size validFrameRateRange;
-	static bool hasRectangularPixels;
-	static bool stateSizeChangesAtRuntime;
-
-	EmuSystem(IG::ApplicationContext ctx): appCtx{ctx} {}
+	EmuSystem(ApplicationContext ctx): appCtx{ctx} {}
 
 	// required sub-class API functions
 	void loadContent(IO &, EmuSystemCreateParams, OnLoadProgressDelegate);
@@ -222,20 +151,18 @@ public:
 	bool readConfig(ConfigType, MapIO &io, unsigned key);
 	void writeConfig(ConfigType, FileIO &);
 	void reset(EmuApp &, ResetMode mode);
-	void clearInputBuffers(EmuInputView &view);
+	void clearInputBuffers();
 	void handleInputAction(EmuApp *, InputAction);
 	FrameRate frameRate() const;
 	void configAudioRate(FrameDuration outputFrameDuration, int outputRate);
-	static std::span<const AspectRatioInfo> aspectRatioInfos();
-	SystemInputDeviceDesc inputDeviceDesc(int idx) const;
 
 	// optional sub-class API functions
 	void onStart();
 	void onStop();
 	void closeSystem();
-	bool onPointerInputStart(const Input::MotionEvent &, Input::DragTrackerState, WindowRect gameRect);
-	bool onPointerInputUpdate(const Input::MotionEvent &, Input::DragTrackerState current, Input::DragTrackerState previous, WindowRect gameRect);
-	bool onPointerInputEnd(const Input::MotionEvent &, Input::DragTrackerState, WindowRect gameRect);
+	bool onPointerInputStart(const Input::MotionEvent&, Input::DragTrackerState, WindowRect gameRect);
+	bool onPointerInputUpdate(const Input::MotionEvent&, Input::DragTrackerState current, Input::DragTrackerState previous, WindowRect gameRect);
+	bool onPointerInputEnd(const Input::MotionEvent&, Input::DragTrackerState, WindowRect gameRect);
 	void onVKeyboardShown(VControllerKeyboard &, bool shown);
 	VController::KbMap vControllerKeyboardMap(VControllerKbMode mode);
 	VideoSystem videoSystem() const;
@@ -243,7 +170,7 @@ public:
 	WSize multiresVideoBaseSize() const;
 	double videoAspectRatioScale() const;
 	bool onVideoRenderFormatChange(EmuVideo &, PixelFormat);
-	static bool canRenderMultipleFormats() {return canRenderRGBA8888 && canRenderRGB565;}
+	static bool canRenderMultipleFormats() {return AppMeta::canRenderRGBA8888 && AppMeta::canRenderRGB565;}
 	void loadBackupMemory(EmuApp &);
 	void onFlushBackupMemory(EmuApp &, BackupMemoryDirtyFlags);
 	WallClockTimePoint backupMemoryLastWriteTime(const EmuApp &) const;
@@ -254,7 +181,7 @@ public:
 	void savePathChanged();
 	bool shouldFastForward() const;
 	FS::FileString contentDisplayNameForPath(CStringView path) const;
-	IG::Rotation contentRotation() const;
+	Rotation contentRotation() const;
 	void addThreadGroupIds(std::vector<ThreadId> &) const;
 	Cheat* newCheat(EmuApp&, const char* name, CheatCodeDesc);
 	bool setCheatName(Cheat&, const char* name);
@@ -278,14 +205,8 @@ public:
 	DynArray<uint8_t> uncompressGzipState(std::span<uint8_t> buff, size_t expectedSize = 0);
 	bool stateExists(int slot) const;
 	static std::string_view stateSlotName(int slot);
-	std::string_view stateSlotName() { return stateSlotName(stateSlot()); }
-	int stateSlot() const { return saveStateSlot; }
-	void setStateSlot(int slot) { saveStateSlot = slot; }
-	void decStateSlot() { if(--saveStateSlot < 0) saveStateSlot = 9; }
-	void incStateSlot() { if(++saveStateSlot > 9) saveStateSlot = 0; }
-	const char *systemName() const;
-	const char *shortSystemName() const;
-	const BundledGameInfo &bundledGameInfo(int idx) const;
+	std::string_view systemName() const;
+	std::string_view shortSystemName() const;
 	const auto &contentDirectory() const { return contentDirectory_; }
 	FS::PathString contentDirectory(std::string_view name) const;
 	FS::PathString contentFilePath(std::string_view ext) const;
@@ -317,13 +238,13 @@ public:
 
 	FS::PathString contentLocalDirectory(std::string_view basePath, std::string_view name, auto &&...components) const
 	{
-		assert(!contentName_.empty());
+		assume(!contentName_.empty());
 		return FS::uriString(basePath, contentName_, name, IG_forward(components)...);
 	}
 
 	bool createContentLocalDirectory(std::string_view basePath, std::string_view name, auto &&...components)
 	{
-		assert(!contentName_.empty());
+		assume(!contentName_.empty());
 		try
 		{
 			FS::createDirectoryUriSegments(appContext(), basePath, contentName_, name, IG_forward(components)...);
@@ -361,12 +282,12 @@ public:
 	void sessionOptionSet();
 	void resetSessionOptionsSet() { sessionOptionsSet = false; }
 	bool sessionOptionsAreSet() const { return sessionOptionsSet; }
-	void createWithMedia(IG::IO, CStringView path,
+	void createWithMedia(IO, CStringView path,
 		std::string_view displayName, EmuSystemCreateParams, OnLoadProgressDelegate);
 	FS::PathString willLoadContentFromPath(std::string_view path, std::string_view displayName);
 	void loadContentFromPath(CStringView path, std::string_view displayName,
 		EmuSystemCreateParams, OnLoadProgressDelegate);
-	void loadContentFromFile(IG::IO, CStringView path, std::string_view displayName,
+	void loadContentFromFile(IO, CStringView path, std::string_view displayName,
 		EmuSystemCreateParams, OnLoadProgressDelegate);
 	int updateAudioFramesPerVideoFrame();
 	FrameRate scaledFrameRate() const
@@ -403,14 +324,13 @@ public:
     //endregion
 
 protected:
-	IG::ApplicationContext appCtx{};
+	ApplicationContext appCtx{};
 public:
 	EmuTiming timing;
 protected:
 	double audioFramesPerVideoFrameFloat{};
 	double currentAudioFramesPerVideoFrame{};
 	int audioFramesPerVideoFrame{};
-	int saveStateSlot{};
 	State state{};
 	bool sessionOptionsSet{};
 	BackupMemoryDirtyFlags backupMemoryDirtyFlags{};
@@ -430,7 +350,6 @@ protected:
 
 public:
 	double frameRateMultiplier{1.};
-	static constexpr double minFrameRate = 48.;
 };
 
 // Global instance access if required by the emulated system, valid if EmuApp::needsGlobalInstance initialized to true

@@ -15,9 +15,11 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <cmath>
 #include <imagine/util/Point2D.hh>
 #include <imagine/util/math.hh>
+#ifndef IG_USE_MODULE_STD
+#include <cmath>
+#endif
 
 namespace IG
 {

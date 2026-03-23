@@ -21,9 +21,11 @@
 #include <imagine/base/Viewport.hh>
 #include <imagine/util/rectangle2.h>
 #include <imagine/util/DelegateFunc.hh>
-#include <imagine/util/utility.h>
+#ifndef IG_USE_MODULE_STD
 #include <span>
 #include <memory>
+#include <utility>
+#endif
 
 namespace IG
 {

@@ -37,14 +37,16 @@ extern "C" {
 #include "Language.h"
 }
 
-#include <string.h>
-#include <imagine/util/ranges.hh>
-#include <imagine/logger/logger.h>
 // throw_exception.hpp, Boost 1.50
 #define UUID_AA15E74A856F11E08B8D93F24824019B
 #define BOOST_THROW_EXCEPTION(x)
 #define BOOST_STATIC_ASSERT( ... ) static_assert(__VA_ARGS__, #__VA_ARGS__)
 #include "../uuid/sha1.hpp"
+import imagine;
+import system;
+import std;
+
+using namespace EmuEx;
 
 struct RomDBInfo
 {
@@ -553,7 +555,7 @@ extern "C" MediaType* mediaDbLookupRom(const void *buffer, int size)
 		sha1.process_bytes(buffer, size);
 		unsigned int digest[5];
 		sha1.get_digest(digest);
-		logMsg("rom sha1 0x%X 0x%X 0x%X 0x%X 0x%X", digest[0], digest[1], digest[2], digest[3], digest[4]);
+		MsxSystem::log.info("rom sha1 {:X} {:X} {:X} {:X} {:X}", digest[0], digest[1], digest[2], digest[3], digest[4]);
 
 		for(auto e : romDB)
 		{
@@ -566,13 +568,13 @@ extern "C" MediaType* mediaDbLookupRom(const void *buffer, int size)
 			}
 			if(match == 5)
 			{
-				logMsg("found match with type %s", romTypeToString(e.romType));
+				MsxSystem::log.info("found match with type:{}", romTypeToString(e.romType));
 				staticMediaType = e.romType;
 				return &staticMediaType;
 			}
 		}
 
-		logMsg("rom not in DB");
+		MsxSystem::log.info("rom not in DB");
 		return nullptr;
 
     /*MediaType* mediaType = mediaDbLookup(romdb, buffer, size);
@@ -623,7 +625,7 @@ extern "C" MediaType* mediaDbGuessRom(const void *buffer, int size)
         return mediaType;
     }
 
-    logMsg("detecting ROM type");
+    MsxSystem::log.info("detecting ROM type");
 
     BoardType boardType = boardGetType();
 
@@ -670,10 +672,10 @@ extern "C" MediaType* mediaDbGuessRom(const void *buffer, int size)
 	}
     
     const char ManbowTag[] = "Mapper: Manbow 2";
-    UInt32 tagLength = strlen(ManbowTag);
+    UInt32 tagLength = std::strlen(ManbowTag);
     for (i = 0; i < (int)(size - tagLength); i++) {
         if (romData[i] == ManbowTag[0]) {
-            if (memcmp(romData + i, ManbowTag, tagLength) == 0) {
+            if (std::memcmp(romData + i, ManbowTag, tagLength) == 0) {
                 mediaType->romType = ROM_MANBOW2;
 			    return mediaType;
             }

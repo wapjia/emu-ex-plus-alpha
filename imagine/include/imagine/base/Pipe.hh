@@ -20,9 +20,11 @@
 #include <imagine/io/PosixIO.hh>
 #include <imagine/util/used.hh>
 #include <imagine/util/concepts.hh>
-#include <imagine/util/utility.h>
+#ifndef IG_USE_MODULE_STD
 #include <array>
 #include <string_view>
+#include <utility>
+#endif
 
 namespace IG
 {

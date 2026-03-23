@@ -13,28 +13,20 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/io/FileIO.hh>
-#include <imagine/fs/ArchiveFS.hh>
-#include <imagine/util/string.h>
-#include <imagine/util/bit.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/logger/logger.h>
 #include <mednafen/types.h>
 #include <mednafen/git.h>
 #include <mednafen/file.h>
 #include <mednafen/memory.h>
 #include <mednafen/MemoryStream.h>
+#include <emuframework/EmuApp.hh>
 #include <fcntl.h>
-
-namespace EmuEx
-{
-IG::ApplicationContext gAppContext();
-}
+import imagine;
 
 namespace Mednafen
 {
 
-constexpr IG::SystemLogger log{"MDFNFILE"};
+using namespace IG;
+constexpr SystemLogger log{"MDFNFILE"};
 
 static bool hasKnownExtension(std::string_view name, const std::vector<FileExtensionSpecStruct>& extSpec)
 {
@@ -49,13 +41,13 @@ static bool hasKnownExtension(std::string_view name, const std::vector<FileExten
 MDFNFILE::MDFNFILE(VirtualFS* vfs, const std::string& path, const std::vector<FileExtensionSpecStruct>& known_ext,
 	[[maybe_unused]] const char* purpose, [[maybe_unused]] int* monocomp_double_ext)
 {
-	if(IG::FS::hasArchiveExtension(path))
+	if(FS::hasArchiveExtension(path))
 	{
 		try
 		{
-			for(auto &entry : IG::FS::ArchiveIterator{EmuEx::gAppContext().openFileUri(path)})
+			for(auto &entry : FS::ArchiveIterator{EmuEx::gAppContext().openFileUri(path)})
 			{
-				if(entry.type() == IG::FS::file_type::directory)
+				if(entry.type() == FS::file_type::directory)
 				{
 					continue;
 				}
@@ -88,13 +80,13 @@ MDFNFILE::MDFNFILE(VirtualFS*, std::unique_ptr<Stream> str):
 
 extern int openFdHelper(const char *file, int oflag, mode_t)
 {
-	auto openFlags = (oflag & O_CREAT) ? IG::OpenFlags::newFile() : IG::OpenFlags{};
-	return EmuEx::gAppContext().openFileUriFd(file, openFlags | IG::OpenFlags{.test = true}).release();
+	auto openFlags = (oflag & O_CREAT) ? OpenFlags::newFile() : OpenFlags{};
+	return EmuEx::gAppContext().openFileUriFd(file, openFlags | OpenFlags{.test = true}).release();
 }
 
 extern FILE *fopenHelper(const char* filename, const char* mode)
 {
-	return IG::FileUtils::fopenUri(EmuEx::gAppContext(), filename, mode);
+	return FileUtils::fopenUri(EmuEx::gAppContext(), filename, mode);
 }
 
 }

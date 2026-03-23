@@ -1,0 +1,123 @@
+/*  This file is part of NGP.emu.
+
+	NGP.emu is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	NGP.emu is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with NGP.emu.  If not, see <http://www.gnu.org/licenses/> */
+
+module;
+#include <mednafen/mednafen.h>
+#include <ngp/mem.h>
+
+export module system;
+import emuex;
+import imagine;
+import std;
+
+extern "C++" const Mednafen::MDFNGI EmulatedNGP;
+
+namespace EmuEx
+{
+
+using namespace IG;
+
+export enum class NgpKey: KeyCode
+{
+	Up = 1,
+	Right = 4,
+	Down = 2,
+	Left = 3,
+	Option = 7,
+	A = 5,
+	B = 6,
+};
+
+enum NgpConfigKey
+{
+	CFGKEY_NGPKEY_LANGUAGE = 269, CFGKEY_NO_MD5_FILENAMES = 270,
+};
+
+export class NgpSystem final: public EmuSystem
+{
+public:
+	Mednafen::MDFNGI mdfnGameInfo{EmulatedNGP};
+	Property<bool, CFGKEY_NGPKEY_LANGUAGE,
+	{
+		.defaultValue = true
+	}> optionNGPLanguage;
+	uint8_t inputBuff{};
+	MutablePixmapView mSurfacePix;
+	static constexpr WSize vidBufferPx{160, 152};
+	alignas(8) uint32_t pixBuff[vidBufferPx.x * vidBufferPx.y]{};
+	bool noMD5InFilenames{};
+	// TODO: Mednafen/Neopop timing is based on 199 lines/frame, verify if this is correct
+	static constexpr FrameRate ngpFrameRate{6144000. / (199. * 515.)}; //~59.95Hz
+	static constexpr SystemLogger log{"NGP.emu"};
+
+	NgpSystem(ApplicationContext ctx):
+		EmuSystem{ctx}
+	{
+		Mednafen::MDFNGameInfo = &mdfnGameInfo;
+		mdfnGameInfo.SetInput(0, "gamepad", (uint8*)&inputBuff);
+	}
+
+	// required API functions
+	void loadContent(IO&, EmuSystemCreateParams, OnLoadProgressDelegate);
+	[[gnu::hot]] void runFrame(EmuSystemTaskContext, EmuVideo*, EmuAudio*);
+	FS::FileString stateFilename(int slot, std::string_view name) const;
+	std::string_view stateFilenameExt() const { return ".mca"; }
+	size_t stateSize();
+	void readState(EmuApp&, std::span<uint8_t> buff);
+	size_t writeState(std::span<uint8_t> buff, SaveStateFlags);
+	bool readConfig(ConfigType, MapIO&, unsigned key);
+	void writeConfig(ConfigType, FileIO&);
+	void reset(EmuApp&, ResetMode mode);
+
+	void clearInputBuffers()
+	{
+		inputBuff = {};
+		MDFN_IEN_NGP::storeB(0x6F82, 0);
+	}
+
+	void handleInputAction(EmuApp*, InputAction a)
+	{
+		inputBuff = setOrClearBits(inputBuff, bit(a.code - 1), a.state == Input::Action::PUSHED);
+		MDFN_IEN_NGP::storeB(0x6F82, inputBuff);
+	}
+
+	FrameRate frameRate() const { return ngpFrameRate; }
+	void configAudioRate(FrameRate outputFrameRate, int outputRate);
+
+	// optional API functions
+	void closeSystem();
+	void loadBackupMemory(EmuApp&);
+	void onFlushBackupMemory(EmuApp&, BackupMemoryDirtyFlags);
+	WallClockTimePoint backupMemoryLastWriteTime(const EmuApp&) const;
+	bool onVideoRenderFormatChange(EmuVideo&, PixelFormat);
+};
+
+export using MainSystem = NgpSystem;
+
+class NgpApp final: public EmuApp
+{
+public:
+	NgpApp(ApplicationInitParams initParams, ApplicationContext& ctx):
+		EmuApp{initParams, ctx}, system_{ctx} {}
+
+	auto& system(this auto&& self) { return self.system_; }
+
+private:
+	NgpSystem system_;
+};
+
+export using MainApp = NgpApp;
+
+}

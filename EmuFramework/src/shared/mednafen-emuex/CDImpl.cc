@@ -18,10 +18,12 @@
 #include <mednafen/cdrom/CDAccess_Image.h>
 #include <mednafen/cdrom/CDAccess_CCD.h>
 #include <mednafen/cdrom/CDAccess_CHD.h>
+import imagine;
 
 namespace Mednafen
 {
 
+using namespace IG;
 using namespace CDUtility;
 
 // Disk-image(rip) track/sector formats
@@ -82,13 +84,13 @@ static int readSector(auto &cdAccess, uint8 *buf, int32 lba, uint32 size)
 	switch(format)
 	{
 		case DI_FORMAT_AUDIO:
-		assert(size == 2352);
+		assume(size == 2352);
 		memcpy(buf, data, size);
 		break;
 
 		case DI_FORMAT_MODE1:
 		case DI_FORMAT_MODE1_RAW:
-		assert(size == 2048);
+		assume(size == 2048);
 		memcpy(buf, data + 12 + 3 + 1, size);
 		break;
 
@@ -143,7 +145,7 @@ void CDAccess_Image::HintReadSector(int32 lba, int32 count)
 				if(ct->SubchannelMode)
 				 SeekPos += 96 * (lba - ct->LBA);
 
-				ct->fp->advise(SeekPos, 2352 * count, IG::IOAdvice::WillNeed);
+				ct->fp->advise(SeekPos, 2352 * count, IOAdvice::WillNeed);
 			}
 		}
 	 }
@@ -161,7 +163,7 @@ int CDAccess_CCD::Read_Sector(uint8 *buf, int32 lba, uint32 size)
 
 void CDAccess_CCD::HintReadSector(int32 lba, int32 count)
 {
- img_stream->advise(lba * 2352, 2352 * count, IG::IOAdvice::WillNeed);
+ img_stream->advise(lba * 2352, 2352 * count, IOAdvice::WillNeed);
 }
 
 int CDAccess_CHD::Read_Sector(uint8 *buf, int32 lba, uint32 size)

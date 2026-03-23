@@ -15,23 +15,21 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/config/defs.hh>
+#include <imagine/fs/FSDefs.hh>
 #include <android/native_activity.h>
+#include <android/asset_manager.h>
 #include <jni.h>
+#ifndef IG_USE_MODULE_STD
 #include <string>
+#endif
 
-struct ANativeActivity;
-struct AAssetManager;
-
-namespace IG::FS
+namespace IG
 {
-struct PathLocation;
+class Application;
 }
 
 namespace IG
 {
-
-class Application;
 
 using NativeDisplayConnection = void*;
 

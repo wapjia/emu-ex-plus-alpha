@@ -1,9 +1,12 @@
-The following sections supplement the ones in the main INSTALL text for the iOS port. An ARMv7 device running at least iOS 5.0 is required to run Imagine.
+The following sections supplement the ones in the main INSTALL text for the iOS port. An ARMv7 device running at least iOS 6.0 is required to run Imagine.
 
 1. Tools and Environment Setup
 ==============================
 
-The following make variables are used by the build system:
+The following environment variables are used by the build system:
+
+CCTOOLS_TOOCHAIN_PATH : Optional, default taken from environment variable
+ - The path to ported cctools toolchain for building on Linux, see https://github.com/tpoechtrager/cctools-port
 
 XCODE_PATH : Optional, defaults to $(shell xcode-select --print-path)
  - The path in the Xcode app bundle containing the "Platforms/" subdirectory
@@ -11,9 +14,6 @@ XCODE_PATH : Optional, defaults to $(shell xcode-select --print-path)
 IOS_SDK : Optional, if not set the first SDK directory found is used
  - The version of the SDK in Xcode to use as the sysroot
 
-ios_arch : Optional, default set by app
- - When building an Imagine-based app, specifies a space separated list of which architectures to build ("armv7 arm64" for example)
-
 --------------------------------
 
-Copyright 2014-2024 by Robert Broglia
+Copyright 2014-2026 by Robert Broglia

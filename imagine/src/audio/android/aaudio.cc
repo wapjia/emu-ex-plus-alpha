@@ -13,17 +13,17 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/audio/android/AAudioOutputStream.hh>
 #include <imagine/audio/OutputStream.hh>
 #include <imagine/audio/Manager.hh>
 #include <imagine/base/sharedLibrary.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <aaudio/AAudio.h>
 
 namespace IG::Audio
 {
 
-constexpr SystemLogger log{"AAudio"};
+static SystemLogger log{"AAudio"};
 
 static aaudio_result_t (*AAudio_createStreamBuilder)(AAudioStreamBuilder** builder){};
 static aaudio_result_t (*AAudioStreamBuilder_openStream)(AAudioStreamBuilder* builder, AAudioStream** stream){};
@@ -159,7 +159,7 @@ AAudioOutputStream::~AAudioOutputStream()
 
 StreamError AAudioOutputStream::open(OutputStreamConfig config)
 {
-	assert(loadedAAudioLib());
+	assume(loadedAAudioLib());
 	if(stream)
 	{
 		log.warn("stream already open");

@@ -19,13 +19,15 @@
 #include <imagine/util/used.hh>
 #include <imagine/util/memory/UniqueFileDescriptor.hh>
 #include <glib.h>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
 #include <utility>
+#endif
 
 namespace IG
 {
 
-constexpr int pollEventInput = G_IO_IN, pollEventOutput = G_IO_OUT,
+inline constexpr int pollEventInput = G_IO_IN, pollEventOutput = G_IO_OUT,
 	pollEventError = G_IO_ERR, pollEventHangUp = G_IO_HUP;
 
 struct PollEventGSource : public GSource

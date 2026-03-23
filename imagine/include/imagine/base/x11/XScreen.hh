@@ -22,11 +22,11 @@
 #include <imagine/base/linux/DRMFrameTimer.hh>
 #include <imagine/base/linux/FBDevFrameTimer.hh>
 #include <imagine/base/FrameTimerInterface.hh>
+#include <xcb/xproto.h>
+#ifndef IG_USE_MODULE_STD
 #include <utility>
 #include <variant>
-
-struct xcb_connection_t;
-struct xcb_screen_t;
+#endif
 
 namespace IG
 {

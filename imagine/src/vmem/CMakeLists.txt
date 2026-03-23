@@ -1,0 +1,7 @@
+if(ENV_KERNEL STREQUAL linux)
+	target_sources(imagine PRIVATE linux.cc)
+elseif(ENV_KERNEL STREQUAL mach)
+	target_sources(imagine PRIVATE mach.cc)
+else()
+	message(FATAL_ERROR "unsupported ENV_KERNEL")
+endif()

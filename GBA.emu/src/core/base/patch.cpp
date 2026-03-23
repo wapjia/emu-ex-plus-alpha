@@ -10,7 +10,7 @@
 #endif
 
 
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/param.h>
 #define fopen64     fopen
 #define fseeko64    fseeko
@@ -34,7 +34,7 @@
 #include "core/base/file_util.h"
 
 #ifdef __GNUC__
-#if defined(__MUSL__) || defined(__APPLE__) || defined(BSD) || defined(__NetBSD__)
+#if defined(__MUSL__) || defined(__APPLE__) || defined(BSD)
 typedef off_t __off64_t; /* off_t is 64 bits on BSD. */
 #define fseeko64 fseeko
 #define ftello64 ftello
@@ -202,7 +202,6 @@ bool patchApplyIPS(FILE* f, uint8_t **r, int *s)
       // check if we need to reallocate our ROM
       if ((offset + len) >= size) {
         size *= 2;
-        //rom = (uint8_t *)realloc(rom, size);
         *r = rom;
         *s = size;
       }
@@ -286,7 +285,6 @@ bool patchApplyUPS(FILE* f, uint8_t **rom, int *size)
     return false;
   }
   if (dataSize > *size) {
-   // *rom = (uint8_t*)realloc(*rom, (size_t)dataSize);
     memset(*rom + *size, 0, (size_t)(dataSize - *size));
     *size = (int)(dataSize);
   }

@@ -6,19 +6,15 @@
  * Modified/adapted for PicoDrive by notaz, 2007           *
  *                                                         *
  ***********************************************************/
-#define LOGTAG "cdFile"
 #include "scd.h"
 #include "cd_file.h"
 #include "cd_sys.h"
-#include <imagine/logger/logger.h>
-#include <imagine/util/ranges.hh>
 #include <imagine/util/mayAliasInt.h>
-#include <assert.h>
 #include <string.h>
 #include <stdio.h>
-#include <imagine/io/FileIO.hh>
 #include <mednafen/mednafen.h>
 #include <mednafen/cdrom/CDAccess.h>
+import imagine;
 
 #define cdprintf(x...)
 //#define cdprintf(f,...) printf(f "\n",##__VA_ARGS__) // tmp

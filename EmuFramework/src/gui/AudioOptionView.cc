@@ -14,10 +14,10 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/AudioOptionView.hh>
-#include <emuframework/viewUtils.hh>
-#include <emuframework/EmuSystem.hh>
 #include <emuframework/EmuAudio.hh>
-#include <format>
+#include <emuframework/EmuSystem.hh>
+#include <emuframework/viewUtils.hh>
+import imagine;
 
 namespace EmuEx
 {
@@ -180,13 +180,13 @@ void AudioOptionView::loadStockItems()
 	item.emplace_back(&snd);
 	item.emplace_back(&soundDuringFastSlowMode);
 	item.emplace_back(&soundVolume);
-	if(!EmuSystem::forcedSoundRate)
+	if(!AppMeta::forcedSoundRate)
 	{
 		item.emplace_back(&audioRate);
 	}
 	item.emplace_back(&soundBuffers);
 	item.emplace_back(&addSoundBuffersOnUnderrun);
-	if constexpr(IG::Audio::Manager::HAS_SOLO_MIX)
+	if constexpr(Audio::Manager::HAS_SOLO_MIX)
 	{
 		item.emplace_back(&audioSoloMix);
 	}

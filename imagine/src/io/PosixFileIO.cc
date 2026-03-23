@@ -13,17 +13,18 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "PosixFileIO"
-#include <imagine/io/FileIO.hh>
+#include <imagine/io/PosixFileIO.hh>
 #include <imagine/io/IO.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/util/fd-utils.h>
-#include <imagine/util/variant.hh>
 #include <imagine/io/IOUtils-impl.hh>
-#include <cstring>
+#include <imagine/util/variant.hh>
+#include <imagine/logger/SystemLogger.hh>
+#include <imagine/util/fd-utils.h>
+import imagine.internal.io;
 
 namespace IG
 {
+
+[[maybe_unused]] static SystemLogger log{"PosixFileIO"};
 
 #if defined __linux__
 constexpr bool hasMmapPopulateFlag = true;
@@ -169,7 +170,7 @@ UniqueFileDescriptor PosixFileIO::releaseFd()
 	{
 		return ioPtr->releaseFd();
 	}
-	logWarn("trying to release fd of mapped IO");
+	log.warn("trying to release fd of mapped IO");
 	return {};
 }
 

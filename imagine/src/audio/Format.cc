@@ -14,17 +14,15 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/audio/Format.hh>
-#include <imagine/util/utility.h>
 #include <imagine/util/algorithm.h>
-#include <imagine/util/math.hh>
-#include <cmath>
+#include <imagine/util/utility.hh>
 
 namespace IG::Audio
 {
 
 static int16_t remapToInt16(float x)
 {
-	assumeExpr(x >= -1.f && x <= 1.f);
+	assume(x >= -1.f && x <= 1.f);
 	return remap(x, -1.f, 1.f, std::numeric_limits<int16_t>{});
 }
 
@@ -75,7 +73,7 @@ static float *copyFloatSamples(float * __restrict__ dest, size_t samples, const 
 
 void *Format::copyFrames(void * __restrict__ dest, const void * __restrict__ src, size_t frames, Format srcFormat, float volume) const
 {
-	assumeExpr(channels == srcFormat.channels);
+	assume(channels == srcFormat.channels);
 	auto samples = frames * channels;
 	switch(sample.bytes())
 	{
@@ -91,7 +89,7 @@ void *Format::copyFrames(void * __restrict__ dest, const void * __restrict__ src
 			}
 			else
 			{
-				bug_unreachable("unimplemented conversion");
+				unreachable();
 			}
 		}
 		case 4:
@@ -106,12 +104,12 @@ void *Format::copyFrames(void * __restrict__ dest, const void * __restrict__ src
 			}
 			else
 			{
-				bug_unreachable("unimplemented conversion");
+				unreachable();
 			}
 		}
 		default:
 		{
-			bug_unreachable("unimplemented conversion");
+			unreachable();
 		}
 	}
 }

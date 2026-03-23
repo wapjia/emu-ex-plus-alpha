@@ -15,22 +15,42 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/config/defs.hh>
+#include <imagine/audio/defs.hh>
+#include <imagine/audio/Format.hh>
+
+#ifndef IG_USE_MODULE_STD
+#include <vector>
+#include <optional>
+#endif
+
 #if defined __ANDROID__
 #include <imagine/audio/android/AndroidManager.hh>
 #elif (defined __APPLE__ && TARGET_OS_IPHONE)
 #include <imagine/audio/coreaudio/AvfManager.hh>
 #else
-#include <imagine/audio/BasicManager.hh>
-#endif
-
-#include <imagine/audio/Format.hh>
-#include <imagine/audio/defs.hh>
-#include <vector>
-#include <optional>
+#include <imagine/base/ApplicationContext.hh>
 
 namespace IG::Audio
 {
+
+class BasicManager
+{
+public:
+	static constexpr bool HAS_SOLO_MIX = false;
+	static constexpr bool SOLO_MIX_DEFAULT = false;
+
+	constexpr BasicManager(ApplicationContext) {};
+};
+
+using ManagerImpl = BasicManager;
+
+}
+#endif
+
+namespace IG::Audio
+{
+
+struct OutputStreamConfig;
 
 class Manager : public ManagerImpl
 {

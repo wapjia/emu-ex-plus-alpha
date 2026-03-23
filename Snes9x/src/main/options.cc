@@ -1,40 +1,18 @@
-#include <emuframework/EmuApp.hh>
-#include <emuframework/Option.hh>
-#include "MainSystem.hh"
+/*  This file is part of Snes9x EX.
+
+	Please see COPYING file in root directory for license information. */
+
+module;
 #ifndef SNES9X_VERSION_1_4
 #include <apu/apu.h>
 #include <apu/bapu/snes/snes.hpp>
 #include <ppu.h>
-#include <fxemu.h>
 #endif
+
+module system;
 
 namespace EmuEx
 {
-
-#ifdef SNES9X_VERSION_1_4
-const char *EmuSystem::configFilename = "Snes9x.config";
-#else
-bool EmuSystem::hasBundledGames = true;
-const char *EmuSystem::configFilename = "Snes9xP.config";
-#endif
-
-std::span<const AspectRatioInfo> Snes9xSystem::aspectRatioInfos()
-{
-	static constexpr AspectRatioInfo aspectRatioInfo[]
-	{
-		{"4:3 (原画)", {4, 3}},
-		EMU_SYSTEM_DEFAULT_ASPECT_RATIO_INFO_INIT
-	};
-	return aspectRatioInfo;
-}
-
-#ifndef SNES9X_VERSION_1_4
-void setSuperFXSpeedMultiplier(unsigned val)
-{
-	Settings.SuperFXClockMultiplier = val;
-	S9xSetSuperFXTiming(val);
-}
-#endif
 
 void Snes9xSystem::applyInputPortOption(int portVal, VController &vCtrl)
 {

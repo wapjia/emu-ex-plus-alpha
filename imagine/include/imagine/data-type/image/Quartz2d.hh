@@ -19,8 +19,10 @@
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/pixmap/Pixmap.hh>
 #include <CoreGraphics/CGImage.h>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
 #include <type_traits>
+#endif
 
 namespace IG::Data
 {

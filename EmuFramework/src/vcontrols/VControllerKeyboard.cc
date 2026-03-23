@@ -15,11 +15,7 @@
 
 #include <emuframework/VController.hh>
 #include <emuframework/EmuApp.hh>
-#include <imagine/util/math.hh>
-#include <imagine/gfx/RendererCommands.hh>
-#include <imagine/gfx/BasicEffect.hh>
-#include <imagine/gfx/Mat4.hh>
-#include <imagine/logger/logger.h>
+import imagine;
 
 namespace EmuEx
 {
@@ -49,7 +45,7 @@ void VControllerKeyboard::place(int btnSize, int yOffset, WRect viewBounds)
 	int vArea = viewBounds.ySize() - yOffset * 2;
 	if(ySize > vArea)
 	{
-		IG::setSizesWithRatioY(xSize, ySize, 3./2., vArea);
+		setSizesWithRatioY(xSize, ySize, 3./2., vArea);
 	}
 	WRect bounds {{}, {xSize, ySize}};
 	bounds.setPos({viewBounds.xCenter(), viewBounds.y2 - yOffset}, CB2DO);
@@ -62,7 +58,7 @@ void VControllerKeyboard::place(int btnSize, int yOffset, WRect viewBounds)
 
 void VControllerKeyboard::draw(Gfx::RendererCommands &__restrict__ cmds) const
 {
-	using namespace IG::Gfx;
+	using namespace Gfx;
 	auto &basicEffect = cmds.basicEffect();
 	basicEffect.drawSprite(cmds, kbQuad, 0, texture);
 	constexpr auto selectCol = Gfx::Color{.2, .71, .9, 1./3.}.multiplyAlpha();
@@ -71,7 +67,7 @@ void VControllerKeyboard::draw(Gfx::RendererCommands &__restrict__ cmds) const
 	{
 		cmds.setColor(selectCol);
 		basicEffect.disableTexture(cmds);
-		IG::WindowRect rect{};
+		WindowRect rect{};
 		rect.x = bound.x + 1 + (selected.x * keyXSize);
 		rect.x2 = bound.x + 1 + ((selected.x2 + 1) * keyXSize);
 		rect.y = bound.y + 1 + (selected.y * keyYSize);
@@ -83,7 +79,7 @@ void VControllerKeyboard::draw(Gfx::RendererCommands &__restrict__ cmds) const
 	{
 		cmds.setColor(shiftCol);
 		basicEffect.disableTexture(cmds);
-		IG::WindowRect rect{};
+		WindowRect rect{};
 		rect.x = bound.x + 1 + (shiftRect.x * keyXSize);
 		rect.x2 = bound.x + 1 + ((shiftRect.x2 + 1) * keyXSize);
 		rect.y = bound.y + 1 + (shiftRect.y * keyYSize);
@@ -107,7 +103,7 @@ int VControllerKeyboard::getInput(WPt c) const
 
 KeyInfo VControllerKeyboard::translateInput(int idx) const
 {
-	assumeExpr(idx < VKEY_COLS * KEY_ROWS);
+	assume(idx < VKEY_COLS * KEY_ROWS);
 	return table[0][idx];
 }
 
@@ -194,17 +190,17 @@ void VControllerKeyboard::selectKeyRel(int x, int y)
 {
 	if(x > 0)
 	{
-		selected.x2 = IG::wrapMinMax(selected.x2 + x, 0, (int)VKEY_COLS);
+		selected.x2 = wrapMinMax(selected.x2 + x, 0, (int)VKEY_COLS);
 		selected.x = selected.x2;
 	}
 	else if(x < 0)
 	{
-		selected.x = IG::wrapMinMax(selected.x + x, 0, (int)VKEY_COLS);
+		selected.x = wrapMinMax(selected.x + x, 0, (int)VKEY_COLS);
 		selected.x2 = selected.x;
 	}
 	if(y != 0)
 	{
-		selected.y = selected.y2 = IG::wrapMinMax(selected.y2 + y, 0, (int)KEY_ROWS);
+		selected.y = selected.y2 = wrapMinMax(selected.y2 + y, 0, (int)KEY_ROWS);
 		selected.x2 = selected.x;
 	}
 	selected = extendKeySelection(selected);
@@ -220,17 +216,17 @@ void VControllerKeyboard::unselectKey()
 	selected = {{-1, -1}, {-1, -1}};
 }
 
-IG::WindowRect VControllerKeyboard::extendKeySelection(IG::WindowRect selected)
+WindowRect VControllerKeyboard::extendKeySelection(WindowRect selected)
 {
 	auto key = currentKey(selected.x, selected.y);
-	for([[maybe_unused]] auto i : iotaCount(selected.x))
+	for([[maybe_unused]] auto i: iotaCount(selected.x))
 	{
 		if(table[selected.y][selected.x - 1] == key)
 			selected.x--;
 		else
 			break;
 	}
-	for([[maybe_unused]] auto i : iotaCount((VKEY_COLS - 1) - selected.x2))
+	for([[maybe_unused]] auto i: iotaCount((VKEY_COLS - 1) - selected.x2))
 	{
 		if(table[selected.y][selected.x2 + 1] == key)
 			selected.x2++;
@@ -271,7 +267,7 @@ void VControllerKeyboard::applyMap(KbMap map)
 	// 1st row
 	auto *__restrict tablePtr = &table[0][0];
 	auto *__restrict mapPtr = &map[0];
-	for([[maybe_unused]] auto i : iotaCount(10))
+	for([[maybe_unused]] auto i: iotaCount(10))
 	{
 		tablePtr[0] = *mapPtr;
 		tablePtr[1] = *mapPtr;
@@ -283,7 +279,7 @@ void VControllerKeyboard::applyMap(KbMap map)
 	if(mode_ == VControllerKbMode::LAYOUT_1)
 	{
 		tablePtr = &table[1][1];
-		for([[maybe_unused]] auto i : iotaCount(9))
+		for([[maybe_unused]] auto i: iotaCount(9))
 		{
 			tablePtr[0] = *mapPtr;
 			tablePtr[1] = *mapPtr;
@@ -294,7 +290,7 @@ void VControllerKeyboard::applyMap(KbMap map)
 	else
 	{
 		tablePtr = &table[1][0];
-		for([[maybe_unused]] auto i : iotaCount(10))
+		for([[maybe_unused]] auto i: iotaCount(10))
 		{
 			tablePtr[0] = *mapPtr;
 			tablePtr[1] = *mapPtr;
@@ -307,7 +303,7 @@ void VControllerKeyboard::applyMap(KbMap map)
 	table[2][0] = table[2][1] = table[2][2] = *mapPtr;
 	mapPtr++;
 	tablePtr = &table[2][3];
-	for([[maybe_unused]] auto i : iotaCount(7))
+	for([[maybe_unused]] auto i: iotaCount(7))
 	{
 		tablePtr[0] = *mapPtr;
 		tablePtr[1] = *mapPtr;
@@ -320,7 +316,7 @@ void VControllerKeyboard::applyMap(KbMap map)
 	table[3][3] = table[3][4] = table[3][5] = VController::CHANGE_KEYBOARD_MODE;
 	tablePtr = &table[3][6];
 	mapPtr = &map[33];
-	for([[maybe_unused]] auto i : iotaCount(8))
+	for([[maybe_unused]] auto i: iotaCount(8))
 	{
 		*tablePtr++ = *mapPtr;
 	}

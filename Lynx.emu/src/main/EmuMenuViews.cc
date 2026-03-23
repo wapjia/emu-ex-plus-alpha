@@ -13,20 +13,15 @@
 	You should have received a copy of the GNU General Public License
 	along with Lynx.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/FilePathOptionView.hh>
-#include <emuframework/DataPathSelectView.hh>
-#include <emuframework/SystemActionsView.hh>
-#include <emuframework/SystemOptionView.hh>
-#include <emuframework/AudioOptionView.hh>
-#include <mednafen-emuex/MDFNUtils.hh>
-#include "MainApp.hh"
-#include <imagine/util/string.h>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
+import system;
+import emuex;
+import imagine;
+import std;
 
 namespace EmuEx
 {
 
+using namespace IG;
 using MainAppHelper = EmuAppHelperBase<MainApp>;
 
 class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
@@ -49,7 +44,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 				[this](CStringView path, FS::file_type)
 				{
 					system().biosPath = path;
-					logMsg("set BIOS:%s", system().biosPath.data());
+					LynxSystem::log.info("set BIOS:{}", system().biosPath);
 					biosPath.compile(biosMenuEntryStr(path));
 					return true;
 				}, hasBiosExtension), e);

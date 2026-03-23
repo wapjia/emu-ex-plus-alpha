@@ -19,26 +19,28 @@
 #include <imagine/font/Font.hh>
 #include <imagine/gfx/Texture.hh>
 #include <imagine/util/container/VMemArray.hh>
+#ifndef IG_USE_MODULE_STD
 #include <string_view>
+#endif
 
 namespace IG::Gfx
 {
 
-constexpr auto glyphSamplerConfig = SamplerConfigs::noMipClamp;
+inline constexpr auto glyphSamplerConfig = SamplerConfigs::noMipClamp;
 
 struct GlyphEntry
 {
 	Texture glyph;
-	GlyphMetrics metrics;
+	Data::GlyphMetrics metrics;
 };
 
 class GlyphTextureSet
 {
 public:
 	constexpr GlyphTextureSet() = default;
-	GlyphTextureSet(Renderer &, Font, FontSettings settings = {});
-	FontSettings fontSettings() const;
-	bool setFontSettings(Renderer &r, FontSettings set);
+	GlyphTextureSet(Renderer &, Data::Font, Data::FontSettings settings = {});
+	Data::FontSettings fontSettings() const;
+	bool setFontSettings(Renderer &r, Data::FontSettings set);
 	int precache(Renderer &r, std::string_view string);
 	int precacheAlphaNum(Renderer &r)
 	{
@@ -51,10 +53,10 @@ public:
 	void freeCaches() { freeCaches(~0); }
 
 private:
-	Font font;
+	Data::Font font;
 	VMemArray<GlyphEntry> glyphTable;
-	FontSettings settings;
-	FontSize faceSize;
+	Data::FontSettings settings;
+	Data::FontSize faceSize;
 	GlyphSetMetrics metrics_;
 	uint32_t usedGlyphTableBits{};
 

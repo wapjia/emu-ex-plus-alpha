@@ -15,7 +15,9 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#ifndef IG_USE_MODULE_STD
 #include <cstdint>
+#endif
 
 namespace IG::Input
 {
@@ -24,8 +26,8 @@ using PointerIdImpl = int32_t;
 
 using Key = uint16_t;
 
-	namespace Keycode
-	{
+struct Keycode
+{
 	static constexpr Key
 	// SYS_HOME = 3, // Never sent to apps
 	BACK = 4,
@@ -202,24 +204,24 @@ using Key = uint16_t;
 
 	static constexpr Key LAST_KEY = JS_BRAKE_AXIS;
 	static constexpr uint32_t COUNT = LAST_KEY + 1;
+};
 
-		namespace XperiaPlay
-		{
-		static constexpr Key
-		CROSS = CENTER,
-		CIRCLE = GAME_B, // re-mapped from "Back" in input event handler
-		SQUARE = GAME_X,
-		TRIANGLE = GAME_Y,
-		L1 = GAME_L1,
-		R1 = GAME_R1,
-		SELECT = GAME_SELECT,
-		START = GAME_START,
-		UP = Keycode::UP, RIGHT = Keycode::RIGHT, DOWN = Keycode::DOWN, LEFT = Keycode::LEFT;
-		}
-}
+struct XperiaPlayKey
+{
+	static constexpr Key
+	CROSS = Keycode::CENTER,
+	CIRCLE = Keycode::GAME_B, // re-mapped from "Back" in input event handler
+	SQUARE = Keycode::GAME_X,
+	TRIANGLE = Keycode::GAME_Y,
+	L1 = Keycode::GAME_L1,
+	R1 = Keycode::GAME_R1,
+	SELECT = Keycode::GAME_SELECT,
+	START = Keycode::GAME_START,
+	UP = Keycode::UP, RIGHT = Keycode::RIGHT, DOWN = Keycode::DOWN, LEFT = Keycode::LEFT;
+};
 
-	namespace Pointer
-	{
+struct Pointer
+{
 	static constexpr Key
 	LBUTTON = 1,
 	MBUTTON = 4,
@@ -227,10 +229,10 @@ using Key = uint16_t;
 	DOWN_BUTTON = 8,
 	UP_BUTTON = 16,
 	ALL_BUTTONS = LBUTTON | MBUTTON | RBUTTON | DOWN_BUTTON | UP_BUTTON;
-	};
+};
 
-	namespace Meta
-	{
+struct Meta
+{
 	static constexpr uint32_t
 	ALT = 0x2,
 	ALT_L = 0x10,
@@ -245,7 +247,7 @@ using Key = uint16_t;
 	META_L = 0x20000,
 	META_R = 0x40000,
 	CAPS_LOCK = 0x100000;
-	}
+};
 
 enum class AxisId : uint8_t
 {

@@ -122,11 +122,11 @@
  *      http://www.msxnet.org/tech/z80-documented.pdf
  *****************************************************************************/
 
-#include <imagine/logger/logger.h>
-#include <imagine/util/ranges.hh>
 #include <cstring>
 
 #include <z80conf.hh>
+
+import imagine;
 
 constexpr unsigned CF = 0x01;
 constexpr unsigned NF = 0x02;

@@ -13,30 +13,19 @@
 	You should have received a copy of the GNU General Public License
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/EmuOptions.hh>
-#include <emuframework/EmuSystem.hh>
+#include <imagine/config/macros.h>
 #include <emuframework/EmuApp.hh>
 #include <emuframework/MainMenuView.hh>
-#include <emuframework/VideoImageEffect.hh>
-#include <emuframework/VideoImageOverlay.hh>
-#include <emuframework/VController.hh>
-#include "WindowData.hh"
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/gfx/Renderer.hh>
-#include <imagine/base/Screen.hh>
-#include <imagine/base/Window.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/io/FileIO.hh>
-#include <imagine/io/MapIO.hh>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
+import imagine;
 
 namespace EmuEx
 {
 
+using namespace IG;
+
 constexpr SystemLogger log{"App"};
 
-void EmuApp::initOptions([[maybe_unused]] IG::ApplicationContext ctx)
+void EmuApp::initOptions([[maybe_unused]] ApplicationContext ctx)
 {
 	#ifdef CONFIG_OS_IOS
 	if(ctx.deviceIsIPad())
@@ -68,13 +57,13 @@ void EmuApp::applyFontSize(Window &win)
 	viewManager.defaultBoldFace.setFontSettings(renderer, settings);
 }
 
-IG::FontSettings EmuApp::fontSettings(Window &win) const
+Data::FontSettings EmuApp::fontSettings(Window &win) const
 {
 	float size = fontSize / 1000.f;
 	return {win.heightScaledMMInPixels(size)};
 }
 
-IG::PixelFormat EmuApp::videoEffectPixelFormat() const
+PixelFormat EmuApp::videoEffectPixelFormat() const
 {
 	if(imageEffectPixelFormat.value() != PixelFormatId::Unset)
 		return imageEffectPixelFormat.value();
@@ -101,7 +90,7 @@ bool EmuApp::setMenuScale(int8_t val)
 	return true;
 }
 
-void EmuApp::setContentRotation(IG::Rotation r)
+void EmuApp::setContentRotation(Rotation r)
 {
 	contentRotation = r;
 	updateContentRotation();
@@ -150,7 +139,7 @@ float EmuApp::videoAspectRatio() const
 
 float EmuApp::defaultVideoAspectRatio() const
 {
-	return EmuSystem::aspectRatioInfos()[0].asFloat();
+	return AppMeta::aspectRatioInfo.asFloat();
 }
 
 void EmuApp::setShowsTitleBar(bool on)

@@ -23,7 +23,6 @@
 
 #include "shared.h"
 #include "vdp_render.h"
-#include <imagine/pixmap/Pixmap.hh>
 
 #ifdef NGC
 #include "md_ntsc.h"
@@ -33,6 +32,8 @@
 extern md_ntsc_t *md_ntsc;
 extern sms_ntsc_t *sms_ntsc;
 #endif
+
+import imagine;
 
 /* Pixel priority look-up tables information */
 #define LUT_MAX     (6)
@@ -3807,6 +3808,6 @@ void setFramebufferRenderFormat(IG::PixelFormat fmt)
 
 IG::PixelFormat framebufferRenderFormat()
 {
-	assumeExpr(isValidPixelFormat(fbRenderFormat));
+	IG::assume(isValidPixelFormat(fbRenderFormat));
 	return fbRenderFormat;
 }

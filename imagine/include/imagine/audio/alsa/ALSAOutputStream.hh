@@ -18,8 +18,10 @@
 #include <imagine/audio/defs.hh>
 #include <imagine/audio/Format.hh>
 #include <alsa/asoundlib.h>
+#ifndef IG_USE_MODULE_STD
 #include <atomic>
 #include <thread>
+#endif
 
 namespace IG::Audio
 {
@@ -29,7 +31,7 @@ class ALSAOutputStream
 public:
 	ALSAOutputStream() = default;
 	~ALSAOutputStream();
-	ALSAOutputStream &operator=(ALSAOutputStream &&) = delete;
+	ALSAOutputStream& operator=(ALSAOutputStream&&) = delete;
 	StreamError open(OutputStreamConfig config);
 	void play();
 	void pause();

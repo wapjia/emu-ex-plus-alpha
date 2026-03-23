@@ -14,28 +14,28 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/base/Timer.hh>
-#include <imagine/base/EventLoop.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/util/format.hh>
-#include <imagine/util/utility.h>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <unistd.h>
-#include <cerrno>
-#include <cstring>
+#include <errno.h>
+	#if __has_include(<sys/timerfd.h>) && (!defined __ANDROID__ || ANDROID_MIN_API >= 19)
+	#define HAS_TIMERFD_H
+	#include <sys/timerfd.h>
+	#else
+	#include <time.h>
+	#include <sys/syscall.h>
+	#include <linux/fcntl.h>
+	#endif
+import std;
 
-#if __has_include(<sys/timerfd.h>) && (!defined __ANDROID__ || ANDROID_MIN_API >= 19)
-#include <sys/timerfd.h>
-#else
-#include <time.h>
-#include <sys/syscall.h>
-#include <linux/fcntl.h>
+#ifndef HAS_TIMERFD_H
+	#ifndef TFD_NONBLOCK
+	#define TFD_NONBLOCK O_NONBLOCK
+	#endif
 
-#ifndef TFD_NONBLOCK
-#define TFD_NONBLOCK O_NONBLOCK
-#endif
-
-#ifndef TFD_CLOEXEC
-#define TFD_CLOEXEC O_CLOEXEC
-#endif
+	#ifndef TFD_CLOEXEC
+	#define TFD_CLOEXEC O_CLOEXEC
+	#endif
 
 enum
 {
@@ -64,7 +64,7 @@ static int timerfd_gettime(int ufd,
 namespace IG
 {
 
-constexpr SystemLogger log{"Timer"};
+static SystemLogger log{"Timer"};
 
 static void cancelTimer(int fd)
 {
@@ -100,7 +100,7 @@ bool TimerFD::arm(timespec time, timespec repeatInterval, int flags)
 	struct itimerspec newTime{repeatInterval, time};
 	if(timerfd_settime(fdSrc.fd(), flags, &newTime, nullptr) != 0)
 	{
-		log.error("error in timerfd_settime:{} ({})", strerror(errno), fdSrc.debugLabel());
+		log.error("error in timerfd_settime:{} ({})", std::strerror(errno), fdSrc.debugLabel());
 		return false;
 	}
 	return true;

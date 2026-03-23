@@ -23,7 +23,9 @@
 #include <imagine/util/DelegateFuncSet.hh>
 #include <imagine/util/Point2D.hh>
 #include <imagine/util/used.hh>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
+#endif
 
 namespace IG
 {

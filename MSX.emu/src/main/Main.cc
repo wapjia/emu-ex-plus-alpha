@@ -13,27 +13,8 @@
 	You should have received a copy of the GNU General Public License
 	along with MSX.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "main"
-#include <emuframework/EmuAppInlines.hh>
-#include <emuframework/EmuSystemInlines.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/fs/ArchiveFS.hh>
-#include <imagine/io/FileIO.hh>
-#include <imagine/gui/AlertView.hh>
-#include <imagine/util/ScopeGuard.hh>
-#include <imagine/util/format.hh>
-#include <imagine/util/string.h>
-#include <imagine/logger/logger.h>
-
-// TODO: remove when namespace code is complete
-#ifdef __APPLE__
-#define Fixed MacTypes_Fixed
-#define Rect MacTypes_Rect
-#include <MacTypes.h>
-#undef Fixed
-#undef Rect
-#endif
-
+module;
+#include <format>
 extern "C"
 {
 	#include <blueMSX/IoDevice/Casette.h>
@@ -48,76 +29,27 @@ extern "C"
 	#include <blueMSX/Input/InputEvent.h>
 	#include <blueMSX/Utils/SaveState.h>
 }
-
 #include <blueMSX/Utils/ziphelper.h>
 
-extern int pendingInt;
-extern RomType currentRomType[2];
-Machine *machine{};
-IG::FS::FileString hdName[4]{};
+module system;
+
+extern "C++" int pendingInt;
+extern "C++" RomType currentRomType[2];
 
 namespace EmuEx
 {
 
-constexpr SystemLogger log{"MSX.emu"};
-const char *EmuSystem::creditsViewStr = CREDITS_INFO_STRING "(c) 2011-2025\nRobert Broglia\nwww.explusalpha.com\n\nPortions (c) the\nBlueMSX Team\nbluemsx.com";
-bool EmuSystem::handlesGenericIO = false; // TODO: need to re-factor BlueMSX file loading code
-bool EmuSystem::hasResetModes = true;
-bool EmuSystem::canRenderRGBA8888 = false;
-bool EmuSystem::hasRectangularPixels = true;
-bool EmuApp::needsGlobalInstance = true;
-BoardInfo boardInfo{};
-Mixer *mixer{};
-static FS::FileString tapeName{};
+static FS::FileString tapeName;
 static EmuSystemTaskContext emuSysTask{};
-static EmuVideo *emuVideo{};
+static EmuVideo* emuVideo{};
 static const char saveStateVersion[] = "blueMSX - state  v 8";
 
-CLINK Int16 *mixerGetBuffer(Mixer* mixer, UInt32 *samplesOut);
-
-MsxApp::MsxApp(ApplicationInitParams initParams, ApplicationContext &ctx):
-	EmuApp{initParams, ctx}, msxSystem{ctx} {}
-
-bool hasColecoROMExtension(std::string_view name)
-{
-	return IG::endsWithAnyCaseless(name, ".col");
-}
-
-bool hasMSXTapeExtension(std::string_view name)
-{
-	return IG::endsWithAnyCaseless(name, ".cas");
-}
-
-bool hasMSXDiskExtension(std::string_view name)
-{
-	return IG::endsWithAnyCaseless(name, ".dsk");
-}
-
-bool hasMSXROMExtension(std::string_view name)
-{
-	return IG::endsWithAnyCaseless(name, ".rom", ".mx1", ".mx2", ".col");
-}
-
-static bool hasMSXExtension(std::string_view name)
-{
-	return hasMSXROMExtension(name) || hasMSXDiskExtension(name);
-}
-
-const char *EmuSystem::shortSystemName() const
-{
-	return "MSX";
-}
-
-const char *EmuSystem::systemName() const
-{
-	return "MSX";
-}
-
-EmuSystem::NameFilterFunc EmuSystem::defaultFsFilter = hasMSXExtension;
+extern "C++" std::string_view EmuSystem::shortSystemName() const { return "MSX"; }
+extern "C++" std::string_view EmuSystem::systemName() const { return "MSX"; }
 
 void MsxSystem::insertMedia(EmuApp &app)
 {
-	for(auto i : iotaCount(2))
+	for(auto i: iotaCount(2))
 	{
 		switch(currentRomType[i])
 		{
@@ -149,7 +81,7 @@ void MsxSystem::insertMedia(EmuApp &app)
 		}
 	}
 
-	for(auto i : iotaCount(2))
+	for(auto i: iotaCount(2))
 	{
 		if(diskName[i].empty())
 			continue;
@@ -239,7 +171,7 @@ static const char *boardTypeToStr(BoardType type)
 bool MsxSystem::createBoard(EmuApp &app)
 {
 	// TODO: 50hz mode
-	assert(machine);
+	assume(machine);
 	switch (machine->board.type)
 	{
 		case BOARD_MSX:
@@ -292,7 +224,7 @@ static bool initMachine(std::string_view machineName)
 	{
 		return true;
 	}
-	log.info("loading machine:{}", machineName);
+	MsxSystem::log.info("loading machine:{}", machineName);
 	if(machine)
 		machineDestroy(machine);
 	machine = machineCreate(machineName.data());
@@ -339,7 +271,7 @@ void MsxSystem::setCurrentMachineName(EmuApp &app, std::string_view machineName,
 		insertMedia(app);
 }
 
-static ArchiveIO getFirstFileInArchive(IG::ApplicationContext ctx, IG::CStringView zipPath, auto nameMatch)
+static ArchiveIO getFirstFileInArchive(ApplicationContext ctx, CStringView zipPath, auto nameMatch)
 {
 	try
 	{
@@ -347,34 +279,34 @@ static ArchiveIO getFirstFileInArchive(IG::ApplicationContext ctx, IG::CStringVi
 	}
 	catch(...)
 	{
-		log.error("error opening archive:{}", zipPath);
+		MsxSystem::log.error("error opening archive:{}", zipPath);
 	}
 	return {};
 }
 
-static ArchiveIO getFirstROMFileInArchive(IG::ApplicationContext ctx, IG::CStringView zipPath)
+static ArchiveIO getFirstROMFileInArchive(ApplicationContext ctx, CStringView zipPath)
 {
 	return getFirstFileInArchive(ctx, zipPath, hasMSXROMExtension);
 }
 
-static ArchiveIO getFirstDiskFileInArchive(IG::ApplicationContext ctx, IG::CStringView zipPath)
+static ArchiveIO getFirstDiskFileInArchive(ApplicationContext ctx, CStringView zipPath)
 {
 	return getFirstFileInArchive(ctx, zipPath, hasMSXDiskExtension);
 }
 
-static ArchiveIO getFirstTapeFileInArchive(IG::ApplicationContext ctx, IG::CStringView zipPath)
+static ArchiveIO getFirstTapeFileInArchive(ApplicationContext ctx, CStringView zipPath)
 {
 	return getFirstFileInArchive(ctx, zipPath, hasMSXTapeExtension);
 }
 
-static ArchiveIO getFirstMediaFileInArchive(IG::ApplicationContext ctx, IG::CStringView zipPath)
+static ArchiveIO getFirstMediaFileInArchive(ApplicationContext ctx, CStringView zipPath)
 {
 	return getFirstFileInArchive(ctx, zipPath, hasMSXExtension);
 }
 
 bool insertROM(EmuApp &app, const char *name, unsigned slot)
 {
-	assert(app.system().contentDirectory().size());
+	assume(app.system().contentDirectory().size());
 	auto path = app.system().contentDirectory(name);
 	FS::FileString fileInZipName{};
 	if(EmuApp::hasArchiveExtension(path))
@@ -385,7 +317,7 @@ bool insertROM(EmuApp &app, const char *name, unsigned slot)
 			app.postMessage(true, "No ROM found in archive:%s", path);
 			return false;
 		}
-		log.info("found:{} in archive:{}", fileInZipName, path);
+		MsxSystem::log.info("found:{} in archive:{}", fileInZipName, path);
 	}
 	if(!boardChangeCartridge(slot, ROM_UNKNOWN, path.data(), fileInZipName.size() ? fileInZipName.data() : nullptr))
 	{
@@ -397,7 +329,7 @@ bool insertROM(EmuApp &app, const char *name, unsigned slot)
 
 bool insertDisk(EmuApp &app, const char *name, unsigned slot)
 {
-	assert(app.system().contentDirectory().size());
+	assume(app.system().contentDirectory().size());
 	auto path = app.system().contentDirectory(name);
 	FS::FileString fileInZipName{};
 	if(EmuApp::hasArchiveExtension(path))
@@ -408,7 +340,7 @@ bool insertDisk(EmuApp &app, const char *name, unsigned slot)
 			app.postMessage(true, "No disk found in archive:%s", path);
 			return false;
 		}
-		log.info("found:{} in archive:{}", fileInZipName, path);
+		MsxSystem::log.info("found:{} in archive:{}", fileInZipName, path);
 	}
 	if(!diskChange(slot, path.data(), fileInZipName.size() ? fileInZipName.data() : nullptr))
 	{
@@ -420,7 +352,7 @@ bool insertDisk(EmuApp &app, const char *name, unsigned slot)
 
 void MsxSystem::reset(EmuApp &app, ResetMode mode)
 {
-	assert(hasContent());
+	assume(hasContent());
 	fdcActive = 0;
 	if(mode == ResetMode::HARD)
 	{
@@ -447,7 +379,7 @@ void MsxSystem::reset(EmuApp &app, ResetMode mode)
 
 FS::FileString MsxSystem::stateFilename(int slot, std::string_view name) const
 {
-	return IG::format<FS::FileString>("{}.0{}.sta", name, saveSlotCharUpper(slot));
+	return format<FS::FileString>("{}.0{}.sta", name, saveSlotCharUpper(slot));
 }
 
 void MsxSystem::saveBlueMSXState(const char *filename)
@@ -512,21 +444,21 @@ static FS::FileString saveStateGetFileString(SaveState* state, const char* tagNa
 void MsxSystem::loadBlueMSXState(EmuApp &app, const char *filename)
 {
 	log.info("loading state:{}", filename);
-	assert(machine);
+	assume(machine);
 	saveStateCreateForRead(filename);
-	auto destroySaveState = IG::scopeGuard([](){ saveStateDestroy(); });
+	auto destroySaveState = scopeGuard([](){ saveStateDestroy(); });
 	int size;
 	char *version = (char*)zipLoadFile(filename, "version", &size);
 	if(!version)
 	{
 		EmuSystem::throwFileReadError();
 	}
-	if(0 != strncmp(version, saveStateVersion, sizeof(saveStateVersion) - 1))
+	if(0 != std::strncmp(version, saveStateVersion, sizeof(saveStateVersion) - 1))
 	{
-		free(version);
+		std::free(version);
 		throw std::runtime_error("Incorrect state version");
 	}
-	free(version);
+	std::free(version);
 
 	ejectMedia();
 	machineLoadState(machine);
@@ -575,7 +507,7 @@ void MsxSystem::readState(EmuApp &app, std::span<uint8_t> buff)
 
 size_t MsxSystem::writeState(std::span<uint8_t> buff, SaveStateFlags flags)
 {
-	assert(buff.size() == stateSize());
+	assume(buff.size() == stateSize());
 	setZipMemBuffer(buff);
 	saveBlueMSXState(":::B");
 	return zipMemBufferSize();
@@ -630,12 +562,12 @@ void MsxSystem::loadContent(IO &, EmuSystemCreateParams, OnLoadProgressDelegate)
 
 	// create machine
 	auto &app = EmuApp::get(ctx);
-	auto destroyMachineOnReturn = IG::scopeGuard([&](){ destroyMachine(); });
+	auto destroyMachineOnReturn = scopeGuard([&](){ destroyMachine(); });
 	if(optionSessionMachineNameStr.size()) // try machine from session config first
 	{
 		setCurrentMachineName(app, optionSessionMachineNameStr, false);
 	}
-	if(!strlen(currentMachineName()))
+	if(!std::strlen(currentMachineName()))
 	{
 		if(isColecoRom)
 			setCurrentMachineName(app, optionDefaultColecoMachineNameStr, false);
@@ -687,7 +619,7 @@ void MsxSystem::loadContent(IO &, EmuSystemCreateParams, OnLoadProgressDelegate)
 
 void MsxSystem::configAudioRate(FrameRate outputFrameRate, int outputRate)
 {
-	assumeExpr(outputRate == 44100);// TODO: not all sound chips handle non-44100Hz sample rate
+	assume(outputRate == 44100);// TODO: not all sound chips handle non-44100Hz sample rate
 	UInt32 mixRate = std::round(audioMixRate(outputRate, outputFrameRate));
 	if(mixerGetSampleRate(mixer) == mixRate)
 		return;
@@ -732,21 +664,9 @@ bool MsxSystem::shouldFastForward() const
 	return fdcActive;
 }
 
-void EmuApp::onCustomizeNavView(EmuApp::NavView &view)
-{
-	const Gfx::LGradientStopDesc navViewGrad[] =
-	{
-		{ .0, Gfx::PackedColor::format.build((127./255.) * .4, (255./255.) * .4, (212./255.) * .4, 1.) },
-		{ .3, Gfx::PackedColor::format.build((127./255.) * .4, (255./255.) * .4, (212./255.) * .4, 1.) },
-		{ .97, Gfx::PackedColor::format.build((42./255.) * .4, (85./255.) * .4, (85./255.) * .4, 1.) },
-		{ 1., view.separatorColor() },
-	};
-	view.setBackgroundGradient(navViewGrad);
 }
 
-}
-
-void RefreshScreen(int screenMode)
+extern "C" void RefreshScreen(int screenMode)
 {
 	using namespace EmuEx;
 	//log.debug("called RefreshScreen");

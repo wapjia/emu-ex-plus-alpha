@@ -19,8 +19,11 @@
 #include <imagine/base/Timer.hh>
 #include <imagine/gui/View.hh>
 #include <imagine/gfx/Quads.hh>
+#ifndef IG_USE_MODULE_STD
 #include <cstdio>
 #include <array>
+#include <utility>
+#endif
 
 namespace IG
 {

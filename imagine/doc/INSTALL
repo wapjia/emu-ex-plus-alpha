@@ -3,13 +3,13 @@ Building the Imagine SDK and applications is currently supported on Linux and Ma
 1. Tools and Environment Setup
 ==============================
 
-You need the following basic tools to start building Imagine. For platform-specific info, see the INSTALL-* file for that port.
+You need the following basic tools to start building Imagine including CMake, GNU Make, and pkgconfig. For platform-specific info, see the INSTALL-* file for that port.
 
-Linux: GCC 15/Clang 20 or newer, mold linker, GNU Make, pkgconfig (install from your distro's package manager)
+Linux: GCC 16/Clang 21 or newer and the mold linker (install from your distro's package manager)
 
-MacOS X: Xcode 12 or newer (user must provide a Clang 20 or newer toolchain), MacPorts versions of coreutils, libtool, pkgconfig and gnutar (http://www.macports.org)
+MacOS X: Xcode with a Clang 21 or newer toolchain, MacPorts versions of coreutils, libtool, pkgconfig and gnutar (http://www.macports.org)
 
-The following make variables are used by the build system:
+The following environment variables are used by the build system:
 
 IMAGINE_PATH : Required, no default
  - The path to the root Imagine directory containing the "make/" subdirectory
@@ -20,27 +20,32 @@ IMAGINE_SDK_PATH : Optional, defaults to $(HOME)/imagine-sdk
  - Also used when building an Imagine-based app as the default Imagine SDK path
 
 V : Optional, defaults to undefined
- - Enables verbose build output when defined, as V=1 for example
+ - Set to V=1 to enable verbose build output for the makefile-based build system
 
 2. Dependencies
 ===============
 
 For ports that need linking to additional static libraries (currently all except a stock Linux build), change to the "bundle/all" directory and run the specific bash script for the port to build the needed packages. All arguments passed to this script are passed to make directly. Extracted source & build output goes into "/tmp/imagine-bundle/$(pkgName)" but you can override the "tempDir" variable to change this. The "install" target installs the resulting files under "$(IMAGINE_SDK_PATH)" and is overridden via the "installDir" variable. Note that some packages need the GNU version of the tar utility for proper extraction. FLAC needs the Netwide Assembler (NASM) when building for X86.
 
-For example, to build and install the packages needed for the iOS ARMv7 port, and override the name of the tar utility, use:
+For example, to build and install the packages needed for the Android port:
 
-bash makeAll-ios-armv7.sh TAR=gnutar
+bash makeAll-android.sh install
 
 3. Building
 ===========
 
-Use one of the makefiles in the root Imagine directory to build a specific port. Build output goes into the "build" and "lib" subdirectories of the working directory. For example, to build and install the debug version of the Android port with verbose output and 4 compile jobs, use:
+Use a CMake preset to configure and build a specific port. For example, to build and install the release version of the Linux port as symlinks:
 
-make -f $IMAGINE_PATH/android.mk install V=1 -j4
+cmake --preset linux-x86_64
+CMAKE_INSTALL_MODE=REL_SYMLINK cmake --build --preset linux-x86_64-release --target install
 
-To use the resulting Imagine SDK with pkg-config, add that port's "lib/pkgconfig" path to the "PKG_CONFIG_PATH" environment variable. Note apps directly using Imagine's build system do this automatically by checking the "IMAGINE_SDK_PATH" environment variable.
+For Android, the bash script android.sh configures and builds all architectures at once and any required java files. The following command has the same effect as the previous example combined into one step:
+
+./android.sh installLinks
+
+By default, Imagine will install as a static library, headers, and a pkg-config file to the Imagine SDK directory, usually $HOME/imagine-sdk.
 
 --------------------------------
 
-Copyright 2014-2023 by Robert Broglia
+Copyright 2014-2026 by Robert Broglia
 

@@ -14,22 +14,16 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/gui/TableView.hh>
-#include <imagine/gui/ViewManager.hh>
 #include <imagine/gui/MenuItem.hh>
-#include <imagine/gfx/RendererCommands.hh>
 #include <imagine/gfx/Renderer.hh>
 #include <imagine/gfx/Mat4.hh>
-#include <imagine/input/Event.hh>
 #include <imagine/base/Window.hh>
-#include <imagine/util/algorithm.h>
-#include <imagine/util/variant.hh>
-#include <imagine/util/math.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
 
 namespace IG
 {
 
-constexpr SystemLogger log{"TableView"};
+static SystemLogger log{"TableView"};
 
 size_t TableView::cells() const
 {
@@ -61,7 +55,7 @@ void TableView::setAlign(_2DOrigin align)
 void TableView::prepareDraw()
 {
 	auto src = itemSrc;
-	for(auto i : iotaCount(cells()))
+	for(auto i: iotaCount(cells()))
 	{
 		item(src, i).prepareDraw();
 	}
@@ -93,7 +87,7 @@ void TableView::draw(Gfx::RendererCommands &__restrict__ cmds, ViewDrawParams) c
 	// draw separators
 	int yStart = y;
 	cmds.basicEffect().disableTexture(cmds);
-	int selectedCellY = selected == 0 ? y : INT_MAX;
+	int selectedCellY = selected == 0 ? y : std::numeric_limits<int>::max();
 	if(cells_ > 1)
 	{
 		cmds.basicEffect().setModelView(cmds, Gfx::Mat4::ident());
@@ -146,7 +140,7 @@ void TableView::draw(Gfx::RendererCommands &__restrict__ cmds, ViewDrawParams) c
 	ScrollView::drawScrollContent(cmds);
 
 	// draw selected rectangle
-	if(selectedCellY != INT_MAX)
+	if(selectedCellY != std::numeric_limits<int>::max())
 	{
 		cmds.set(BlendMode::ALPHA);
 		if(hasFocus)
@@ -173,7 +167,7 @@ void TableView::place()
 {
 	auto cells_ = cells();
 	auto src = itemSrc;
-	for(auto i : iotaCount(cells_))
+	for(auto i: iotaCount(cells_))
 	{
 		//log.debug("place item:{}", i);
 		item(src, i).place();
@@ -290,7 +284,7 @@ int TableView::nextSelectableElement(int start, int items)
 {
 	int elem = wrapMinMax(start, 0, items);
 	auto src = itemSrc;
-	for([[maybe_unused]] auto i : iotaCount(items))
+	for([[maybe_unused]] auto i: iotaCount(items))
 	{
 		if(item(src, elem).selectable())
 		{
@@ -305,7 +299,7 @@ int TableView::prevSelectableElement(int start, int items)
 {
 	int elem = wrapMinMax(start, 0, items);
 	auto src = itemSrc;
-	for([[maybe_unused]] auto i : iotaCount(items))
+	for([[maybe_unused]] auto i: iotaCount(items))
 	{
 		if(item(src, elem).selectable())
 		{
@@ -380,7 +374,7 @@ bool TableView::handleTableInput(const Input::Event &e, bool &movedSelected)
 			{
 				if(!hasFocus)
 				{
-					logMsg("gained focus from key input");
+					log.info("gained focus from key input");
 					hasFocus = true;
 					if(selected != -1)
 					{

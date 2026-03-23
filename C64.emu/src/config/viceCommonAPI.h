@@ -45,8 +45,9 @@ VICE_API int autostart_autodetect(const char *file_name,
                                 unsigned int runmode);
 
 VICE_API int cartridge_attach_image(int type, const char *filename);
+VICE_API int cartridge_attach_add_image(int type, const char *filename);
 VICE_API void cartridge_detach_image(int type);
-VICE_API const char *cartridge_get_file_name(int type);
+VICE_API char *cartridge_get_filename_by_slot(int type);
 
 VICE_API int init_main(void);
 

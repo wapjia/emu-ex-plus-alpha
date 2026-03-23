@@ -62,9 +62,8 @@ VICE_API int vice_init();
 bool console_mode = false;
 bool video_disabled_mode = false;
 bool help_requested = false;
-bool default_settings_requested = false;
+bool default_settings_requested = true;
 extern void (*vsync_hook)(void);
-int rs232_useip232[RS232_NUM_DEVICES];
 
 void vsync_do_vsync2(struct video_canvas_s *c);
 void execute_vsync_callbacks(void);
@@ -506,6 +505,8 @@ void mouse_button(int bnumber, int state) {}
 int joy_arch_init(void) { return 0; }
 int joy_arch_set_device(int port_idx, int new_dev) { return 0; }
 int joy_arch_resources_init(void) { return 0; }
+void joystick_arch_init    (void) {}
+void joystick_arch_shutdown(void) {}
 
 void vsyncarch_init(void) {}
 

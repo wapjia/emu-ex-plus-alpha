@@ -19,15 +19,20 @@
 #include <imagine/gfx/defs.hh>
 #include "defs.hh"
 #include <imagine/util/memory/UniqueResource.hh>
+#ifndef IG_USE_MODULE_STD
 #include <utility>
+#endif
 
 namespace IG::Gfx
 {
-
 class RendererTask;
 class RendererCommands;
 class Text;
 class Mat4;
+}
+
+namespace IG::Gfx
+{
 
 // Shader
 

@@ -32,7 +32,9 @@
 #include <imagine/time/Time.hh>
 #include <imagine/util/DelegateFuncSet.hh>
 #include <imagine/util/Point2D.hh>
+#ifndef IG_USE_MODULE_STD
 #include <span>
+#endif
 
 namespace IG
 {

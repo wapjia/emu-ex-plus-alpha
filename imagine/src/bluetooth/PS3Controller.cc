@@ -13,17 +13,16 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "PS3Ctrl"
 #include <imagine/bluetooth/PS3Controller.hh>
-#include <imagine/base/Application.hh>
 #include <imagine/input/bluetoothInputDefs.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/time/Time.hh>
-#include <imagine/util/bit.hh>
+#include <imagine/base/Application.hh>
 #include <imagine/util/ranges.hh>
-#include "../input/PackedInputAccess.hh"
+#include <imagine/util/variant.hh>
+#include <imagine/logger/SystemLogger.hh>
+import std;
+import packedInputAccess;
 
-static constexpr uint32_t CELL_PAD_BTN_OFFSET_DIGITAL1 = 0, CELL_PAD_BTN_OFFSET_DIGITAL2 = 1;
+constexpr std::uint32_t CELL_PAD_BTN_OFFSET_DIGITAL1 = 0, CELL_PAD_BTN_OFFSET_DIGITAL2 = 1;
 
 // CELL_PAD_BTN_OFFSET_DIGITAL1
 #define CELL_PAD_CTRL_LEFT      (1 << 7)
@@ -52,27 +51,29 @@ namespace IG
 
 using namespace IG::Input;
 
+static SystemLogger log{"PS3Ctrl"};
+
 static const PackedInputAccess padDataAccess[] =
 {
-	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_SELECT, PS3Key::SELECT },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_L3, PS3Key::L3 },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_R3, PS3Key::R3 },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_START, PS3Key::START },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_UP, PS3Key::UP },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_RIGHT, PS3Key::RIGHT },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_DOWN, PS3Key::DOWN },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_LEFT, PS3Key::LEFT },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_SELECT, PS3BtKey::SELECT },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_L3, PS3BtKey::L3 },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_R3, PS3BtKey::R3 },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_START, PS3BtKey::START },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_UP, PS3BtKey::UP },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_RIGHT, PS3BtKey::RIGHT },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_DOWN, PS3BtKey::DOWN },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL1, CELL_PAD_CTRL_LEFT, PS3BtKey::LEFT },
 
-	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_L2, PS3Key::L2 },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_R2, PS3Key::R2 },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_L1, PS3Key::L1 },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_R1, PS3Key::R1 },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_TRIANGLE, PS3Key::TRIANGLE },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_CIRCLE, PS3Key::CIRCLE },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_CROSS, PS3Key::CROSS },
-	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_SQUARE, PS3Key::SQUARE },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_L2, PS3BtKey::L2 },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_R2, PS3BtKey::R2 },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_L1, PS3BtKey::L1 },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_R1, PS3BtKey::R1 },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_TRIANGLE, PS3BtKey::TRIANGLE },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_CIRCLE, PS3BtKey::CIRCLE },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_CROSS, PS3BtKey::CROSS },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL2, CELL_PAD_CTRL_SQUARE, PS3BtKey::SQUARE },
 
-	{ CELL_PAD_BTN_OFFSET_DIGITAL2+1, CELL_PAD_CTRL_PS, PS3Key::PS },
+	{ CELL_PAD_BTN_OFFSET_DIGITAL2+1, CELL_PAD_CTRL_PS, PS3BtKey::PS },
 };
 
 static const char *ps3ButtonName(Input::Key k)
@@ -81,31 +82,31 @@ static const char *ps3ButtonName(Input::Key k)
 	switch(k)
 	{
 		case 0: return "None";
-		case PS3Key::CROSS: return "Cross";
-		case PS3Key::CIRCLE: return "Circle";
-		case PS3Key::SQUARE: return "Square";
-		case PS3Key::TRIANGLE: return "Triangle";
-		case PS3Key::L1: return "L1";
-		case PS3Key::L2: return "L2";
-		case PS3Key::L3: return "L3";
-		case PS3Key::R1: return "R1";
-		case PS3Key::R2: return "R2";
-		case PS3Key::R3: return "R3";
-		case PS3Key::SELECT: return "Select";
-		case PS3Key::START: return "Start";
-		case PS3Key::UP: return "Up";
-		case PS3Key::RIGHT: return "Right";
-		case PS3Key::DOWN: return "Down";
-		case PS3Key::LEFT: return "Left";
-		case PS3Key::PS: return "PS";
-		case PS3Key::LSTICK_UP: return "L:Up";
-		case PS3Key::LSTICK_RIGHT: return "L:Right";
-		case PS3Key::LSTICK_DOWN: return "L:Down";
-		case PS3Key::LSTICK_LEFT: return "L:Left";
-		case PS3Key::RSTICK_UP: return "R:Up";
-		case PS3Key::RSTICK_RIGHT: return "R:Right";
-		case PS3Key::RSTICK_DOWN: return "R:Down";
-		case PS3Key::RSTICK_LEFT: return "R:Left";
+		case PS3BtKey::CROSS: return "Cross";
+		case PS3BtKey::CIRCLE: return "Circle";
+		case PS3BtKey::SQUARE: return "Square";
+		case PS3BtKey::TRIANGLE: return "Triangle";
+		case PS3BtKey::L1: return "L1";
+		case PS3BtKey::L2: return "L2";
+		case PS3BtKey::L3: return "L3";
+		case PS3BtKey::R1: return "R1";
+		case PS3BtKey::R2: return "R2";
+		case PS3BtKey::R3: return "R3";
+		case PS3BtKey::SELECT: return "Select";
+		case PS3BtKey::START: return "Start";
+		case PS3BtKey::UP: return "Up";
+		case PS3BtKey::RIGHT: return "Right";
+		case PS3BtKey::DOWN: return "Down";
+		case PS3BtKey::LEFT: return "Left";
+		case PS3BtKey::PS: return "PS";
+		case PS3BtKey::LSTICK_UP: return "L:Up";
+		case PS3BtKey::LSTICK_RIGHT: return "L:Right";
+		case PS3BtKey::LSTICK_DOWN: return "L:Down";
+		case PS3BtKey::LSTICK_LEFT: return "L:Left";
+		case PS3BtKey::RSTICK_UP: return "R:Up";
+		case PS3BtKey::RSTICK_RIGHT: return "R:Right";
+		case PS3BtKey::RSTICK_DOWN: return "R:Down";
+		case PS3BtKey::RSTICK_LEFT: return "R:Left";
 	}
 	return "";
 }
@@ -136,11 +137,11 @@ bool PS3Controller::open1Ctl(BluetoothAdapter &adapter, BluetoothPendingSocket &
 		{
 			return getAs<PS3Controller>(dev).statusHandler(dev, sock, status);
 		};
-	logMsg("accepting PS3 control channel");
+	log.info("accepting PS3 control channel");
 	if(auto err = ctlSock.open(adapter, pending);
 		err.code())
 	{
-		logErr("error opening control socket");
+		log.error("error opening control socket");
 		return false;
 	}
 	return true;
@@ -148,11 +149,11 @@ bool PS3Controller::open1Ctl(BluetoothAdapter &adapter, BluetoothPendingSocket &
 
 bool PS3Controller::open2Int(BluetoothAdapter &adapter, BluetoothPendingSocket &pending)
 {
-	logMsg("accepting PS3 interrupt channel");
+	log.info("accepting PS3 interrupt channel");
 	if(auto err = intSock.open(adapter, pending);
 		err.code())
 	{
-		logErr("error opening interrupt socket");
+		log.error("error opening interrupt socket");
 		return false;
 	}
 	return true;
@@ -162,24 +163,24 @@ uint32_t PS3Controller::statusHandler(Input::Device &dev, BluetoothSocket &sock,
 {
 	if(status == BluetoothSocketState::Opened && &sock == (BluetoothSocket*)&ctlSock)
 	{
-		logMsg("opened PS3 control socket, waiting for interrupt socket");
+		log.info("opened PS3 control socket, waiting for interrupt socket");
 		return 0; // don't add ctlSock to event loop
 	}
 	else if(status == BluetoothSocketState::Opened && &sock == (BluetoothSocket*)&intSock)
 	{
-		logMsg("PS3 controller opened successfully");
+		log.info("PS3 controller opened successfully");
 		ctx.application().bluetoothInputDeviceStatus(ctx, dev, status);
 		sendFeatureReport();
 		return 1;
 	}
 	else if(status == BluetoothSocketState::ConnectError)
 	{
-		logErr("PS3 controller connection error");
+		log.error("PS3 controller connection error");
 		ctx.application().bluetoothInputDeviceStatus(ctx, dev, status);
 	}
 	else if(status == BluetoothSocketState::ReadError)
 	{
-		logErr("PS3 controller read error, disconnecting");
+		log.error("PS3 controller read error, disconnecting");
 		ctx.application().bluetoothInputDeviceStatus(ctx, dev, status);
 	}
 	return 1;
@@ -194,7 +195,7 @@ void PS3Controller::close()
 bool PS3Controller::dataHandler(Input::Device& dev, const char* packetPtr, size_t)
 {
 	auto packet = (const uint8_t*)packetPtr;
-	/*logMsg("data with size %d", (int)size);
+	/*log.info("data with size %d", (int)size);
 	iterateTimes(size, i)
 	{
 		logger_printf(0, "0x%X ", packet[i]);
@@ -218,17 +219,17 @@ bool PS3Controller::dataHandler(Input::Device& dev, const char* packetPtr, size_
 				int newState = e.updateState(prevData, digitalBtnData);
 				if(newState != -1)
 				{
-					//logMsg("%s %s @ PS3 Pad %d", device->keyName(e.keyEvent), newState ? "pushed" : "released", player);
+					//log.info("{} {} @ PS3 Pad %d", device->keyName(e.keyEvent), newState ? "pushed" : "released", player);
 					ctx.endIdleByUserActivity();
 					KeyEvent event{Map::PS3PAD, e.key, newState ? Action::PUSHED : Action::RELEASED, 0, 0, Source::GAMEPAD, time, &dev};
 					ctx.application().dispatchRepeatableKeyInputEvent(event);
 				}
 			}
-			memcpy(prevData, digitalBtnData, sizeof(prevData));
+			std::memcpy(prevData, digitalBtnData, sizeof(prevData));
 
 			const uint8_t *stickData = &packet[7];
-			//logMsg("left: %d,%d right: %d,%d", stickData[0], stickData[1], stickData[2], stickData[3]);
-			for(auto i : iotaCount(4))
+			//log.info("left: {},{} right: {},{}", stickData[0], stickData[1], stickData[2], stickData[3]);
+			for(auto i: iotaCount(4))
 			{
 				if(axis[i].dispatchInputEvent(int(stickData[i]) - 127, Map::PS3PAD, time, dev, ctx.mainWindow()))
 					ctx.endIdleByUserActivity();
@@ -245,7 +246,7 @@ static constexpr uint32_t HIDP_DATA_HEADER_RTYPE_FEATURE = 0x03;
 
 void PS3Controller::sendFeatureReport()
 {
-	logMsg("sending feature report");
+	log.info("sending feature report");
 	const uint8_t featureReport[]
 	{
 		HIDP_TRANSACTION_SET_REPORT | HIDP_DATA_HEADER_RTYPE_FEATURE,
@@ -256,7 +257,7 @@ void PS3Controller::sendFeatureReport()
 
 void PS3Controller::setLEDs(uint32_t player)
 {
-	logMsg("setting LEDs for player %d", player);
+	log.info("setting LEDs for player:{}", player);
 	uint8_t setLEDs[] =
 	{
 		HIDP_TRANSACTION_SET_REPORT | HIDP_DATA_HEADER_RTYPE_OUTPUT,

@@ -24,7 +24,7 @@ static_assert(__has_feature(objc_arc), "This file requires ARC");
 #import <UIKit/UIKit.h>
 #include <cstdlib>
 
-namespace IG
+namespace IG::Data
 {
 
 struct GlyphRenderData
@@ -80,8 +80,8 @@ static GlyphRenderData makeGlyphRenderData(int idx, FontSize &fontSize, CGColorS
 	// measure real bounds
 	auto pixView = mdspan{pixBuffer, cYFullSize, cXFullSize};
 	int minX = cXFullSize, maxX = 0, minY = cYFullSize, maxY = 0;
-	for(auto y : iotaCount(cYFullSize))
-		for(auto x : iotaCount(cXFullSize))
+	for(auto y: iotaCount(cYFullSize))
+		for(auto x: iotaCount(cXFullSize))
 		{
 			if(pixView[y, x])
 			{

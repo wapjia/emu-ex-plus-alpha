@@ -13,17 +13,18 @@
 	You should have received a copy of the GNU General Public License
 	along with MSX.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "main"
-
-#include <imagine/pixmap/Pixmap.hh>
-#include <imagine/logger/logger.h>
-
 extern "C"
 {
 	#include <blueMSX/VideoChips/FrameBuffer.h>
 }
+import system;
+import imagine;
+import std;
 
-static constexpr auto pixFmt = PIXEL_WIDTH == 16 ? IG::PixelFmtRGB565 : IG::PixelFmtRGBA8888;
+using namespace IG;
+using namespace EmuEx;
+
+static constexpr auto pixFmt = PIXEL_WIDTH == 16 ? PixelFmtRGB565 : PixelFmtRGBA8888;
 
 class FrameBufferImpl
 {
@@ -65,7 +66,7 @@ public:
 		updatePixmapSize();
 	}
 
-	IG::PixmapDesc makePixmapDesc() const
+	PixmapDesc makePixmapDesc() const
 	{
 		return {{width(), lines}, pixFmt};
 	}
@@ -75,9 +76,9 @@ public:
 		pix = {makePixmapDesc(), data};
 	}
 
-	IG::PixmapView pixmap() const
+	PixmapView pixmap() const
 	{
-		assumeExpr(pix.format() == pixFmt);
+		assume(pix.format() == pixFmt);
 		return pix;
 	}
 
@@ -93,7 +94,7 @@ public:
 	}
 
 protected:
-	IG::MutablePixmapView pix{{{}, pixFmt}};
+	MutablePixmapView pix{{{}, pixFmt}};
 	int maxWidth = 1;
 	int lines = 1;
 	int currentLine = 0;
@@ -107,7 +108,7 @@ protected:
 
 static FrameBufferImpl fb{};
 
-IG::PixmapView frameBufferPixmap()
+PixmapView frameBufferPixmap()
 {
 	auto fbPix = fb.pixmap();
 	return fbPix.subView({0, 8}, {(int)fbPix.w(), (int)fbPix.h() - 16});
@@ -115,14 +116,14 @@ IG::PixmapView frameBufferPixmap()
 
 FrameBufferData* frameBufferDataCreate(int maxWidth, int maxHeight, int defaultHorizZoom)
 {
-	logMsg("created data with max size:%dx%d zoom:%d", maxWidth, maxHeight, defaultHorizZoom);
+	MsxSystem::log.info("created data with max size:{}x{} zoom:{}", maxWidth, maxHeight, defaultHorizZoom);
 	fb.setMaxWidth(maxWidth);
-	return (FrameBufferData*)malloc(maxWidth * 2 * maxHeight * sizeof(Pixel));
+	return (FrameBufferData*)std::malloc(maxWidth * 2 * maxHeight * sizeof(Pixel));
 }
 
 void frameBufferDataDestroy(FrameBufferData* frameData)
 {
-	free(frameData);
+	std::free(frameData);
 }
 
 FrameBuffer* frameBufferGetDrawFrame() { return &fb; }
@@ -170,7 +171,7 @@ int frameBufferGetDoubleWidth(FrameBuffer* frameBuffer, int y)
 void frameBufferSetDoubleWidth(FrameBuffer* frameBuffer, int y, int val)
 {
 	if(((FrameBufferImpl*)frameBuffer)->setDoubleWidth(val))
-		logMsg("set double width:%d on line:%d", val, y);
+		MsxSystem::log.info("set double width:{} on line:{}", val, y);
 }
 
 // Used by gunstick and asciilaser, line is set in frameBufferGetLine()

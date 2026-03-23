@@ -1,8 +1,33 @@
 # EX Emulators
 
-## Nightly builds
+The EX Emulator project is a series of emulators primarily targeting Android and Linux with a minimalist UI 
+and a focus on low audio/video latency. They consist of 3 components:
 
-### Download the latest builds from continuous integration:
+1. Imagine, a platform abstraction library
+2. EmuFramework, a common application framework library
+3. The emulator applications themselves
+
+## Requirements
+
+Android: Any 64-bit device or a 32-bit device with at least Android 2.3 going as far back as the Xperia Play  
+Linux: A desktop with OpenGL 3.3 support or the Pandora handheld
+
+Saturn.emu requires a 64-bit device.
+
+## Building
+
+See doc/INSTALL in Imagine and EmuFramework
+
+## Android builds
+
+### Google Play
+
+The latest stable builds are available on the Play Store via my [developer page](https://play.google.com/store/apps/collection/cluster?gsr=SktqGFp2dmEzNmZEOXhIaXV4b2ZkYXBaTHc9PbICKwoOCgpjb20uUGNlRW11EAcSFwgCEhM1MDUxMDg2NTA4NjQ2MzQ4OTg2GACwEgA%3D:S:ANO1ljKaDG4&hl) 
+and directly help fund development.
+
+### Nightly builds
+
+Latest builds from continuous integration:
 
 | Name                    | Status                            | File                                       |
 |-------------------------|-----------------------------------|--------------------------------------------|
@@ -19,8 +44,7 @@
 | NGP emu                 | [![Build Status][Build]][Actions] | [![Emulator][Download]][NGP emu]           |
 | PCE emu                 | [![Build Status][Build]][Actions] | [![Emulator][Download]][PCE emu]           |
 | Saturn emu              | [![Build Status][Build]][Actions] | [![Emulator][Download]][Saturn emu]        |
-| Snes9x EX 1.43-9        | [![Build Status][Build]][Actions] | [![Emulator][Download]][Snes9x EX 1.43-9]  |
-| Snes9x EX 1.43-15       | [![Build Status][Build]][Actions] | [![Emulator][Download]][Snes9x EX 1.43-15] |
+| Snes9x EX 1.43          | [![Build Status][Build]][Actions] | [![Emulator][Download]][Snes9x EX 1.43  ]  |
 | Snes9x EX Plus          | [![Build Status][Build]][Actions] | [![Emulator][Download]][Snes9x EX Plus]    |
 | Swan emu                | [![Build Status][Build]][Actions] | [![Emulator][Download]][Swan emu]          |
 
@@ -40,7 +64,6 @@
 [NGP emu]: https://github.com/Rakashazi/emu-ex-plus-alpha/releases/download/Pre-release/NgpEmu.zip
 [PCE emu]: https://github.com/Rakashazi/emu-ex-plus-alpha/releases/download/Pre-release/PceEmu.zip
 [Saturn emu]: https://github.com/Rakashazi/emu-ex-plus-alpha/releases/download/Pre-release/SaturnEmu.zip
-[Snes9x EX 1.43-9]: https://github.com/Rakashazi/emu-ex-plus-alpha/releases/download/Pre-release/Snes9xEX-9.zip
-[Snes9x EX 1.43-15]: https://github.com/Rakashazi/emu-ex-plus-alpha/releases/download/Pre-release/Snes9xEX-15.zip
+[Snes9x EX 1.43]: https://github.com/Rakashazi/emu-ex-plus-alpha/releases/download/Pre-release/Snes9xEX.zip
 [Snes9x EX Plus]: https://github.com/Rakashazi/emu-ex-plus-alpha/releases/download/Pre-release/Snes9xEXPlus.zip
 [Swan emu]: https://github.com/Rakashazi/emu-ex-plus-alpha/releases/download/Pre-release/SwanEmu.zip

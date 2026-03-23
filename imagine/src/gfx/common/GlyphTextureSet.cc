@@ -13,17 +13,15 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "GlyphTexture"
-
-#include <imagine/util/bit.hh>
-#include <imagine/gfx/Renderer.hh>
 #include <imagine/gfx/GlyphTextureSet.hh>
+#include <imagine/gfx/Renderer.hh>
 #include <imagine/data-type/image/PixmapSource.hh>
-#include <imagine/logger/logger.h>
-#include <cstdlib>
+#include <imagine/logger/SystemLogger.hh>
 
 namespace IG::Gfx
 {
+
+static SystemLogger log{"GlyphTextureSet"};
 
 // definitions for the Unicode Basic Multilingual Plane (BMP)
 static constexpr int unicodeBmpChars = 0xFFFE;
@@ -52,7 +50,7 @@ void GlyphTextureSet::resetGlyphTable()
 {
 	if(!usedGlyphTableBits)
 		return;
-	logMsg("resetting glyph table");
+	log.info("resetting glyph table");
 	usedGlyphTableBits = 0;
 	glyphTable.resetElements();
 }
@@ -66,11 +64,11 @@ void GlyphTextureSet::freeCaches(uint32_t purgeBits)
 		return;
 	}
 	auto tableBits = usedGlyphTableBits;
-	for(auto i : iotaCount(32))
+	for(auto i: iotaCount(32))
 	{
 		if((tableBits & 1) && (purgeBits & 1))
 		{
-			logMsg("purging glyphs from table range %d/31", i);
+			log.info("purging glyphs from table range {}/31", i);
 			int firstChar = i << 11;
 			for(auto c : std::views::iota(firstChar, 2048))
 			{
@@ -88,13 +86,13 @@ void GlyphTextureSet::freeCaches(uint32_t purgeBits)
 	}
 }
 
-GlyphTextureSet::GlyphTextureSet(Renderer &r, IG::Font font, IG::FontSettings set):
+GlyphTextureSet::GlyphTextureSet(Renderer &r, Data::Font font, Data::FontSettings set):
 	font{std::move(font)}
 {
 	glyphTable.resize(glyphTableEntries);
 	if(glyphTable.empty())
 	{
-		logErr("failed allocating glyph table (%d entries)", glyphTableEntries);
+		log.error("failed allocating glyph table ({} entries)", glyphTableEntries);
 		return;
 	}
 	if(set)
@@ -110,7 +108,7 @@ void GlyphTextureSet::calcMetrics(Renderer &r)
 	auto gGly = glyphEntry(r, 'g');
 	if(!mGly || !gGly) [[unlikely]]
 	{
-		logErr("error reading measurement glyphs");
+		log.error("error reading measurement glyphs");
 		return;
 	}
 	metrics_.nominalHeight = mGly->metrics.size.y + (gGly->metrics.size.y / 2);
@@ -118,12 +116,12 @@ void GlyphTextureSet::calcMetrics(Renderer &r)
 	metrics_.yLineStart = gGly->metrics.size.y - gGly->metrics.offset.y;
 }
 
-IG::FontSettings GlyphTextureSet::fontSettings() const
+Data::FontSettings GlyphTextureSet::fontSettings() const
 {
 	return settings;
 }
 
-bool GlyphTextureSet::setFontSettings(Renderer &r, IG::FontSettings set)
+bool GlyphTextureSet::setFontSettings(Renderer &r, Data::FontSettings set)
 {
 	if(set.pixelWidth() < font.minUsablePixels())
 		set.setPixelWidth(font.minUsablePixels());
@@ -140,7 +138,7 @@ bool GlyphTextureSet::setFontSettings(Renderer &r, IG::FontSettings set)
 
 bool GlyphTextureSet::cacheChar(Renderer &r, int c, int tableIdx)
 {
-	assert(settings);
+	assume(settings);
 	auto &[glyph, metrics] = glyphTable[tableIdx];
 	if(metrics.size.y == -1)
 	{
@@ -188,7 +186,7 @@ static int mapCharToTable(int c)
 // TODO: update for unicode
 int GlyphTextureSet::precache(Renderer &r, std::string_view string)
 {
-	assert(settings);
+	assume(settings);
 	int glyphsCached = 0;
 	for(auto c : string)
 	{
@@ -203,7 +201,7 @@ int GlyphTextureSet::precache(Renderer &r, std::string_view string)
 			//logMsg( "%c already cached", c);
 			continue;
 		}
-		logMsg("making glyph:%c (0x%X)", c, c);
+		log.info("making glyph:{} ({:X})", c, c);
 		cacheChar(r, c, tableIdx);
 		glyphsCached++;
 	}
@@ -212,22 +210,22 @@ int GlyphTextureSet::precache(Renderer &r, std::string_view string)
 
 const GlyphEntry *GlyphTextureSet::glyphEntry(Renderer &r, int c, bool allowCache)
 {
-	assert(settings);
+	assume(settings);
 	int tableIdx = mapCharToTable(c);
 	if(tableIdx == -1)
 		return nullptr;
-	assert(tableIdx < glyphTableEntries);
+	assume(tableIdx < glyphTableEntries);
 	auto &entry = glyphTable[tableIdx];
 	if(!entry.glyph)
 	{
 		if(!allowCache)
 		{
-			logErr("cannot make glyph:%c (0x%X) during draw operation", c, c);
+			log.error("cannot make glyph:{} ({:X}) during draw operation", c, c);
 			return nullptr;
 		}
 		if(!cacheChar(r, c, tableIdx))
 			return nullptr;
-		//logMsg("glyph:%c (0x%X) was not in table", c, c);
+		//log.info("glyph:{} ({:X}) was not in table", c, c);
 	}
 	return &entry;
 }

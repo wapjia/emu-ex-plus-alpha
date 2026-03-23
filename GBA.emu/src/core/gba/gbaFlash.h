@@ -13,13 +13,14 @@
 
 void flashDetectSaveType(const uint8_t *rom, const int size);
 
+#if 1
 extern void flashSaveGame(uint8_t*& data);
 extern void flashReadGame(const uint8_t*& data);
-
+#else  // !defined(__LIBRETRO__)
 extern void flashSaveGame(gzFile _gzFile);
 extern void flashReadGame(gzFile _gzFile, int version);
 extern void flashReadGameSkip(gzFile _gzFile, int version);
-
+#endif  // defined(__LIBRETRO__)
 extern IG::ByteBuffer flashSaveMemory;
 extern uint8_t flashRead(uint32_t address);
 extern void flashWrite(uint32_t address, uint8_t byte);

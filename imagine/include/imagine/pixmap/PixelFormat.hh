@@ -18,9 +18,11 @@
 #include <imagine/config/defs.hh>
 #include <imagine/util/bit.hh>
 #include <imagine/util/algorithm.h>
-#include <imagine/util/utility.h>
+#include <imagine/util/utility.hh>
+#ifndef IG_USE_MODULE_STD
 #include <concepts>
 #include <array>
+#endif
 
 namespace IG
 {
@@ -58,10 +60,10 @@ public:
 
 	constexpr uint32_t build(float r_, float g_, float b_, float a_ = 1.) const
 	{
-		assumeExpr(r_ >= 0. && r_ <= 1.);
-		assumeExpr(g_ >= 0. && g_ <= 1.);
-		assumeExpr(b_ >= 0. && b_ <= 1.);
-		assumeExpr(a_ >= 0. && a_ <= 1.);
+		assume(r_ >= 0. && r_ <= 1.);
+		assume(g_ >= 0. && g_ <= 1.);
+		assume(b_ >= 0. && b_ <= 1.);
+		assume(a_ >= 0. && a_ <= 1.);
 		return build(
 			static_cast<uint32_t>(remap(r_, 0.f, 1.f, 0, bits(rBits))),
 			static_cast<uint32_t>(remap(g_, 0.f, 1.f, 0, bits(gBits))),
@@ -167,18 +169,18 @@ enum class PixelFormatId : uint8_t
 	RGB888,
 };
 
-constexpr PixelDesc PixelDescUnset		{0, 0, 0, 0, 0,		0, 	0, 	0, 	0, "Unset"};
-constexpr PixelDesc PixelDescI8				{8, 0, 0, 0, 0, 	0, 	0, 	0, 	1, "I8"};
-constexpr PixelDesc PixelDescA8  			{0, 0, 0, 8, 0, 	0, 	0, 	0, 	1, "A8"};
-constexpr PixelDesc PixelDescIA88  		{8, 0, 0, 8, 8, 	0, 	0, 	0, 	2, "IA88"};
-constexpr PixelDesc PixelDescRGB565  	{5, 6, 5, 0, 11,	5, 	0, 	0, 	2, "RGB565"};
-constexpr PixelDesc PixelDescRGBA5551 {5, 5, 5, 1, 11,	6, 	1, 	0, 	2, "RGBA5551"};
-constexpr PixelDesc PixelDescRGBA4444 {4, 4, 4, 4, 12,	8, 	4, 	0, 	2, "RGBA4444"};
-constexpr PixelDesc PixelDescRGB888 	{8, 8, 8, 0, 16,	8, 	0, 	0, 	3, "RGB888"};
-constexpr PixelDesc PixelDescRGBA8888 {8, 8, 8, 8, 24,	16, 8, 	0, 	4, "RGBA8888"};
-constexpr PixelDesc PixelDescBGRA8888 {8, 8, 8, 8, 8, 	16, 24, 0, 	4, "BGRA8888"};
-constexpr PixelDesc PixelDescRGBA8888Native = PixelDescRGBA8888.nativeOrder();
-constexpr PixelDesc PixelDescBGRA8888Native = PixelDescBGRA8888.nativeOrder();
+inline constexpr PixelDesc PixelDescUnset		{0, 0, 0, 0, 0,		0, 	0, 	0, 	0, "Unset"};
+inline constexpr PixelDesc PixelDescI8				{8, 0, 0, 0, 0, 	0, 	0, 	0, 	1, "I8"};
+inline constexpr PixelDesc PixelDescA8  			{0, 0, 0, 8, 0, 	0, 	0, 	0, 	1, "A8"};
+inline constexpr PixelDesc PixelDescIA88  		{8, 0, 0, 8, 8, 	0, 	0, 	0, 	2, "IA88"};
+inline constexpr PixelDesc PixelDescRGB565  	{5, 6, 5, 0, 11,	5, 	0, 	0, 	2, "RGB565"};
+inline constexpr PixelDesc PixelDescRGBA5551 {5, 5, 5, 1, 11,	6, 	1, 	0, 	2, "RGBA5551"};
+inline constexpr PixelDesc PixelDescRGBA4444 {4, 4, 4, 4, 12,	8, 	4, 	0, 	2, "RGBA4444"};
+inline constexpr PixelDesc PixelDescRGB888 	{8, 8, 8, 0, 16,	8, 	0, 	0, 	3, "RGB888"};
+inline constexpr PixelDesc PixelDescRGBA8888 {8, 8, 8, 8, 24,	16, 8, 	0, 	4, "RGBA8888"};
+inline constexpr PixelDesc PixelDescBGRA8888 {8, 8, 8, 8, 8, 	16, 24, 0, 	4, "BGRA8888"};
+inline constexpr PixelDesc PixelDescRGBA8888Native = PixelDescRGBA8888.nativeOrder();
+inline constexpr PixelDesc PixelDescBGRA8888Native = PixelDescBGRA8888.nativeOrder();
 
 class PixelFormat
 {
@@ -218,15 +220,15 @@ public:
 	}
 };
 
-constexpr PixelFormat PixelFmtUnset{PixelFormatId::Unset};
-constexpr PixelFormat PixelFmtI8{PixelFormatId::I8};
-constexpr PixelFormat PixelFmtA8{PixelFormatId::A8};
-constexpr PixelFormat PixelFmtIA88{PixelFormatId::IA88};
-constexpr PixelFormat PixelFmtRGB565{PixelFormatId::RGB565};
-constexpr PixelFormat PixelFmtRGBA5551{PixelFormatId::RGBA5551};
-constexpr PixelFormat PixelFmtRGBA4444{PixelFormatId::RGBA4444};
-constexpr PixelFormat PixelFmtRGB888{PixelFormatId::RGB888};
-constexpr PixelFormat PixelFmtRGBA8888{PixelFormatId::RGBA8888};
-constexpr PixelFormat PixelFmtBGRA8888{PixelFormatId::BGRA8888};
+inline constexpr PixelFormat PixelFmtUnset{PixelFormatId::Unset};
+inline constexpr PixelFormat PixelFmtI8{PixelFormatId::I8};
+inline constexpr PixelFormat PixelFmtA8{PixelFormatId::A8};
+inline constexpr PixelFormat PixelFmtIA88{PixelFormatId::IA88};
+inline constexpr PixelFormat PixelFmtRGB565{PixelFormatId::RGB565};
+inline constexpr PixelFormat PixelFmtRGBA5551{PixelFormatId::RGBA5551};
+inline constexpr PixelFormat PixelFmtRGBA4444{PixelFormatId::RGBA4444};
+inline constexpr PixelFormat PixelFmtRGB888{PixelFormatId::RGB888};
+inline constexpr PixelFormat PixelFmtRGBA8888{PixelFormatId::RGBA8888};
+inline constexpr PixelFormat PixelFmtBGRA8888{PixelFormatId::BGRA8888};
 
 }

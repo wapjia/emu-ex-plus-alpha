@@ -35,8 +35,6 @@ static const char copyright_notice[] =
 #include "m68kops.h"
 #include "m68kcpu.h"
 
-#include <imagine/logger/logger.h>
-
 #if M68K_EMULATE_040
 #include "m68kfpu.c"
 extern void m68040_fpu_op0(void);

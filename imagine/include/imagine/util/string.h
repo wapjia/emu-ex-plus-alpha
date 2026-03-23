@@ -15,11 +15,14 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/util/utility.h>
 #include <imagine/util/ctype.hh>
-#include <imagine/util/algorithm.h>
+#include <imagine/util/macros.h>
+#ifndef IG_USE_MODULE_STD
+#include <algorithm>
 #include <string_view>
 #include <concepts>
+#include <utility>
+#endif
 
 namespace IG
 {
@@ -41,7 +44,7 @@ constexpr bool equalsToLower(char lhs, char rhs)
 [[nodiscard]]
 constexpr bool endsWithAnyCaseless(std::string_view s, std::convertible_to<std::string_view> auto &&...endings)
 {
-	return (ends_with(s, std::string_view{IG_forward(endings)}, equalsToLower) || ...);
+	return (std::ranges::ends_with(s, std::string_view{IG_forward(endings)}, equalsToLower) || ...);
 }
 
 [[nodiscard]]

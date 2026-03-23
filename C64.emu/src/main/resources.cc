@@ -13,22 +13,21 @@
 	You should have received a copy of the GNU General Public License
 	along with C64.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include "MainSystem.hh"
-
+module;
+#include <cstdlib>
 extern "C"
 {
+	#include "vice.h"
 	#include "resources.h"
 	#include "drive.h"
 }
 
-#include <imagine/logger/logger.h>
+module system;
 
 namespace EmuEx
 {
 
-constexpr SystemLogger log{"C64.emu"};
-
-int C64System::intResource(const char *name) const
+int C64System::intResource(const char* name) const
 {
 	int val{};
 	auto failed = plugin.resources_get_int(name, &val);
@@ -39,12 +38,12 @@ int C64System::intResource(const char *name) const
 	return val;
 }
 
-void C64System::setIntResource(const char *name, int val)
+void C64System::setIntResource(const char* name, int val)
 {
 	plugin.resources_set_int(name, val);
 }
 
-bool C64System::updateIntResourceInCPUTrap(const char *name, int val)
+bool C64System::updateIntResourceInCPUTrap(const char* name, int val)
 {
 	if(intResource(name) == val)
 		return false;
@@ -54,7 +53,7 @@ bool C64System::updateIntResourceInCPUTrap(const char *name, int val)
 	return true;
 }
 
-void C64System::resetIntResource(const char *name)
+void C64System::resetIntResource(const char* name)
 {
 	int val;
 	if(plugin.resources_get_default_value(name, &val) < 0)
@@ -65,7 +64,7 @@ void C64System::resetIntResource(const char *name)
 	setIntResource(name, val);
 }
 
-int C64System::defaultIntResource(const char *name) const
+int C64System::defaultIntResource(const char* name) const
 {
 	int val;
 	if(plugin.resources_get_default_value(name, &val) < 0)
@@ -75,9 +74,9 @@ int C64System::defaultIntResource(const char *name) const
 	return val;
 }
 
-const char *C64System::stringResource(const char *name) const
+const char* C64System::stringResource(const char* name) const
 {
-	const char *val{};
+	const char* val{};
 	auto failed = plugin.resources_get_string(name, &val);
 	if(failed)
 	{
@@ -86,7 +85,7 @@ const char *C64System::stringResource(const char *name) const
 	return val;
 }
 
-void C64System::setStringResource(const char *name, const char *val)
+void C64System::setStringResource(const char* name, const char* val)
 {
 	plugin.resources_set_string(name, val);
 }
@@ -149,16 +148,16 @@ int C64System::reSidSampling() const
 
 void C64System::setVirtualDeviceTraps(bool on)
 {
-	assert(inCPUTrap);
-	setIntResource("VirtualDevice8", on);
-	setIntResource("VirtualDevice9", on);
-	setIntResource("VirtualDevice10", on);
-	setIntResource("VirtualDevice11", on);
+	assume(inCPUTrap);
+	setIntResource("TrapDevice8", on);
+	setIntResource("TrapDevice9", on);
+	setIntResource("TrapDevice10", on);
+	setIntResource("TrapDevice11", on);
 }
 
 bool C64System::virtualDeviceTraps() const
 {
-	return intResource("VirtualDevice8");
+	return intResource("TrapDevice8");
 }
 
 void C64System::setDriveTrueEmulation(bool on)
@@ -177,7 +176,7 @@ bool C64System::driveTrueEmulation() const
 	return intResource("Drive8TrueEmulation");
 }
 
-constexpr const char *driveTypeName[4]
+constexpr const char* driveTypeName[4]
 {
 	"Drive8Type",
 	"Drive9Type",

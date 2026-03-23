@@ -18,15 +18,20 @@
 #include <imagine/config/defs.hh>
 #include <imagine/gfx/defs.hh>
 #include "GLSLProgram.hh"
+#ifndef IG_USE_MODULE_STD
 #include <span>
 #include <string_view>
+#endif
 
 namespace IG::Gfx
 {
-
 class RendererCommands;
 class RendererTask;
 class Mat4;
+}
+
+namespace IG::Gfx
+{
 
 class GLBasicEffect
 {

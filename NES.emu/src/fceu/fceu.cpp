@@ -93,7 +93,7 @@ extern void RefreshThrottleFPS();
 #include <cstdarg>
 #include <ctime>
 
-#include <imagine/util/string.h>
+import imagine;
 
 using namespace std;
 

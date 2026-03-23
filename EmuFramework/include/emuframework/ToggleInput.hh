@@ -16,7 +16,9 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/inputDefs.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/util/container/ArrayList.hh>
+#endif
 
 namespace EmuEx
 {

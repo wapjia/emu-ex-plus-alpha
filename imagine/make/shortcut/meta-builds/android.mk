@@ -1,13 +1,14 @@
 include $(IMAGINE_PATH)/make/config.mk
 -include $(projectPath)/config.mk
-include $(buildSysPath)/android-metadata.mk
-include $(buildSysPath)/setAndroidNDKPath.mk
 
 .PHONY: all
 all : android-bundle
 
-BUNDLETOOL_PATH ?= $(IMAGINE_PATH)/tools/bundletool-all-1.18.1.jar
+CONFIG ?= Release
+BUNDLETOOL_PATH ?= $(IMAGINE_PATH)/tools/bundletool-all-1.18.2.jar
 BUNDLETOOL := java -jar $(BUNDLETOOL_PATH)
+
+include $(buildSysPath)/android-metadata.mk
 
 # Code signing parameters used when generating APKs from the app bundle
 android_gradlePropertiesPath = $(HOME)/.gradle/gradle.properties
@@ -24,9 +25,6 @@ endif
 
 android_minSDK ?= 9
 
-android_metadata_soName ?= main
-android_makefileOpts += android_metadata_soName=$(android_metadata_soName)
-
 # Architecture setup
 
 ifndef android_arch
@@ -35,10 +33,14 @@ endif
 
 android_arch := $(filter-out $(android_noArch),$(android_arch))
 
-android_buildPrefix := android
 android_releaseReadySubdir := android
 
-android_buildName ?= $(firstMakefileName:.mk=)
+android_buildName := android
+ifeq ($(CONFIG), Debug)
+ android_buildName := $(android_buildName)-debug
+else ifeq ($(CONFIG), RelWithDebInfo)
+ android_buildName := $(android_buildName)-rdebug
+endif
 
 ifeq ($(filter armv7, $(android_arch)),)
  android_noArmv7 := 1
@@ -53,12 +55,9 @@ ifeq ($(filter x86_64, $(android_arch)),)
  android_noX86_64 := 1
 endif
 
-android_targetPath := target/$(android_buildName)
+android_targetPath := build/$(android_buildName)
 android_resPath := $(android_targetPath)/src/main/res
-
-ifdef imagineLibExt
- android_makefileOpts += imagineLibExt=$(imagineLibExt)
-endif
+android_jniLibsPath := $(android_targetPath)/src/main/jniLibs
 
 xmlDecl := <?xml version="1.0" encoding="utf-8"?>
 
@@ -72,10 +71,6 @@ $(android_manifestXml) : $(projectPath)/metadata/conf.mk $(metadata_confDeps)
 android-metadata : $(android_manifestXml)
 
 # project dir
-
-ifdef LTO_MODE
- android_makefileOpts += LTO_MODE=$(LTO_MODE)
-endif
 
 resPath := $(projectPath)/res
 android_resSrcPath := $(resPath)/android
@@ -225,7 +220,7 @@ $(android_imagineLib9) : | $(android_imagineLib9SrcPath)
 	mkdir -p $(android_targetPath)/src
 
 ifeq ($(wildcard $(android_imagineLib9SrcPath)),)
- $(error couldn't find $(android_imagineLib9SrcPath), make sure you've built and installed it with android-java.mk) 
+ $(error couldn't find $(android_imagineLib9SrcPath), make sure you've built and installed it with android.sh in the imagine directory)
 endif
 
 android_styles21Xml := $(android_resPath)/values-v21/styles.xml
@@ -312,93 +307,93 @@ $(android_proguardConfPath) : | $(android_buildGradle)
 
 ifndef android_noArmv7
 
-android_armv7Makefile ?= $(IMAGINE_PATH)/make/shortcut/common-builds/$(android_buildPrefix)-armv7.mk
-android_armv7SODir := $(android_targetPath)/src/main/jniLibs/armeabi-v7a
-android_armv7SO := $(android_armv7SODir)/lib$(android_metadata_soName).so
-android_armv7MakeArgs = -f $(android_armv7Makefile) $(android_makefileOpts) \
- targetDir=$(android_armv7SODir) buildName=$(android_buildName)-armv7 \
- projectPath=$(projectPath)
+android_armv7CMakeCache := build/android-armv7/CMakeCache.txt
+android_armv7SO := $(android_jniLibsPath)/armeabi-v7a/libmain.so
+android_soFiles += android-armv7
+android_cleanTargets += android-armv7-clean
+
+$(android_armv7CMakeCache) : CMakeLists.txt
+	@echo "Configuring ARMv7 Shared Object"
+	$(PRINT_CMD)cmake --preset android-armv7 --fresh
+
 .PHONY: android-armv7
-android-armv7 :
+android-armv7 : $(android_armv7CMakeCache)
 	@echo "Building ARMv7 Shared Object"
-	$(PRINT_CMD)$(MAKE) $(android_armv7MakeArgs)
-$(android_armv7SO) : android-armv7
+	$(PRINT_CMD)cmake --build build/android-armv7 --config=$(CONFIG) $(VERBOSE_ARG)
 
 .PHONY: android-armv7-clean
 android-armv7-clean :
 	@echo "Cleaning ARMv7 Build"
-	$(PRINT_CMD)$(MAKE) $(android_armv7MakeArgs) clean
-android_cleanTargets += android-armv7-clean
-android_soFiles += $(android_armv7SO)
+	$(PRINT_CMD)rm -r build/android-armv7
 
 endif
 
 ifndef android_noArm64
 
-android_arm64Makefile ?= $(IMAGINE_PATH)/make/shortcut/common-builds/$(android_buildPrefix)-arm64.mk
-android_arm64SODir := $(android_targetPath)/src/main/jniLibs/arm64-v8a
-android_arm64SO := $(android_arm64SODir)/lib$(android_metadata_soName).so
-android_arm64MakeArgs = -f $(android_arm64Makefile) $(android_makefileOpts) \
- targetDir=$(android_arm64SODir) buildName=$(android_buildName)-arm64 \
- projectPath=$(projectPath)
+android_arm64CMakeCache := build/android-arm64/CMakeCache.txt
+android_arm64SO := $(android_jniLibsPath)/arm64-v8a/libmain.so
+android_soFiles += android-arm64
+android_cleanTargets += android-arm64-clean
+
+$(android_arm64CMakeCache) : CMakeLists.txt
+	@echo "Configuring ARM64 Shared Object"
+	$(PRINT_CMD)cmake --preset android-arm64 --fresh
+
 .PHONY: android-arm64
-android-arm64 :
+android-arm64 : $(android_arm64CMakeCache)
 	@echo "Building ARM64 Shared Object"
-	$(PRINT_CMD)$(MAKE) $(android_arm64MakeArgs)
-$(android_arm64SO) : android-arm64
+	$(PRINT_CMD)cmake --build build/android-arm64 --config=$(CONFIG) $(VERBOSE_ARG)
 
 .PHONY: android-arm64-clean
 android-arm64-clean :
 	@echo "Cleaning ARM64 Build"
-	$(PRINT_CMD)$(MAKE) $(android_arm64MakeArgs) clean
-android_cleanTargets += android-arm64-clean
-android_soFiles += $(android_arm64SO)
+	$(PRINT_CMD)rm -r build/android-arm64
 
 endif
 
 ifndef android_noX86
 
-android_x86Makefile ?= $(IMAGINE_PATH)/make/shortcut/common-builds/$(android_buildPrefix)-x86.mk
-android_x86SODir := $(android_targetPath)/src/main/jniLibs/x86
-android_x86SO := $(android_x86SODir)/lib$(android_metadata_soName).so
-android_x86MakeArgs = -f $(android_x86Makefile) $(android_makefileOpts) \
- targetDir=$(android_x86SODir) buildName=$(android_buildName)-x86 \
- projectPath=$(projectPath)
+android_x86CMakeCache := build/android-x86/CMakeCache.txt
+android_x86SO := $(android_jniLibsPath)/x86/libmain.so
+android_soFiles += android-x86
+android_cleanTargets += android-x86-clean
+
+$(android_x86CMakeCache) : CMakeLists.txt
+	@echo "Configuring X86 Shared Object"
+	$(PRINT_CMD)cmake --preset android-x86 --fresh
+
 .PHONY: android-x86
-android-x86 :
+android-x86 : $(android_x86CMakeCache)
 	@echo "Building X86 Shared Object"
-	$(PRINT_CMD)$(MAKE) $(android_x86MakeArgs)
-$(android_x86SO) : android-x86
+	$(PRINT_CMD)cmake --build build/android-x86 --config=$(CONFIG) $(VERBOSE_ARG)
 
 .PHONY: android-x86-clean
 android-x86-clean :
 	@echo "Cleaning X86 Build"
-	$(PRINT_CMD)$(MAKE) $(android_x86MakeArgs) clean
-android_cleanTargets += android-x86-clean
-android_soFiles += $(android_x86SO)
+	$(PRINT_CMD)rm -r build/android-x86
 
 endif
 
 ifndef android_noX86_64
 
-android_x86_64Makefile ?= $(IMAGINE_PATH)/make/shortcut/common-builds/$(android_buildPrefix)-x86_64.mk
-android_x86_64SODir := $(android_targetPath)/src/main/jniLibs/x86_64
-android_x86_64SO := $(android_x86_64SODir)/lib$(android_metadata_soName).so
-android_x86_64MakeArgs = -f $(android_x86_64Makefile) $(android_makefileOpts) \
- targetDir=$(android_x86_64SODir) buildName=$(android_buildName)-x86_64 \
- projectPath=$(projectPath)
+android_x86_64CMakeCache := build/android-x86_64/CMakeCache.txt
+android_x86_64SO := $(android_jniLibsPath)/x86_64/libmain.so
+android_soFiles += android-x86_64
+android_cleanTargets += android-x86_64-clean
+
+$(android_x86_64CMakeCache) : CMakeLists.txt
+	@echo "Configuring X86_64 Shared Object"
+	$(PRINT_CMD)cmake --preset android-x86_64 --fresh
+
 .PHONY: android-x86_64
-android-x86_64 :
+android-x86_64 : $(android_x86_64CMakeCache)
 	@echo "Building X86_64 Shared Object"
-	$(PRINT_CMD)$(MAKE) $(android_x86_64MakeArgs)
-$(android_x86_64SO) : android-x86_64
+	$(PRINT_CMD)cmake --build build/android-x86_64 --config=$(CONFIG) $(VERBOSE_ARG)
 
 .PHONY: android-x86_64-clean
 android-x86_64-clean :
 	@echo "Cleaning X86_64 Build"
-	$(PRINT_CMD)$(MAKE) $(android_x86_64MakeArgs) clean
-android_cleanTargets += android-x86_64-clean
-android_soFiles += $(android_x86_64SO)
+	$(PRINT_CMD)rm -r build/android-x86_64
 
 endif
 
@@ -413,15 +408,16 @@ endif
 
 android_projectDeps := $(android_buildGradle) $(android_proguardConfPath)
 
-ifeq ($(android_buildTarget),debug)
- android_buildTask := assembleDebug
- android_bundleTask := bundleDebug
- android_installTask := installDebug
-else
+ifeq ($(CONFIG), Release)
  android_buildTarget := release
  android_buildTask := assembleRelease
  android_bundleTask := bundleRelease
  android_installTask := installRelease
+else
+ android_buildTarget := debug
+ android_buildTask := assembleDebug
+ android_bundleTask := bundleDebug
+ android_installTask := installDebug
 endif
 
 android_bundlePath := $(android_targetPath)/build/outputs/bundle/$(android_buildTarget)/$(android_metadata_project)-$(android_buildTarget).aab
@@ -474,17 +470,3 @@ android_cleanTargets += android-clean-project
 
 .PHONY: clean
 clean: $(android_cleanTargets)
-
-.DEFAULT:
-ifndef android_noArmv7
-	$(PRINT_CMD)$(MAKE) $(android_armv7MakeArgs) $@
-endif
-ifndef android_noArm64
-	$(PRINT_CMD)$(MAKE) $(android_arm64MakeArgs) $@
-endif
-ifndef android_noX86
-	$(PRINT_CMD)$(MAKE) $(android_x86MakeArgs) $@
-endif
-ifndef android_noX86_64
-	$(PRINT_CMD)$(MAKE) $(android_x86_64MakeArgs) $@
-endif

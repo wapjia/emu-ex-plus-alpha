@@ -15,9 +15,8 @@
 
 #include "AutosaveSlotView.hh"
 #include <emuframework/EmuApp.hh>
-#include <imagine/gui/AlertView.hh>
 #include <emuframework/viewUtils.hh>
-#include <format>
+import imagine;
 
 namespace EmuEx
 {

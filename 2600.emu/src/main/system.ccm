@@ -1,0 +1,212 @@
+/*  This file is part of 2600.emu.
+
+	2600.emu is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	2600.emu is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with 2600.emu.  If not, see <http://www.gnu.org/licenses/> */
+
+module;
+#include <stella/emucore/Props.hxx>
+#include <stella/emucore/Control.hxx>
+#include <stella/emucore/Paddles.hxx>
+#include <OSystem.hxx>
+
+export module system;
+import emuex;
+import imagine;
+import std;
+
+namespace EmuEx
+{
+
+using namespace IG;
+
+export enum class PaddleRegionMode: uint8_t
+{
+	OFF = 0,
+	LEFT = 1,
+	RIGHT = 2,
+	FULL = 3,
+};
+
+enum A2600ConfigKey
+{
+	CFGKEY_2600_TV_PHOSPHOR = 270, CFGKEY_VIDEO_SYSTEM = 271,
+	CFGKEY_2600_TV_PHOSPHOR_BLEND = 272, CFGKEY_AUDIO_RESAMPLE_QUALITY = 273,
+	CFGKEY_INPUT_PORT_1 = 274, CFGKEY_INPUT_PORT_2 = 275,
+	CFGKEY_PADDLE_DIGITAL_SENSITIVITY = 276, CFGKEY_PADDLE_ANALOG_REGION = 277,
+};
+
+export constexpr int TV_PHOSPHOR_AUTO{2};
+
+constexpr bool optionIsValidControllerType(const Controller::Type& v)
+{
+	switch(Controller::Type(v))
+	{
+		case Controller::Type::Unknown:
+		case Controller::Type::Joystick:
+		case Controller::Type::Genesis:
+		case Controller::Type::BoosterGrip:
+		case Controller::Type::Keyboard:
+		case Controller::Type::Paddles:
+			return true;
+		default:
+			return false;
+	}
+}
+
+constexpr std::string_view optionVideoSystemToStr(uint8_t sysIdx)
+{
+	switch(sysIdx)
+	{
+		case 1: return "NTSC";
+		case 2: return "PAL";
+		case 3: return "SECAM";
+		case 4: return "NTSC50";
+		case 5: return "PAL60";
+		case 6: return "SECAM60";
+		default: return "AUTO";
+	}
+}
+
+constexpr Controller::Type limitToSupportedControllerTypes(Controller::Type type)
+{
+	switch(type)
+	{
+		case Controller::Type::Joystick:
+		case Controller::Type::Genesis:
+		case Controller::Type::BoosterGrip:
+		case Controller::Type::Keyboard:
+		case Controller::Type::Paddles:
+			return type;
+		default:
+			return Controller::Type::Joystick;
+	}
+}
+
+export constexpr std::string_view asString(Controller::Type type)
+{
+	switch(type)
+	{
+		case Controller::Type::Joystick: return "Joystick";
+		case Controller::Type::Genesis: return "Genesis Gamepad";
+		case Controller::Type::BoosterGrip: return "Booster Grip";
+		case Controller::Type::Keyboard: return "Keyboard";
+		case Controller::Type::Paddles: return "Paddles";
+		default: return "Auto";
+	}
+}
+
+export class A2600System final: public EmuSystem
+{
+public:
+	OSystem osystem;
+	size_t saveStateSize{};
+	float configuredInputVideoFrameRate{};
+	Properties defaultGameProps{};
+	bool p1DiffB{true}, p2DiffB{true}, vcsColor{true};
+	Controller::Type autoDetectedInput1{};
+	std::array<Event::Type, 2> jsFireMap{Event::LeftJoystickFire, Event::RightJoystickFire};
+	std::array<Event::Type, 2> jsLeftMap{Event::LeftJoystickLeft, Event::RightJoystickLeft};
+	std::array<Event::Type, 2> jsRightMap{Event::LeftJoystickRight, Event::RightJoystickRight};
+	Property<uint8_t, CFGKEY_2600_TV_PHOSPHOR,
+	{
+		.defaultValue = TV_PHOSPHOR_AUTO, .isValid = isValidWithMax<2>
+	}> optionTVPhosphor;
+	Property<int8_t, CFGKEY_2600_TV_PHOSPHOR_BLEND,
+	{
+		.defaultValue = 80, .isValid = isValidWithMax<100>
+	}> optionTVPhosphorBlend;
+	Property<uint8_t, CFGKEY_VIDEO_SYSTEM,
+	{
+		.isValid = isValidWithMax<6>
+	}> optionVideoSystem;
+	Property<AudioSettings::ResamplingQuality, CFGKEY_AUDIO_RESAMPLE_QUALITY,
+	{
+		.defaultValue = AudioSettings::DEFAULT_RESAMPLING_QUALITY
+	}> optionAudioResampleQuality;
+	Property<Controller::Type, CFGKEY_INPUT_PORT_1,
+	{
+		.isValid = optionIsValidControllerType
+	}> optionInputPort1;
+	Property<int8_t, CFGKEY_PADDLE_DIGITAL_SENSITIVITY,
+	{
+		.defaultValue = 1, .isValid = isValidWithMinMax<1, 20>
+	}> optionPaddleDigitalSensitivity;
+	Property<int8_t, CFGKEY_PADDLE_ANALOG_REGION,
+	{
+		.defaultValue = 1, .isValid = isValidWithMax<3>
+	}> optionPaddleAnalogRegion;
+	static constexpr SystemLogger log{"2600.emu"};
+
+	A2600System(ApplicationContext ctx, EmuApp& app):
+		EmuSystem{ctx}, osystem{app}
+	{
+		Paddles::setDigitalSensitivity(5);
+		Paddles::setMouseSensitivity(7);
+	}
+
+	void setRuntimeTVPhosphor(int val, int blend);
+	void setControllerType(EmuApp&, Console&, Controller::Type);
+	void updatePaddlesRegionMode(EmuApp&, PaddleRegionMode);
+
+	// required API functions
+	void loadContent(IO&, EmuSystemCreateParams, OnLoadProgressDelegate);
+	[[gnu::hot]] void runFrame(EmuSystemTaskContext task, EmuVideo*, EmuAudio*);
+	FS::FileString stateFilename(int slot, std::string_view name) const;
+	std::string_view stateFilenameExt() const { return ".sta"; }
+	size_t stateSize() { return saveStateSize; }
+	void readState(EmuApp &, std::span<uint8_t> buff);
+	size_t writeState(std::span<uint8_t> buff, SaveStateFlags = {});
+	bool readConfig(ConfigType, MapIO&, unsigned key);
+	void writeConfig(ConfigType, FileIO&);
+	void reset(EmuApp&, ResetMode mode);
+	void clearInputBuffers();
+	void handleInputAction(EmuApp*, InputAction);
+	FrameRate frameRate() const;
+	void configAudioRate(FrameRate outputFrameRate, int outputRate);
+
+	// optional API functions
+	void closeSystem();
+	bool onPointerInputStart(const Input::MotionEvent&, Input::DragTrackerState, WindowRect gameRect);
+	bool onPointerInputUpdate(const Input::MotionEvent&, Input::DragTrackerState current, Input::DragTrackerState previous, WindowRect gameRect);
+	VideoSystem videoSystem() const;
+	void renderFramebuffer(EmuVideo&);
+	bool onVideoRenderFormatChange(EmuVideo&, PixelFormat);
+	bool resetSessionOptions(EmuApp&);
+	void onOptionsLoaded();
+
+private:
+	bool updatePaddle(Input::DragTrackerState dragState);
+	void updateSwitchValues();
+	void updateJoytickMapping(EmuApp&, Controller::Type);
+};
+
+export using MainSystem = A2600System;
+
+class A2600App final: public EmuApp
+{
+public:
+	A2600App(ApplicationInitParams initParams, ApplicationContext& ctx):
+		EmuApp{initParams, ctx}, system_{ctx, *this}
+	{
+		audio.setStereo(false); // TODO: stereo mode
+	}
+
+	auto& system(this auto&& self) { return self.system_; }
+
+private:
+	A2600System system_;
+};
+
+export using MainApp = A2600App;
+
+}

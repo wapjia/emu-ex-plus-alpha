@@ -5,7 +5,7 @@
 CFLAGS_OPTIMIZE_DEBUG_DEFAULT ?= -Og
 CFLAGS_OPTIMIZE_MISC_RELEASE_DEFAULT ?= -fomit-frame-pointer -fno-stack-protector -fno-asynchronous-unwind-tables
 CFLAGS_OPTIMIZE_RELEASE_DEFAULT ?= $(CFLAGS_OPTIMIZE_LEVEL_RELEASE_DEFAULT) $(CFLAGS_OPTIMIZE_MISC_RELEASE_DEFAULT)
-CFLAGS_CODEGEN += -pipe -fvisibility=hidden -ffunction-sections -fdata-sections
+CFLAGS_CODEGEN += -pipe -fvisibility=hidden -ffunction-sections -fdata-sections -fno-semantic-interposition
 CFLAGS_LANG = -fno-common
 CXXFLAGS_LANG = -std=gnu++26 $(if $(cxxThreadSafeStatics),,-fno-threadsafe-statics) -fvisibility-inlines-hidden
 

@@ -1,0 +1,1180 @@
+/*  This file is part of Imagine.
+
+	Imagine is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	Imagine is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
+
+module;
+
+// App & Core
+#include <imagine/config/defs.hh>
+#include <imagine/base/Application.hh>
+#include <imagine/base/ApplicationContext.hh>
+#include <imagine/base/Timer.hh>
+#include <imagine/base/PausableTimer.hh>
+#include <imagine/base/Window.hh>
+#include <imagine/base/Screen.hh>
+#include <imagine/base/sharedLibrary.hh>
+#include <imagine/base/MessagePort.hh>
+#include <imagine/base/PerformanceHintManager.hh>
+#include <imagine/base/Viewport.hh>
+#include <imagine/base/VibrationManager.hh>
+#include <imagine/base/Sensor.hh>
+#include <imagine/base/GLContext.hh>
+#include <imagine/base/Animation.hh>
+#include <imagine/bluetooth/BluetoothAdapter.hh>
+#include <imagine/bluetooth/IControlPad.hh>
+#include <imagine/bluetooth/Wiimote.hh>
+#include <imagine/bluetooth/Zeemote.hh>
+#include <imagine/bluetooth/PS3Controller.hh>
+#include <imagine/bluetooth/BluetoothInputDevice.hh>
+#include <imagine/fs/FSDefs.hh>
+#include <imagine/fs/FS.hh>
+#include <imagine/fs/FSUtils.hh>
+#include <imagine/fs/ArchiveFS.hh>
+#include <imagine/fs/AssetFS.hh>
+#include <imagine/input/Device.hh>
+#include <imagine/input/Event.hh>
+#include <imagine/input/AxisKeyEmu.hh>
+#include <imagine/input/DragTracker.hh>
+#include <imagine/input/TextField.hh>
+#include <imagine/input/bluetoothInputDefs.hh>
+#include <imagine/input/android/MogaManager.hh>
+#include <imagine/io/IO.hh>
+#include <imagine/io/ArchiveIO.hh>
+#include <imagine/io/MapIO.hh>
+#include <imagine/io/FileIO.hh>
+#include <imagine/io/IOStream.hh>
+#include <imagine/io/FileStream.hh>
+#include <imagine/io/stdioWrapper.hh>
+#include <imagine/io/IOUtils-impl.hh>
+#include <imagine/logger/SystemLogger.hh>
+#include <imagine/pixmap/Pixmap.hh>
+#include <imagine/pixmap/MemPixmap.hh>
+#include <imagine/time/Time.hh>
+#include <imagine/thread/Thread.hh>
+#include <imagine/thread/WorkThread.hh>
+#include <imagine/util/algorithm.h>
+#include <imagine/util/bit.hh>
+#include <imagine/util/DelegateFunc.hh>
+#include <imagine/util/ScopeGuard.hh>
+#include <imagine/util/math.hh>
+#include <imagine/util/math/Point2D.hh>
+#include <imagine/util/ctype.hh>
+#include <imagine/util/enum.hh>
+#include <imagine/util/variant.hh>
+#include <imagine/util/ranges.hh>
+#include <imagine/util/used.hh>
+#include <imagine/util/jni.hh>
+#include <imagine/util/Point2D.hh>
+#include <imagine/util/Property.hh>
+#include <imagine/util/rectangle2.h>
+#include <imagine/util/optional.hh>
+#include <imagine/util/string.h>
+#include <imagine/util/string/StaticString.hh>
+#include <imagine/util/string/uri.hh>
+#include <imagine/util/string/utf16.hh>
+#include <imagine/util/container/array.hh>
+#include <imagine/util/container/ArrayList.hh>
+#include <imagine/util/container/RingBuffer.hh>
+#include <imagine/util/container/VMemArray.hh>
+#include <imagine/util/memory/Buffer.hh>
+#include <imagine/util/memory/DynArray.hh>
+#include <imagine/util/memory/FlexArray.hh>
+#include <imagine/util/memory/UniqueFileStream.hh>
+#include <imagine/util/format.hh>
+#include <imagine/util/opengl/glUtils.hh>
+#include <imagine/util/zlib.hh>
+#ifdef __ANDROID__
+#include <imagine/base/android/RootCpufreqParamSetter.hh>
+#endif
+
+// Audio
+#include <imagine/audio/Format.hh>
+#include <imagine/audio/Manager.hh>
+#include <imagine/audio/OutputStream.hh>
+
+// Data
+#include <imagine/font/Font.hh>
+#include <imagine/data-type/image/PixmapSource.hh>
+#include <imagine/data-type/image/PixmapReader.hh>
+#include <imagine/data-type/image/PixmapWriter.hh>
+
+// Graphics
+#include <imagine/gfx/RendererCommands.hh>
+#include <imagine/gfx/RendererTask.hh>
+#include <imagine/gfx/Renderer.hh>
+#include <imagine/gfx/Program.hh>
+#include <imagine/gfx/Texture.hh>
+#include <imagine/gfx/TextureSampler.hh>
+#include <imagine/gfx/PixmapBufferTexture.hh>
+#include <imagine/gfx/BasicEffect.hh>
+#include <imagine/gfx/Vec3.hh>
+#include <imagine/gfx/Mat4.hh>
+#include <imagine/gfx/GfxText.hh>
+#include <imagine/gfx/GfxLGradient.hh>
+#include <imagine/gfx/GlyphTextureSet.hh>
+#include <imagine/gfx/FanQuads.hh>
+#ifdef __ANDROID__
+#include <imagine/gfx/opengl/android/egl.hh>
+#endif
+
+// GUI
+#include <imagine/gui/View.hh>
+#include <imagine/gui/ViewManager.hh>
+#include <imagine/gui/AlertView.hh>
+#include <imagine/gui/FSPicker.hh>
+#include <imagine/gui/TableView.hh>
+#include <imagine/gui/TextTableView.hh>
+#include <imagine/gui/TextEntry.hh>
+#include <imagine/gui/ToastView.hh>
+#include <imagine/gui/NavView.hh>
+#include <imagine/gui/FSPicker.hh>
+
+export module imagine;
+
+export namespace Config
+{
+	using Config::DEBUG_BUILD;
+	using Config::ARM_ARCH;
+	using Config::MACHINE_IS_GENERIC_X86;
+	using Config::MACHINE_IS_GENERIC_ARMV6;
+	using Config::MACHINE_IS_GENERIC_ARMV7;
+	using Config::MACHINE_IS_GENERIC_AARCH64;
+	using Config::MACHINE_IS_PANDORA;
+	using Config::ENV_ANDROID_MIN_SDK;
+	using Config::envIsAndroid;
+	using Config::envIsIOS;
+	using Config::envIsMacOSX;
+	using Config::envIsLinux;
+	using Config::is64Bit;
+	using Config::BASE_MULTI_SCREEN;
+	using Config::BASE_MULTI_WINDOW;
+	using Config::SYSTEM_ROTATES_WINDOWS;
+	using Config::GL_PLATFORM_EGL;
+	using Config::OpenGLDebugContext;
+	using Config::DISPLAY_CUTOUT;
+	using Config::BASE_SUPPORTS_VIBRATOR;
+	using Config::multipleScreenFrameRates;
+	using Config::cpuAffinity;
+	using Config::NAVIGATION_BAR;
+	using Config::STATUS_BAR;
+	using Config::TRANSLUCENT_SYSTEM_UI;
+	using Config::windowFocus;
+	using Config::BASE_CAN_BACKGROUND_APP;
+	using Config::freeformWindows;
+	using Config::SENSORS;
+}
+
+export namespace Config::Input
+{
+	using Config::Input::SYSTEM_COLLECTS_TEXT;
+	using Config::Input::DEVICE_HOTSWAP;
+	using Config::Input::KEYBOARD_DEVICES;
+	using Config::Input::POINTING_DEVICES;
+	using Config::Input::MOUSE_DEVICES;
+	using Config::Input::GAMEPAD_DEVICES;
+	using Config::Input::TOUCH_DEVICES;
+	using Config::Input::MAX_POINTERS;
+	using Config::Input::RELATIVE_MOTION_DEVICES;
+	using Config::Input::BLUETOOTH;
+}
+
+export namespace IG
+{
+	// app
+	using IG::Application;
+	using IG::ApplicationContext;
+	using IG::ApplicationInitParams;
+	using IG::ApplicationMeta;
+	using IG::ApplicationEvent;
+	using IG::CommandArgs;
+	using IG::DocumentPickerEvent;
+	using IG::OnExit;
+	using IG::ResumeDelegate;
+	using IG::ExitDelegate;
+	using IG::APP_ON_EXIT_PRIORITY;
+	using IG::RENDERER_TASK_ON_EXIT_PRIORITY;
+	using IG::RENDERER_DRAWABLE_ON_EXIT_PRIORITY;
+	using IG::WINDOW_ON_EXIT_PRIORITY;
+	using IG::SCREEN_ON_EXIT_PRIORITY;
+	using IG::INPUT_DEVICE_ON_EXIT_PRIORITY;
+	using IG::INPUT_DEVICE_ON_RESUME_PRIORITY;
+	using IG::SCREEN_ON_RESUME_PRIORITY;
+	using IG::WINDOW_ON_RESUME_PRIORITY;
+	using IG::RENDERER_DRAWABLE_ON_RESUME_PRIORITY;
+	using IG::RENDERER_TASK_ON_RESUME_PRIORITY;
+	using IG::APP_ON_RESUME_PRIORITY;
+	using IG::SystemUIStyleFlags;
+	using IG::ActivityState;
+	using IG::Permission;
+	using IG::asString;
+	using IG::CallbackDelegate;
+	using IG::TextFieldDelegate;
+	using IG::MainThreadMessageDelegate;
+
+	#ifdef __ANDROID__
+	using IG::RootCpufreqParamSetter;
+	#endif
+
+	// app.event
+	using IG::EventLoop;
+	using IG::PollEventDelegate;
+	using IG::PollEventFlags;
+	using IG::pollEventInput;
+	using IG::pollEventOutput;
+	using IG::pollEventError;
+	using IG::pollEventHangUp;
+	using IG::FDEventSource;
+	using IG::FDEventSourceDesc;
+	using IG::CustomEvent;
+	using IG::FDCustomEvent;
+	using IG::FreeCachesEvent;
+
+	// window
+	using IG::Window;
+	using IG::WindowConfig;
+	using IG::WindowInitDelegate;
+	using IG::WindowDrawParams;
+	using IG::WindowEvent;
+	using IG::NativeWindowFormat;
+	using IG::NativeWindow;
+	using IG::FocusChangeEvent;
+	using IG::WindowSurfaceChange;
+	using IG::WindowSurfaceChangeEvent;
+	using IG::WindowSurfaceChangeFlags;
+	using IG::DragDropEvent;
+	using IG::DismissRequestEvent;
+	using IG::DismissEvent;
+	using IG::DrawEvent;
+	using IG::Viewport;
+	using IG::WRect;
+
+	// screen
+	using IG::Screen;
+	using IG::ScreenChange;
+	using IG::ScreenChangeEvent;
+	using IG::ScreenId;
+
+	// messages
+	using IG::Pipe;
+	using IG::MessagePort;
+	using IG::MessageReplyMode;
+
+	// timer
+	using IG::Timer;
+	using IG::TimerDesc;
+	using IG::FrameTimer;
+	using IG::SimpleFrameTimer;
+	using IG::OnFrameDelegate;
+	using IG::FrameClockMode;
+	using IG::PausableTimer;
+
+	// sensors
+	using IG::SensorListener;
+	using IG::SensorChangedDelegate;
+	using IG::SensorType;
+	using IG::SensorValues;
+	using IG::Rotation;
+	using IG::Orientations;
+	using IG::isSideways;
+	using IG::SystemOrientationChangedDelegate;
+	using IG::DeviceOrientationChangedDelegate;
+
+	// performance hints
+	using IG::PerformanceHintManager;
+	using IG::PerformanceHintSession;
+
+	// vibration
+	using IG::VibrationManager;
+
+	// opengl
+	using IG::GLManager;
+	using IG::GLDisplay;
+	using IG::GLContext;
+	using IG::GLContextAttributes;
+	using IG::GLDrawable;
+	using IG::GLColorSpace;
+	using IG::NativeDisplayConnection;
+	using IG::NativeGLDrawable;
+	using IG::NativeGLContext;
+	using IG::GLBufferConfig;
+	using IG::GLBufferRenderConfigAttributes;
+	using IG::GLBufferConfigAttributes;
+	using IG::GLDrawableAttributes;
+	using IG::useEGLPlatformAPI;
+
+	// shared library
+	using IG::OpenSharedLibraryFlags;
+	using IG::openSharedLibrary;
+	using IG::SharedLibraryRef;
+	using IG::closeSharedLibrary;
+	using IG::loadSymbol;
+	using IG::lastOpenSharedLibraryError;
+	using IG::loadSymbol;
+
+	// fs
+	using IG::DirectoryEntryDelegate;
+	using IG::PathString;
+	using IG::FileString;
+	using IG::pathString;
+	using IG::uriString;
+
+	// logger
+	using IG::SystemLogger;
+
+	// io
+	using IG::IO;
+	using IG::IOUtils;
+	using IG::ArchiveIO;
+	using IG::MapIO;
+	using IG::FileIO;
+	using IG::PosixIO;
+	using IG::PosixFileIO;
+	using IG::AssetIO;
+	using IG::OpenFlags;
+	using IG::IOSeekMode;
+	using IG::OutVector;
+	using IG::IOBuffer;
+	using IG::IOAccessHint;
+	using IG::IOBufferMode;
+	using IG::transformOffsetToAbsolute;
+	using IG::IOAdvice;
+	using IG::IOMapFlags;
+	using IG::Readable;
+	using IG::Writable;
+	using IG::Seekable;
+	using IG::IStream;
+	using IG::OStream;
+	using IG::IOStream;
+	using IG::IFStream;
+	using IG::OFStream;
+	using IG::FStream;
+	using IG::GenericIStream;
+	using IG::GenericOStream;
+	using IG::GenericIOStream;
+	using IG::FileStream;
+	using IG::fgetc;
+	using IG::fread;
+	using IG::fwrite;
+	using IG::ftell;
+	using IG::fseek;
+	using IG::fclose;
+
+	#ifdef __ANDROID__
+	using IG::AAssetIO;
+	#endif
+
+	// pixmap
+	using IG::PixmapView;
+	using IG::PixmapDesc;
+	using IG::MutablePixmapView;
+	using IG::MemPixmap;
+	using IG::PixmapUnits;
+
+	// pixel format
+	using IG::PixelFormat;
+	using IG::PixelFormatId;
+	using IG::PixelDesc;
+	using IG::PixelDescA8;
+	using IG::PixelDescBGRA8888;
+	using IG::PixelDescBGRA8888Native;
+	using IG::PixelDescI8;
+	using IG::PixelDescIA88;
+	using IG::PixelDescRGB565;
+	using IG::PixelDescRGB888;
+	using IG::PixelDescRGBA4444;
+	using IG::PixelDescRGBA5551;
+	using IG::PixelDescRGBA8888;
+	using IG::PixelDescRGBA8888Native;
+	using IG::PixelFmtA8;
+	using IG::PixelFmtBGRA8888;
+	using IG::PixelFmtI8;
+	using IG::PixelFmtIA88;
+	using IG::PixelFmtRGB565;
+	using IG::PixelFmtRGB888;
+	using IG::PixelFmtRGBA4444;
+	using IG::PixelFmtRGBA5551;
+	using IG::PixelFmtRGBA8888;
+	using IG::PixelFmtUnset;
+
+	// animation
+	using IG::FrameAnimation;
+	using IG::InterpolatorValue;
+	using IG::InterpolatorType;
+
+	// bluetooth
+	using IG::BluetoothAdapter;
+	using IG::BluetoothSocket;
+	using IG::BluetoothSocketState;
+	using IG::BluetoothPendingSocket;
+	using IG::BluetoothState;
+	using IG::BluetoothScanState;
+	using IG::BluetoothInputDevice;
+	using IG::BluetoothAddr;
+	using IG::BTOnScanDeviceClassDelegate;
+	using IG::BTOnScanDeviceNameDelegate;
+	using IG::IControlPad;
+	using IG::Wiimote;
+	using IG::WiimoteExtDevice;
+	using IG::Zeemote;
+
+	#ifdef CONFIG_BLUETOOTH_SERVER
+	using IG::PS3Controller;
+	#endif
+
+	// thread
+	using IG::ThreadId;
+	using IG::thisThreadId;
+	using IG::CPUMask;
+	using IG::setThreadCPUAffinityMask;
+	using IG::WorkThread;
+	using IG::ThreadStop;
+	using IG::makeDetachedThread;
+	using IG::makeThreadSync;
+	using IG::maxCPUs;
+	using IG::binary_semaphore;
+	using IG::counting_semaphore;
+
+	// time
+	using IG::Nanoseconds;
+	using IG::Microseconds;
+	using IG::Milliseconds;
+	using IG::Seconds;
+	using IG::FloatSeconds;
+	using IG::Minutes;
+	using IG::SteadyClock;
+	using IG::WallClock;
+	using IG::SteadyClockTimePoint;
+	using IG::WallClockTimePoint;
+	using IG::SteadyClockDuration;
+	using IG::WallClockDuration;
+	using IG::FrameRate;
+	using IG::FrameClockSource;
+	using IG::FrameClockUsage;
+	using IG::FrameParams;
+	using IG::fromSeconds;
+	using IG::hasTime;
+	using IG::fromSeconds;
+	using IG::toHz;
+	using IG::fromHz;
+	using IG::timeFuncDebug;
+	using IG::ChronoDuration;
+	using IG::ChronoTimePoint;
+
+	// virtual memory
+	using IG::vAlloc;
+	using IG::vAllocMirrored;
+	using IG::vFree;
+	using IG::truncPageSize;
+	using IG::roundPageSize;
+	using IG::vNew;
+	using IG::vDelete;
+	using IG::vNewMirrored;
+	using IG::VPtrDeleter;
+	using IG::UniqueVPtr;
+	using IG::makeUniqueVPtr;
+	using IG::makeUniqueMirroredVPtr;
+	using IG::resetVPtr;
+
+	// utility
+	using IG::abort;
+	using IG::unreachable;
+	using IG::assume;
+
+	// util.origin2d
+	using IG::_2DOrigin;
+	using IG::CT2DO;
+	using IG::RT2DO;
+	using IG::RC2DO;
+	using IG::RB2DO;
+	using IG::CB2DO;
+	using IG::LB2DO;
+	using IG::LC2DO;
+	using IG::LT2DO;
+	using IG::C2DO;
+
+	// util.point2d
+	using IG::Point2D;
+	using IG::I2Pt;
+	using IG::S2Pt;
+	using IG::F2Pt;
+	using IG::I2Size;
+	using IG::S2Size;
+	using IG::F2Size;
+	using IG::WPt;
+	using IG::WSize;
+
+	// util.math.point2d
+	using IG::sizesWithRatioBestFit;
+	using IG::makeFromXWithRatio;
+	using IG::makeFromYWithRatio;
+	using IG::rotateAboutAxis;
+
+	// util.algorithm
+	using IG::fill;
+	using IG::findIt;
+	using IG::find;
+	using IG::findIndex;
+	using IG::findPtr;
+	using IG::eraseFirst;
+	using IG::moveOut;
+	using IG::transformNOverlapped;
+	using IG::transform;
+	using IG::transformN;
+	using IG::copy;
+	using IG::copy_n;
+	using IG::remap;
+	using IG::remapClamp;
+	using IG::InsertMode;
+
+	// util.bit
+	using IG::bitSize;
+	using IG::bit;
+	using IG::bits;
+	using IG::clearBits;
+	using IG::setOrClearBits;
+	using IG::updateBits;
+	using IG::swapBits;
+	using IG::isBitMaskSet;
+	using IG::addressAsBytes;
+	using IG::ctz;
+	using IG::clz;
+	using IG::fls;
+	using IG::BitSetClass;
+	using IG::asInt;
+	using IG::operator~;
+	using IG::operator|;
+	using IG::operator|=;
+	using IG::operator&;
+	using IG::operator&=;
+	using IG::operator^;
+	using IG::operator^=;
+
+	// util.concepts
+	using IG::Arithmetic;
+	using IG::Pointer;
+	using IG::NotPointer;
+	using IG::PointerOfSize;
+	using IG::PointerDecayable;
+	using IG::NotPointerDecayable;
+	using IG::NullPointer;
+	using IG::Class;
+	using IG::Container;
+	using IG::ResizableContainer;
+	using IG::Iterable;
+	using IG::SameInvokeResult;
+	using IG::ConvertibleInvokeResult;
+	using IG::VoidInvokeResult;
+	using IG::Callable;
+	using IG::CallableClass;
+	using IG::CallableFunctionPointer;
+	using IG::ValidInvokeArgs;
+	using IG::Const;
+	using IG::indirect;
+
+	// util.enum
+	using IG::lastEnum;
+	using IG::enumName;
+	using IG::enumCount;
+	using IG::enumIsValid;
+
+	// util.math
+	using IG::radians;
+	using IG::degrees;
+	using IG::pow2;
+	using IG::ceilMult;
+	using IG::floorMult;
+	using IG::roundMult;
+	using IG::isInRange;
+	using IG::sign;
+	using IG::wrapMax;
+	using IG::wrapMinMax;
+	using IG::roundUpPowOf2;
+	using IG::roundDownPowOf2;
+	using IG::pow;
+	using IG::isEven;
+	using IG::isOdd;
+	using IG::makeEvenRoundedUp;
+	using IG::makeEvenRoundedDown;
+	using IG::isPowerOf2;
+	using IG::alignRoundedUp;
+	using IG::divRoundUp;
+	using IG::divRoundClosestPositive;
+	using IG::divRoundClosestNegative;
+	using IG::divRoundClosest;
+	using IG::distance3D;
+	using IG::adjust2DSizeToFit;
+	using IG::setSizesWithRatioY;
+	using IG::setSizesWithRatioX;
+	using IG::isWithinThreshold;
+	using IG::rotateAboutPoint;
+	using IG::rotateAboutAxis;
+
+	// util.scopeGuard
+	using IG::scopeGuard;
+	using IG::ScopeGuard;
+
+	// util.variant
+	using IG::overloaded;
+	using IG::getAs;
+	using IG::AddVisit;
+
+	// util.ranges
+	using IG::iotaCount;
+	using IG::enumerate;
+	using IG::lastIndex;
+	using IG::toIterator;
+
+	// util.used
+	using IG::used;
+	using IG::doIfUsed;
+	using IG::doIfUsedOr;
+	using IG::UseIfOrConstantTagInjector;
+	using IG::UseIfTagInjector;
+	using IG::Unused;
+
+	// util.string
+	using IG::containsAny;
+	using IG::equalsToLower;
+	using IG::endsWithAnyCaseless;
+	using IG::equalsCaseless;
+	using IG::toUpperCase;
+	using IG::withoutDotExtension;
+	using IG::dotExtension;
+	using IG::caselessLexCompare;
+	using IG::toUTF16String;
+	using IG::UTF16String;
+	using IG::UTF16Convertible;
+	using IG::CStringView;
+	using IG::StaticString;
+
+	// util.rectangle
+	using IG::Rect2;
+	using IG::WindowRect;
+	using IG::WRect;
+	using IG::IRect;
+	using IG::SRect;
+	using IG::FRect;
+	using IG::makeWindowRectRel;
+
+	// util.memory
+	using IG::UniqueFileDescriptor;
+	using IG::MaybeUniqueFileDescriptor;
+	using IG::UniqueFileStream;
+	using IG::Buffer;
+	using IG::ByteBuffer;
+	using IG::ConstByteBuffer;
+	using IG::FlexArray;
+	using IG::DynArray;
+	using IG::dynArrayForOverwrite;
+
+	// util.container
+	using IG::ByteArray;
+	using IG::ZArray;
+	using IG::RingArray;
+	using IG::toArray;
+	using IG::concatToArray;
+	using IG::concatToArrayNow;
+	using IG::makeArray;
+	using IG::StaticArrayList;
+	using IG::erase;
+	using IG::erase_if;
+	using IG::RingBuffer;
+	using IG::RingBufferConf;
+	using IG::VMemArray;
+
+	// util.delegate
+	using IG::DelegateFuncBase;
+	using IG::DelegateFuncA;
+	using IG::DelegateFuncS;
+	using IG::DelegateFunc;
+	using IG::DelegateFuncEqualsMode;
+	using IG::delegateFuncDefaultInit;
+
+	// util.uri
+	using IG::isUri;
+	using IG::isUnreservedUriChar;
+	using IG::encodeUri;
+	using IG::decodeUri;
+
+	// util.ctype
+	using IG::isAlpha;
+	using IG::isBlank;
+	using IG::isCntrl;
+	using IG::isDigit;
+	using IG::isGraph;
+	using IG::isLower;
+	using IG::isPrint;
+	using IG::isSpace;
+	using IG::isUpper;
+	using IG::isXdigit;
+	using IG::toLower;
+	using IG::toUpper;
+	using IG::isAscii;
+	using IG::toAscii;
+
+	// util.format
+	using IG::formatTo;
+	using IG::format;
+	using IG::formatArray;
+
+	// util.zlib
+	using IG::hasGzipHeader;
+	using IG::gzipUncompressedSize;
+	using IG::compressGzip;
+	using IG::uncompressGzip;
+
+	// util.optional
+	using IG::Optional;
+	using IG::doOptionally;
+
+	// util.span
+	using IG::asBytes;
+	using IG::asWritableBytes;
+
+	// Property
+	using IG::PropertyDesc;
+	using IG::Property;
+	using IG::ConditionalPropertyImpl;
+	using IG::isValidProperty;
+}
+
+export namespace IG::Input
+{
+	using IG::Input::Device;
+	using IG::Input::BaseEvent;
+	using IG::Input::Event;
+	using IG::Input::KeyEvent;
+	using IG::Input::MotionEvent;
+	using IG::Input::Key;
+	using IG::Input::DefaultKey;
+	using IG::Input::DirectionKeys;
+	using IG::Input::directionKeys;
+	using IG::Input::Action;
+	using IG::Input::Source;
+	using IG::Input::PointerId;
+	using IG::Input::NULL_POINTER_ID;
+	using IG::Input::AxisKeyEmu;
+	using IG::Input::DragTracker;
+	using IG::Input::DragTrackerState;
+	using IG::Input::DeviceTypeFlags;
+	using IG::Input::DeviceSubtype;
+	using IG::Input::Axis;
+	using IG::Input::AxisFlags;
+	using IG::Input::AxisId;
+	using IG::Input::AxisSetId;
+	using IG::Input::toAxisIds;
+	using IG::Input::Map;
+	using IG::Input::validateMap;
+	using IG::Input::virtualDeviceFlags;
+	using IG::Input::DeviceChange;
+	using IG::Input::DevicesEnumeratedEvent;
+	using IG::Input::DeviceChangeEvent;
+	using IG::Input::SWAPPED_CONFIRM_KEYS_DEFAULT;
+	using IG::Input::Keycode;
+	using IG::Input::Pointer;
+	using IG::Input::Meta;
+	using IG::Input::OuyaKey;
+	using IG::Input::PS3Key;
+	using IG::Input::PS3BtKey;
+	using IG::Input::WiimoteKey;
+	using IG::Input::WiiCCKey;
+	using IG::Input::iControlPadKey;
+	using IG::Input::ZeemoteKey;
+	using IG::Input::KeyNameFlags;
+	using IG::Input::TextField;
+	using IG::Input::MogaManager;
+
+	#ifdef __ANDROID__
+	using IG::Input::XperiaPlayKey;
+	#endif
+}
+
+export namespace IG::FileUtils
+{
+	using IG::FileUtils::writeToPath;
+	using IG::FileUtils::writeToUri;
+	using IG::FileUtils::readFromPath;
+	using IG::FileUtils::readFromUri;
+	using IG::FileUtils::readFromUriWithArchiveScan;
+	using IG::FileUtils::bufferFromPath;
+	using IG::FileUtils::bufferFromUri;
+	using IG::FileUtils::rwBufferFromUri;
+	using IG::FileUtils::fopenUri;
+}
+
+export namespace IG::FS
+{
+	// path handling
+	using IG::FS::PathString;
+	using IG::FS::PathStringArray;
+	using IG::FS::FileString;
+	using IG::FS::FileStringArray;
+	using IG::FS::PathLocation;
+	using IG::FS::RootPathInfo;
+	using IG::FS::RootedPath;
+	using IG::FS::uriPathSegmentTreeName;
+	using IG::FS::uriPathSegmentDocumentName;
+	using IG::FS::dirnameUri;
+	using IG::FS::uriPathSegment;
+	using IG::FS::ConvertibleToPathString;
+	using IG::FS::pathString;
+	using IG::FS::uriString;
+	using IG::FS::basename;
+	using IG::FS::dirname;
+	using IG::FS::displayName;
+
+	// general
+	using IG::FS::DirectoryStream;
+	using IG::FS::DirOpenFlags;
+	using IG::FS::directory_entry;
+	using IG::FS::acc;
+	using IG::FS::file_time_type;
+	using IG::FS::file_status;
+	using IG::FS::file_type;
+	using IG::FS::directory_iterator;
+	using IG::FS::begin;
+	using IG::FS::end;
+	using IG::FS::current_path;
+	using IG::FS::exists;
+	using IG::FS::file_size;
+	using IG::FS::status;
+	using IG::FS::symlink_status;
+	using IG::FS::chown;
+	using IG::FS::access;
+	using IG::FS::remove;
+	using IG::FS::create_directory;
+	using IG::FS::rename;
+
+	// utils
+	using IG::FS::createDirectorySegments;
+	using IG::FS::createDirectoryUriSegments;
+	using IG::FS::directoryItems;
+	using IG::FS::forEachInDirectory;
+	using IG::FS::formatLastWriteTimeLocal;
+
+	// asset
+	using IG::FS::AssetDirectoryIterator;
+
+	#ifdef __ANDROID__
+	using IG::FS::AAssetDirectory;
+	using IG::FS::AAssetIterator;
+	#endif
+
+	// archive
+	using IG::FS::ArchiveIterator;
+	using IG::FS::seekInArchive;
+	using IG::FS::findInArchive;
+	using IG::FS::findFileInArchive;
+	using IG::FS::findDirectoryInArchive;
+	using IG::FS::seekFileInArchive;
+	using IG::FS::hasArchiveExtension;
+}
+
+export namespace IG::GL
+{
+	using IG::GL::API;
+	using IG::GL::defaultApi;
+	using IG::GL::Version;
+ }
+
+export namespace IG::Log
+{
+	using IG::Log::Level;
+	using IG::Log::setLogDirectoryPrefix;
+	using IG::Log::setEnabled;
+	using IG::Log::isEnabled;
+}
+
+#if __has_include(<jni.h>)
+export namespace JNI
+{
+	using JNI::getJNIStaticMethodID;
+	using JNI::getJNIMethodID;
+	using JNI::callJNIMethod;
+	using JNI::callJNIStaticMethod;
+	using JNI::ClassMethod;
+	using JNI::InstMethod;
+	using JNI::UniqueGlobalRef;
+	using JNI::StringChars;
+	using JNI::LockedLocalBitmap;
+}
+#endif
+
+export namespace IG::Audio::Config
+{
+	using IG::Audio::Config::MULTIPLE_SYSTEM_APIS;
+}
+
+export namespace IG::Audio
+{
+	using IG::Audio::Manager;
+	using IG::Audio::Api;
+	using IG::Audio::ApiDesc;
+	using IG::Audio::systemApis;
+	using IG::Audio::SampleFormat;
+	using IG::Audio::Format;
+	using IG::Audio::OutputStreamConfig;
+	using IG::Audio::OutputStream;
+	using IG::Audio::NullOutputStream;
+	using IG::Audio::StreamError;
+}
+
+export namespace IG::Audio::SampleFormats
+{
+	using IG::Audio::SampleFormats::i8;
+	using IG::Audio::SampleFormats::i16;
+	using IG::Audio::SampleFormats::i32;
+	using IG::Audio::SampleFormats::f32;
+	using IG::Audio::SampleFormats::none;
+}
+
+export namespace Config::Bluetooth
+{
+	using Config::Bluetooth::scanTime;
+	using Config::Bluetooth::scanCache;
+	using Config::Bluetooth::server;
+	using Config::Bluetooth::driver;
+	using Config::Bluetooth::Driver;
+}
+
+export namespace IG::Bluetooth
+{
+	using IG::Bluetooth::closeBT;
+	using IG::Bluetooth::closeDevices;
+	using IG::Bluetooth::connectPendingDevs;
+	using IG::Bluetooth::devsConnected;
+	using IG::Bluetooth::listenForDevices;
+	using IG::Bluetooth::pendingDevs;
+	using IG::Bluetooth::scanForDevices;
+}
+
+export namespace IG::Data
+{
+	// font
+	using IG::Data::FontManager;
+	using IG::Data::Font;
+	using IG::Data::FontSettings;
+	using IG::Data::FontSize;
+	using IG::Data::FontWeight;
+	using IG::Data::GlyphImage;
+	using IG::Data::GlyphMetrics;
+
+	// image
+	using IG::Data::PixmapSource;
+	using IG::Data::PixmapReader;
+	using IG::Data::PixmapWriter;
+	using IG::Data::PixmapReaderParams;
+	using IG::Data::PixmapImage;
+}
+
+export namespace IG::Gfx
+{
+	// general renderer
+	using IG::Gfx::Renderer;
+	using IG::Gfx::RendererCommands;
+	using IG::Gfx::BlendFunc;
+	using IG::Gfx::BlendMode;
+	using IG::Gfx::BlendEquation;
+	using IG::Gfx::Faces;
+	using IG::Gfx::supportsPresentModes;
+	using IG::Gfx::supportsPresentationTime;
+
+	// renderer task
+	using IG::Gfx::RendererTask;
+	using IG::Gfx::PresentMode;
+	using IG::Gfx::Primitive;
+
+	// buffer
+	using IG::Gfx::Buffer;
+	using IG::Gfx::BufferType;
+	using IG::Gfx::ByteBufferConfig;
+	using IG::Gfx::BufferUsageHint;
+	using IG::Gfx::BufferMapMode;
+	using IG::Gfx::MappedBuffer;
+	using IG::Gfx::MappedByteBuffer;
+	using IG::Gfx::NativeBuffer;
+
+	// math
+	using IG::Gfx::Vec3;
+	using IG::Gfx::Vec4;
+	using IG::Gfx::Mat4;
+
+	// shader
+	using IG::Gfx::Shader;
+	using IG::Gfx::ShaderType;
+	using IG::Gfx::NativeShader;
+	using IG::Gfx::UniqueGLShader;
+	using IG::Gfx::Program;
+	using IG::Gfx::ProgramFlags;
+	using IG::Gfx::NativeProgram;
+	using IG::Gfx::UniformLocationDesc;
+	using IG::Gfx::BasicEffect;
+
+	// sync
+	using IG::Gfx::SyncFence;
+
+	// text
+	using IG::Gfx::Text;
+	using IG::Gfx::TextAlignment;
+	using IG::Gfx::TextLayoutConfig;
+	using IG::Gfx::glyphSamplerConfig;
+
+	// texture
+	using IG::Gfx::Texture;
+	using IG::Gfx::TextureWriteFlags;
+	using IG::Gfx::PixmapBufferTexture;
+	using IG::Gfx::LockedTextureBuffer;
+	using IG::Gfx::TextureBufferFlags;
+	using IG::Gfx::TextureBufferImageMode;
+	using IG::Gfx::TextureConfig;
+	using IG::Gfx::TextureSpan;
+	using IG::Gfx::TextureType;
+	using IG::Gfx::TextureBufferMode;
+	using IG::Gfx::TextureBufferModeDesc;
+	using IG::Gfx::TextureSampler;
+	using IG::Gfx::TextureSamplerConfig;
+	using IG::Gfx::TextureBinding;
+	using IG::Gfx::TextureRef;
+	using IG::Gfx::GlyphTextureSet;
+	using IG::Gfx::GlyphEntry;
+
+	// texture sampler
+	using IG::Gfx::asSamplerParams;
+	using IG::Gfx::SamplerParams;
+	using IG::Gfx::MipFilter;
+	using IG::Gfx::WrapMode;
+
+	// drawable
+	using IG::Gfx::Drawable;
+	using IG::Gfx::DrawableConfig;
+	using IG::Gfx::DrawableConfigDesc;
+	using IG::Gfx::DrawParams;
+	using IG::Gfx::ClipRect;
+	using IG::Gfx::DrawAsyncMode;
+
+	// color
+	using IG::Gfx::Color;
+	using IG::Gfx::Color4F;
+	using IG::Gfx::ColorName;
+	using IG::Gfx::ColorSpace;
+	using IG::Gfx::PackedColor;
+
+	// gradient
+	using IG::Gfx::LGradient;
+	using IG::Gfx::LGradientPadMode;
+	using IG::Gfx::LGradientStopDesc;
+
+	// vertex
+	using IG::Gfx::IndexBuffer;
+	using IG::Gfx::VertexLayoutFlags;
+	using IG::Gfx::VertexLayoutDesc;
+	using IG::Gfx::AttribType;
+	using IG::Gfx::IColQuad;
+	using IG::Gfx::IColQuads;
+	using IG::Gfx::ITexQuad;
+	using IG::Gfx::ITexQuads;
+	using IG::Gfx::IQuads;
+	using IG::Gfx::Vertex2IColI;
+	using IG::Gfx::ILitTexQuad;
+	using IG::Gfx::ILitTexQuads;
+	using IG::Gfx::ILitTexFanQuads;
+	using IG::Gfx::BaseQuad;
+	using IG::Gfx::ObjectVertexArray;
+	using IG::Gfx::mapFanQuadIndices;
+	using IG::Gfx::QuadIndexArray;
+}
+
+export namespace IG::Gfx::SamplerConfigs
+{
+	using IG::Gfx::SamplerConfigs::clamp;
+	using IG::Gfx::SamplerConfigs::nearestMipClamp;
+	using IG::Gfx::SamplerConfigs::nearestMipRepeat;
+	using IG::Gfx::SamplerConfigs::noLinearNoMipClamp;
+	using IG::Gfx::SamplerConfigs::noMipClamp;
+	using IG::Gfx::SamplerConfigs::repeat;
+}
+
+export namespace Config::Gfx
+{
+	using Config::Gfx::OPENGL_ES;
+	using Config::Gfx::OPENGL_TEXTURE_TARGET_EXTERNAL;
+	using Config::Gfx::GLDRAWABLE_NEEDS_FRAMEBUFFER;
+}
+
+export namespace IG
+{
+	// view
+	using IG::View;
+	using IG::ViewManager;
+	using IG::ViewAttachParams;
+	using IG::ViewInputEventParams;
+	using IG::ViewDrawParams;
+	using IG::BasicViewController;
+	using IG::ViewController;
+	using IG::ViewStack;
+	using IG::BaseAlertView;
+	using IG::AlertView;
+	using IG::YesNoAlertView;
+	using IG::FSPicker;
+	using IG::ScrollView;
+	using IG::TableView;
+	using IG::TableUIState;
+	using IG::TextTableView;
+	using IG::TextEntry;
+	using IG::ToastView;
+	using IG::CollectTextInputView;
+	using IG::BasicNavView;
+	using IG::NavView;
+	using IG::FSPicker;
+
+	// menu item
+	using IG::MenuItem;
+	using IG::TextMenuItem;
+	using IG::TextHeadingMenuItem;
+	using IG::BoolMenuItem;
+	using IG::MultiChoiceMenuItem;
+	using IG::BaseDualTextMenuItem;
+	using IG::DualTextMenuItem;
+	using IG::MenuItemDrawAttrs;
+	using IG::MenuId;
+	using IG::defaultMenuId;
+}
+
+export namespace boost::static_strings
+{
+	using boost::static_strings::operator==;
+	using boost::static_strings::operator!=;
+	using boost::static_strings::operator+;
+}
+
+export namespace IG
+{
+	// access common types/functions without qualification
+	using ::realpath;
+	using std::size_t;
+	using ::ssize_t;
+	using ::off_t;
+	using std::uint8_t;
+	using std::uint16_t;
+	using std::uint32_t;
+	using std::uint64_t;
+	using std::int8_t;
+	using std::int16_t;
+	using std::int32_t;
+	using std::int64_t;
+	using std::uintptr_t;
+	using std::to_underlying;
+	using namespace std::literals::string_view_literals;
+	using namespace std::literals::chrono_literals;
+}

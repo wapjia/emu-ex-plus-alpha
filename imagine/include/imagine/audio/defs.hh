@@ -23,10 +23,9 @@ namespace IG::Audio
 	namespace Config
 	{
 	#if (defined __linux__ && !defined CONFIG_MACHINE_PANDORA)
-	#define CONFIG_AUDIO_MULTIPLE_SYSTEM_APIS
-	static constexpr bool MULTIPLE_SYSTEM_APIS = true;
+	inline constexpr bool MULTIPLE_SYSTEM_APIS = true;
 	#else
-	static constexpr bool MULTIPLE_SYSTEM_APIS = false;
+	inline constexpr bool MULTIPLE_SYSTEM_APIS = false;
 	#endif
 	}
 
@@ -41,11 +40,11 @@ enum class Api: uint8_t
 };
 
 #if defined __ANDROID__
-constexpr std::array systemApis{Api::AAUDIO, Api::OPENSL_ES};
+inline constexpr std::array systemApis{Api::AAUDIO, Api::OPENSL_ES};
 #elif defined __APPLE__
-constexpr std::array systemApis{Api::COREAUDIO};
+inline constexpr std::array systemApis{Api::COREAUDIO};
 #else
-	constexpr std::array systemApis{
+	inline constexpr std::array systemApis{
 	#ifdef CONFIG_PACKAGE_PULSEAUDIO
 	Api::PULSEAUDIO,
 	#endif

@@ -21,8 +21,11 @@
 #include <imagine/gui/TableView.hh>
 #include <imagine/gfx/Quads.hh>
 #include <imagine/util/concepts.hh>
+#ifndef IG_USE_MODULE_STD
 #include <vector>
 #include <array>
+#include <utility>
+#endif
 
 namespace IG
 {

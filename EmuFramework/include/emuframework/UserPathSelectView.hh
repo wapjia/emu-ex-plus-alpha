@@ -1,3 +1,5 @@
+#pragma once
+
 /*  This file is part of EmuFramework.
 
 	Imagine is free software: you can redistribute it and/or modify
@@ -16,10 +18,14 @@
 #include <emuframework/EmuApp.hh>
 #include <emuframework/EmuAppHelper.hh>
 #include <emuframework/FilePicker.hh>
+#ifndef IG_USE_MODULE_IMAGINE
 #include <imagine/gui/TableView.hh>
 #include <imagine/gui/MenuItem.hh>
 #include <imagine/util/container/ArrayList.hh>
+#endif
+#ifndef IG_USE_MODULE_STD
 #include <format>
+#endif
 
 namespace EmuEx
 {
@@ -35,11 +41,11 @@ public:
 			"选择文件夹", attach,
 			[=](View &view, const Input::Event &e)
 			{
-				auto fPicker = view.makeView<FilePicker>(FSPicker::Mode::DIR, EmuSystem::NameFilterFunc{}, e);
+				auto fPicker = view.makeView<FilePicker>(FSPicker::Mode::DIR, NameFilterFunc{}, e);
 				auto &thisView = asThis(view);
 				fPicker->setPath(thisView.searchDir, e);
 				fPicker->setOnSelectPath(
-					[=](FSPicker &picker, CStringView path, [[maybe_unused]] std::string_view displayName, const Input::Event&)
+					[=](FSPicker &picker, CStringView path, [[maybe_unused]] std::string_view, const Input::Event&)
 					{
 						onPathChange(path);
 						picker.popTo();
@@ -86,7 +92,7 @@ protected:
 	static UserPathSelectView &asThis(View &view) { return static_cast<UserPathSelectView&>(view); }
 };
 
-inline FS::FileString userPathToDisplayName(IG::ApplicationContext ctx, std::string_view userPathStr)
+inline FS::FileString userPathToDisplayName(ApplicationContext ctx, std::string_view userPathStr)
 {
 	if(userPathStr.size())
 	{
@@ -101,17 +107,17 @@ inline FS::FileString userPathToDisplayName(IG::ApplicationContext ctx, std::str
 	}
 }
 
-inline auto cheatsMenuName(IG::ApplicationContext ctx, std::string_view userPath)
+inline auto cheatsMenuName(ApplicationContext ctx, std::string_view userPath)
 {
 	return std::format("金手指: {}", std::string_view{userPathToDisplayName(ctx, userPath)});
 }
 
-inline auto patchesMenuName(IG::ApplicationContext ctx, std::string_view userPath)
+inline auto patchesMenuName(ApplicationContext ctx, std::string_view userPath)
 {
 	return std::format("补丁: {}", std::string_view{userPathToDisplayName(ctx, userPath)});
 }
 
-inline auto palettesMenuName(IG::ApplicationContext ctx, std::string_view userPath)
+inline auto palettesMenuName(ApplicationContext ctx, std::string_view userPath)
 {
 	return std::format("调色板: {}", std::string_view{userPathToDisplayName(ctx, userPath)});
 }

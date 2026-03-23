@@ -14,16 +14,15 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/AutosaveManager.hh>
-#include <emuframework/EmuApp.hh>
 #include <emuframework/Option.hh>
-#include <emuframework/EmuOptions.hh>
-#include "pathUtils.hh"
-#include <imagine/io/MapIO.hh>
-#include <imagine/io/FileIO.hh>
-#include <imagine/logger/logger.h>
+#include <emuframework/EmuApp.hh>
+import pathUtils;
+import imagine;
 
 namespace EmuEx
 {
+
+using namespace IG;
 
 constexpr SystemLogger log{"AutosaveMgr"};
 constexpr Minutes defaultSaveFreq{0};

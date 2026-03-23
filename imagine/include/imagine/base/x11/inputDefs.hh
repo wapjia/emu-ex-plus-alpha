@@ -15,9 +15,9 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
+#include <imagine/input/evdev/inputDefs.hh>
 #include <X11/keysym.h>
 #include <X11/XF86keysym.h>
-#include <imagine/input/evdev/inputDefs.hh>
 
 namespace IG::Input
 {
@@ -27,8 +27,8 @@ using PointerIdImpl = int;
 // Note: only first 15-bits of XF86XK_* values are used
 // so they fit in 2 bytes and don't conflict with other keys
 
-	namespace Keycode
-	{
+struct Keycode
+{
 	static constexpr Key
 	ESCAPE = XK_Escape,
 	BACK = XF86XK_Back & 0xEFFF,
@@ -205,35 +205,35 @@ using PointerIdImpl = int;
 	BACK_KEY = ESCAPE;
 
 	static constexpr uint32_t COUNT = 0xffff + 1;
+};
 
-		namespace Pandora
-		{
-		static constexpr Key
-		L = RSHIFT,
-		R = RCTRL,
-		A = HOME,
-		B = END,
-		Y = PGUP,
-		X = PGDOWN,
-		SELECT = LCTRL,
-		START = LALT,
-		LOGO = UNDO,
-		UP = Keycode::UP, RIGHT = Keycode::RIGHT, DOWN = Keycode::DOWN, LEFT = Keycode::LEFT;
-		}
-	}
+struct PandoraKey
+{
+	static constexpr Key
+	L = Keycode::RSHIFT,
+	R = Keycode::RCTRL,
+	A = Keycode::HOME,
+	B = Keycode::END,
+	Y = Keycode::PGUP,
+	X = Keycode::PGDOWN,
+	SELECT = Keycode::LCTRL,
+	START = Keycode::LALT,
+	LOGO = Keycode::UNDO,
+	UP = Keycode::UP, RIGHT = Keycode::RIGHT, DOWN = Keycode::DOWN, LEFT = Keycode::LEFT;
+};
 
-	namespace Pointer
-	{
+struct Pointer
+{
 	static constexpr Key
 	LBUTTON = 1,
 	MBUTTON = 2,
 	RBUTTON = 4,
 	DOWN_BUTTON = 128,
 	UP_BUTTON = 256;
-	}
+};
 
-	namespace Meta
-	{
+struct Meta
+{
 	static constexpr uint32_t
 	ALT = 0x8,
 	ALT_L = 0x8,
@@ -248,5 +248,6 @@ using PointerIdImpl = int;
 	META_L = 0x40,
 	META_R = 0x40,
 	CAPS_LOCK = 0x2;
-	}
+};
+
 }

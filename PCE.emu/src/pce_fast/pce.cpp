@@ -26,7 +26,7 @@
 #include <mednafen/hw_misc/arcade_card/arcade_card.h>
 #include <mednafen/mempatcher.h>
 #include <mednafen/cdrom/CDInterface.h>
-#include <imagine/util/string.h>
+import imagine;
 
 namespace MDFN_IEN_PCE_FAST
 {

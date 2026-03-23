@@ -17,17 +17,19 @@
 
 #include <imagine/config/defs.hh>
 #include <imagine/thread/Semaphore.hh>
-#include <imagine/util/utility.h>
+#ifndef IG_USE_MODULE_STD
 #include <concepts>
 #include <thread>
 #include <span>
+#include <utility>
+#endif
 
 namespace IG
 {
 
-static std::thread makeThreadSync(std::invocable<std::binary_semaphore&> auto &&f)
+inline std::thread makeThreadSync(std::invocable<binary_semaphore&> auto &&f)
 {
-	std::binary_semaphore sem{0};
+	binary_semaphore sem{0};
 	if constexpr(std::is_copy_constructible_v<decltype(f)>)
 	{
 		std::thread t
@@ -54,15 +56,15 @@ static std::thread makeThreadSync(std::invocable<std::binary_semaphore&> auto &&
 	}
 }
 
-static void makeDetachedThread(std::invocable auto &&f)
+inline void makeDetachedThread(std::invocable auto &&f)
 {
 	std::thread t{IG_forward(f)};
 	t.detach();
 }
 
-static void makeDetachedThreadSync(std::invocable<std::binary_semaphore&> auto &&f)
+inline void makeDetachedThreadSync(std::invocable<binary_semaphore&> auto &&f)
 {
-	std::binary_semaphore sem{0};
+	binary_semaphore sem{0};
 	if constexpr(std::is_copy_constructible_v<decltype(f)>)
 	{
 		std::thread t
@@ -95,7 +97,7 @@ using ThreadId = uint64_t;
 #endif
 
 using CPUMask = uint32_t;
-static constexpr int maxCPUs = 32;
+inline constexpr int maxCPUs = 32;
 
 void setThreadCPUAffinityMask(std::span<const ThreadId>, CPUMask mask);
 void setThreadPriority(ThreadId, int nice);

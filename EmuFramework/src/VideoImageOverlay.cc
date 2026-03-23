@@ -14,15 +14,19 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/VideoImageOverlay.hh>
-#include <emuframework/EmuSystem.hh>
+#ifdef IG_USE_MODULE_IMAGINE
+import imagine;
+#else
 #include <imagine/gfx/Renderer.hh>
-#include <imagine/gfx/RendererCommands.hh>
 #include <imagine/gfx/Vec3.hh>
+#endif
 
 namespace EmuEx
 {
 
-constexpr uint32_t slCol(uint8_t a) { return IG::PixelDescRGBA8888Native.build(0, 0, 0, a); }
+using namespace IG;
+
+constexpr uint32_t slCol(uint8_t a) { return PixelDescRGBA8888Native.build(0, 0, 0, a); }
 
 constexpr uint32_t scanlinePixmapBuff[]
 {
@@ -30,7 +34,7 @@ constexpr uint32_t scanlinePixmapBuff[]
 	slCol(0xff)
 };
 
-constexpr uint32_t lcdCol(uint8_t a) { return IG::PixelDescRGBA8888Native.build(0, 0, 0, a); }
+constexpr uint32_t lcdCol(uint8_t a) { return PixelDescRGBA8888Native.build(0, 0, 0, a); }
 
 constexpr uint32_t lcdPixmapBuff[]
 {
@@ -46,7 +50,7 @@ constexpr uint32_t lcdPixmapBuff[]
 
 constexpr uint32_t crtCol(uint8_t r, uint8_t g, uint8_t b)
 {
-	return IG::PixelDescRGBA8888Native.build(r, g, b, 0xff);
+	return PixelDescRGBA8888Native.build(r, g, b, 0xff);
 }
 
 constexpr WSize crtTexSize{4, 4};
@@ -86,7 +90,7 @@ constexpr OverlayDesc overlayDesc(ImageOverlayId id)
 		case ImageOverlayId::CRT_GRILLE ... ImageOverlayId::CRT_GRILLE_2:
 			return {{{crtTexSize, PixelFmtRGBA8888}, crtGrillePixmapBuff}, Gfx::WrapMode::REPEAT};
 	}
-	bug_unreachable("invalid ImageOverlayId");
+	unreachable();
 }
 
 constexpr bool isCrtOverlay(ImageOverlayId id)
@@ -126,7 +130,7 @@ void VideoImageOverlay::place(WRect contentRect, WSize videoPixels, Rotation r)
 {
 	if(!texture || videoPixels.y <= 1)
 		return;
-	using namespace IG::Gfx;
+	using namespace Gfx;
 	const float width2x = videoPixels.x * 2.f;
 	const bool is240p = videoPixels.y <= 256;
 	const float lines = is240p ? videoPixels.y : videoPixels.y * .5f;
@@ -150,7 +154,7 @@ void VideoImageOverlay::place(WRect contentRect, WSize videoPixels, Rotation r)
 			case ImageOverlayId::CRT_GRILLE_2:
 				return {&texture, {{}, crtDotsHalf}};
 		}
-		bug_unreachable("invalid ImageOverlayId");
+		unreachable();
 	}();
 	quad.write(0, {.bounds = contentRect.as<int16_t>(), .textureSpan = tex, .rotation = r});
 }
@@ -159,7 +163,7 @@ void VideoImageOverlay::draw(Gfx::RendererCommands &cmds, Gfx::Vec3 brightness)
 {
 	if(!texture)
 		return;
-	using namespace IG::Gfx;
+	using namespace Gfx;
 	if(multiplyBlend)
 	{
 		brightness *= 2.f;

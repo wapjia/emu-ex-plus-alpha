@@ -22,9 +22,11 @@
 #include <imagine/io/AAssetIO.hh>
 #endif
 #include <imagine/util/variant.hh>
+#ifndef IG_USE_MODULE_STD
 #include <variant>
 #include <span>
 #include <optional>
+#endif
 
 namespace IG
 {

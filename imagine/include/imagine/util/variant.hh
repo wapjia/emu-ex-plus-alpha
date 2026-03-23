@@ -15,9 +15,11 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/util/utility.h>
+#ifndef IG_USE_MODULE_STD
 #include <variant>
 #include <type_traits>
+#include <utility>
+#endif
 
 namespace IG
 {
@@ -94,7 +96,6 @@ template<class T, class... VTypes>
 constexpr T& getAs(std::variant<VTypes...>& v)
 {
 	auto vPtr = std::get_if<T>(&v);
-	assumeExpr(vPtr);
 	return *vPtr;
 }
 
@@ -102,7 +103,6 @@ template<class T, class... VTypes>
 constexpr const T& getAs(const std::variant<VTypes...>& v)
 {
 	auto vPtr = std::get_if<T>(&v);
-	assumeExpr(vPtr);
 	return *vPtr;
 }
 

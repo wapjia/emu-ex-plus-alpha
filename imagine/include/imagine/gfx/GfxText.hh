@@ -19,8 +19,11 @@
 #include <imagine/gfx/Quads.hh>
 #include <imagine/util/2DOrigin.h>
 #include <imagine/util/string/utf16.hh>
+#ifndef IG_USE_MODULE_STD
 #include <limits>
 #include <concepts>
+#include <utility>
+#endif
 
 namespace IG::Gfx
 {

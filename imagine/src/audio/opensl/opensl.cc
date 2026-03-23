@@ -13,15 +13,17 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/audio/opensl/OpenSLESOutputStream.hh>
 #include <imagine/audio/OutputStream.hh>
 #include <imagine/audio/Manager.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
+#include <SLES/OpenSLES.h>
+#include <SLES/OpenSLES_Android.h>
 
 namespace IG::Audio
 {
 
-constexpr SystemLogger log{"OpenSL"};
+static SystemLogger log{"OpenSL"};
 
 OpenSLESOutputStream::OpenSLESOutputStream(const Manager &manager)
 {
@@ -34,15 +36,15 @@ OpenSLESOutputStream::OpenSLESOutputStream(const Manager &manager)
 		return;
 	}
 	result = (*slE)->Realize(slE, SL_BOOLEAN_FALSE);
-	assert(result == SL_RESULT_SUCCESS);
+	assume(result == SL_RESULT_SUCCESS);
 
 	// output mix object
 	SLEngineItf slI;
 	result = (*slE)->GetInterface(slE, SL_IID_ENGINE, &slI);
-	assert(result == SL_RESULT_SUCCESS);
+	assume(result == SL_RESULT_SUCCESS);
 	SLObjectItf outMix;
 	result = (*slI)->CreateOutputMix(slI, &outMix, 0, nullptr, nullptr);
-	assert(result == SL_RESULT_SUCCESS);
+	assume(result == SL_RESULT_SUCCESS);
 	result = (*outMix)->Realize(outMix, SL_BOOLEAN_FALSE);
 	if(result != SL_RESULT_SUCCESS)
 	{
@@ -111,7 +113,7 @@ StreamError OpenSLESOutputStream::open(OutputStreamConfig config)
 	const SLboolean req[std::size(ids)]{SL_BOOLEAN_TRUE, SL_BOOLEAN_FALSE};
 	SLEngineItf slI;
 	SLresult result = (*slE)->GetInterface(slE, SL_IID_ENGINE, &slI);
-	assert(result == SL_RESULT_SUCCESS);
+	assume(result == SL_RESULT_SUCCESS);
 	result = (*slI)->CreateAudioPlayer(slI, &player, &audioSrc, &sink, std::size(ids), ids, req);
 	if(result != SL_RESULT_SUCCESS) [[unlikely]]
 	{
@@ -120,11 +122,11 @@ StreamError OpenSLESOutputStream::open(OutputStreamConfig config)
 		return StreamError::BadArgument;
 	}
 	result = (*player)->Realize(player, SL_BOOLEAN_FALSE);
-	assert(result == SL_RESULT_SUCCESS);
+	assume(result == SL_RESULT_SUCCESS);
 	result = (*player)->GetInterface(player, SL_IID_PLAY, &playerI);
-	assert(result == SL_RESULT_SUCCESS);
+	assume(result == SL_RESULT_SUCCESS);
 	result = (*player)->GetInterface(player, SL_IID_ANDROIDSIMPLEBUFFERQUEUE, &slBuffQI);
-	assert(result == SL_RESULT_SUCCESS);
+	assume(result == SL_RESULT_SUCCESS);
 	onSamplesNeeded = config.onSamplesNeeded;
 	bufferBytes = format.framesToBytes(bufferFrames);
 	buffer = std::make_unique<uint8_t[]>(bufferBytes);
@@ -134,7 +136,7 @@ StreamError OpenSLESOutputStream::open(OutputStreamConfig config)
 			auto thisPtr = static_cast<OpenSLESOutputStream*>(thisPtr_);
 			thisPtr->doBufferCallback(queue);
 		}, this);
-	assert(result == SL_RESULT_SUCCESS);
+	assume(result == SL_RESULT_SUCCESS);
 	if(config.startPlaying)
 		play();
 	return {};

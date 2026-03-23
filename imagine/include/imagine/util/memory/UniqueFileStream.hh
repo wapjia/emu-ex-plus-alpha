@@ -15,7 +15,9 @@
 
 #pragma once
 
+#ifndef IG_USE_MODULE_STD
 #include <cstdio>
+#endif
 
 namespace IG
 {

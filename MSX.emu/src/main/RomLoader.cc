@@ -13,28 +13,18 @@
 	You should have received a copy of the GNU General Public License
 	along with MSX.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-
+module;
 #include "ziphelper.h"
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/io/FileIO.hh>
-#include <imagine/io/IO.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/util/format.hh>
-#include <imagine/logger/logger.h>
-#include <string.h>
-#include "MainSystem.hh"
 
 extern "C"
 {
 	#include <blueMSX/Memory/RomLoader.h>
 }
 
+module system;
+
 namespace EmuEx
 {
-
-IG::ApplicationContext gAppContext();
-
-constexpr SystemLogger log{"MSXemu"};
 
 ArchiveIO &MsxSystem::firmwareArchive(CStringView path) const
 {
@@ -58,7 +48,7 @@ using namespace EmuEx;
 static UInt8 *fileToMallocBuffer(Readable auto &file, int *size)
 {
 	int fileSize = file.size();
-	auto buff = (UInt8*)malloc(fileSize);
+	auto buff = (UInt8*)std::malloc(fileSize);
 	file.read(buff, fileSize);
 	*size = fileSize;
 	return buff;
@@ -88,7 +78,7 @@ static IO fileFromFirmwarePath(CStringView path)
 		}
 		catch(...)
 		{
-			EmuEx::log.error("error opening path:{}", path);
+			MsxSystem::log.error("error opening path:{}", path);
 		}
 	}
 	// fall back to asset path
@@ -97,36 +87,36 @@ static IO fileFromFirmwarePath(CStringView path)
 	{
 		return assetFile;
 	}
-	EmuEx::log.error("{} not found in firmware path", path);
+	MsxSystem::log.error("{} not found in firmware path", path);
 	return {};
 }
 
-UInt8 *romLoad(const char *filename, const char *filenameInArchive, int *size)
+extern "C" UInt8* romLoad(const char* filename, const char* filenameInArchive, int* size)
 {
-	if(!filename || !strlen(filename))
+	if(!filename || !std::strlen(filename))
 		return nullptr;
-	if(filenameInArchive && strlen(filenameInArchive))
+	if(filenameInArchive && std::strlen(filenameInArchive))
 	{
-		EmuEx::log.info("loading zipped ROM:{}:{}", filename, filenameInArchive);
+		MsxSystem::log.info("loading zipped ROM:{}:{}", filename, filenameInArchive);
 		auto buff = (UInt8*)zipLoadFile(filename, filenameInArchive, size);
 		if(buff)
 			return buff;
-		EmuEx::log.error("can't load ROM from zip");
+		MsxSystem::log.error("can't load ROM from zip");
 		return nullptr;
 	}
 	else
 	{
-		EmuEx::log.info("loading ROM:{}", filename);
+		MsxSystem::log.info("loading ROM:{}", filename);
 		auto &sys = static_cast<MsxSystem&>(gSystem());
 		auto appCtx = sys.appContext();
-		if(filename[0] == '/' || IG::isUri(filename)) // try to load absolute path directly
+		if(filename[0] == '/' || isUri(filename)) // try to load absolute path directly
 		{
 			auto file = appCtx.openFileUri(filename, {.test = true, .accessHint = IOAccessHint::All});
 			if(file)
 			{
 				return fileToMallocBuffer(file, size);
 			}
-			EmuEx::log.error("can't load ROM from absolute path");
+			MsxSystem::log.error("can't load ROM from absolute path");
 			return nullptr;
 		}
 		// relative path, try firmware directory
@@ -137,14 +127,14 @@ UInt8 *romLoad(const char *filename, const char *filenameInArchive, int *size)
 				return fileToMallocBuffer(file, size);
 			}
 		}
-		EmuEx::log.error("can't load ROM from relative path");
+		MsxSystem::log.error("can't load ROM from relative path");
 		return nullptr;
 	}
 }
 
-CLINK FILE *openMachineIni(const char *filename, const char *mode)
+extern "C" FILE *openMachineIni(const char *filename, const char *mode)
 {
-	EmuEx::log.info("loading machine ini:{}", filename);
+	MsxSystem::log.info("loading machine ini:{}", filename);
 	auto file = fileFromFirmwarePath(filename);
 	if(file)
 	{

@@ -29,9 +29,10 @@
 #include <mednafen/cdrom/CDInterface.h>
 #include <mednafen/mempatcher.h>
 #include <mednafen/compress/GZFileStream.h>
-#include <emuframework/EmuSystem.hh>
 
 #include "huc.h"
+
+import emuex;
 
 namespace MDFN_IEN_PCE_FAST
 {

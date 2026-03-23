@@ -115,7 +115,7 @@ CLOCK maincpu_clk_limit = 0L;
 #define FETCH_OPCODE(o) \
     do { \
         if (((int)reg_pc) < bank_limit) {                       \
-            o = (*((uint32_t *)(bank_base + reg_pc)) & 0xffffff);  \
+            o = (*((uint32align1 *)(bank_base + reg_pc)) & 0xffffff);  \
             MEMMAP_UPDATE(reg_pc);                              \
             CLK_INC();                                          \
             CLK_INC();                                          \

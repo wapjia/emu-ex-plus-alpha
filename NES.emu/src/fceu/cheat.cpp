@@ -27,13 +27,14 @@
 #include "cart.h"
 #include "driver.h"
 #include "utils/memory.h"
-#include <imagine/util/algorithm.h>
 
 #include <string>
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
 #include <cctype>
+
+import imagine;
 
 using namespace std;
 

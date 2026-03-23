@@ -6,7 +6,7 @@ namespace IG::Input
 {
 
 // TODO: remove dummy defs
-namespace Keycode
+struct Keycode
 {
 	static const uint32_t ESCAPE = VK_ESCAPE,
 	ENTER = VK_RETURN,

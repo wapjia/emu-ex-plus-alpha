@@ -19,8 +19,10 @@
 #include <imagine/time/Time.hh>
 #include <imagine/util/used.hh>
 #include <CoreFoundation/CoreFoundation.h>
+#ifndef IG_USE_MODULE_STD
 #include <memory>
 #include <string_view>
+#endif
 
 namespace IG
 {

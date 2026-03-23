@@ -13,30 +13,15 @@
 	You should have received a copy of the GNU General Public License
 	along with 2600.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-// TODO: Some Stella types collide with MacTypes.h
-#define Debugger DebuggerMac
-#include <emuframework/EmuApp.hh>
-#undef Debugger
-#include "MainSystem.hh"
-#include <emuframework/Option.hh>
+module;
+#include <stella/emucore/Props.hxx>
+
+module system;
 
 namespace EmuEx
 {
 
-constexpr SystemLogger log{"2600.emu"};
-const char *EmuSystem::configFilename = "2600emu.config";
-
-std::span<const AspectRatioInfo> A2600System::aspectRatioInfos()
-{
-	static constexpr AspectRatioInfo aspectRatioInfo[]
-	{
-			{"4:3 (Original)", {4, 3}},
-			EMU_SYSTEM_DEFAULT_ASPECT_RATIO_INFO_INIT
-	};
-	return aspectRatioInfo;
-}
-
-bool A2600System::resetSessionOptions(EmuApp &app)
+bool A2600System::resetSessionOptions(EmuApp& app)
 {
 	optionTVPhosphor.reset();
 	setRuntimeTVPhosphor(optionTVPhosphor, optionTVPhosphorBlend);
@@ -51,7 +36,7 @@ bool A2600System::resetSessionOptions(EmuApp &app)
 	return true;
 }
 
-bool A2600System::readConfig(ConfigType type, MapIO &io, unsigned key)
+bool A2600System::readConfig(ConfigType type, MapIO& io, unsigned key)
 {
 	if(type == ConfigType::MAIN)
 	{
@@ -75,7 +60,7 @@ bool A2600System::readConfig(ConfigType type, MapIO &io, unsigned key)
 	return false;
 }
 
-void A2600System::writeConfig(ConfigType type, FileIO &io)
+void A2600System::writeConfig(ConfigType type, FileIO& io)
 {
 	if(type == ConfigType::MAIN)
 	{
@@ -89,20 +74,6 @@ void A2600System::writeConfig(ConfigType type, FileIO &io)
 		writeOptionValueIfNotDefault(io, optionInputPort1);
 		writeOptionValueIfNotDefault(io, optionPaddleDigitalSensitivity);
 		writeOptionValueIfNotDefault(io, optionPaddleAnalogRegion);
-	}
-}
-
-const char *optionVideoSystemToStr(uint8_t sysIdx)
-{
-	switch(sysIdx)
-	{
-		case 1: return "NTSC";
-		case 2: return "PAL";
-		case 3: return "SECAM";
-		case 4: return "NTSC50";
-		case 5: return "PAL60";
-		case 6: return "SECAM60";
-		default: return "AUTO";
 	}
 }
 

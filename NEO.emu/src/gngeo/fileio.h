@@ -20,6 +20,7 @@
 #define _FILEIO_H_
 
 #include <stdbool.h>
+#include <stdio.h>
 
 int open_rom(char *romname);
 

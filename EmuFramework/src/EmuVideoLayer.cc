@@ -14,25 +14,15 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/EmuVideoLayer.hh>
-#include <emuframework/EmuInputView.hh>
 #include <emuframework/EmuVideo.hh>
-#include <emuframework/EmuSystem.hh>
-#include <emuframework/VController.hh>
 #include <emuframework/Option.hh>
-#include <emuframework/EmuOptions.hh>
-#include <imagine/util/math/Point2D.hh>
-#include <imagine/util/format.hh>
-#include <imagine/base/Window.hh>
-#include <imagine/gfx/Renderer.hh>
-#include <imagine/gfx/RendererCommands.hh>
-#include <imagine/gfx/Vec3.hh>
-#include <imagine/gfx/Mat4.hh>
-#include <imagine/glm/gtc/color_space.hpp>
-#include <imagine/logger/logger.h>
-#include <algorithm>
+import imagine;
+import glm;
 
 namespace EmuEx
 {
+
+using namespace IG;
 
 constexpr SystemLogger log{"VideoLayer"};
 
@@ -41,7 +31,7 @@ EmuVideoLayer::EmuVideoLayer(EmuVideo &video, float defaultAspectRatio):
 	landscapeAspectRatio{defaultAspectRatio},
 	portraitAspectRatio{defaultAspectRatio} {}
 
-void EmuVideoLayer::place(IG::WindowRect viewRect, IG::WindowRect displayRect, EmuInputView *inputView, EmuSystem &sys)
+void EmuVideoLayer::place(WindowRect viewRect, WindowRect displayRect, EmuInputView *inputView, EmuSystem &sys)
 {
 	if(sys.hasContent() && video.size().x)
 	{
@@ -119,7 +109,7 @@ void EmuVideoLayer::place(IG::WindowRect viewRect, IG::WindowRect displayRect, E
 				auto size = displayRect.size();
 				if(aR)
 				{
-					size = IG::sizesWithRatioBestFit((float)aR, size.x, size.y);
+					size = sizesWithRatioBestFit((float)aR, size.x, size.y);
 				}
 				contentRect_.x2 = size.x;
 				contentRect_.y2 = size.y;
@@ -150,7 +140,7 @@ void EmuVideoLayer::draw(Gfx::RendererCommands &cmds)
 {
 	if(!texture)
 		return;
-	using namespace IG::Gfx;
+	using namespace Gfx;
 	bool srgbOutput = srgbColorSpace();
 	auto c = srgbOutput ? brightnessSrgb : brightness;
 	cmds.setColor({c.r, c.g, c.b});//设置前景色
@@ -197,16 +187,16 @@ void EmuVideoLayer::setRendererTask(Gfx::RendererTask &task)
 	quad = {task, {.size = 1}};
 }
 
-void EmuVideoLayer::setFormat(EmuSystem &sys, IG::PixelFormat videoFmt, IG::PixelFormat effectFmt, Gfx::ColorSpace colorSpace)
+void EmuVideoLayer::setFormat(EmuSystem &sys, PixelFormat videoFmt, PixelFormat effectFmt, Gfx::ColorSpace colorSpace)
 {
 	if(colSpace != colorSpace)
 	{
 		vidImgOverlay.setEffect(video.renderer(), {}, colSpace);
 	}
 	colSpace = colorSpace;
-	if(EmuSystem::canRenderRGBA8888 && colorSpace == Gfx::ColorSpace::SRGB)
+	if(AppMeta::canRenderRGBA8888 && colorSpace == Gfx::ColorSpace::SRGB)
 	{
-		videoFmt = IG::PixelFmtRGBA8888;
+		videoFmt = PixelFmtRGBA8888;
 	}
 	if(!video.setRenderPixelFormat(sys, videoFmt, videoColorSpace(videoFmt)))
 	{
@@ -234,12 +224,12 @@ void EmuVideoLayer::placeOverlay()
 	vidImgOverlay.place(contentRect(), video.size(), rotation);
 }
 
-void EmuVideoLayer::setEffectFormat(IG::PixelFormat fmt)
+void EmuVideoLayer::setEffectFormat(PixelFormat fmt)
 {
 	userEffect.setFormat(renderer(), fmt, colorSpace(), samplerConfig());
 }
 
-void EmuVideoLayer::setEffect(EmuSystem &sys, ImageEffectId effect, IG::PixelFormat fmt)
+void EmuVideoLayer::setEffect(EmuSystem &sys, ImageEffectId effect, PixelFormat fmt)
 {
 	if(userEffectId == effect)
 		return;
@@ -247,7 +237,7 @@ void EmuVideoLayer::setEffect(EmuSystem &sys, ImageEffectId effect, IG::PixelFor
 	updateEffect(sys, fmt);
 }
 
-void EmuVideoLayer::updateEffect(EmuSystem &sys, IG::PixelFormat fmt)
+void EmuVideoLayer::updateEffect(EmuSystem &sys, PixelFormat fmt)
 {
 	if(userEffectId == ImageEffectId::DIRECT)
 	{
@@ -280,7 +270,7 @@ void EmuVideoLayer::updateBrightness()
 	brightnessSrgb = glm::convertSRGBToLinear(brightness);
 }
 
-void EmuVideoLayer::onVideoFormatChanged(IG::PixelFormat effectFmt)
+void EmuVideoLayer::onVideoFormatChanged(PixelFormat effectFmt)
 {
 	setEffectFormat(effectFmt);
 	if(!updateConvertColorSpaceEffect())
@@ -291,7 +281,7 @@ void EmuVideoLayer::onVideoFormatChanged(IG::PixelFormat effectFmt)
 	setOverlay(userOverlayEffectId);
 }
 
-void EmuVideoLayer::setRotation(IG::Rotation r)
+void EmuVideoLayer::setRotation(Rotation r)
 {
 	rotation = r;
 	quad.write(0, {.bounds = contentRect_.as<int16_t>(), .textureSpan = texture, .rotation = rotation});
@@ -340,7 +330,7 @@ bool EmuVideoLayer::updateConvertColorSpaceEffect()
 		&& userEffectId == ImageEffectId::DIRECT;
 	if(needsConversion && !userEffect)
 	{
-		userEffect = {renderer(), ImageEffectId::DIRECT, IG::PixelFmtRGBA8888, Gfx::ColorSpace::SRGB, samplerConfig(), video.size()};
+		userEffect = {renderer(), ImageEffectId::DIRECT, PixelFmtRGBA8888, Gfx::ColorSpace::SRGB, samplerConfig(), video.size()};
 		log.info("made sRGB conversion effect");
 		buildEffectChain();
 		return true;
@@ -373,7 +363,7 @@ void EmuVideoLayer::logOutputFormat()
 {
 	if constexpr(Config::DEBUG_BUILD)
 	{
-		IG::StaticString<255> str{"output format: main video:"};
+		StaticString<255> str{"output format: main video:"};
 		str += video.image().pixmapDesc().format.name();
 		for(auto &ePtr : effects)
 		{
@@ -385,7 +375,7 @@ void EmuVideoLayer::logOutputFormat()
 	}
 }
 
-Gfx::ColorSpace EmuVideoLayer::videoColorSpace(IG::PixelFormat videoFmt) const
+Gfx::ColorSpace EmuVideoLayer::videoColorSpace(PixelFormat videoFmt) const
 {
 	// if we want sRGB output and are rendering directly, set the video to sRGB if possible
 	return colorSpace() == Gfx::ColorSpace::SRGB && userEffectId == ImageEffectId::DIRECT ?
@@ -403,7 +393,7 @@ static auto &channelBrightnessVal(ImageChannel ch, auto &brightnessUnscaled)
 		case ImageChannel::Green: return brightnessUnscaled.g;
 		case ImageChannel::Blue: return brightnessUnscaled.b;
 	}
-	bug_unreachable("invalid ImageChannel");
+	unreachable();
 }
 
 float EmuVideoLayer::channelBrightness(ImageChannel ch) const

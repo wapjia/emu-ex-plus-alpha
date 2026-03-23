@@ -1,0 +1,199 @@
+/*  This file is part of GBC.emu.
+
+	GBC.emu is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	GBC.emu is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with GBC.emu.  If not, see <http://www.gnu.org/licenses/> */
+
+module;
+#include <gambatte.h>
+#include <resample/resampler.h>
+#include <libgambatte/src/video/lcddef.h>
+
+export module system;
+import emuex;
+import imagine;
+import std;
+#include <list>
+
+namespace EmuEx
+{
+
+using namespace IG;
+using gambatte::uint_least32_t;
+using gambatte::VideoFrameDelegate;
+
+export enum class GbcKey: KeyCode
+{
+	Up = gambatte::InputGetter::UP,
+	Right = gambatte::InputGetter::RIGHT,
+	Down = gambatte::InputGetter::DOWN,
+	Left = gambatte::InputGetter::LEFT,
+	Select = gambatte::InputGetter::SELECT,
+	Start = gambatte::InputGetter::START,
+	A = gambatte::InputGetter::A,
+	B = gambatte::InputGetter::B,
+};
+
+extern "C++" class CheatCode: public StaticString<12> {};
+
+extern "C++" class Cheat
+{
+public:
+	StaticString<64> name;
+	std::vector<CheatCode> codes{};
+	uint8_t on:1{};
+
+	bool operator==(Cheat const& rhs) const { return codes == rhs.codes; }
+};
+
+enum GbcConfigKey
+{
+	CFGKEY_GB_PAL_IDX = 270, CFGKEY_REPORT_AS_GBA = 271,
+	CFGKEY_FULL_GBC_SATURATION = 272, CFGKEY_AUDIO_RESAMPLER = 273,
+	CFGKEY_USE_BUILTIN_GB_PAL = 274, CFGKEY_RENDER_PIXEL_FORMAT_UNUSED = 275,
+	CFGKEY_CHEATS_PATH = 276,
+};
+
+constexpr unsigned COLOR_CONVERSION_SATURATED_BIT{bit(0)};
+constexpr unsigned COLOR_CONVERSION_BGR_BIT{bit(1)};
+
+class GbcInput final: public gambatte::InputGetter
+{
+public:
+	unsigned bits{};
+
+	constexpr GbcInput() = default;
+	constexpr unsigned operator()() final { return bits; }
+};
+
+struct GBPalette
+{
+	uint32_t bg[4], sp1[4], sp2[4];
+};
+
+constexpr size_t gbNumPalettes{13};
+
+const GBPalette* findGbcTitlePal(char const* title);
+std::span<const GBPalette, gbNumPalettes> gbPalettes();
+void applyGBPalette();
+
+export class GbcSystem final: public EmuSystem
+{
+public:
+	gambatte::GB gbEmu;
+	GbcInput gbcInput;
+	std::unique_ptr<Resampler> resampler;
+	const GBPalette* gameBuiltinPalette{};
+	FileIO saveFileIO;
+	FileIO rtcFileIO;
+	std::string cheatsDir;
+	std::vector<Cheat> cheatList;
+	size_t saveStateSize{};
+	uint64_t totalSamples{};
+	uint32_t totalFrames{};
+	uint8_t activeResampler{1};
+	bool useBgrOrder{};
+	alignas(8) uint_least32_t frameBuffer[gambatte::lcd_hres * gambatte::lcd_vres];
+	Property<uint8_t, CFGKEY_GB_PAL_IDX,
+	{
+		.isValid = isValidWithMax<gbNumPalettes-1>
+	}> optionGBPal;
+	Property<bool, CFGKEY_USE_BUILTIN_GB_PAL,
+	{
+		.defaultValue = true
+	}> optionUseBuiltinGBPalette;
+	Property<bool, CFGKEY_REPORT_AS_GBA> optionReportAsGba;
+	Property<uint8_t, CFGKEY_AUDIO_RESAMPLER,
+	{
+		.defaultValue = 1, .isValid = isValidWithMax<4>
+	}> optionAudioResampler;
+	Property<bool, CFGKEY_FULL_GBC_SATURATION> optionFullGbcSaturation;
+	static constexpr FrameRate gbFrameRate{4194304. / 70224.}; // ~59.7275Hz
+	static constexpr SystemLogger log{"GBC.emu"};
+
+	GbcSystem(ApplicationContext ctx):
+		EmuSystem{ctx}
+	{
+		gbEmu.setInputGetter(&gbcInput);
+	}
+	void applyGBPalette();
+	void applyCheats();
+	void readCheatFile();
+	void writeCheatFile();
+	void refreshPalettes();
+
+	// required API functions
+	void loadContent(IO&, EmuSystemCreateParams, OnLoadProgressDelegate);
+	[[gnu::hot]] void runFrame(EmuSystemTaskContext, EmuVideo*, EmuAudio*);
+	FS::FileString stateFilename(int slot, std::string_view name) const;
+	std::string_view stateFilenameExt() const { return ".sta"; }
+	size_t stateSize() { return saveStateSize; }
+	void readState(EmuApp&, std::span<uint8_t> buff);
+	size_t writeState(std::span<uint8_t> buff, SaveStateFlags = {});
+	bool readConfig(ConfigType, MapIO&, unsigned key);
+	void writeConfig(ConfigType, FileIO&);
+	void reset(EmuApp&, ResetMode mode);
+	void clearInputBuffers() { gbcInput.bits = 0; }
+	void handleInputAction(EmuApp *, InputAction a) { gbcInput.bits = setOrClearBits(gbcInput.bits, a.code, a.isPushed()); }
+	FrameRate frameRate() const { return gbFrameRate; }
+	void configAudioRate(FrameRate outputFrameRate, int outputRate);
+
+	// optional API functions
+	void loadBackupMemory(EmuApp&);
+	void onFlushBackupMemory(EmuApp&, BackupMemoryDirtyFlags);
+	WallClockTimePoint backupMemoryLastWriteTime(const EmuApp&) const;
+	void closeSystem();
+	void onOptionsLoaded();
+	bool resetSessionOptions(EmuApp&);
+	bool onVideoRenderFormatChange(EmuVideo&, PixelFormat);
+	void renderFramebuffer(EmuVideo&);
+	Cheat* newCheat(EmuApp&, const char* name, CheatCodeDesc);
+	bool setCheatName(Cheat&, const char* name);
+	std::string_view cheatName(const Cheat&) const;
+	void setCheatEnabled(Cheat&, bool on);
+	bool isCheatEnabled(const Cheat&) const;
+	bool addCheatCode(EmuApp&, Cheat*&, CheatCodeDesc);
+	bool modifyCheatCode(EmuApp&, Cheat&, CheatCode&, CheatCodeDesc);
+	Cheat* removeCheatCode(Cheat&, CheatCode&);
+	bool removeCheat(Cheat&);
+	void forEachCheat(DelegateFunc<bool(Cheat&, std::string_view)>);
+	void forEachCheatCode(Cheat&, DelegateFunc<bool(CheatCode&, std::string_view)>);
+	//region 爱吾修改
+	void setCheatListAiWu(const std::list<std::string>& cheatList);
+	std::string getSystemSettingValueAiWu(std::string_view key);
+	void setSystemSettingValueAiWu(std::string_view key, std::string_view value);
+	//endregion
+
+protected:
+	uint_least32_t makeOutputColor(uint_least32_t rgb888) const;
+	size_t runUntilVideoFrame(uint_least32_t* videoBuf, std::ptrdiff_t pitch,
+		EmuAudio*, VideoFrameDelegate videoFrameCallback);
+	void renderVideo(const EmuSystemTaskContext&, EmuVideo&);
+	void updateColorConversionFlags();
+};
+
+export using MainSystem = GbcSystem;
+
+class GbcApp final: public EmuApp
+{
+public:
+	GbcApp(ApplicationInitParams initParams, ApplicationContext& ctx):
+		EmuApp{initParams, ctx}, system_{ctx} {}
+	auto& system(this auto&& self) { return self.system_; }
+
+private:
+	GbcSystem system_;
+};
+
+export using MainApp = GbcApp;
+
+}

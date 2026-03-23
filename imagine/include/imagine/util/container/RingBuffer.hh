@@ -18,14 +18,15 @@
 #include <imagine/vmem/memory.hh>
 #include <imagine/util/math.hh>
 #include <imagine/util/algorithm.h>
+#ifndef IG_USE_MODULE_STD
 #include <cstdint>
-#include <cassert>
 #include <atomic>
 #include <span>
 #include <optional>
 #include <type_traits>
 #include <bit>
 #include <array>
+#endif
 
 namespace IG
 {
@@ -270,7 +271,7 @@ private:
 		if(!conf.mirrored)
 		{
 			// check that a multi-element read/write doesn't go past the buffer
-			assert(&span[span.size()] <= &buff[bufferCapacity()]);
+			assume(&span[span.size()] <= &buff[bufferCapacity()]);
 		}
 	}
 };

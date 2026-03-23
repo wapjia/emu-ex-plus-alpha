@@ -19,10 +19,6 @@
 #include <imagine/fs/FSDefs.hh>
 #include <imagine/io/ArchiveIO.hh>
 #include <imagine/util/string/CStringView.hh>
-#include <memory>
-#include <iterator>
-#include <string_view>
-#include <concepts>
 
 namespace IG::FS
 {

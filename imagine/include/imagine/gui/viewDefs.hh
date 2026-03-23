@@ -18,15 +18,17 @@
 #include <imagine/config/defs.hh>
 #include <imagine/gfx/TextureSamplerConfig.hh>
 #include <imagine/util/DelegateFunc.hh>
-#include <imagine/util/utility.h>
+#ifndef IG_USE_MODULE_STD
 #include <span>
+#include <utility>
+#endif
 
 namespace IG::ViewDefs
 {
 
-constexpr bool needsBackControlDefault = true;//!Config::envIsAndroid;//爱吾修改：标题栏返回按钮默认显示
-constexpr bool needsBackControlIsMutable = !Config::envIsIOS;
-constexpr auto imageSamplerConfig = Gfx::SamplerConfigs::nearestMipClamp;
+inline constexpr bool needsBackControlDefault = true;//!Config::envIsAndroid;//爱吾修改：标题栏返回按钮默认显示
+inline constexpr bool needsBackControlIsMutable = !Config::envIsIOS;
+inline constexpr auto imageSamplerConfig = Gfx::SamplerConfigs::nearestMipClamp;
 
 }
 

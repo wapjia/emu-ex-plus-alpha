@@ -13,25 +13,83 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "FS"
 #include <imagine/fs/FS.hh>
 #include <imagine/fs/FSUtils.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/util/utility.h>
-#include <imagine/util/string.h>
-#include "libgen.hh"
+#include <imagine/base/ApplicationContext.hh>
+#include <imagine/util/format.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <stdlib.h>
+#if defined __linux__ && !defined __ANDROID__
+#include <libgen.h>
+#undef basename
+#include <string.h> // use GNU version of basename() that doesn't modify argument
+#define DIRNAME_MODIFIES_ARG true
+#else
+// Bionic or BSD
+#include <libgen.h>
+#define DIRNAME_MODIFIES_ARG false
+#endif
 
 namespace IG::FS
 {
 
+static SystemLogger log{"FS"};
+constexpr bool dirnameCanModifyArgument = DIRNAME_MODIFIES_ARG;
+
+static auto basenameImpl(const char *path)
+{
+	return [](auto path)
+	{
+		if constexpr(requires {::basename(path);})
+		{
+			// Bionic or GNU C versions take const char*
+			return ::basename(path);
+		}
+		else
+		{
+			// BSD version takes char *, but always returns its own allocated storage
+			return ::basename(PathString{path}.data());
+		}
+	}(path);
+}
+
+static auto dirnameImpl(const char *path)
+{
+	return [](auto path)
+	{
+		if constexpr(requires {::dirname(path);})
+		{
+			// Bionic version takes const char*
+			return ::dirname(path);
+		}
+		else
+		{
+			if constexpr(dirnameCanModifyArgument)
+			{
+				// standard version can modify input, and returns a pointer within it
+				PathString tempPath{path};
+				FileString output{::dirname(tempPath.data())};
+				return output;
+			}
+			else
+			{
+				// BSD version takes char *, but always returns its own allocated storage
+				return ::dirname(PathString{path}.data());
+			}
+		}
+	}(path);
+}
+
+// make sure basename macro doesn't leak
+#undef basename
+
 PathString makeAppPathFromLaunchCommand(CStringView launchCmd)
 {
-	logMsg("app path from launch command:%s", launchCmd.data());
+	log.info("app path from launch command:{}", launchCmd);
 	PathStringArray realPath;
 	if(!realpath(FS::dirname(launchCmd).data(), realPath.data()))
 	{
-		logErr("error in realpath()");
+		log.error("error in realpath()");
 		return {};
 	}
 	return realPath.data();
@@ -67,7 +125,7 @@ PathString dirnameUri(CStringView pathOrUri)
 		auto [docPath, docPos] = FS::uriPathSegment(pathOrUri, FS::uriPathSegmentDocumentName);
 		if(docPos == std::string_view::npos)
 		{
-			logErr("invalid document path in tree URI:%s", pathOrUri.data());
+			log.error("invalid document path in tree URI:{}", pathOrUri);
 			return {};
 		}
 		if(auto lastSlashPos = docPath.rfind("%2F");
@@ -82,13 +140,13 @@ PathString dirnameUri(CStringView pathOrUri)
 			return {pathOrUri, docPos + colonPos};
 		}
 	}
-	logErr("can't get directory name on unsupported URI:%s", pathOrUri.data());
+	log.error("can't get directory name on unsupported URI:{}", pathOrUri);
 	return {};
 }
 
 std::pair<std::string_view, size_t> uriPathSegment(std::string_view uri, std::string_view name)
 {
-	assert(name.starts_with('/') && name.ends_with('/'));
+	assume(name.starts_with('/') && name.ends_with('/'));
 	auto pathPos = uri.find(name);
 	if(pathPos == std::string_view::npos)
 		return {{}, std::string_view::npos};

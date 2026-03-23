@@ -28,5 +28,5 @@ endif
 CPPFLAGS += -D_GNU_SOURCE
 LDLIBS += -lpthread -lm
 LDFLAGS_SYSTEM += -Wl,-O3,--gc-sections,--as-needed,--compress-debug-sections=$(COMPRESS_DEBUG_SECTIONS),--icf=all
-
+CFLAGS_CODEGEN += -fuse-ld=mold
 LDFLAGS_SYSTEM += -fuse-ld=mold

@@ -16,22 +16,17 @@
 #include <imagine/gui/FSPicker.hh>
 #include <imagine/gui/TextTableView.hh>
 #include <imagine/gui/TextEntry.hh>
-#include <imagine/gui/NavView.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/gfx/RendererCommands.hh>
 #include <imagine/gfx/BasicEffect.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/util/math.hh>
+#include <imagine/fs/FSDefs.hh>
+#include <imagine/fs/FS.hh>
 #include <imagine/util/format.hh>
 #include <imagine/util/string.h>
-#include <string>
-#include <system_error>
+#include <imagine/logger/SystemLogger.hh>
 
 namespace IG
 {
 
-constexpr SystemLogger log{"FSPicker"};
+static SystemLogger log{"FSPicker"};
 
 FSPicker::FSPicker(ViewAttachParams attach, Gfx::TextureSpan backRes, Gfx::TextureSpan closeRes,
 	FilterFunc filter, Mode mode, Gfx::GlyphTextureSet *face_):
@@ -230,7 +225,7 @@ void FSPicker::setEmptyPath()
 
 void FSPicker::setPath(CStringView path, FS::RootPathInfo rootInfo, const Input::Event &e)
 {
-	if(!strlen(path))
+	if(!std::strlen(path))
 	{
 		setEmptyPath();
 		return;
@@ -404,7 +399,7 @@ void FSPicker::pushFileLocationsView(const Input::Event &e)
 				"输入文件夹路径", root.path, Gfx::TextureSpan{},
 				[this](CollectTextInputView &view, const char *str)
 				{
-					if(!str || !strlen(str))
+					if(!str || !std::strlen(str))
 					{
 						view.dismiss();
 						return false;
@@ -542,10 +537,10 @@ void FSPicker::listDirectory(CStringView path, ThreadStop &stop)
 					d.text.onSelect =
 						[this, &dirPath = d.path](const Input::Event &e)
 						{
-							assert(!isSingleDirectoryMode());
+							assume(!isSingleDirectoryMode());
 							auto path = std::move(dirPath);
 							log.info("entering dir:{}", path);
-							changeDirByInput(path, root.info, e);
+							changeDirByInput(path, root.info, e, DepthMode::increment);
 						};
 				}
 				else

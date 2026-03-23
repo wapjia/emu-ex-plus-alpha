@@ -17,12 +17,16 @@
 
 #include <imagine/config/defs.hh>
 #include <imagine/pixmap/PixmapDesc.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <imagine/util/rectangle2.h>
 #include <imagine/util/algorithm.h>
 #include <imagine/util/ranges.hh>
 #include <imagine/util/mdspan.hh>
 #include <imagine/util/concepts.hh>
+#ifndef IG_USE_MODULE_STD
 #include <cstring>
+#include <utility>
+#endif
 
 namespace IG
 {
@@ -84,7 +88,7 @@ public:
 		return data_;
 	}
 
-	constexpr auto data() const
+	constexpr PixData* data() const
 	{
 		return data_;
 	}
@@ -110,7 +114,7 @@ public:
 			case 2: return (PixData*)&mdspan<uint16_t>()[pos.y, pos.x];
 			case 4: return (PixData*)&mdspan<uint32_t>()[pos.y, pos.x];
 		}
-		bug_unreachable("invalid bytes per pixel:%d", format().bytesPerPixel());
+		unreachable();
 	}
 
 	constexpr const PixData &operator[](int x, int y) const { return *data({x, y}); }
@@ -147,14 +151,14 @@ public:
 	constexpr PixmapViewBase subView(WPt pos, WSize size) const
 	{
 		//logDMsg("sub-pixmap with pos:%dx%d size:%dx%d", pos.x, pos.y, size.x, size.y);
-		assumeExpr(pos.x >= 0 && pos.y >= 0);
-		assumeExpr(pos.x + size.x <= w() && pos.y + size.y <= h());
+		assume(pos.x >= 0 && pos.y >= 0);
+		assume(pos.x + size.x <= w() && pos.y + size.y <= h());
 		return PixmapViewBase{desc().makeNewSize(size), data(pos), {pitchBytes(), Units::BYTE}};
 	}
 
 	void write(auto pixmap) requires(dataIsMutable)
 	{
-		assumeExpr(format() == pixmap.format());
+		assume(format() == pixmap.format());
 		if(w() == pixmap.w() && !isPadded() && !pixmap.isPadded())
 		{
 			// whole block
@@ -323,6 +327,7 @@ protected:
 	PixData *data_{};
 	int pitchPx_{};
 	PixmapDesc desc_{};
+	static constexpr SystemLogger log{"Pixmap"};
 
 	template <class Dest>
 	void writeTransformed(uint8_t srcBytesPerPixel, PixmapTransformFunc auto &&func, auto pixmap) requires(dataIsMutable)
@@ -369,7 +374,8 @@ protected:
 
 	static void invalidFormatConversion([[maybe_unused]] auto dest, [[maybe_unused]] auto src)
 	{
-		bug_unreachable("unimplemented conversion:%s -> %s", src.format().name(), dest.format().name());
+		log.error("unimplemented conversion:%s -> %s", src.format().name(), dest.format().name());
+		unreachable();
 	}
 
 	static void convertRGB888ToRGBX8888(auto dest, auto src)

@@ -16,7 +16,11 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <mednafen/VirtualFS.h>
+#ifdef IG_USE_MODULES
+import imagine;
+#else
 #include <imagine/io/ArchiveIO.hh>
+#endif
 
 namespace Mednafen
 {

@@ -14,16 +14,18 @@
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <imagine/base/EventLoop.hh>
-#include <imagine/util/format.hh>
 #include <imagine/util/jni.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/util/utility.hh>
+#include <imagine/logger/SystemLogger.hh>
 #include <unistd.h>
 #include <pthread.h>
+#include <android/looper.h>
+#include <android/native_activity.h>
 
 namespace IG
 {
 
-constexpr SystemLogger log{"EventLoop"};
+static SystemLogger log{"EventLoop"};
 extern pthread_key_t jEnvPThreadKey;
 
 static int eventCallback(int fd, int events, void *data)
@@ -70,7 +72,6 @@ bool FDEventSource::attach(EventLoop loop, PollEventFlags events)
 	log.info("adding fd:{} to looper:{} ({})", fd_.get(), (void*)loop.nativeObject(), debugLabel());
 	if(!loop)
 		loop = EventLoop::forThread();
-	assumeExpr(info);
 	info->looper = loop.nativeObject();
 	if(auto res = ALooper_addFd(loop.nativeObject(), fd_, ALOOPER_POLL_CALLBACK, events, eventCallback, info.get());
 		res != 1)
@@ -106,7 +107,6 @@ void FDEventSource::dispatchEvents(PollEventFlags events)
 
 void FDEventSource::setCallback(PollEventDelegate callback)
 {
-	assumeExpr(info);
 	info->callback = callback;
 }
 
@@ -160,7 +160,6 @@ static JavaLooperContext javaLooperContext()
 	if(!env)
 		return {};
 	auto looperClass = env->FindClass("android/os/Looper");
-	assert(looperClass);
 	JNI::ClassMethod<jobject()> myLooper{env, looperClass, "myLooper", "()Landroid/os/Looper;"};
 	return {env, looperClass, myLooper(env, looperClass)};
 }

@@ -14,14 +14,14 @@
 	along with EmuFramework.  If not, see <http://www.gnu.org/licenses/> */
 
 #include <emuframework/EmuInput.hh>
-#include <emuframework/EmuOptions.hh>
 #include <emuframework/Option.hh>
-#include <imagine/io/MapIO.hh>
-#include <imagine/io/FileIO.hh>
-#include <imagine/logger/logger.h>
+#include <emuframework/EmuOptions.hh>
+import imagine;
 
 namespace EmuEx
 {
+
+using namespace IG;
 
 constexpr SystemLogger log{"KeyConfig"};
 
@@ -33,7 +33,7 @@ KeyConfig KeyConfig::readConfig(MapIO &io)
 	readSizedData<uint8_t>(io, keyConf.name);
 	auto mappings = io.get<uint8_t>();
 	keyConf.keyMap.reserve(mappings);
-	for(auto _ : iotaCount(mappings))
+	for(auto _: iotaCount(mappings))
 	{
 		KeyMapping m;
 		io.read(m.key.codes.data(), m.key.codes.capacity());
@@ -66,7 +66,7 @@ void KeyConfig::writeConfig(FileIO &io) const
 	bytes += name.size(); // name string
 	bytes += 1; // number of mappings present
 	bytes += keyMap.size() * keyMappingSize;
-	assert(bytes <= 0xFFFF);
+	assume(bytes <= 0xFFFF);
 	log.info("saving config:{}, {} bytes", name, bytes);
 	io.put(uint16_t(bytes));
 	io.put(uint16_t(CFGKEY_INPUT_KEY_CONFIGS_V2));

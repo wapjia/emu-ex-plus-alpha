@@ -13,18 +13,18 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "HardwareBuffStorage"
+#include <imagine/config/macros.h>
 #include <imagine/gfx/opengl/android/HardwareBufferStorage.hh>
-#include <imagine/gfx/opengl/android/egl.hh>
 #include <imagine/gfx/Renderer.hh>
-#include <imagine/logger/logger.h>
+#include <imagine/logger/SystemLogger.hh>
 #include <android/hardware_buffer.h>
 
 namespace IG::Gfx
 {
 
-static constexpr uint32_t allocateUsage = AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
-static constexpr uint32_t lockUsage = AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+static SystemLogger log{"HardwareBuffStorage"};
+constexpr uint32_t allocateUsage = AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+constexpr uint32_t lockUsage = AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
 
 template<class Buffer>
 HardwareSingleBufferStorage<Buffer>::HardwareSingleBufferStorage(RendererTask &r, TextureConfig config):
@@ -43,17 +43,17 @@ bool HardwareSingleBufferStorage<Buffer>::setFormat(PixmapDesc desc, ColorSpace 
 	buffer = {desc, allocateUsage};
 	if(!buffer)
 	{
-		logMsg("error allocating %dx%d format:%s buffer", desc.w(), desc.h(), desc.format.name());
+		log.info("error allocating {}x{} format:{} buffer", desc.w(), desc.h(), desc.format.name());
 		return false;
 	}
-	logMsg("allocated buffer:%p size:%dx%d format:%s pitch:%d",
-		buffer.nativeObject(), desc.w(), desc.h(), desc.format.name(), buffer.pitch());
+	log.info("allocated buffer:{} size:{}x{} format:{} pitch:{}",
+		(void*)buffer.nativeObject(), desc.w(), desc.h(), desc.format.name(), buffer.pitch());
 	pitchBytes = buffer.pitch() * desc.format.bytesPerPixel();
 	auto dpy = renderer().glDisplay();
 	auto eglImg = makeAndroidNativeBufferEGLImage(dpy, buffer.eglClientBuffer(), colorSpace == ColorSpace::SRGB);
 	if(!eglImg) [[unlikely]]
 	{
-		logErr("error creating EGL image");
+		log.error("error creating EGL image");
 		return false;
 	}
 	initWithEGLImage(eglImg, desc, asSamplerParams(samplerConf), false);
@@ -67,7 +67,7 @@ LockedTextureBuffer HardwareSingleBufferStorage<Buffer>::lock(TextureBufferFlags
 	void *data{};
 	if(!buffer.lock(lockUsage, &data)) [[unlikely]]
 	{
-		logErr("error locking");
+		log.error("error locking");
 		return {};
 	}
 	return lockedBuffer(data, pitchBytes, bufferFlags);
@@ -99,16 +99,16 @@ bool HardwareBufferStorage<Buffer>::setFormat(PixmapDesc desc, ColorSpace colorS
 		buff = {desc, allocateUsage};
 		if(!buff)
 		{
-			logMsg("error allocating %dx%d format:%s buffer", desc.w(), desc.h(), desc.format.name());
+			log.info("error allocating {}x{} format:{} buffer", desc.w(), desc.h(), desc.format.name());
 			return false;
 		}
-		logMsg("allocated buffer:%p size:%dx%d format:%s pitch:%d",
-			buff.nativeObject(), desc.w(), desc.h(), desc.format.name(), buff.pitch());
+		log.info("allocated buffer:{} size:{}x{} format:{} pitch:{}",
+			(void*)buff.nativeObject(), desc.w(), desc.h(), desc.format.name(), buff.pitch());
 		pitchBytes = buff.pitch() * desc.format.bytesPerPixel();
 		eglImg.reset(makeAndroidNativeBufferEGLImage(dpy, buff.eglClientBuffer(), colorSpace == ColorSpace::SRGB));
 		if(!eglImg) [[unlikely]]
 		{
-			logErr("error creating EGL image");
+			log.error("error creating EGL image");
 			return false;
 		}
 	}
@@ -123,7 +123,7 @@ LockedTextureBuffer HardwareBufferStorage<Buffer>::lock(TextureBufferFlags buffe
 	auto &[buff, eglImg, pitchBytes] = bufferInfo[bufferIdx];
 	if(!buff.lock(lockUsage, &data)) [[unlikely]]
 	{
-		logErr("error locking");
+		log.error("error locking");
 		return {};
 	}
 	return lockedBuffer(data, pitchBytes, bufferFlags);

@@ -1,0 +1,87 @@
+target_sources(2600emu PRIVATE FILE_SET CXX_MODULES
+	BASE_DIRS main
+	FILES main/system.ccm
+)
+
+file(GLOB cartSrcs "stella/emucore/Cart*.cxx")
+
+target_sources(2600emu PRIVATE
+	main/Main.cc
+	main/AppMeta.cc
+	main/options.cc
+	main/input.cc
+	main/EmuMenuViews.cc
+	main/SoundEmuEx.cc
+	main/FrameBuffer.cc
+	main/OSystem.cc
+	main/FSNodeEmuEx.cc
+	stella/emucore/AtariVox.cxx
+	stella/emucore/Bankswitch.cxx
+	stella/emucore/Booster.cxx
+	stella/emucore/CompuMate.cxx
+	stella/emucore/Console.cxx
+	stella/emucore/Control.cxx
+	stella/emucore/ControllerDetector.cxx
+	stella/emucore/CortexM0.cxx
+	stella/emucore/DispatchResult.cxx
+	stella/emucore/Driving.cxx
+	stella/emucore/EmulationTiming.cxx
+	stella/emucore/Genesis.cxx
+	stella/emucore/Joy2BPlus.cxx
+	stella/emucore/Joystick.cxx
+	stella/emucore/Keyboard.cxx
+	stella/emucore/KidVid.cxx
+	stella/emucore/Lightgun.cxx
+	stella/emucore/M6502.cxx
+	stella/emucore/M6532.cxx
+	stella/emucore/MD5.cxx
+	stella/emucore/MindLink.cxx
+	stella/emucore/MT24LC256.cxx
+	stella/emucore/Paddles.cxx
+	stella/emucore/PlusROM.cxx
+	stella/emucore/PointingDevice.cxx
+	stella/emucore/Props.cxx
+	stella/emucore/PropsSet.cxx
+	stella/emucore/QuadTari.cxx
+	stella/emucore/SaveKey.cxx
+	stella/emucore/Serializer.cxx
+	stella/emucore/Settings.cxx
+	stella/emucore/Switches.cxx
+	stella/emucore/System.cxx
+	stella/emucore/Thumbulator.cxx
+	stella/emucore/tia/AnalogReadout.cxx
+	stella/emucore/tia/Audio.cxx
+	stella/emucore/tia/AudioChannel.cxx
+	stella/emucore/tia/Background.cxx
+	stella/emucore/tia/Ball.cxx
+	stella/emucore/tia/DrawCounterDecodes.cxx
+	stella/emucore/tia/LatchedInput.cxx
+	stella/emucore/tia/Missile.cxx
+	stella/emucore/tia/Player.cxx
+	stella/emucore/tia/Playfield.cxx
+	stella/emucore/tia/TIA.cxx
+	stella/emucore/tia/frame-manager/AbstractFrameManager.cxx
+	stella/emucore/tia/frame-manager/FrameLayoutDetector.cxx
+	stella/emucore/tia/frame-manager/FrameManager.cxx
+	stella/emucore/tia/frame-manager/JitterEmulation.cxx
+	stella/emucore/elf/BusTransactionQueue.cxx
+	stella/emucore/elf/ElfEnvironment.cxx
+	stella/emucore/elf/ElfLinker.cxx
+	stella/emucore/elf/ElfParser.cxx
+	stella/emucore/elf/ElfUtil.cxx
+	stella/emucore/elf/VcsLib.cxx
+	stella/common/AudioQueue.cxx
+	stella/common/AudioSettings.cxx
+	stella/common/Base.cxx
+	stella/common/DevSettingsHandler.cxx
+	stella/common/PaletteHandler.cxx
+	stella/common/RewindManager.cxx
+	stella/common/StateManager.cxx
+	stella/common/TimerManager.cxx
+	stella/common/audio/ConvolutionBuffer.cxx
+	stella/common/audio/HighPass.cxx
+	stella/common/audio/LanczosResampler.cxx
+	stella/common/audio/SimpleResampler.cxx
+	stella/common/repository/CompositeKeyValueRepository.cxx
+	${cartSrcs}
+)

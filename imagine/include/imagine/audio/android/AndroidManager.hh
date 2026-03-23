@@ -15,7 +15,6 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/config/defs.hh>
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/util/jni.hh>
 

@@ -22,7 +22,7 @@
 #include "neopop.h"
 #include "flash.h"
 #include "mem.h"
-#include <emuframework/EmuSystem.hh>
+import emuex;
 
 namespace MDFN_IEN_NGP
 {

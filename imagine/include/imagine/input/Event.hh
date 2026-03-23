@@ -20,8 +20,10 @@
 #include <imagine/time/Time.hh>
 #include <imagine/util/variant.hh>
 #include <imagine/util/Point2D.hh>
+#ifndef IG_USE_MODULE_STD
 #include <string>
 #include <string_view>
+#endif
 
 namespace IG
 {
@@ -48,7 +50,7 @@ enum class DefaultKey : uint8_t
 	PAGE_DOWN,
 };
 
-static constexpr bool SWAPPED_CONFIRM_KEYS_DEFAULT = Config::MACHINE_IS_PANDORA ? true : false;
+inline constexpr bool SWAPPED_CONFIRM_KEYS_DEFAULT = Config::MACHINE_IS_PANDORA ? true : false;
 
 class BaseEvent
 {

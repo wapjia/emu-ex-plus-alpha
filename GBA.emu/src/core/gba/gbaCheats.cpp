@@ -14,12 +14,10 @@
 #define sscanf sscanf_s
 #endif
 
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/io/FileIO.hh>
+import imagine;
 
 #define CPUReadMemory(s) CPUReadMemory(cpu, s)
 #define CPUReadByte(s) CPUReadByte(cpu, s)
-#define CPUReadHalfWord(s) CPUReadHalfWord(cpu, s)
 #define CPUWriteMemory(a, b) CPUWriteMemory(cpu, a, b)
 #define CPUWriteByte(a, b) CPUWriteByte(cpu, a, b)
 #define CPUWriteHalfWord(a, b) CPUWriteHalfWord(cpu, a, b)
@@ -1097,15 +1095,15 @@ int cheatsCheckKeys(ARM7TDMI &cpu, uint32_t keys, uint32_t extended)
         break;
       case GSA_16_BIT_WRITE_IOREGS:
       	if ((cheatsList[i].address <= 0x3FF) && (cheatsList[i].address != 0x6) && (cheatsList[i].address != 0x130))
-        	g_ioMem[cheatsList[i].address & 0x3FE] = (uint8_t)cheatsList[i].value & 0xFFFF;
+          g_ioMem[cheatsList[i].address & 0x3FE] = (uint8_t)(cheatsList[i].value & 0xFFFF);
         break;
       case GSA_32_BIT_WRITE_IOREGS:
       	if (cheatsList[i].address <= 0x3FF) {
             uint32_t cheat_addr = cheatsList[i].address & 0x3FC;
             if ((cheat_addr != 6) && (cheat_addr != 0x130))
-                g_ioMem[cheat_addr] = (uint8_t)(cheatsList[i].value & 0xFFFF);
+              g_ioMem[cheat_addr] = (uint8_t)(cheatsList[i].value & 0xFFFF);
             if (((cheat_addr + 2) != 0x6) && (cheat_addr + 2) != 0x130)
-                g_ioMem[cheat_addr + 2] = (uint8_t)((cheatsList[i].value >> 16) & 0xFFFF);
+              g_ioMem[cheat_addr + 2] = (uint8_t)((cheatsList[i].value >> 16) & 0xFFFF);
         }
         break;
       case GSA_8_BIT_IF_TRUE3:
@@ -1297,7 +1295,7 @@ int cheatsCheckKeys(ARM7TDMI &cpu, uint32_t keys, uint32_t extended)
 }
 
 void cheatsAdd(ARM7TDMI &cpu, const char *codeStr,
-               const char *desc,
+               const char* desc,
                uint32_t rawaddress,
                uint32_t address,
                uint32_t value,
@@ -2632,24 +2630,25 @@ bool cheatsAddCBACode(ARM7TDMI &cpu, const char *code, const char *desc)
 #undef cheatsAdd
 }
 
-#ifndef __LIBRETRO__
+#if 0
 void cheatsSaveGame(gzFile file)
 {
   utilWriteInt(file, cheatsNumber);
 
-  utilGzWrite(file, cheatsList.data(), cheatsNumber * sizeof(CheatsData));
+  utilGzWrite(file, cheatsList, sizeof(cheatsList));
 }
 
 void cheatsReadGame(gzFile file, int version)
 {
-  cheatsList.clear();
+  cheatsNumber = 0;
 
-  int cheats = utilReadInt(file);
-  cheatsList.resize(cheats);
+  cheatsNumber = utilReadInt(file);
+
+  if (cheatsNumber > MAX_CHEATS)
+      cheatsNumber = MAX_CHEATS;
 
   if (version > 8)
-    utilGzRead(file, cheatsList.data(), cheatsNumber * sizeof(CheatsData));
-
+    utilGzRead(file, cheatsList, sizeof(cheatsList));
 
   bool firstCodeBreaker = true;
 
@@ -2734,7 +2733,7 @@ void cheatsReadGameSkip(gzFile file, int version)
     }
   }
 }
-
+#endif
 
 void cheatsSaveCheatList(IG::ApplicationContext ctx, const char *file)
 {
@@ -2873,7 +2872,6 @@ bool cheatsLoadCheatList(IG::ApplicationContext ctx, const char *file)
   fclose(f);
   return true;
 }
-#endif
 
 extern int cpuNextEvent;
 

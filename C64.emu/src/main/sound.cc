@@ -13,28 +13,26 @@
 	You should have received a copy of the GNU General Public License
 	along with C64.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#define LOGTAG "sound"
-#include <emuframework/EmuAudio.hh>
-#include "MainSystem.hh"
-
+module;
+#include <cstdlib>
 extern "C"
 {
 	#include "sound.h"
 }
 
-#include <imagine/logger/logger.h>
+module system;
 
 using namespace EmuEx;
 
-static int soundInit(const char *param, int *speed,
-		   int *fragsize, int *fragnr, int *channels)
+static int soundInit(const char* param, int* speed,
+	int* fragsize, int* fragnr, int* channels)
 {
-	logMsg("sound init %dHz, %d fragsize, %d fragnr, %d channels", *speed, *fragsize, *fragnr, *channels);
-	assert(*channels == 1);
+	C64System::log.info("sound init {}Hz, fragsize:{}, fragnr:{}, channels:{}", *speed, *fragsize, *fragnr, *channels);
+	assume(*channels == 1);
 	return 0;
 }
 
-static int soundWrite(int16_t *pbuf, size_t nr)
+static int soundWrite(int16_t* pbuf, size_t nr)
 {
 	//logMsg("sound write %zd", nr);
 	auto audioPtr = gC64System().audioPtr;
@@ -59,7 +57,7 @@ static sound_device_t soundDevice =
 		true
 };
 
-CLINK int sound_init_dummy_device()
+extern "C" int sound_init_dummy_device()
 {
 	return gC64System().plugin.sound_register_device(&soundDevice);
 }

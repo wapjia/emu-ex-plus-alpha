@@ -15,25 +15,21 @@
 
 #include <mednafen/mednafen.h>
 #include <mednafen/VirtualFS.h>
-#include <imagine/base/ApplicationContext.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/io/FileIO.hh>
-
-namespace EmuEx
-{
-IG::ApplicationContext gAppContext();
-}
+#include <emuframework/EmuApp.hh>
+import imagine;
 
 namespace Mednafen
 {
 
-std::pair<IG::OpenFlags, uint8_t> modeToAttribs(uint32 mode);
+using namespace IG;
+
+std::pair<OpenFlags, uint8_t> modeToAttribs(uint32 mode);
 
 NativeVFS NVFS{};
 
 FILE* NativeVFS::openAsStdio(const std::string& path, const uint32 mode)
 {
-	assert(mode == MODE_READ);
+	assume(mode == MODE_READ);
 	return EmuEx::gAppContext().openFileUri(path, modeToAttribs(mode).first).toFileStream("rb");
 }
 
@@ -44,7 +40,7 @@ VirtualFS::~VirtualFS() {}
 
 void VirtualFS::get_file_path_components(const std::string &file_path, std::string* dir_path_out, std::string* file_base_out, std::string *file_ext_out)
 {
-	auto dir = std::string{IG::FS::dirnameUri(file_path)};
+	auto dir = std::string{FS::dirnameUri(file_path)};
 	auto fileBase = std::string{EmuEx::gAppContext().fileUriDisplayName(file_path)};
 	std::string fileExt{};
 	auto dotPos = fileBase.rfind('.');
@@ -78,7 +74,7 @@ std::string VirtualFS::eval_fip(const std::string& dir_path, const std::string& 
 	if(is_absolute_path(rel_path))
 		return rel_path;
 	else
-		return std::string{IG::FS::uriString(dir_path, rel_path)};
+		return std::string{FS::uriString(dir_path, rel_path)};
 }
 
 std::string VirtualFS::get_human_mode(uint32 mode)

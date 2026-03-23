@@ -1,6 +1,7 @@
 #pragma once
 
 #include <imagine/util/used.hh>
+#include <imagine/util/macros.h>
 #include <cstdint>
 #include <array>
 

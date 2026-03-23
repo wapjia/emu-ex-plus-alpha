@@ -45,7 +45,6 @@ constexpr int16_t sineTable[256] = {
 
 #define CPUReadMemory(s) CPUReadMemory(cpu, s)
 #define CPUReadByte(s) CPUReadByte(cpu, s)
-#define CPUReadHalfWord(s) CPUReadHalfWord(cpu, s)
 #define CPUReadHalfWordSigned(s) CPUReadHalfWordSigned(cpu, s)
 #define CPUUpdateRegister(a, b) CPUUpdateRegister(cpu, a, b)
 #define CPUWriteMemory(a, b) CPUWriteMemory(cpu, a, b)
@@ -226,13 +225,13 @@ void BIOS_BgAffineSet(ARM7TDMI &cpu)
     src += 4;
     int32_t cy = CPUReadMemory(src);
     src += 4;
-    int16_t dispx = CPUReadHalfWordSigned(src);
+    int16_t dispx = (int16_t)CPUReadHalfWordSigned(src);
     src += 2;
-    int16_t dispy = CPUReadHalfWordSigned(src);
+    int16_t dispy = (int16_t)CPUReadHalfWordSigned(src);
     src += 2;
-    int16_t rx = CPUReadHalfWordSigned(src);
+    int16_t rx = (int16_t)CPUReadHalfWordSigned(src);
     src += 2;
-    int16_t ry = CPUReadHalfWordSigned(src);
+    int16_t ry = (int16_t)CPUReadHalfWordSigned(src);
     src += 2;
     uint16_t theta = DowncastU16(CPUReadHalfWord(src) >> 8);
     src += 4; // keep structure alignment
@@ -824,9 +823,9 @@ void BIOS_ObjAffineSet(ARM7TDMI &cpu)
   int offset = reg[3].I;
 
   for (int i = 0; i < num; i++) {
-    int16_t rx = CPUReadHalfWordSigned(src);
+    int16_t rx = (int16_t)CPUReadHalfWordSigned(src);
     src += 2;
-    int16_t ry = CPUReadHalfWordSigned(src);
+    int16_t ry = (int16_t)CPUReadHalfWordSigned(src);
     src += 2;
     uint16_t theta = DowncastU16(CPUReadHalfWord(src) >> 8);
     src += 4; // keep structure alignment
@@ -867,7 +866,8 @@ void BIOS_RegisterRamReset(ARM7TDMI &cpu, uint32_t flags)
     	memset(g_internalRAM, 0, 0x7e00); // don't clear 0x7e00-0x7fff
     }
     cpu.gba->lcd.registerRamReset(flags);
-    /*if (flags & 0x04) {
+    /*
+    if (flags & 0x04) {
       // clear palette RAM
       memset(g_paletteRAM, 0, 0x400);
     }
@@ -878,7 +878,8 @@ void BIOS_RegisterRamReset(ARM7TDMI &cpu, uint32_t flags)
     if (flags & 0x10) {
       // clean OAM
       memset(g_oam, 0, 0x400);
-    }*/
+    }
+    */
 
     if (flags & 0x80) {
       int i;

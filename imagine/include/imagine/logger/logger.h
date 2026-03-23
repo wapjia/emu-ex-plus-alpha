@@ -1,6 +1,21 @@
 #pragma once
 
-#include <imagine/util/utility.h>
+/*  This file is part of Imagine.
+
+	Imagine is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	Imagine is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
+
+#include <imagine/util/macros.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -8,13 +23,9 @@
 enum { LOGGER_ERROR, LOGGER_WARNING, LOGGER_MESSAGE, LOGGER_DEBUG_MESSAGE };
 
 static const uint8_t loggerMaxVerbosity = LOGGER_DEBUG_MESSAGE;
-extern uint8_t loggerVerbosity;
 
 typedef uint8_t LoggerSeverity;
 
-CLINK void logger_setLogDirectoryPrefix(const char *dirStr) __attribute__((cold));
-CLINK void logger_setEnabled(bool enable);
-CLINK bool logger_isEnabled();
 CLINK void logger_printf(LoggerSeverity severity, const char* msg, ...) __attribute__((format (printf, 2, 3)));
 CLINK void logger_vprintf(LoggerSeverity severity, const char* msg, va_list arg);
 
@@ -43,125 +54,3 @@ static const uint8_t LOG_E = LOGGER_ERROR;
 #define logDMsgNoBreak(msg, ...) logger_modulePrintf(LOG_D, msg, ## __VA_ARGS__)
 #define logWarnNoBreak(msg, ...) logger_modulePrintf(LOG_W, msg, ## __VA_ARGS__)
 #define logErrNoBreak(msg, ...) logger_modulePrintf(LOG_E, msg, ## __VA_ARGS__)
-
-#ifdef __cplusplus
-
-#include <imagine/config/defs.hh>
-#include <format>
-
-namespace IG::Log
-{
-
-void print(LoggerSeverity, std::string_view tag, std::string_view format, std::format_args);
-void printMsg(LoggerSeverity, const char* str, size_t strSize);
-
-constexpr auto severityToColorCode(LoggerSeverity severity)
-{
-	switch(severity)
-	{
-		case LOGGER_DEBUG_MESSAGE: return "\033[1;36m";
-		default: [[fallthrough]];
-		case LOGGER_MESSAGE: return "\033[0m";
-		case LOGGER_WARNING: return "\033[1;33m";
-		case LOGGER_ERROR: return "\033[1;31m";
-	}
-}
-
-inline void beginMsg(auto& str, LoggerSeverity lv, std::string_view tag, std::string_view format, std::format_args args)
-{
-	if(Config::envIsLinux)
-	{
-		str += severityToColorCode(lv);
-	}
-	if(tag.size())
-	{
-		str += tag;
-		str += ": ";
-	}
-	std::vformat_to(std::back_inserter(str), format, args);
-}
-
-}
-
-namespace IG
-{
-
-class SystemLogger
-{
-public:
-	std::string_view tag;
-
-	template <class... T>
-	void print(LoggerSeverity lv, std::format_string<T...> format, T&&... args) const
-	{
-		Log::print(lv, tag, format.get(), std::make_format_args(args...));
-	}
-
-	template <class... T>
-	void info(std::format_string<T...> format, T&&... args) const
-	{
-		Log::print(LOG_M, tag, format.get(), std::make_format_args(args...));
-	}
-
-	template <class... T>
-	void debug(std::format_string<T...> format, T&&... args) const
-	{
-		Log::print(LOG_D, tag, format.get(), std::make_format_args(args...));
-	}
-
-	template <class... T>
-	void warn(std::format_string<T...> format, T&&... args) const
-	{
-		Log::print(LOG_W, tag, format.get(), std::make_format_args(args...));
-	}
-
-	template <class... T>
-	void error(std::format_string<T...> format, T&&... args) const
-	{
-		Log::print(LOG_E, tag, format.get(), std::make_format_args(args...));
-	}
-
-	template <class... T>
-	void beginMsg(auto& str, LoggerSeverity lv, std::format_string<T...> format, T&&... args) const
-	{
-		Log::beginMsg(str, lv, tag, format.get(), std::make_format_args(args...));
-	}
-
-	template <class... T>
-	void beginInfo(auto& str, std::format_string<T...> format, T&&... args) const
-	{
-		Log::beginMsg(str, LOG_M, tag, format.get(), std::make_format_args(args...));
-	}
-
-	template <class... T>
-	void beginDebug(auto& str, std::format_string<T...> format, T&&... args) const
-	{
-		Log::beginMsg(str, LOG_D, tag, format.get(), std::make_format_args(args...));
-	}
-
-	template <class... T>
-	void beginWarn(auto& str, std::format_string<T...> format, T&&... args) const
-	{
-		Log::beginMsg(str, LOG_W, tag, format.get(), std::make_format_args(args...));
-	}
-
-	template <class... T>
-	void beginError(auto& str, std::format_string<T...> format, T&&... args) const
-	{
-		Log::beginMsg(str, LOG_E, tag, format.get(), std::make_format_args(args...));
-	}
-
-	void printMsg(LoggerSeverity lv, auto& str) const
-	{
-		Log::printMsg(lv, str.c_str(), str.size());
-	}
-
-	void printInfo(auto& str) const { printMsg(LOG_M, str); }
-	void printDebug(auto& str) const { printMsg(LOG_D, str); }
-	void printWarn(auto& str) const { printMsg(LOG_W, str); }
-	void printError(auto& str) const { printMsg(LOG_E, str); }
-};
-
-}
-
-#endif

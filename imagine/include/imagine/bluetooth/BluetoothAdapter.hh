@@ -28,7 +28,9 @@
 #include <imagine/util/DelegateFunc.hh>
 #include <imagine/base/ApplicationContext.hh>
 #include <imagine/util/used.hh>
+#ifndef IG_USE_MODULE_STD
 #include <system_error>
+#endif
 
 namespace IG
 {

@@ -20,8 +20,9 @@
 #else
 #include <imagine/fs/FS.hh>
 #endif
-
+#ifndef IG_USE_MODULE_STD
 #include <type_traits>
+#endif
 
 namespace IG::FS
 {

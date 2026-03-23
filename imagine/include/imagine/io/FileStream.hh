@@ -27,7 +27,7 @@ class FileStream
 public:
 	constexpr FileStream() = default;
 
-	FileStream(IO io, const char *opentype):
+	FileStream(IO io, [[maybe_unused]] const char* opentype):
 		io{std::move(io)}
 	{
 		#if defined __ANDROID__ || __APPLE__
@@ -83,7 +83,6 @@ public:
 		};
 		f = UniqueFileStream{fopencookie(this, opentype, funcs)};
 		#endif
-		assert(f);
 	}
 
 	FILE *filePtr() const

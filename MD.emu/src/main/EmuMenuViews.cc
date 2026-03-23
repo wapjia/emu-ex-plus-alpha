@@ -13,24 +13,20 @@
 	You should have received a copy of the GNU General Public License
 	along with MD.emu.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <emuframework/SystemOptionView.hh>
-#include <emuframework/AudioOptionView.hh>
-#include <emuframework/FilePathOptionView.hh>
-#include <emuframework/DataPathSelectView.hh>
-#include <emuframework/UserPathSelectView.hh>
-#include <emuframework/SystemActionsView.hh>
-#include "MainApp.hh"
-#include <imagine/gui/AlertView.hh>
-#include <imagine/fs/FS.hh>
-#include <imagine/util/format.hh>
-#include <imagine/util/string.h>
+#include "genplus-config.h"
 #include "input.h"
+#include "system.h"
 #include "io_ctrl.h"
 #include "vdp_ctrl.h"
+import system;
+import emuex;
+import imagine;
+import std;
 
 namespace EmuEx
 {
 
+using namespace IG;
 using MainAppHelper = EmuAppHelperBase<MainApp>;
 
 class ConsoleOptionView : public TableView, public MainAppHelper
@@ -323,7 +319,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		{biosMenuEntryStr(REGION_EUROPE, pathFromRegion(REGION_EUROPE)),         attachParams(), setCDBiosPathDel(REGION_EUROPE)}
 	};
 
-	std::string biosMenuEntryStr(uint8_t region, IG::CStringView path) const
+	std::string biosMenuEntryStr(uint8_t region, CStringView path) const
 	{
 		auto regionStr = biosHeadingStr[regionCodeToIdx(region)];
 		return std::format("{}: {}", regionStr, appContext().fileUriDisplayName(path));
@@ -334,7 +330,7 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		return [this, region](const Input::Event &e)
 		{
 			pushAndShow(makeViewWithName<DataFileSelectView<>>(biosHeadingStr[regionCodeToIdx(region)],
-				app().validSearchPath(FS::dirnameUri(pathFromRegion(region))),//修复原版传入值为文件路径的错误
+				app().validSearchPath(FS::dirnameUri(pathFromRegion(region))),
 				[this, region](CStringView path, FS::file_type type)
 				{
 					//爱吾修改：增加默认CD BIOS路径
@@ -370,12 +366,103 @@ class CustomFilePathOptionView : public FilePathOptionView, public MainAppHelper
 		loadStockItems();
 		//item.emplace_back(&cheatsPath);//爱吾修改：去掉金手指文件路径
 		#ifndef NO_SCD
-		for(auto i : iotaCount(3))
+		for(auto i: iotaCount(3))
 		{
 			item.emplace_back(&cdBiosPath[i]);
 		}
 		#endif
 	}
+};
+
+static auto codePromptString()
+{
+	return emuSystemIs16Bit() ? "Input xxxx-xxxx (GG) or xxxxxx:xxxx (AR) code"
+		: "Input xxx-xxx-xxx (GG) or xxxxxx:xx (AR) code";
+}
+
+static auto editCodePromptString()
+{
+	return emuSystemIs16Bit() ? "Input xxxx-xxxx (GG) or xxxxxx:xxxx (AR) code, or blank to delete"
+		: "Input xxx-xxx-xxx (GG) or xxxxxx:xx (AR) code, or blank to delete";
+}
+
+class EditCheatView : public BaseEditCheatView
+{
+public:
+	EditCheatView(ViewAttachParams attach, Cheat& cheat, BaseEditCheatsView& editCheatsView):
+		BaseEditCheatView
+		{
+			"Edit Cheat",
+			attach,
+			cheat,
+			editCheatsView
+		},
+		addCode
+		{
+			"Add Another Code", attach,
+			[this](const Input::Event& e) { addNewCheatCode(codePromptString(), e); }
+		}
+	{
+		loadItems();
+	}
+
+	void loadItems()
+	{
+		codes.clear();
+		for(auto& c: cheatPtr->codes)
+		{
+			codes.emplace_back("Code", c.text, attachParams(), [this, &c](const Input::Event& e)
+			{
+				pushAndShowNewCollectValueInputView<const char*, ScanValueMode::AllowBlank>(attachParams(), e, editCodePromptString(), c.text,
+					[this, &c](CollectTextInputView&, auto str) { return modifyCheatCode(c, {str}); });
+			});
+		};
+		items.clear();
+		items.emplace_back(&name);
+		for(auto& c: codes)
+		{
+			items.emplace_back(&c);
+		}
+		items.emplace_back(&addCode);
+		items.emplace_back(&remove);
+	}
+
+private:
+	TextMenuItem addCode;
+};
+
+class EditCheatsView : public BaseEditCheatsView
+{
+public:
+	EditCheatsView(ViewAttachParams attach, CheatsView& cheatsView):
+		BaseEditCheatsView
+		{
+			attach,
+			cheatsView,
+			[this](ItemMessage msg) -> ItemReply
+			{
+				return msg.visit(overloaded
+				{
+					[&](const ItemsMessage &m) -> ItemReply { return 1 + cheats.size(); },
+					[&](const GetItemMessage &m) -> ItemReply
+					{
+						switch(m.idx)
+						{
+							case 0: return &addCode;
+							default: return &cheats[m.idx - 1];
+						}
+					},
+				});
+			}
+		},
+		addCode
+		{
+			"Add Game Genie / Action Replay Code", attach,
+			[this](const Input::Event& e) { addNewCheat(codePromptString(), e); }
+		} {}
+
+private:
+	TextMenuItem addCode;
 };
 
 std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
@@ -389,5 +476,8 @@ std::unique_ptr<View> EmuApp::makeCustomView(ViewAttachParams attach, ViewID id)
 		default: return nullptr;
 	}
 }
+
+std::unique_ptr<View> AppMeta::makeEditCheatsView(ViewAttachParams attach, CheatsView& view) { return std::make_unique<EditCheatsView>(attach, view); }
+std::unique_ptr<View> AppMeta::makeEditCheatView(ViewAttachParams attach, Cheat& c, BaseEditCheatsView& baseView) { return std::make_unique<EditCheatView>(attach, c, baseView); }
 
 }

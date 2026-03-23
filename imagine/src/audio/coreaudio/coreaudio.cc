@@ -13,17 +13,15 @@
 	You should have received a copy of the GNU General Public License
 	along with Imagine.  If not, see <http://www.gnu.org/licenses/> */
 
-#include <imagine/audio/coreaudio/CAOutputStream.hh>
+#include <imagine/config/macros.h>
 #include <imagine/audio/OutputStream.hh>
-#include <imagine/logger/logger.h>
-#include <imagine/util/utility.h>
-#include <imagine/util/algorithm.h>
-#include <TargetConditionals.h>
+#include <imagine/logger/SystemLogger.hh>
+#include <AudioUnit/AudioUnit.h>
 
 namespace IG::Audio
 {
 
-constexpr SystemLogger log{"CoreAudio"};
+static SystemLogger log{"CoreAudio"};
 
 CAOutputStream::CAOutputStream()
 {
@@ -41,11 +39,12 @@ CAOutputStream::CAOutputStream()
 		.componentFlagsMask{}
 	};
 	AudioComponent defaultOutput = AudioComponentFindNext(nullptr, &defaultOutputDescription);
-	assert(defaultOutput);
+	assume(defaultOutput);
 	auto err = AudioComponentInstanceNew(defaultOutput, &outputUnit);
 	if(!outputUnit)
 	{
-		bug_unreachable("error creating output unit:%d", (int)err);
+		log.error("error creating output unit:{}", err);
+		return;
 	}
 	AURenderCallbackStruct renderCallbackProp
 	{
@@ -66,7 +65,8 @@ CAOutputStream::CAOutputStream()
 	    0, &renderCallbackProp, sizeof(renderCallbackProp));
 	if(err)
 	{
-		bug_unreachable("error setting callback:%d", (int)err);
+		log.error("error setting callback:{}", err);
+		return;
 	}
 }
 
