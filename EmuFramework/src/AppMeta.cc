@@ -24,7 +24,7 @@ namespace EmuEx
 [[gnu::weak]] const bool AppMeta::canRenderRGB565{true};
 [[gnu::weak]] const bool AppMeta::canRenderRGBA8888{true};
 [[gnu::weak]] const bool AppMeta::hasRectangularPixels{};
-[[gnu::weak]] const AspectRatioInfo AppMeta::aspectRatioInfo{"4:3 (Original)", {4, 3}};
+[[gnu::weak]] const AspectRatioInfo AppMeta::aspectRatioInfo{"4:3 (原画)", {4, 3}};
 [[gnu::weak]] const bool AppMeta::hasResetModes{};
 [[gnu::weak]] const bool AppMeta::handlesArchiveFiles{};
 [[gnu::weak]] const bool AppMeta::handlesGenericIO{true};

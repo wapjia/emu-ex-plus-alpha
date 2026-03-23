@@ -147,7 +147,7 @@ public:
 		.defaultValue = true
 	}> fastForwardDuringFdsAccess;
 	bool fdsIsAccessing{};
-	Property<bool, CFGKEY_FOUR_SCORE> optionFourScore;
+	Property<bool, CFGKEY_FOUR_SCORE,{.defaultValue = true}> optionFourScore;//爱吾修改：默认开启4玩家模式
 	Property<ESI, CFGKEY_INPUT_PORT_1,
 	{
 		.defaultValue = SI_UNSET
